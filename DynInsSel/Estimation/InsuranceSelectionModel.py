@@ -2,8 +2,8 @@
 A model of consumption, savings, medical spending, and medical insurance selection.
 '''
 import sys 
-sys.path.insert(0,'../')
-sys.path.insert(0,'../ConsumptionSaving')
+sys.path.insert(0,'../../')
+sys.path.insert(0,'../../ConsumptionSaving')
 import numpy as np
 from copy import copy, deepcopy
 
@@ -562,8 +562,8 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,LivPrb,DiscFac,C
             a_temp = np.insert(aLvlNow[j,:]-aMin,0,0.0)
             EndOfPrdvNvrs_temp = np.insert(EndOfPrdvNvrs[j,:],0,0.0)
             EndOfPrdvNvrsP_temp = np.insert(EndOfPrdvNvrsP[j,:],0,0.0)
-            #EndOfPrdvNvrsFunc_by_pLvl.append(CubicInterp(a_temp,EndOfPrdvNvrs_temp,EndOfPrdvNvrsP_temp))
-            EndOfPrdvNvrsFunc_by_pLvl.append(LinearInterp(a_temp,EndOfPrdvNvrs_temp))
+            EndOfPrdvNvrsFunc_by_pLvl.append(CubicInterp(a_temp,EndOfPrdvNvrs_temp,EndOfPrdvNvrsP_temp))
+            #EndOfPrdvNvrsFunc_by_pLvl.append(LinearInterp(a_temp,EndOfPrdvNvrs_temp))
         EndOfPrdvNvrsFuncBase = LinearInterpOnInterp1D(EndOfPrdvNvrsFunc_by_pLvl,pLvlGrid)
         EndOfPrdvNvrsFunc = VariableLowerBoundFunc2D(EndOfPrdvNvrsFuncBase,BoroCnstNat)
         EndOfPrdvFunc = ValueFunc2D(EndOfPrdvNvrsFunc,CRRA)
@@ -590,7 +590,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,LivPrb,DiscFac,C
             if CubicBool:
                 EndOfPrdvPP_temp = np.tile(np.reshape(EndOfPrdvPP[:,:,h],(1,pCount,EndOfPrdvPP.shape[1])),(MedCount,1,1))
                 dcda        = EndOfPrdvPP_temp/uPP(np.array(cLvlNow))
-                dMedda      = EndOfPrdvPP/(MedShkVals_temp*uMedPP(MedLvlNow))
+                dMedda      = EndOfPrdvPP_temp/(MedShkVals_temp*uMedPP(MedLvlNow))
                 dMedda[0,:,:] = 0.0 # dMedda goes crazy when MedShk=0
                 MPC         = dcda/(1.0 + dcda + MedPriceEff*dMedda)
                 MPM         = dMedda/(1.0 + dcda + MedPriceEff*dMedda)
@@ -756,7 +756,11 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,LivPrb,DiscFac,C
         vNvrsParrayBig = AdjusterArray*vParrayBig*uinvP(vArrayBig)
         vPnvrsArrayBig = uPinv(AdjusterArray*vParrayBig)
         if CubicBool:
-            vPnvrsParrayBig = (AdjusterArray*vPParrayBig - Contract.Premium.derivativeXX(mLvlArray,pLvlArray)*vParrayBig)*uPinvP(AdjusterArray*vParrayBig)
+            Temp = np.zeros_like(AdjusterArray)
+            for z in range(len(ContractList[h])):
+                Contract = ContractList[h][z]
+                Temp[:,:,z] = Contract.Premium.derivativeXX(mLvlArray,pLvlArray)
+            vPnvrsParrayBig = (AdjusterArray*vPParrayBig - Temp*vParrayBig)*uPinvP(AdjusterArray*vParrayBig)
             
         # Fix the unaffordable points so they don't generate NaNs near bottom
         vNvrsArrayBig[UnaffordableArray] = -np.inf
@@ -785,8 +789,8 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,LivPrb,DiscFac,C
             m_temp = np.insert(mLvlArray[:,j] - mLvlMinNow(pLvl),0,0.0)
             vNvrs_temp   = np.insert(vNvrsArray[:,j],0,0.0)
             vNvrsP_temp  = np.insert(vNvrsParray[:,j],0,vNvrsParray[0,j])
-            #vNvrsFuncs_by_pLvl.append(CubicInterp(m_temp,vNvrs_temp,vNvrsP_temp))
-            vNvrsFuncs_by_pLvl.append(LinearInterp(m_temp,vNvrs_temp))
+            vNvrsFuncs_by_pLvl.append(CubicInterp(m_temp,vNvrs_temp,vNvrsP_temp))
+            #vNvrsFuncs_by_pLvl.append(LinearInterp(m_temp,vNvrs_temp))
             vPnvrs_temp  = np.insert(vPnvrsArray[:,j],0,0.0)
             if CubicBool:
                 vPnvrsP_temp = np.insert(vPnvrsParray[:,j],0,vPnvrsParray[0,j])
@@ -1134,8 +1138,8 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
                     m_temp = mLvlNow_adj[j,i,:]
                     vNvrs_temp = vNvrsNow[j,i,:]
                     vNvrsPnow_temp = vNvrsPnow[j,i,:]
-                    #temp_list.append(CubicInterp(m_temp,vNvrs_temp,vNvrsPnow_temp))
-                    temp_list.append(LinearInterp(m_temp,vNvrs_temp))
+                    temp_list.append(CubicInterp(m_temp,vNvrs_temp,vNvrsPnow_temp))
+                    #temp_list.append(LinearInterp(m_temp,vNvrs_temp))
                 vFuncNvrs_by_pLvl_and_MedShk.append(deepcopy(temp_list))
             vFuncNvrs = BilinearInterpOnInterp1D(vFuncNvrs_by_pLvl_and_MedShk,pLvlGrid,MedShkGrid)
             vFuncs_by_copay.append(ValueFunc3D(vFuncNvrs,CRRA))
@@ -1247,7 +1251,11 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
             vNvrsParrayBig = AdjusterArray*vParrayBig*uinvP(vArrayBig)
             vPnvrsArrayBig = uPinv(AdjusterArray*vParrayBig)
             if self.CubicBool:
-                vPnvrsParrayBig = (AdjusterArray*vPParrayBig - Contract.Premium.derivativeXX(mLvlArray,pLvlArray)*vParrayBig)*uPinvP(AdjusterArray*vParrayBig)
+                Temp = np.zeros_like(AdjusterArray)
+                for z in range(len(ContractList[h])):
+                    Contract = ContractList[h][z]
+                    Temp[:,:,z] = Contract.Premium.derivativeXX(mLvlArray,pLvlArray)
+                vPnvrsParrayBig = (AdjusterArray*vPParrayBig - Temp*vParrayBig)*uPinvP(AdjusterArray*vParrayBig)
             
             # Fix the unaffordable points so they don't generate NaNs near bottom
             vNvrsArrayBig[UnaffordableArray] = -np.inf
@@ -1275,8 +1283,8 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
                 m_temp = np.insert(mLvlArray[:,j],0,0.0)
                 vNvrs_temp   = np.insert(vNvrsArray[:,j],0,0.0)
                 vNvrsP_temp  = np.insert(vNvrsParray[:,j],0,vNvrsParray[0,j])
-                #vNvrsFuncs_by_pLvl.append(CubicInterp(m_temp,vNvrs_temp,vNvrsP_temp))
-                vNvrsFuncs_by_pLvl.append(LinearInterp(m_temp,vNvrs_temp))
+                vNvrsFuncs_by_pLvl.append(CubicInterp(m_temp,vNvrs_temp,vNvrsP_temp))
+                #vNvrsFuncs_by_pLvl.append(LinearInterp(m_temp,vNvrs_temp))
                 vPnvrs_temp  = np.insert(vPnvrsArray[:,j],0,0.0)
                 if self.CubicBool:
                     vPnvrsP_temp = np.insert(vPnvrsParray[:,j],0,vPnvrsParray[0,j])
@@ -1450,27 +1458,29 @@ if __name__ == '__main__':
         plt.plot(mLvl,f(mLvl))
     plt.show()
     
+    h = 4    
+    
     print('Pseudo-inverse value function by contract:')
     mLvl = np.linspace(0,10,200)
-    J = len(MyType.solution[0].vFuncByContract[0])
+    J = len(MyType.solution[0].vFuncByContract[h])
     for j in range(J):
-        f = lambda x : MyType.solution[0].vFuncByContract[0][j].func(x,1.0*np.ones_like(x))
+        f = lambda x : MyType.solution[0].vFuncByContract[h][j].func(x,1.0*np.ones_like(x))
         plt.plot(mLvl+Contracts[j].Premium(1,1,1),f(mLvl))
     plt.show()
     
     print('Pseudo-inverse value function by coinsurance rate:')
     mLvl = np.linspace(0,10,200)
-    J = len(MyType.solution[0].vFuncByContract[0])
+    J = len(MyType.solution[0].vFuncByContract[h])
     for j in range(J):
-        v = MyType.solution[0].policyFunc[0][j].ValueFuncCopay.vFuncNvrs(mLvl,1.0*np.ones_like(mLvl),1e-3*np.ones_like(mLvl))
+        v = MyType.solution[0].policyFunc[h][j].ValueFuncCopay.vFuncNvrs(mLvl,1.0*np.ones_like(mLvl),1e-1*np.ones_like(mLvl))
         plt.plot(mLvl,v)
     plt.show()
     
     print('Consumption function by coinsurance rate:')
     mLvl = np.linspace(0,1,200)
-    J = len(MyType.solution[0].vFuncByContract[0])
+    J = len(MyType.solution[0].vFuncByContract[h])
     for j in range(J):
-        cLvl,MedLvl = MyType.solution[0].policyFunc[0][j].PolicyFuncCopay(mLvl,1.0*np.ones_like(mLvl),1e-3*np.ones_like(mLvl))
+        cLvl,MedLvl = MyType.solution[0].policyFunc[h][j].PolicyFuncCopay(mLvl,1.0*np.ones_like(mLvl),1e-1*np.ones_like(mLvl))
         plt.plot(mLvl,cLvl)
     plt.show()
     
@@ -1478,6 +1488,6 @@ if __name__ == '__main__':
     mLvl = np.linspace(0,10,200)
     J = len(MyType.solution[0].vFuncByContract[0])
     for j in range(J):
-        cLvl,MedLvl = MyType.solution[0].policyFunc[0][j](mLvl,np.ones_like(mLvl),1.0*np.ones_like(mLvl))
+        cLvl,MedLvl = MyType.solution[0].policyFunc[h][j](mLvl,1.0*np.ones_like(mLvl),1e-1*np.ones_like(mLvl))
         plt.plot(mLvl,cLvl)
     plt.show()
