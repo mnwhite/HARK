@@ -22,6 +22,7 @@ StdevLogTotalMedByAge = np.zeros(40) + np.nan
 InsuredRateByAge = np.zeros(40) + np.nan
 MeanPremiumByAge = np.zeros(40) + np.nan
 StdevPremiumByAge = np.zeros(40) + np.nan
+NoPremShareRateByAge = np.zeros(40) + np.nan
 for j in range(40):
     MeanLogOOPmedByAge[j] = float(raw_moments[j][1])
     MeanLogTotalMedByAge[j] = float(raw_moments[j][2])
@@ -30,6 +31,7 @@ for j in range(40):
     InsuredRateByAge[j] = float(raw_moments[j][5])
     MeanPremiumByAge[j] = float(raw_moments[j][6])
     StdevPremiumByAge[j] = float(raw_moments[j][7])
+    NoPremShareRateByAge[j] = float(raw_moments[j][8])
     
 
 # Load the moments by five-year age groups and income quintile into a CSV reader object
@@ -48,6 +50,7 @@ StdevLogTotalMedByAgeIncome = np.zeros((8,5)) + np.nan
 InsuredRateByAgeIncome = np.zeros((8,5)) + np.nan
 MeanPremiumByAgeIncome = np.zeros((8,5)) + np.nan
 StdevPremiumByAgeIncome = np.zeros((8,5)) + np.nan
+NoPremShareRateByAgeIncome = np.zeros((8,5)) + np.nan
 for j in range(40):
     i = int(raw_moments[j][1])-1
     k = int(raw_moments[j][0])-1
@@ -58,6 +61,7 @@ for j in range(40):
     InsuredRateByAgeIncome[i,k] = float(raw_moments[j][6])
     MeanPremiumByAgeIncome[i,k] = float(raw_moments[j][7])
     StdevPremiumByAgeIncome[i,k] = float(raw_moments[j][8])
+    NoPremShareRateByAgeIncome[i,k] = float(raw_moments[j][9])
     
     
 # Load the moments by five-year age groups and health into a CSV reader object
@@ -75,6 +79,7 @@ StdevLogTotalMedByAgeHealth = np.zeros((8,5)) + np.nan
 InsuredRateByAgeHealth = np.zeros((8,5)) + np.nan
 MeanPremiumByAgeHealth = np.zeros((8,5)) + np.nan
 StdevPremiumByAgeHealth = np.zeros((8,5)) + np.nan
+NoPremShareRateByAgeHealth = np.zeros((8,5)) + np.nan
 for j in range(40):
     i = int(raw_moments[j][0])-1
     k = int(raw_moments[j][1])-1
@@ -85,10 +90,41 @@ for j in range(40):
     InsuredRateByAgeHealth[i,k] = float(raw_moments[j][6])
     MeanPremiumByAgeHealth[i,k] = float(raw_moments[j][7])
     StdevPremiumByAgeHealth[i,k] = float(raw_moments[j][8])
+    NoPremShareRateByAgeHealth[i,k] = float(raw_moments[j][9])
     
     
+# Load the moments for wealth-to-income ratio by age
+data_location = os.path.dirname(os.path.abspath(__file__))
+f = open(data_location + '\WealthByAge.txt','r')
+moment_reader = csv.reader(f,delimiter='\t')
+raw_moments = list(moment_reader)
+f.close()
+
+# Store the moments for wealth-to-income ratio by age
+WealthRatioByAge = np.zeros(40) + np.nan
+for j in range(40):
+    WealthRatioByAge[j] = float(raw_moments[j][1])
+
+
+# Load the moments for wealth-to-income ratio by age and income quintile
+data_location = os.path.dirname(os.path.abspath(__file__))
+f = open(data_location + '\WealthByAgeIncome.txt','r')
+moment_reader = csv.reader(f,delimiter='\t')
+raw_moments = list(moment_reader)
+f.close()
+
+# Store the moments for wealth-to-income ratio by age
+WealthRatioByAgeIncome = np.zeros((8,5)) + np.nan
+for j in range(40):
+    i = int(raw_moments[j][1])-1
+    k = int(raw_moments[j][0])-1
+    WealthRatioByAgeIncome[i,k] = float(raw_moments[j][2])   
+
+
 if make_figs:
     import matplotlib.pyplot as plt
+    os.chdir('..')
+    os.chdir('Figures')
     
     plt.plot(OneYearAge,MeanLogOOPmedByAge,'.k')
     plt.plot(FiveYearAge,MeanLogOOPmedByAgeIncome)
@@ -145,6 +181,22 @@ if make_figs:
     plt.ylabel('Stdev OOP premium')
     plt.legend(['Overall average','Bottom income quintile','Second income quintile','Third income quintile','Fourth income quintile','Top income quintile'],loc=0,fontsize=8)
     plt.savefig('StdevPremiumByAgeIncome.pdf')
+    plt.show()
+    
+    plt.plot(OneYearAge,NoPremShareRateByAge,'.k')
+    plt.plot(FiveYearAge,NoPremShareRateByAgeIncome)
+    plt.xlabel('Age')
+    plt.ylabel('Pct ESI buyers with no employer contribution')
+    plt.legend(['Overall average','Bottom income quintile','Second income quintile','Third income quintile','Fourth income quintile','Top income quintile'],loc=0,fontsize=8)
+    plt.savefig('NoPremShareByAgeIncome.pdf')
+    plt.show()
+    
+    plt.plot(OneYearAge,WealthRatioByAge,'.k')
+    plt.plot(FiveYearAge,WealthRatioByAgeIncome)
+    plt.xlabel('Age')
+    plt.ylabel('Median wealth-to-income ratio')
+    plt.legend(['Overall average','Bottom income quintile','Second income quintile','Third income quintile','Fourth income quintile','Top income quintile'],loc=0,fontsize=8)
+    plt.savefig('WealthRatioByAgeIncome.pdf')
     plt.show()
     
     plt.plot(OneYearAge,MeanLogOOPmedByAge,'.k')
@@ -204,5 +256,11 @@ if make_figs:
     plt.savefig('StdevPremiumByAgeHealth.pdf')
     plt.show()
     
-
+    plt.plot(OneYearAge,NoPremShareRateByAge,'.k')
+    plt.plot(FiveYearAge,NoPremShareRateByAgeHealth)
+    plt.xlabel('Age')
+    plt.ylabel('Pct ESI buyers with no employer contribution')
+    plt.legend(['Overall average','Poor health','Fair health','Good health','Very good health','Excellent health'],loc=0,fontsize=8)
+    plt.savefig('NoPremShareByAgeHealth.pdf')
+    plt.show()
 

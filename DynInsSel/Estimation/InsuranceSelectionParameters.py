@@ -13,7 +13,7 @@ aXtraMin = 0.001                    # Minimum end-of-period "assets above minimu
 aXtraMax = 80                       # Minimum end-of-period "assets above minimum" value               
 aXtraExtra = [0.005,0.01]           # Some other value of "assets above minimum" to add to the grid, not used
 aXtraNestFac = 3                    # Exponential nesting factor when constructing "assets above minimum" grid
-aXtraCount = 32                     # Number of points in the grid of "assets above minimum"
+aXtraCount = 32                    # Number of points in the grid of "assets above minimum"
 PermShkCount = 5                    # Number of points in discrete approximation to permanent income shocks
 TranShkCount = 5                    # Number of points in discrete approximation to transitory income shocks
 PermShkStd = [[0.2,0.15,0.1,0.1,0.1]] # Standard deviation of log permanent income shocks
@@ -24,13 +24,13 @@ IncUnemp = 0.3                      # Unemployment benefits replacement rate
 IncUnempRet = 0.0                   # "Unemployment" benefits when retired
 T_retire = 0                        # Period of retirement (0 --> no retirement)
 BoroCnstArt = 0.0                   # Artificial borrowing constraint; imposed minimum level of end-of period assets
-CubicBool = True                   # Use cubic spline interpolation when True, linear interpolation when False
+CubicBool = False                   # Use cubic spline interpolation when True, linear interpolation when False
 PermIncCount = 12                   # Number of permanent income gridpoints in "body"
 PermInc_tail_N = 3                  # Number of permanent income gridpoints in each "tail"
 PermIncStdInit = 0.4                # Initial standard deviation of (log) permanent income (not used in example)
 PermIncAvgInit = 1.0                # Initial average of permanent income (not used in example)
 PermIncCorr = 1.0                   # Serial correlation coefficient for permanent income
-MedShkAvg = [[2.0,1.6,1.2,0.8,0.4]] # Average of medical need shocks
+MedShkAvg = [[2.0,1.6,1.2,0.8,0.4]] # Average of (log) medical need shocks
 MedShkStd = [[5.0,5.0,5.0,5.0,5.0]] # Standard deviation of (log) medical need shocks
 MedShkCount = 3                     # Number of medical shock points in "body"
 MedShkCountTail = 10                # Number of medical shock points in "tail" (upper only)
@@ -40,16 +40,15 @@ MrkvArray = [np.array([[0.80,0.10,0.05,0.03,0.02], # Markov transition array bet
                       [0.05,0.10,0.70,0.10,0.05],
                       [0.03,0.07,0.10,0.70,0.10],
                       [0.01,0.03,0.06,0.20,0.70]])]
-ChoiceShkMag = 0.001                # Magnitude of choice shocks (over insurance contracts)
-T_total = 10                        # Total number of periods in cycle for this agent
-Nagents = 10000                     # Number of agents of this type (only matters for simulation)
+ChoiceShkMag = 0.01                # Magnitude of choice shocks (over insurance contracts)
+T_cycle = 10                       # Total number of periods in cycle for this agent
+AgentCount = 10000                 # Number of agents of this type (only matters for simulation)
 
 init_insurance_selection = { 'CRRA': CRRA,
                              'Rfree': Rfree,
                              'DiscFac': DiscFac,
-                             'LivPrb': T_total*LivPrb,
-                             'PermGroFac': T_total*PermGroFac,
-                             'Nagents': Nagents,
+                             'LivPrb': T_cycle*LivPrb,
+                             'PermGroFac': T_cycle*PermGroFac,
                              'CRRAmed': CRRAmed,
                              'aXtraMin': aXtraMin,
                              'aXtraMax': aXtraMax,
@@ -58,8 +57,8 @@ init_insurance_selection = { 'CRRA': CRRA,
                              'aXtraCount': aXtraCount,
                              'PermShkCount': PermShkCount,
                              'TranShkCount': TranShkCount,
-                             'PermShkStd': T_total*PermShkStd,
-                             'TranShkStd': T_total*TranShkStd,
+                             'PermShkStd': T_cycle*PermShkStd,
+                             'TranShkStd': T_cycle*TranShkStd,
                              'UnempPrb': UnempPrb,
                              'UnempPrbRet': UnempPrbRet,
                              'IncUnemp': IncUnemp,
@@ -72,15 +71,13 @@ init_insurance_selection = { 'CRRA': CRRA,
                              'PermIncStdInit': PermIncStdInit,
                              'PermIncAvgInit': PermIncAvgInit,
                              'PermIncCorr': PermIncCorr,
-                             'MedShkAvg': T_total*MedShkAvg,
-                             'MedShkStd': T_total*MedShkStd,
+                             'MedShkAvg': T_cycle*MedShkAvg,
+                             'MedShkStd': T_cycle*MedShkStd,
                              'MedShkCount': MedShkCount,
                              'MedShkCountTail': MedShkCountTail,
-                             'MedPrice': T_total*MedPrice,
-                             'MrkvArray': T_total*MrkvArray,
-                             #'ChoiceShkMag': (ChoiceShkMag*0.9**np.arange(T_total-1,-1,-1)).tolist(),
-                             'ChoiceShkMag': T_total*[ChoiceShkMag],
-                             'T_total': T_total,
-                             'T_cycle': T_total,
-                             'Nagents': Nagents
+                             'MedPrice': T_cycle*MedPrice,
+                             'MrkvArray': T_cycle*MrkvArray,
+                             'ChoiceShkMag': T_cycle*[ChoiceShkMag],
+                             'T_cycle': T_cycle,
+                             'AgentCount': AgentCount
                             }

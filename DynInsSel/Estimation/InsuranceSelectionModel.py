@@ -562,8 +562,8 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,LivPrb,DiscFac,C
             a_temp = np.insert(aLvlNow[j,:]-aMin,0,0.0)
             EndOfPrdvNvrs_temp = np.insert(EndOfPrdvNvrs[j,:],0,0.0)
             EndOfPrdvNvrsP_temp = np.insert(EndOfPrdvNvrsP[j,:],0,0.0)
-            EndOfPrdvNvrsFunc_by_pLvl.append(CubicInterp(a_temp,EndOfPrdvNvrs_temp,EndOfPrdvNvrsP_temp))
-            #EndOfPrdvNvrsFunc_by_pLvl.append(LinearInterp(a_temp,EndOfPrdvNvrs_temp))
+            #EndOfPrdvNvrsFunc_by_pLvl.append(CubicInterp(a_temp,EndOfPrdvNvrs_temp,EndOfPrdvNvrsP_temp))
+            EndOfPrdvNvrsFunc_by_pLvl.append(LinearInterp(a_temp,EndOfPrdvNvrs_temp))
         EndOfPrdvNvrsFuncBase = LinearInterpOnInterp1D(EndOfPrdvNvrsFunc_by_pLvl,pLvlGrid)
         EndOfPrdvNvrsFunc = VariableLowerBoundFunc2D(EndOfPrdvNvrsFuncBase,BoroCnstNat)
         EndOfPrdvFunc = ValueFunc2D(EndOfPrdvNvrsFunc,CRRA)
@@ -674,8 +674,8 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,LivPrb,DiscFac,C
             # Set and unpack the contract of interest
             Contract = ContractList[h][z]
             Copay = Contract.Copay
-            FullPrice_idx = np.argwhere(np.array(CopayList)==MedPrice)
-            Copay_idx = np.argwhere(np.array(CopayList)==Copay*MedPrice)
+            FullPrice_idx = np.argwhere(np.array(CopayList)==MedPrice)[0]
+            Copay_idx = np.argwhere(np.array(CopayList)==Copay*MedPrice)[0]
             
             # Get the value and policy functions for this contract
             vFuncFullPrice = vFuncsThisHealthCopay[FullPrice_idx]
@@ -789,8 +789,8 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,LivPrb,DiscFac,C
             m_temp = np.insert(mLvlArray[:,j] - mLvlMinNow(pLvl),0,0.0)
             vNvrs_temp   = np.insert(vNvrsArray[:,j],0,0.0)
             vNvrsP_temp  = np.insert(vNvrsParray[:,j],0,vNvrsParray[0,j])
-            vNvrsFuncs_by_pLvl.append(CubicInterp(m_temp,vNvrs_temp,vNvrsP_temp))
-            #vNvrsFuncs_by_pLvl.append(LinearInterp(m_temp,vNvrs_temp))
+            #vNvrsFuncs_by_pLvl.append(CubicInterp(m_temp,vNvrs_temp,vNvrsP_temp))
+            vNvrsFuncs_by_pLvl.append(LinearInterp(m_temp,vNvrs_temp))
             vPnvrs_temp  = np.insert(vPnvrsArray[:,j],0,0.0)
             if CubicBool:
                 vPnvrsP_temp = np.insert(vPnvrsParray[:,j],0,vPnvrsParray[0,j])
@@ -818,6 +818,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,LivPrb,DiscFac,C
                                         policyFunc=policyFuncsThisHealth,vFuncByContract=vFuncsThisHealth)
     
     # Return the solution for this period
+    print('Solved a period of the problem!')
     return solution_now
     
 ####################################################################################################
@@ -886,7 +887,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         None
         '''
         MedShkDstn = [] # empty list for medical shock distribution each period
-        for t in range(self.T_total):
+        for t in range(self.T_cycle):
             temp_list = []
             for h in range(self.MrkvArray[0].shape[0]):
                 MedShkAvgNow  = self.MedShkAvg[t][h] # get shock distribution parameters
@@ -1003,7 +1004,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         
         # Make a master list of effective prices / coinsurance rates that the agent might ever experience
         PriceEffList = []
-        for t in range(self.T_total):
+        for t in range(self.T_cycle):
             MedPrice = self.MedPrice[t]
             PriceEffList.append(MedPrice)
             for h in range(self.MrkvArray[0].shape[0]):
@@ -1041,16 +1042,16 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         
         CopayList = [] # Coinsurance rates / effective medical care price for each period in the cycle
         cFromxFuncList = [] # Consumption as function of expenditure and medical need for each period
-        for t in range(self.T_total):
+        for t in range(self.T_cycle):
             MedPrice = self.MedPrice[t]
-            CopayList_temp = []
+            CopayList_temp = [MedPrice]
             for h in range(len(self.ContractList[t])):
                 for Contract in self.ContractList[t][h]:
                     CopayList_temp.append(Contract.Copay*MedPrice)
             CopayList.append(np.unique(np.array(CopayList_temp)))
             cFromxFuncList_temp = []
             for Copay in CopayList[-1]:
-                idx = np.argwhere(np.array(self.CopayListAll)==Copay)[0]
+                idx = np.argwhere(np.array(self.CopayListAll)==Copay)[0][0]
                 cFromxFuncList_temp.append(self.cFromxFuncListAll[idx])
             cFromxFuncList.append(copy(cFromxFuncList_temp))
             
@@ -1138,8 +1139,8 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
                     m_temp = mLvlNow_adj[j,i,:]
                     vNvrs_temp = vNvrsNow[j,i,:]
                     vNvrsPnow_temp = vNvrsPnow[j,i,:]
-                    temp_list.append(CubicInterp(m_temp,vNvrs_temp,vNvrsPnow_temp))
-                    #temp_list.append(LinearInterp(m_temp,vNvrs_temp))
+                    #temp_list.append(CubicInterp(m_temp,vNvrs_temp,vNvrsPnow_temp))
+                    temp_list.append(LinearInterp(m_temp,vNvrs_temp))
                 vFuncNvrs_by_pLvl_and_MedShk.append(deepcopy(temp_list))
             vFuncNvrs = BilinearInterpOnInterp1D(vFuncNvrs_by_pLvl_and_MedShk,pLvlGrid,MedShkGrid)
             vFuncs_by_copay.append(ValueFunc3D(vFuncNvrs,CRRA))
@@ -1170,9 +1171,9 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
                 # Set and unpack the contract of interest
                 Contract = ContractList[h][z]
                 Copay = Contract.Copay
-                FullPrice_idx = np.argwhere(np.array(CopayList)==MedPrice)[0]
-                Copay_idx = np.argwhere(np.array(CopayList)==(Copay*MedPrice))[0]
-                
+                FullPrice_idx = np.argwhere(np.array(CopayList)==MedPrice)[0][0]
+                Copay_idx = np.argwhere(np.array(CopayList)==(Copay*MedPrice))[0][0]
+               
                 # Get the value and policy functions for this contract
                 vFuncFullPrice = vFuncs_by_copay[FullPrice_idx]
                 vFuncCopay = vFuncs_by_copay[Copay_idx]
@@ -1283,8 +1284,8 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
                 m_temp = np.insert(mLvlArray[:,j],0,0.0)
                 vNvrs_temp   = np.insert(vNvrsArray[:,j],0,0.0)
                 vNvrsP_temp  = np.insert(vNvrsParray[:,j],0,vNvrsParray[0,j])
-                vNvrsFuncs_by_pLvl.append(CubicInterp(m_temp,vNvrs_temp,vNvrsP_temp))
-                #vNvrsFuncs_by_pLvl.append(LinearInterp(m_temp,vNvrs_temp))
+                #vNvrsFuncs_by_pLvl.append(CubicInterp(m_temp,vNvrs_temp,vNvrsP_temp))
+                vNvrsFuncs_by_pLvl.append(LinearInterp(m_temp,vNvrs_temp))
                 vPnvrs_temp  = np.insert(vPnvrsArray[:,j],0,0.0)
                 if self.CubicBool:
                     vPnvrsP_temp = np.insert(vPnvrsParray[:,j],0,vPnvrsParray[0,j])
@@ -1352,10 +1353,10 @@ if __name__ == '__main__':
     ContractLoDeduct = MedInsuranceContract(ConstantFunction(0.1),0.5,0.1,MyType.MedPrice[0])
     ContractHiDeduct = MedInsuranceContract(ConstantFunction(0.05),2.0,0.1,MyType.MedPrice[0])
     ContractOther    = MedInsuranceContract(ConstantFunction(0.1),0.0,0.2,MyType.MedPrice[0])
-    Contracts = [NullContract,ContractLoDeduct,ContractHiDeduct,ContractOther]
-    #Contracts = [NullContract,ContractLoDeduct]
+    #Contracts = [NullContract,ContractLoDeduct,ContractHiDeduct,ContractOther]
+    Contracts = [NullContract,ContractLoDeduct]
     #Contracts = [NullContract]
-    MyType.ContractList = MyType.T_total*[5*[Contracts]]
+    MyType.ContractList = MyType.T_cycle*[5*[Contracts]]
     
 #    t_start = clock()
 #    MyType.update()
@@ -1442,11 +1443,13 @@ if __name__ == '__main__':
 #        plt.plot(mLvl,v)
 #    plt.show()
     
+    p = 1.0    
+    
     print('Pseudo-inverse value function by health:')
     mLvl = np.linspace(0.0,10,200)
     H = len(MyType.LivPrb[0])
     for h in range(H):
-        f = lambda x : MyType.solution[0].vFunc[h].func(x,1*np.ones_like(x))
+        f = lambda x : MyType.solution[0].vFunc[h].func(x,p*np.ones_like(x))
         plt.plot(mLvl,f(mLvl))
     plt.show()
     
@@ -1454,33 +1457,37 @@ if __name__ == '__main__':
     mLvl = np.linspace(0,10,200)
     H = len(MyType.LivPrb[0])
     for h in range(H):
-        f = lambda x : MyType.solution[0].vPfunc[h].cFunc(x,1*np.ones_like(x))
+        f = lambda x : MyType.solution[0].vPfunc[h].cFunc(x,p*np.ones_like(x))
         plt.plot(mLvl,f(mLvl))
     plt.show()
     
-    h = 4    
+    h = 0    
     
     print('Pseudo-inverse value function by contract:')
     mLvl = np.linspace(0,10,200)
     J = len(MyType.solution[0].vFuncByContract[h])
     for j in range(J):
-        f = lambda x : MyType.solution[0].vFuncByContract[h][j].func(x,1.0*np.ones_like(x))
+        f = lambda x : MyType.solution[0].vFuncByContract[h][j].func(x,p*np.ones_like(x))
         plt.plot(mLvl+Contracts[j].Premium(1,1,1),f(mLvl))
+    f = lambda x : MyType.solution[0].vFunc[h].func(x,p*np.ones_like(x))
+    plt.plot(mLvl,f(mLvl),'-k')
     plt.show()
+    
+    MedShk = 1e-1    
     
     print('Pseudo-inverse value function by coinsurance rate:')
     mLvl = np.linspace(0,10,200)
     J = len(MyType.solution[0].vFuncByContract[h])
     for j in range(J):
-        v = MyType.solution[0].policyFunc[h][j].ValueFuncCopay.vFuncNvrs(mLvl,1.0*np.ones_like(mLvl),1e-1*np.ones_like(mLvl))
+        v = MyType.solution[0].policyFunc[h][j].ValueFuncCopay.vFuncNvrs(mLvl,p*np.ones_like(mLvl),MedShk*np.ones_like(mLvl))
         plt.plot(mLvl,v)
     plt.show()
     
     print('Consumption function by coinsurance rate:')
-    mLvl = np.linspace(0,1,200)
+    mLvl = np.linspace(0,2,200)
     J = len(MyType.solution[0].vFuncByContract[h])
     for j in range(J):
-        cLvl,MedLvl = MyType.solution[0].policyFunc[h][j].PolicyFuncCopay(mLvl,1.0*np.ones_like(mLvl),1e-1*np.ones_like(mLvl))
+        cLvl,MedLvl = MyType.solution[0].policyFunc[h][j].PolicyFuncCopay(mLvl,p*np.ones_like(mLvl),MedShk*np.ones_like(mLvl))
         plt.plot(mLvl,cLvl)
     plt.show()
     
@@ -1488,6 +1495,6 @@ if __name__ == '__main__':
     mLvl = np.linspace(0,10,200)
     J = len(MyType.solution[0].vFuncByContract[0])
     for j in range(J):
-        cLvl,MedLvl = MyType.solution[0].policyFunc[h][j](mLvl,1.0*np.ones_like(mLvl),1e-1*np.ones_like(mLvl))
+        cLvl,MedLvl = MyType.solution[0].policyFunc[h][j](mLvl,p*np.ones_like(mLvl),MedShk*np.ones_like(mLvl))
         plt.plot(mLvl,cLvl)
     plt.show()
