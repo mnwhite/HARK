@@ -18,8 +18,8 @@ aXtraMax = 80                       # Minimum end-of-period "assets above minimu
 aXtraExtra = [0.005,0.01]           # Some other value of "assets above minimum" to add to the grid, not used
 aXtraNestFac = 3                    # Exponential nesting factor when constructing "assets above minimum" grid
 aXtraCount = 32                    # Number of points in the grid of "assets above minimum"
-PermShkCount = 5                    # Number of points in discrete approximation to permanent income shocks
-TranShkCount = 5                    # Number of points in discrete approximation to transitory income shocks
+PermShkCount = 7                    # Number of points in discrete approximation to permanent income shocks
+TranShkCount = 7                    # Number of points in discrete approximation to transitory income shocks
 UnempPrb = 0.05                     # Probability of unemployment while working
 UnempPrbRet = 0.0005                # Probability of "unemployment" while retired
 IncUnemp = 0.3                      # Unemployment benefits replacement rate
@@ -36,6 +36,7 @@ MedShkCountTail = 10                # Number of medical shock points in "tail" (
 MedPrice = 1.0                      # Relative price of a unit of medical care
 AgentCount = 10000                  # Number of agents of this type (only matters for simulation)
 DeductibleList = [0.3,0.2,0.1,0.05,0.0] # List of deductibles for working-age insurance contracts
+T_sim = 60                          # Number of periods to simulate (age 25 to 84)
 
 # These are the results of ordered probits of h_t and age on h_t+1 using MEPS data
 f1 = lambda x : .0579051*x -.0046128*x**2 + .0001069*x**3 - 7.85e-07*x**4
@@ -289,7 +290,7 @@ PermGroFac_c = PermGroFac_c_base[1:] + 31*[PermGroFac_c_base[-1]]
 PermGroFac_dx = []
 PermGroFac_hx = []
 PermGroFac_cx = []
-for j in range(95):
+for t in range(95):
     PermGroFac_dx.append(5*[PermGroFac_d[t]+1.0])
     PermGroFac_hx.append(5*[PermGroFac_h[t]+1.0])
     PermGroFac_cx.append(5*[PermGroFac_c[t]+1.0])
@@ -325,6 +326,7 @@ BasicDictionary = { 'Rfree': Rfree,
                     'MrkvArray': MrkvArray,
                     'MrkvPrbsInit': HealthPrbsInit,
                     'T_cycle': T_cycle,
+                    'T_sim': T_sim,
                     'AgentCount': AgentCount
                     }
 
@@ -345,35 +347,35 @@ CollegeDictionary['MrkvArray'] = MrkvArray_c
 # Make a test parameter vector for estimation
 test_param_vec = np.array([0.95, # DiscFac
                            2.0,  # CRRAcon
-                           0.0,  # CRRAmed scaler
+                          -0.7,  # CRRAmed scaler
                            -7.0, # ChoiceShkMag in log
                            2.0,  # SubsidyZeroRate scaler
                            0.0,  # SubsidyAvg
                            0.0,  # SubsidyWidth scaler
-                           0.1,  # MedShkMean constant coefficient
-                           0.07, # MedShkMean linear age coefficient
-                        -0.0003,  # MedShkMean quadratic age coefficient
+                          -2.0,  # MedShkMean constant coefficient
+                           0.03, # MedShkMean linear age coefficient
+                        -0.0001,  # MedShkMean quadratic age coefficient
                            0.0,  # MedShkMean cubic age coefficient
                            0.0,  # MedShkMean quartic age coefficient
-                           0.2,  # MedShkMean "very good" constant coefficient
+                           0.1,  # MedShkMean "very good" constant coefficient
                            0.0,  # MedShkMean "very good" linear coefficient
                            0.2,  # MedShkMean "good" constant coefficient
                            0.0,  # MedShkMean "good" linear coefficient
-                           0.5,  # MedShkMean "fair" constant coefficient
+                           0.3,  # MedShkMean "fair" constant coefficient
                            0.0,  # MedShkMean "fair" linear coefficient
-                           0.5,  # MedShkMean "poor" constant coefficient
+                           0.4,  # MedShkMean "poor" constant coefficient
                            0.0,  # MedShkMean "poor" linear coefficient
-                           1.2,  # MedShkStd constant coefficient
-                          -0.015,# MedShkStd linear age coefficient
+                           1.0,  # MedShkStd constant coefficient
+                           0.0,  # MedShkStd linear age coefficient
                            0.0,  # MedShkStd quadratic age coefficient
                            0.0,  # MedShkStd cubic age coefficient
                            0.0,  # MedShkStd quartic age coefficient
-                          -0.1,  # MedShkStd "very good" constant coefficient
+                           0.0,  # MedShkStd "very good" constant coefficient
                            0.0,  # MedShkStd "very good" linear coefficient
-                          -0.1,  # MedShkStd "good" constant coefficient
+                           0.0,  # MedShkStd "good" constant coefficient
                            0.0,  # MedShkStd "good" linear coefficient
-                          -0.2,  # MedShkStd "fair" constant coefficient
+                           0.0,  # MedShkStd "fair" constant coefficient
                            0.0,  # MedShkStd "fair" linear coefficient
-                          -0.5,  # MedShkStd "poor" constant coefficient
+                           0.0,  # MedShkStd "poor" constant coefficient
                            0.0   # MedShkStd "poor" linear coefficient
                            ])

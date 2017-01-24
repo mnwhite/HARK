@@ -10,8 +10,223 @@ import DynInsSelParameters as Params
 from copy import copy
 from InsuranceSelectionModel import MedInsuranceContract, InsSelConsumerType
 from HARKinterpolation import ConstantFunction
-from HARKutilities import approxUniform
+from HARKutilities import approxUniform, getPercentiles
+from HARKcore import Market
 
+
+class DynInsSelType(InsSelConsumerType):
+    '''
+    An extension of InsSelConsumerType that adds and adjusts methods for estimation.
+    '''    
+    def makeBooleanArrays(self):
+        '''
+        Makes the attribute IncQuintBoolArray, specifying which income quintile
+        each agent is in for each period of life.  Should only be run after the
+        economy runs the method getIncomeQuintiles().  Also makes the attribute
+        HealthBoolArray, indicating health by age.
+        
+        Parameters
+        ----------
+        None
+        
+        Returns
+        -------
+        None
+        '''
+        IncQuintBoolArray = np.zeros((self.T_cycle,self.AgentCount,5),dtype=bool)
+        for t in range(self.T_cycle):
+            for q in range(5):
+                bot = self.IncomeQuintiles[t,q-1]
+                top = self.IncomeQuintiles[t,q]
+                if q == 0:
+                    bot = 0.0
+                if q == 4:
+                    top = np.inf
+                IncQuintBoolArray[t,:,q] = np.logical_and(self.pLvlHist[t,:] >= bot, self.pLvlHist[t,:] < top)
+        self.IncQuintBoolArray = IncQuintBoolArray
+        
+        # Make boolean arrays for health state for all agents
+        HealthBoolArray = np.zeros((self.T_cycle,self.AgentCount,5))
+        for h in range(5):
+            HealthBoolArray[:,:,h] = self.MrkvHist == h
+        self.HealthBoolArray = HealthBoolArray
+        self.LiveBoolArray = np.any(HealthBoolArray,axis=2)
+        
+    def preSolve(self):
+        self.updateSolutionTerminal()
+        
+    def initializeSim(self):
+        InsSelConsumerType.initializeSim(self)
+        if 'ContractNow' in self.track_vars:
+            self.ContractNow_hist = np.zeros_like(self.ContractNow_hist).astype(int)
+            
+    def postSim(self):
+        MedPrice_temp = np.tile(np.reshape(self.MedPrice[0:self.T_sim],(self.T_sim,1)),(1,self.AgentCount))
+        self.TotalMedHist = self.MedLvlNow_hist*MedPrice_temp
+        self.WealthRatioHist = self.aLvlNow_hist/self.pLvlNowHist
+        self.InsuredBoolArray = self.ContractNow_hist > 0
+    
+class DynInsSelMarket(Market):
+    '''
+    A class for representing the "insurance economy" with many agent types.
+    '''    
+    def calcSimulatedMoments(self):
+        '''
+        Calculates all simulated moments for this economy's AgentTypes.
+        Should only be run after all types have solved and simulated.
+        Stores results in attributes of self, to be combined into a single
+        simulated moment array by combineSimMoments().
+        
+        Parameters
+        ----------
+        None
+            
+        Returns
+        -------
+        None
+        '''
+        Agents = self.Agents
+        
+        # Initialize moments by age
+        WealthMedianByAge = np.zeros(40) + np.nan
+        LogTotalMedMeanByAge = np.zeros(60) + np.nan
+        LogTotalMedStdByAge = np.zeros(60) + np.nan
+        InsuredRateByAge = np.zeros(40) + np.nan
+        ZeroSubsidyRateByAge = np.zeros(40) + np.nan
+        PremiumMeanByAge = np.zeros(40) + np.nan
+        PremiumStdByAge = np.zeros(40) + np.nan
+
+        # Calculate all simulated moments by age
+        for t in range(60):
+            WealthRatioList = []
+            LogTotalMedList = []
+            PremiumList = []
+            LiveCount = 0.0
+            InsuredCount = 0.0
+            ZeroCount = 0.0
+            for ThisType in Agents:
+                these = ThisType.LiveBoolArray[t,:]
+                LogTotalMedList.append(np.log(ThisType.TotalMedHist[t,these]+0.0001))
+                if t < 40:
+                    WealthRatioList.append(ThisType.WealthRatioHist[t,these])
+                    these = ThisType.InsuredBoolArray[t,:]
+                    PremiumList.append(ThisType.Premium_hist[t,these])
+                    LiveCount += np.sum(ThisType.LiveBoolArray[t,:])
+                    temp = np.sum(ThisType.InsuredBoolArray[t,:])
+                    InsuredCount += temp
+                    if ThisType.ZeroSubsidyool:
+                        ZeroCount += temp
+            if t < 40:
+                WealthRatioArray = np.hcat(WealthRatioList)
+                WealthMedianByAge[t] = np.median(WealthRatioArray)
+                PremiumArray = np.hcat(PremiumList)
+                PremiumMeanByAge[t] = np.mean(PremiumArray)
+                PremiumStdByAge[t] = np.std(PremiumArray)
+                InsuredRateByAge[t] = InsuredCount/LiveCount
+                ZeroSubsidyRateByAge[t] = ZeroCount/InsuredCount
+            LogTotalMedArray = np.hcat(LogTotalMedList)
+            LogTotalMedMeanByAge[t] = np.mean(LogTotalMedArray)
+            LogTotalMedStdByAge[t] = np.std(LogTotalMedArray)
+            
+        # Initialize moments by age-health and define age band bounds
+        LogTotalMedMeanByAgeHealth = np.zeros((12,5)) + np.nan
+        LogTotalMedStdByAgeHealth = np.zeros((12,5)) + np.nan
+        AgeBounds = [[0,5],[5,10],[10,15],[15,20],[20,25],[25,30],[30,35],[35,40],[40,45],[45,50],[50,55],[55,60]]
+
+        # Calculate all simulated moments by age-health
+        for a in range(12):
+            bot = AgeBounds[a,0]
+            top = AgeBounds[a,1]
+            for h in range(5):
+                LogTotalMedList = []
+                for ThisType in Agents:
+                    these = ThisType.HealthBoolArray[bot:top,:,h]
+                    LogTotalMedList.append(np.log(ThisType.TotalMedHist[bot:top,:][these]+0.0001))
+                LogTotalMedArray = np.hcat(LogTotalMedList)
+                LogTotalMedMeanByAgeHealth[a,h] = np.mean(LogTotalMedArray)
+                LogTotalMedStdByAgeHealth[a,h] = np.std(LogTotalMedArray)
+                
+        # Initialize moments by age-income
+        WealthMedianByAgeIncome = np.zeros((8,5)) + np.nan
+        LogTotalMedMeanByAgeIncome = np.zeros((8,5)) + np.nan
+        LogTotalMedStdByAgeIncome = np.zeros((8,5)) + np.nan
+        InsuredRateByAgeIncome = np.zeros((8,5)) + np.nan
+        PremiumMeanByAgeIncome = np.zeros((8,5)) + np.nan
+
+        # Calculated all simulated moments by age-income
+        for a in range(8):
+            bot = AgeBounds[a,0]
+            top = AgeBounds[a,1]
+            for i in range(5):
+                WealthRatioList = []
+                LogTotalMedList = []
+                PremiumList = []
+                LiveCount = 0.0
+                InsuredCount = 0.0
+                for ThisType in Agents:
+                    these = ThisType.IncQuintBoolArray[bot:top,:,h]
+                    LiveCount += np.sum(ThisType.LiveBoolArray[bot:top,:][these])
+                    LogTotalMedList.append(np.log(ThisType.TotalMedHist[bot:top,:][these]+0.0001))
+                    WealthRatioList.append(ThisType.WealthRatioHist[bot:top,:][these])
+                    these = np.logical_and(ThisType.InsuredBoolArray[bot:top,:],these)
+                    PremiumList.append(ThisType.Premium_hist[bot:top,:][these])                    
+                    temp = np.sum(ThisType.InsuredBoolArray[bot:top,:][these])
+                    InsuredCount += temp
+                WealthRatioArray = np.hcat(WealthRatioList)
+                WealthMedianByAgeIncome[a,h] = np.median(WealthRatioArray)
+                PremiumArray = np.hcat(PremiumList)
+                PremiumMeanByAgeIncome[a,h] = np.mean(PremiumArray)
+                InsuredRateByAgeIncome[a,h] = InsuredCount/LiveCount
+                LogTotalMedArray = np.hcat(LogTotalMedList)
+                LogTotalMedMeanByAgeIncome[a,h] = np.mean(LogTotalMedArray)
+                LogTotalMedStdByAgeIncome[a,h] = np.std(LogTotalMedArray)
+        
+        # Store all of the simulated moments as attributes of self
+        self.WealthMedianByAge = WealthMedianByAge
+        self.LogTotalMedMeanByAge = LogTotalMedMeanByAge
+        self.LogTotalMedStdByAge = LogTotalMedStdByAge
+        self.InsuredRateByAge = InsuredRateByAge
+        self.ZeroSubsidyRateByAge = ZeroSubsidyRateByAge
+        self.PremiumMeanByAge = PremiumMeanByAge
+        self.PremiumStdByAge = PremiumStdByAge
+        self.LogTotalMedMeanByAgeHealth = LogTotalMedMeanByAgeHealth
+        self.LogTotalMedStdByAgeHealth = LogTotalMedStdByAgeHealth
+        self.WealthMedianByAgeIncome = WealthMedianByAgeIncome
+        self.LogTotalMedMeanByAgeIncome = LogTotalMedMeanByAgeIncome
+        self.LogTotalMedStdByAgeIncome = LogTotalMedStdByAgeIncome
+        self.InsuredRateByAgeIncome = InsuredRateByAgeIncome
+        self.PremiumMeanByAgeIncome = PremiumMeanByAgeIncome
+        
+    def getIncomeQuintiles(self):
+        '''
+        Calculates permanent income quintile cutoffs by age, across all AgentTypes.
+        Result is stored as attribute IncomeQuintiles in each AgentType.
+        
+        Parameters
+        ----------
+        None
+        
+        Returns
+        -------
+        None
+        '''
+        Cuts = np.array([0.2,0.4,0.6,0.8])
+        IncomeQuintiles = np.zeros((self.Agents[0].T_cycle,Cuts.size))
+        
+        # Get income quintile cut points for each age
+        for t in range(self.Agents[0].T_cycle):
+            pLvlList = []
+            for ThisType in self.Agents:
+                pLvlList.append(ThisType.pLvlHist[t,:][ThisType.LivBoolArray[t,:]])
+            pLvlArray = np.hcat(pLvlList)
+            IncomeQuintiles[t,:] = getPercentiles(pLvlArray,percentiles = Cuts)
+        
+        # Store the income quintile cut points in each AgentType
+        for ThisType in self.Agents:
+            ThisType.IncomeQuintiles = IncomeQuintiles
+                    
+               
+                
 def makeDynInsSelType(CRRAcon,CRRAmed,DiscFac,ChoiceShkMag,MedShkMeanAgeParams,MedShkMeanVGparams,
                       MedShkMeanGDparams,MedShkMeanFRparams,MedShkMeanPRparams,MedShkStdAgeParams,
                       MedShkStdVGparams,MedShkStdGDparams,MedShkStdFRparams,MedShkStdPRparams,
@@ -62,7 +277,7 @@ def makeDynInsSelType(CRRAcon,CRRAmed,DiscFac,ChoiceShkMag,MedShkMeanAgeParams,M
     
     Returns
     -------
-    ThisType : InsSelConsumerType
+    ThisType : DynInsSelType
         The constructed agent type.
     '''
                           
@@ -124,13 +339,14 @@ def makeDynInsSelType(CRRAcon,CRRAmed,DiscFac,ChoiceShkMag,MedShkMeanAgeParams,M
     TypeDict['ContractList'] = Params.working_T*[5*[WorkingContractList]] + Params.retired_T*[5*[RetiredContractList]]
     
     # Make and return a DynInsSelType
-    ThisType = InsSelConsumerType(**TypeDict)
+    ThisType = DynInsSelType(**TypeDict)
+    ThisType.track_vars = ['aLvlNow','cLvlNow','MedLvlNow','PremNow','ContractNow']
     return ThisType
         
 
 def makeAllTypesFromParams(ParamArray,PremiumArray,InsChoiceBool):
     '''
-    Makes a list of 3 or 24 InsSelConsumerTypes, to be used for estimation.
+    Makes a list of 3 or 24 DynInsSelTypes, to be used for estimation.
     
     Parameters
     ----------
@@ -143,8 +359,8 @@ def makeAllTypesFromParams(ParamArray,PremiumArray,InsChoiceBool):
         
     Returns
     -------
-    AgentList : [InsSelConsumerType]
-        List of InsSelConsumerTypes to be used in estimation.
+    AgentList : [DynInsSelType]
+        List of DynInsSelTypes to be used in estimation.
     '''
     # Unpack the parameters
     DiscFac = ParamArray[0]
@@ -190,54 +406,143 @@ def makeAllTypesFromParams(ParamArray,PremiumArray,InsChoiceBool):
     
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
+    from time import clock
+    mystr = lambda number : "{:.4f}".format(number)
     
     InsChoice = False
     AgentList = makeAllTypesFromParams(Params.test_param_vec,np.array([1,2,3,4,5]),InsChoice)
-    MyType = AgentList[0]
-    MyType.preSolve()
+    MyType = AgentList[1]
+
+    t_start = clock()
+    MyType.update()
+    MyType.solve()
+    MyType.makeShockHistory()
+    MyType.initializeSim
+    t_end = clock()
+    print('Solving the agent took ' + mystr(t_end-t_start) + ' seconds.')
     
-    print('Pseudo-inverse value function by contract:')
-    mLvl = np.linspace(0,5,200)
-    h = 1
-    J = len(MyType.solution_terminal.vFuncByContract[h])
-    for j in range(J):
-        f = lambda x : MyType.solution_terminal.vFuncByContract[h][j].func(x,np.ones_like(x))
-        Prem = MyType.ContractList[-1][h][j].Premium(0)
-        plt.plot(mLvl+Prem,f(mLvl))
-    f = lambda x : MyType.solution_terminal.vFunc[h].func(x,np.ones_like(x))
-    plt.plot(mLvl,f(mLvl))
-    plt.show()    
+#    print('Terminal pseudo-inverse value function by contract:')
+#    mLvl = np.linspace(0,5,200)
+#    h = 1
+#    J = len(MyType.solution_terminal.vFuncByContract[h])
+#    for j in range(J):
+#        f = lambda x : MyType.solution_terminal.vFuncByContract[h][j].func(x,np.ones_like(x))
+#        Prem = MyType.ContractList[-1][h][j].Premium(0)
+#        plt.plot(mLvl+Prem,f(mLvl))
+#    f = lambda x : MyType.solution_terminal.vFunc[h].func(x,np.ones_like(x))
+#    plt.plot(mLvl,f(mLvl))
+#    plt.show()    
+#    
+#    print('Terminal pseudo-inverse value function by health:')
+#    mLvl = np.linspace(0,5,200)
+#    H = len(MyType.LivPrb[0])
+#    for h in range(H):
+#        f = lambda x : MyType.solution_terminal.vFunc[h].func(x,np.ones_like(x))
+#        plt.plot(mLvl,f(mLvl))
+#    plt.show()
+#    
+#    print('Terminal pseudo-inverse marginal value function by health:')
+#    mLvl = np.linspace(0,0.25,200)
+#    H = len(MyType.LivPrb[0])
+#    for h in range(H):
+#        f = lambda x : MyType.solution_terminal.vPfunc[h].cFunc(x,np.ones_like(x))
+#        plt.plot(mLvl,f(mLvl))
+#    plt.show()
+#    
+#    h = 1
+#    print('Terminal pseudo-inverse value function by coinsurance rate:')
+#    mLvl = np.linspace(0,5,200)
+#    J = len(MyType.solution_terminal.vFuncByContract[0])
+#    for j in range(J):
+#        v = MyType.solution_terminal.policyFunc[0][j].ValueFuncCopay.vFuncNvrs(mLvl,np.ones_like(mLvl),1*np.ones_like(mLvl))
+#        plt.plot(mLvl,v)
+#    plt.show()
+#    
+#    print('Terminal consumption function by contract:')
+#    mLvl = np.linspace(0,5,200)
+#    J = len(MyType.solution_terminal.vFuncByContract[h])
+#    for j in range(J):
+#        cLvl,MedLvl = MyType.solution_terminal.policyFunc[h][j](mLvl,1*np.ones_like(mLvl),1*np.ones_like(mLvl))
+#        plt.plot(mLvl,cLvl)
+#    plt.show()
+    
+    p = 1.0
     
     print('Pseudo-inverse value function by health:')
-    mLvl = np.linspace(0,5,200)
+    mLvl = np.linspace(0.0,10,200)
     H = len(MyType.LivPrb[0])
     for h in range(H):
-        f = lambda x : MyType.solution_terminal.vFunc[h].func(x,np.ones_like(x))
+        f = lambda x : MyType.solution[0].vFunc[h].func(x,p*np.ones_like(x))
         plt.plot(mLvl,f(mLvl))
     plt.show()
     
     print('Pseudo-inverse marginal value function by health:')
-    mLvl = np.linspace(0,0.25,200)
+    mLvl = np.linspace(0,10,200)
     H = len(MyType.LivPrb[0])
     for h in range(H):
-        f = lambda x : MyType.solution_terminal.vPfunc[h].cFunc(x,np.ones_like(x))
+        f = lambda x : MyType.solution[0].vPfunc[h].cFunc(x,p*np.ones_like(x))
         plt.plot(mLvl,f(mLvl))
     plt.show()
     
-    h = 1
-    print('Consumption function by contract:')
-    mLvl = np.linspace(0,5,200)
-    J = len(MyType.solution_terminal.vFuncByContract[h])
+    h = 4    
+    
+    print('Pseudo-inverse value function by contract:')
+    mLvl = np.linspace(0,10,200)
+    J = len(MyType.solution[0].vFuncByContract[h])
     for j in range(J):
-        cLvl,MedLvl = MyType.solution_terminal.policyFunc[h][j](mLvl,1*np.ones_like(mLvl),1*np.ones_like(mLvl))
+        f = lambda x : MyType.solution[0].vFuncByContract[h][j].func(x,p*np.ones_like(x))
+        Prem = MyType.ContractList[0][h][j].Premium(0)
+        plt.plot(mLvl+Prem,f(mLvl))
+    f = lambda x : MyType.solution[0].vFunc[h].func(x,p*np.ones_like(x))
+    plt.plot(mLvl,f(mLvl),'-k')
+    plt.show()
+    
+    MedShk = 1.0e-2
+    
+    print('Pseudo-inverse value function by coinsurance rate:')
+    mLvl = np.linspace(0,10,200)
+    J = len(MyType.solution[0].vFuncByContract[h])
+    v = MyType.solution[0].policyFunc[h][0].ValueFuncFullPrice.vFuncNvrs(mLvl,p*np.ones_like(mLvl),MedShk*np.ones_like(mLvl))
+    plt.plot(mLvl,v)
+    for j in range(J):
+        v = MyType.solution[0].policyFunc[h][j].ValueFuncCopay.vFuncNvrs(mLvl,p*np.ones_like(mLvl),MedShk*np.ones_like(mLvl))
+        plt.plot(mLvl,v)    
+    plt.show()
+    
+    print('Consumption function by coinsurance rate:')
+    mLvl = np.linspace(0,10,200)
+    J = len(MyType.solution[0].vFuncByContract[h])
+    cLvl,MedLvl = MyType.solution[0].policyFunc[h][0].PolicyFuncFullPrice(mLvl,p*np.ones_like(mLvl),MedShk*np.ones_like(mLvl))
+    plt.plot(mLvl,cLvl)
+    for j in range(J):
+        cLvl,MedLvl = MyType.solution[0].policyFunc[h][j].PolicyFuncCopay(mLvl,p*np.ones_like(mLvl),MedShk*np.ones_like(mLvl))
         plt.plot(mLvl,cLvl)
     plt.show()
     
-    print('Pseudo-inverse value function by coinsurance rate:')
-    mLvl = np.linspace(0,5,200)
-    J = len(MyType.solution_terminal.vFuncByContract[0])
+    print('Consumption function by contract:')
+    mLvl = np.linspace(0,10,200)
+    J = len(MyType.solution[0].vFuncByContract[0])
     for j in range(J):
-        v = MyType.solution_terminal.policyFunc[0][j].ValueFuncCopay.vFuncNvrs(mLvl,np.ones_like(mLvl),1*np.ones_like(mLvl))
-        plt.plot(mLvl,v)
+        cLvl,MedLvl = MyType.solution[0].policyFunc[h][j](mLvl,p*np.ones_like(mLvl),MedShk*np.ones_like(mLvl))
+        plt.plot(mLvl,cLvl)
     plt.show()
     
+    print('Consumption function by medical need shock for one contract')
+    mLvl = np.linspace(0,10,200)
+    j = 0
+    for i in range(MyType.MedShkDstn[0][h][0].size):
+        MedShk = MyType.MedShkDstn[0][h][1][i]*np.ones_like(mLvl)
+        cLvl,MedLvl = MyType.solution[0].policyFunc[h][j](mLvl,p*np.ones_like(mLvl),MedShk)
+        plt.plot(mLvl,cLvl)
+    plt.show()
+    
+    print('Medical care function by medical need shock for one contract')
+    mLvl = np.linspace(0,10,200)
+    j = 0
+    for i in range(MyType.MedShkDstn[0][h][0].size):
+        MedShk = MyType.MedShkDstn[0][h][1][i]*np.ones_like(mLvl)
+        cLvl,MedLvl = MyType.solution[0].policyFunc[h][j](mLvl,p*np.ones_like(mLvl),MedShk)
+        plt.plot(mLvl,MedLvl)
+    plt.show()
+    
+        

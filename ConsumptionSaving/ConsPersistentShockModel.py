@@ -1151,7 +1151,7 @@ class IndShockExplicitPermIncConsumerType(IndShockConsumerType):
                     temp_fac = max(self.PermGroFac[t])
                 else:
                     temp_std = self.PermShkStd[t]
-                    temp_fac = self.PermGroFac[t]    
+                    temp_fac = self.PermGroFac[t]
                 PermIncStdNow = np.sqrt(PermIncStdNow**2 + temp_std**2)
                 PermIncAvgNow = PermIncAvgNow*temp_fac
                 
