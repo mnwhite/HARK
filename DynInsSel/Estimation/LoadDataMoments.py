@@ -4,7 +4,6 @@ This module unpacks data moments as calculated in the MEPS, HRS, and SCF, loadin
 import numpy as np
 import csv
 import os
-make_figs = True
 
 # Load the moments by one-year age groups into a CSV reader object
 data_location = os.path.dirname(os.path.abspath(__file__))
@@ -15,23 +14,25 @@ f.close()
 
 # Store the moments by one-year age groups in arrays
 OneYearAge = np.arange(25,65)
-MeanLogOOPmedByAge = np.zeros(40) + np.nan
-MeanLogTotalMedByAge = np.zeros(40) + np.nan
-StdevLogOOPmedByAge = np.zeros(40) + np.nan
-StdevLogTotalMedByAge = np.zeros(40) + np.nan
+OneYearAgeLong = np.arange(25,85)
+MeanLogOOPmedByAge = np.zeros(60) + np.nan
+MeanLogTotalMedByAge = np.zeros(60) + np.nan
+StdevLogOOPmedByAge = np.zeros(60) + np.nan
+StdevLogTotalMedByAge = np.zeros(60) + np.nan
 InsuredRateByAge = np.zeros(40) + np.nan
 MeanPremiumByAge = np.zeros(40) + np.nan
 StdevPremiumByAge = np.zeros(40) + np.nan
 NoPremShareRateByAge = np.zeros(40) + np.nan
-for j in range(40):
+for j in range(60):
     MeanLogOOPmedByAge[j] = float(raw_moments[j][1])
     MeanLogTotalMedByAge[j] = float(raw_moments[j][2])
     StdevLogOOPmedByAge[j] = float(raw_moments[j][3])
     StdevLogTotalMedByAge[j] = float(raw_moments[j][4])
-    InsuredRateByAge[j] = float(raw_moments[j][5])
-    MeanPremiumByAge[j] = float(raw_moments[j][6])
-    StdevPremiumByAge[j] = float(raw_moments[j][7])
-    NoPremShareRateByAge[j] = float(raw_moments[j][8])
+    if j < 40:
+        InsuredRateByAge[j] = float(raw_moments[j][5])
+        MeanPremiumByAge[j] = float(raw_moments[j][6])
+        StdevPremiumByAge[j] = float(raw_moments[j][7])
+        NoPremShareRateByAge[j] = float(raw_moments[j][8])
     
 
 # Load the moments by five-year age groups and income quintile into a CSV reader object
@@ -43,6 +44,7 @@ f.close()
 
 # Store the moments by five-year age groups and income quintile in arrays
 FiveYearAge = 5*np.arange(8) + 27
+FiveYearAgeLong = 5*np.arange(12) + 27
 MeanLogOOPmedByAgeIncome = np.zeros((8,5)) + np.nan
 MeanLogTotalMedByAgeIncome = np.zeros((8,5)) + np.nan
 StdevLogOOPmedByAgeIncome = np.zeros((8,5)) + np.nan
@@ -72,25 +74,26 @@ raw_moments = list(moment_reader)
 f.close()
 
 # Store the moments by five-year age groups and health in arrays
-MeanLogOOPmedByAgeHealth = np.zeros((8,5)) + np.nan
-MeanLogTotalMedByAgeHealth = np.zeros((8,5)) + np.nan
-StdevLogOOPmedByAgeHealth = np.zeros((8,5)) + np.nan
-StdevLogTotalMedByAgeHealth = np.zeros((8,5)) + np.nan
+MeanLogOOPmedByAgeHealth = np.zeros((12,5)) + np.nan
+MeanLogTotalMedByAgeHealth = np.zeros((12,5)) + np.nan
+StdevLogOOPmedByAgeHealth = np.zeros((12,5)) + np.nan
+StdevLogTotalMedByAgeHealth = np.zeros((12,5)) + np.nan
 InsuredRateByAgeHealth = np.zeros((8,5)) + np.nan
 MeanPremiumByAgeHealth = np.zeros((8,5)) + np.nan
 StdevPremiumByAgeHealth = np.zeros((8,5)) + np.nan
 NoPremShareRateByAgeHealth = np.zeros((8,5)) + np.nan
-for j in range(40):
+for j in range(60):
     i = int(raw_moments[j][0])-1
     k = int(raw_moments[j][1])-1
     MeanLogOOPmedByAgeHealth[i,k] = float(raw_moments[j][2])
     MeanLogTotalMedByAgeHealth[i,k] = float(raw_moments[j][3])
     StdevLogOOPmedByAgeHealth[i,k] = float(raw_moments[j][4])
     StdevLogTotalMedByAgeHealth[i,k] = float(raw_moments[j][5])
-    InsuredRateByAgeHealth[i,k] = float(raw_moments[j][6])
-    MeanPremiumByAgeHealth[i,k] = float(raw_moments[j][7])
-    StdevPremiumByAgeHealth[i,k] = float(raw_moments[j][8])
-    NoPremShareRateByAgeHealth[i,k] = float(raw_moments[j][9])
+    if i < 8:
+        InsuredRateByAgeHealth[i,k] = float(raw_moments[j][6])
+        MeanPremiumByAgeHealth[i,k] = float(raw_moments[j][7])
+        StdevPremiumByAgeHealth[i,k] = float(raw_moments[j][8])
+        NoPremShareRateByAgeHealth[i,k] = float(raw_moments[j][9])
     
     
 # Load the moments for wealth-to-income ratio by age
@@ -120,13 +123,30 @@ for j in range(40):
     k = int(raw_moments[j][0])-1
     WealthRatioByAgeIncome[i,k] = float(raw_moments[j][2])   
 
+    
+# Combine all data moments into a single 1D array
+MomentList = [WealthRatioByAge,
+              MeanLogTotalMedByAge,
+              StdevLogTotalMedByAge,
+              InsuredRateByAge,
+              NoPremShareRateByAge,
+              MeanPremiumByAge,
+              StdevPremiumByAge,
+              MeanLogTotalMedByAgeHealth.flatten(),
+              StdevLogTotalMedByAgeHealth.flatten(),
+              WealthRatioByAgeIncome.flatten(),
+              MeanLogTotalMedByAgeIncome.flatten(),
+              StdevLogTotalMedByAgeIncome.flatten(),
+              InsuredRateByAgeIncome.flatten(),
+              MeanPremiumByAgeIncome.flatten()]
+data_moments = np.hstack(MomentList)
 
-if make_figs:
+if __name__ == '__main__':
     import matplotlib.pyplot as plt
     os.chdir('..')
     os.chdir('Figures')
     
-    plt.plot(OneYearAge,MeanLogOOPmedByAge,'.k')
+    plt.plot(OneYearAge,MeanLogOOPmedByAge[0:40],'.k')
     plt.plot(FiveYearAge,MeanLogOOPmedByAgeIncome)
     plt.xlabel('Age')
     plt.ylabel('Mean log OOP medical expenses')
@@ -134,7 +154,7 @@ if make_figs:
     plt.savefig('MeanLogOOPmedByAgeIncome.pdf')
     plt.show()
     
-    plt.plot(OneYearAge,MeanLogTotalMedByAge,'.k')
+    plt.plot(OneYearAge,MeanLogTotalMedByAge[0:40],'.k')
     plt.plot(FiveYearAge,MeanLogTotalMedByAgeIncome)
     plt.xlabel('Age')
     plt.ylabel('Mean log total medical expenses')
@@ -142,7 +162,7 @@ if make_figs:
     plt.savefig('MeanLogTotalMedByAgeIncome.pdf')
     plt.show()
     
-    plt.plot(OneYearAge,StdevLogOOPmedByAge,'.k')
+    plt.plot(OneYearAge,StdevLogOOPmedByAge[0:40],'.k')
     plt.plot(FiveYearAge,StdevLogOOPmedByAgeIncome)
     plt.xlabel('Age')
     plt.ylabel('Stdev log OOP medical expenses')
@@ -150,7 +170,7 @@ if make_figs:
     plt.savefig('StdevLogOOPmedByAgeIncome.pdf')
     plt.show()
     
-    plt.plot(OneYearAge,StdevLogTotalMedByAge,'.k')
+    plt.plot(OneYearAge,StdevLogTotalMedByAge[0:40],'.k')
     plt.plot(FiveYearAge,StdevLogTotalMedByAgeIncome)
     plt.xlabel('Age')
     plt.ylabel('Stdev log total medical expenses')
@@ -199,32 +219,32 @@ if make_figs:
     plt.savefig('WealthRatioByAgeIncome.pdf')
     plt.show()
     
-    plt.plot(OneYearAge,MeanLogOOPmedByAge,'.k')
-    plt.plot(FiveYearAge,MeanLogOOPmedByAgeHealth)
+    plt.plot(OneYearAgeLong,MeanLogOOPmedByAge,'.k')
+    plt.plot(FiveYearAgeLong,MeanLogOOPmedByAgeHealth)
     plt.xlabel('Age')
     plt.ylabel('Mean log OOP medical expenses')
     plt.legend(['Overall average','Poor health','Fair health','Good health','Very good health','Excellent health'],loc=0,fontsize=8)
     plt.savefig('MeanLogOOPmedByAgeHealth.pdf')
     plt.show()
     
-    plt.plot(OneYearAge,MeanLogTotalMedByAge,'.k')
-    plt.plot(FiveYearAge,MeanLogTotalMedByAgeHealth)
+    plt.plot(OneYearAgeLong,MeanLogTotalMedByAge,'.k')
+    plt.plot(FiveYearAgeLong,MeanLogTotalMedByAgeHealth)
     plt.xlabel('Age')
     plt.ylabel('Mean log total medical expenses')
     plt.legend(['Overall average','Poor health','Fair health','Good health','Very good health','Excellent health'],loc=0,fontsize=8)
     plt.savefig('MeanLogTotalMedByAgeHealth.pdf')
     plt.show()
     
-    plt.plot(OneYearAge,StdevLogOOPmedByAge,'.k')
-    plt.plot(FiveYearAge,StdevLogOOPmedByAgeHealth)
+    plt.plot(OneYearAgeLong,StdevLogOOPmedByAge,'.k')
+    plt.plot(FiveYearAgeLong,StdevLogOOPmedByAgeHealth)
     plt.xlabel('Age')
     plt.ylabel('Stdev log OOP medical expenses')
     plt.legend(['Overall average','Poor health','Fair health','Good health','Very good health','Excellent health'],loc=0,fontsize=8)
     plt.savefig('StdevLogOOPmedByAgeHealth.pdf')
     plt.show()
     
-    plt.plot(OneYearAge,StdevLogTotalMedByAge,'.k')
-    plt.plot(FiveYearAge,StdevLogTotalMedByAgeHealth)
+    plt.plot(OneYearAgeLong,StdevLogTotalMedByAge,'.k')
+    plt.plot(FiveYearAgeLong,StdevLogTotalMedByAgeHealth)
     plt.xlabel('Age')
     plt.ylabel('Stdev log total medical expenses')
     plt.legend(['Overall average','Poor health','Fair health','Good health','Very good health','Excellent health'],loc=0,fontsize=8)

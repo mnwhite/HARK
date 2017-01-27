@@ -12,11 +12,11 @@ from HARKutilities import CRRAutility, CRRAutilityP, CRRAutilityPP, CRRAutilityP
                           CRRAutility_invP, CRRAutility_inv, CRRAutilityP_invP, NullFunc,\
                           approxLognormal, addDiscreteOutcomeConstantMean, makeGridExpMult
 from HARKinterpolation import LinearInterp, CubicInterp, BilinearInterpOnInterp1D, LinearInterpOnInterp1D, \
-                              LowerEnvelope3D, UpperEnvelope, TrilinearInterp, ConstantFunction
+                              LowerEnvelope3D, UpperEnvelope, TrilinearInterp, ConstantFunction, \
+                              VariableLowerBoundFunc2D, VariableLowerBoundFunc3D
 from HARKsimulation import drawUniform, drawLognormal, drawMeanOneLognormal, drawDiscrete
-from ConsMedModel import MedShockPolicyFunc, VariableLowerBoundFunc3D, MedShockConsumerType
-from ConsPersistentShockModel import ValueFunc2D, MargValueFunc2D, MargMargValueFunc2D, \
-                                     VariableLowerBoundFunc2D
+from ConsMedModel import MedShockPolicyFunc, MedShockConsumerType
+from ConsPersistentShockModel import ValueFunc2D, MargValueFunc2D, MargMargValueFunc2D
 from ConsMarkovModel import MarkovConsumerType
 from ConsIndShockModel import constructLognormalIncomeProcessUnemployment
 import matplotlib.pyplot as plt
@@ -92,6 +92,18 @@ class InsuranceSelectionSolution(HARKobject):
         self.mLvlMin      = copy(mLvlMin)
         self.hLvl         = copy(hLvl)
         
+    def getMemSize(self):
+        temp = 0
+        for h in range(len(self.vFunc)):
+            temp += self.vFunc[h].getMemSize()
+            temp += self.vPfunc[h].getMemSize()
+            for z in range(len(self.vFuncByContract[h])):
+                temp += self.vFuncByContract[h][z].getMemSize()
+                temp += self.policyFunc[h][z].getMemSize()
+        temp += self.mLvlMin.getMemSize()
+        return temp
+        
+        
     def appendSolution(self,policyFunc=None, vFunc=None, vFuncByContract=None, vPfunc=None, vPPfunc=None, hLvl=None):
         '''
         Add data for a new discrete health state to an existion solution object.
@@ -120,12 +132,18 @@ class InsuranceSelectionSolution(HARKobject):
         -------
         None        
         '''
-        self.policyFunc.append(copy(policyFunc))
-        self.vFunc.append(copy(vFunc))
-        self.vFuncByContract.append(copy(vFuncByContract))
-        self.vPfunc.append(copy(vPfunc))
-        self.vPPfunc.append(copy(vPPfunc))
-        self.hLvl.append(copy(hLvl))
+        #self.policyFunc.append(copy(policyFunc))
+        #self.vFunc.append(copy(vFunc))
+        #self.vFuncByContract.append(copy(vFuncByContract))
+        #self.vPfunc.append(copy(vPfunc))
+        #self.vPPfunc.append(copy(vPPfunc))
+        #self.hLvl.append(copy(hLvl))
+        self.policyFunc.append(policyFunc)
+        self.vFunc.append(vFunc)
+        self.vFuncByContract.append(vFuncByContract)
+        self.vPfunc.append(vPfunc)
+        self.vPPfunc.append(vPPfunc)
+        self.hLvl.append(hLvl)
 
 class ValueFunc3D(HARKobject):
     '''
@@ -150,8 +168,12 @@ class ValueFunc3D(HARKobject):
         -------
         None
         '''
-        self.vFuncNvrs = deepcopy(vFuncNvrs)
+        #self.vFuncNvrs = deepcopy(vFuncNvrs)
+        self.vFuncNvrs = vFuncNvrs
         self.CRRA = CRRA
+        
+    def getMemSize(self):
+        return self.vFuncNvrs.getMemSize()
         
     def __call__(self,mLvl,pLvl,MedShk):
         '''
@@ -214,6 +236,9 @@ class InsSelPolicyFunc(HARKobject):
         self.PolicyFuncCopay = PolicyFuncCopay
         self.Contract = Contract
         self.OptionCost = Contract.Deductible*(1.0-Contract.Copay)
+        
+    def getMemSize(self):
+        return (self.ValueFuncFullPrice.getMemSize() + self.ValueFuncCopay.getMemSize() + self.PolicyFuncFullPrice.getMemSize() + self.PolicyFuncCopay.getMemSize() + self.Contract.getMemSize())
         
     def __call__(self,mLvl,pLvl,MedShk):
         '''
@@ -288,8 +313,8 @@ class InsSelPolicyFunc(HARKobject):
         cLvl = np.zeros_like(mLvl)
         MedLvl = np.zeros_like(mLvl)
         #MPC = np.zeros_like(mLvl)
-        if np.sum(FullPrice_better > 0):
-            print(np.sum(FullPrice_better > 0))
+        #if np.sum(FullPrice_better > 0):
+        #    print(np.sum(FullPrice_better > 0))
         
         # Fill in output using better of two choices
         cLvl[Copay_better], MedLvl[Copay_better] = self.PolicyFuncCopay(mLvl[Copay_better]-self.OptionCost,pLvl[Copay_better],MedShk[Copay_better])
@@ -369,6 +394,9 @@ class MedInsuranceContract(HARKobject):
         OOPfunc = LinearInterp(np.array([0.0,kink_point,kink_point+1.0]),np.array([0.0,Deductible,Deductible+MedPrice*Copay]))
         self.OOPfunc = OOPfunc
         
+    def getMemSize(self):
+        return self.OOPfunc.getMemSize()
+        
 ####################################################################################################
 
 def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,LivPrb,DiscFac,CRRA,CRRAmed,Rfree,
@@ -445,7 +473,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,LivPrb,DiscFac,C
     
     # Define utility function derivatives and inverses
     u = lambda x : utility(x,CRRA)
-    uP = lambda x : utilityP(x,CRRA)
+    #uP = lambda x : utilityP(x,CRRA)
     uMed = lambda x : utility(x,CRRAmed)
     uPP = lambda x : utilityPP(x,CRRA)
     uMedPP = lambda x : utilityPP(x,CRRAmed)
@@ -559,13 +587,13 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,LivPrb,DiscFac,C
         # Make the end of period value function for this health
         EndOfPrdvNvrsFunc_by_pLvl = []
         EndOfPrdvNvrs = uinv(EndOfPrdv[:,:,h])
-        EndOfPrdvNvrsP = EndOfPrdvP[:,:,h]*uinvP(EndOfPrdv[:,:,h])
+        #EndOfPrdvNvrsP = EndOfPrdvP[:,:,h]*uinvP(EndOfPrdv[:,:,h])
         for j in range(pLvlCount):
             pLvl = pLvlGrid[j]
             aMin = BoroCnstNat(pLvl)
             a_temp = np.insert(aLvlNow[j,:]-aMin,0,0.0)
             EndOfPrdvNvrs_temp = np.insert(EndOfPrdvNvrs[j,:],0,0.0)
-            EndOfPrdvNvrsP_temp = np.insert(EndOfPrdvNvrsP[j,:],0,0.0)
+            #EndOfPrdvNvrsP_temp = np.insert(EndOfPrdvNvrsP[j,:],0,0.0)
             #EndOfPrdvNvrsFunc_by_pLvl.append(CubicInterp(a_temp,EndOfPrdvNvrs_temp,EndOfPrdvNvrsP_temp))
             EndOfPrdvNvrsFunc_by_pLvl.append(LinearInterp(a_temp,EndOfPrdvNvrs_temp))
         EndOfPrdvNvrsFuncBase = LinearInterpOnInterp1D(EndOfPrdvNvrsFunc_by_pLvl,pLvlGrid)
@@ -619,7 +647,8 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,LivPrb,DiscFac,C
                         temp_list.append(CubicInterp(m_temp,x_temp,MPX_temp))
                     else:
                         temp_list.append(LinearInterp(m_temp,x_temp))
-                xFunc_by_pLvl_and_MedShk.append(deepcopy(temp_list))
+                #xFunc_by_pLvl_and_MedShk.append(deepcopy(temp_list))
+                xFunc_by_pLvl_and_MedShk.append(temp_list)
             
             # Combine the many expenditure functions into a single one and adjust for the natural borrowing constraint
             xFuncNowUncBase = BilinearInterpOnInterp1D(xFunc_by_pLvl_and_MedShk,pLvlGrid,MedShkVals)
@@ -640,9 +669,9 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,LivPrb,DiscFac,C
             aLvlArray = np.abs(mLvlArray - cLvlArray - MedPriceEff*MedLvlArray) # OCCASIONAL VIOLATIONS BY 1E-18 !!!
             vNow = u(cLvlArray) + MedShkArray*uMed(MedLvlArray) + EndOfPrdvFunc(aLvlArray,pLvlArray)
             vNow[0,:,:] = u(cLvlArray[0,:,:]) + EndOfPrdvFunc(aLvlArray[0,:,:],pLvlArray[0,:,:]) # Fix problem when MedShk=0
-            vPnow = uP(cLvlArray)
+            #vPnow = uP(cLvlArray)
             vNvrsNow  = np.concatenate((np.zeros((MedCount,pCount,1)),uinv(vNow)),axis=2)
-            vNvrsPnow = np.concatenate((np.zeros((MedCount,pCount,1)),vPnow*uinvP(vNow)),axis=2)
+            #vNvrsPnow = np.concatenate((np.zeros((MedCount,pCount,1)),vPnow*uinvP(vNow)),axis=2)
 #            if np.sum(np.isnan(vNvrsNow)) > 0:
 #                print(h,k,np.sum(np.isnan(vNvrsNow)))
             
@@ -655,10 +684,11 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,LivPrb,DiscFac,C
                 for j in range(MedCount):
                     m_temp = np.insert(mLvlArray[j,i,:] - mLvlMin_i,0,0.0)
                     vNvrs_temp = vNvrsNow[j,i,:]
-                    vNvrsP_temp = vNvrsPnow[j,i,:]
+                    #vNvrsP_temp = vNvrsPnow[j,i,:]
                     #temp_list.append(CubicInterp(m_temp,vNvrs_temp,vNvrsP_temp))
                     temp_list.append(LinearInterp(m_temp,vNvrs_temp))
-                vNvrsFunc_by_pLvl_and_MedShk.append(deepcopy(temp_list))
+                #vNvrsFunc_by_pLvl_and_MedShk.append(deepcopy(temp_list))
+                vNvrsFunc_by_pLvl_and_MedShk.append(temp_list)
                 
             # Combine the many vNvrs functions into a single one and adjust for the natural borrowing constraint
             vNvrsFuncBase = BilinearInterpOnInterp1D(vNvrsFunc_by_pLvl_and_MedShk,pLvlGrid,MedShkVals)
@@ -684,8 +714,8 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,LivPrb,DiscFac,C
             # Set and unpack the contract of interest
             Contract = ContractList[h][z]
             Copay = Contract.Copay
-            FullPrice_idx = np.argwhere(np.array(CopayList)==MedPrice)[0]
-            Copay_idx = np.argwhere(np.array(CopayList)==Copay*MedPrice)[0]
+            FullPrice_idx = np.argwhere(np.array(CopayList)==MedPrice)[0][0]
+            Copay_idx = np.argwhere(np.array(CopayList)==Copay*MedPrice)[0][0]
             
             # Get the value and policy functions for this contract
             vFuncFullPrice = vFuncsThisHealthCopay[FullPrice_idx]
@@ -711,7 +741,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,LivPrb,DiscFac,C
             if CubicBool:
                 vPnvrsParray  = np.concatenate((np.zeros((1,pLvlCount)),vPParray*uPinvP(vParray)),axis=0)
             vNvrsArray    = np.concatenate((np.zeros((1,pLvlCount)),uinv(vArray)),axis=0)
-            vNvrsParray   = np.concatenate((np.zeros((1,pLvlCount)),vParray*uinvP(vArray)),axis=0)
+            #vNvrsParray   = np.concatenate((np.zeros((1,pLvlCount)),vParray*uinvP(vArray)),axis=0)
             
             # Construct the pseudo-inverse value and marginal value functions over mLvl,pLvl
             vPnvrsFunc_by_pLvl = []
@@ -726,7 +756,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,LivPrb,DiscFac,C
                 else:
                     vPnvrsFunc_by_pLvl.append(LinearInterp(m_temp,vPnvrs_temp))
                 vNvrs_temp  = vNvrsArray[:,j]
-                vNvrsP_temp = vNvrsParray[:,j]
+                #vNvrsP_temp = vNvrsParray[:,j]
 #                if np.sum(np.isnan(vNvrs_temp)) > 0:
 #                    print(h,z,j,np.sum(np.isnan(vNvrs_temp)))
                 #vNvrsFunc_by_pLvl.append(CubicInterp(m_temp,vNvrs_temp,vNvrsP_temp))
@@ -790,7 +820,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,LivPrb,DiscFac,C
         vNvrsArrayBig_adjexpsum = np.sum(vNvrsArrayBig_adjexp,axis=2)
         vNvrsArray = ChoiceShkMag*np.log(vNvrsArrayBig_adjexpsum) + v_best
         ContractPrbs = vNvrsArrayBig_adjexp/np.tile(np.reshape(vNvrsArrayBig_adjexpsum,(aLvlCount,pLvlCount,1)),(1,1,len(ContractList[h])))
-        vNvrsParray = np.sum(ContractPrbs*vNvrsParrayBig,axis=2)
+        #vNvrsParray = np.sum(ContractPrbs*vNvrsParrayBig,axis=2)
         vPnvrsArray = np.sum(ContractPrbs*vPnvrsArrayBig,axis=2)
         if CubicBool:
             vPnvrsParray = np.sum(ContractPrbs*vPnvrsParrayBig,axis=2)
@@ -802,7 +832,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,LivPrb,DiscFac,C
             pLvl = pLvlGrid[j]
             m_temp = np.insert(mLvlArray[:,j] - mLvlMinNow(pLvl),0,0.0)
             vNvrs_temp   = np.insert(vNvrsArray[:,j],0,0.0)
-            vNvrsP_temp  = np.insert(vNvrsParray[:,j],0,vNvrsParray[0,j])
+            #vNvrsP_temp  = np.insert(vNvrsParray[:,j],0,vNvrsParray[0,j])
             #vNvrsFuncs_by_pLvl.append(CubicInterp(m_temp,vNvrs_temp,vNvrsP_temp))
             vNvrsFuncs_by_pLvl.append(LinearInterp(m_temp,vNvrs_temp))
             vPnvrs_temp  = np.insert(vPnvrsArray[:,j],0,0.0)
@@ -832,7 +862,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,LivPrb,DiscFac,C
                                         policyFunc=policyFuncsThisHealth,vFuncByContract=vFuncsThisHealth)
     
     # Return the solution for this period
-    print('Solved a period of the problem!')
+    #print('Solved a period of the problem!')
     return solution_now
     
 ####################################################################################################
@@ -844,8 +874,8 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
     insurance contract, they learn their medical need shock and choose levels of consumption and
     medical care.
     '''
-    time_vary = ['LivPrb','MedPrice','PermGroFac','ContractList','MrkvArray','ChoiceShkMag']
-    time_inv = ['DiscFac','CRRA','CRRAmed','Rfree','PermIncCorr','BoroCnstArt','CubicBool']
+    _time_vary = ['LivPrb','MedPrice','PermGroFac','ContractList','MrkvArray','ChoiceShkMag']
+    _time_inv = ['DiscFac','CRRA','CRRAmed','Rfree','PermIncCorr','BoroCnstArt','CubicBool']
     
     def __init__(self,cycles=1,time_flow=True,**kwds):
         '''
@@ -870,6 +900,8 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
                            cycles=cycles,time_flow=time_flow,pseudo_terminal=False,**kwds)
         self.solveOnePeriod = solveInsuranceSelection # Choose correct solver
         self.poststate_vars = ['aLvlNow']
+        self.time_vary = copy(InsSelConsumerType._time_vary)
+        self.time_inv = copy(InsSelConsumerType._time_inv)
         
     def updateMedShockProcess(self):
         '''
@@ -1079,7 +1111,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         CRRAmed = self.CRRAmed
         u = lambda x : utility(x,gam=CRRA)
         uMed = lambda x : utility(x,gam=CRRAmed)
-        uP = lambda x : utilityP(x,gam=CRRA)
+        #uP = lambda x : utilityP(x,gam=CRRA)
         uPinv = lambda x : utilityP_inv(x,gam=CRRA)
         uinvP = lambda x : utility_invP(x,gam=CRRA)
         uinv = lambda x : utility_inv(x,gam=CRRA)
@@ -1126,9 +1158,9 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
             vNow = u(cLvlNow) + MedShkVals_tiled*uMed(MedLvlNow)
             if MedShkGrid[0] == 0.0:
                 vNow[0,:,:] = u(cLvlNow[0,:,:])
-            vPnow = uP(cLvlNow)
+            #vPnow = uP(cLvlNow)
             vNvrsNow  = np.concatenate((np.zeros((ShkCount,pLvlCount,1)),uinv(vNow)),axis=2)
-            vNvrsPnow = np.concatenate((np.zeros((ShkCount,pLvlCount,1)),vPnow*uinvP(vNow)),axis=2)
+            #vNvrsPnow = np.concatenate((np.zeros((ShkCount,pLvlCount,1)),vPnow*uinvP(vNow)),axis=2)
             mLvlNow_adj = np.concatenate((np.tile(np.reshape(np.zeros(pLvlCount),(1,pLvlCount,1)),(ShkCount,1,1)),mLvlNow_tiled),axis=2)
             vFuncNvrs_by_pLvl_and_MedShk = [] # Initialize the empty list of lists of 1D vFuncs
             for i in range(pLvlCount):
@@ -1136,7 +1168,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
                 for j in range(ShkCount):
                     m_temp = mLvlNow_adj[j,i,:]
                     vNvrs_temp = vNvrsNow[j,i,:]
-                    vNvrsPnow_temp = vNvrsPnow[j,i,:]
+                    #vNvrsPnow_temp = vNvrsPnow[j,i,:]
                     #temp_list.append(CubicInterp(m_temp,vNvrs_temp,vNvrsPnow_temp))
                     temp_list.append(LinearInterp(m_temp,vNvrs_temp))
                 vFuncNvrs_by_pLvl_and_MedShk.append(deepcopy(temp_list))
@@ -1194,7 +1226,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
                 if self.CubicBool:
                     vPnvrsParray  = np.concatenate((np.zeros((1,pLvlCount)),vPParray*uPinvP(vParray)),axis=0)
                 vNvrsArray    = np.concatenate((np.zeros((1,pLvlCount)),uinv(vArray)),axis=0)
-                vNvrsParray   = np.concatenate((np.zeros((1,pLvlCount)),vParray*uinvP(vArray)),axis=0)
+                #vNvrsParray   = np.concatenate((np.zeros((1,pLvlCount)),vParray*uinvP(vArray)),axis=0)
                 
                 # Construct the pseudo-inverse value and marginal value functions over mLvl,pLvl
                 vPnvrsFunc_by_pLvl = []
@@ -1208,7 +1240,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
                     else:
                         vPnvrsFunc_by_pLvl.append(LinearInterp(m_temp,vPnvrs_temp))
                     vNvrs_temp  = vNvrsArray[:,j]
-                    vNvrsP_temp = vNvrsParray[:,j]
+                    #vNvrsP_temp = vNvrsParray[:,j]
                     #vNvrsFunc_by_pLvl.append(CubicInterp(m_temp,vNvrs_temp,vNvrsP_temp))
                     vNvrsFunc_by_pLvl.append(LinearInterp(m_temp,vNvrs_temp))
                 vPnvrsFunc = LinearInterpOnInterp1D(vPnvrsFunc_by_pLvl,pLvlGrid)
@@ -1270,7 +1302,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
             vNvrsArrayBig_adjexpsum = np.sum(vNvrsArrayBig_adjexp,axis=2)
             vNvrsArray = ChoiceShkMag*np.log(vNvrsArrayBig_adjexpsum) + v_best
             ContractPrbs = vNvrsArrayBig_adjexp/np.tile(np.reshape(vNvrsArrayBig_adjexpsum,(aLvlCount,pLvlCount,1)),(1,1,len(ContractList[h])))
-            vNvrsParray = np.sum(ContractPrbs*vNvrsParrayBig,axis=2)
+            #vNvrsParray = np.sum(ContractPrbs*vNvrsParrayBig,axis=2)
             vPnvrsArray = np.sum(ContractPrbs*vPnvrsArrayBig,axis=2)
             if self.CubicBool:
                 vPnvrsParray = np.sum(ContractPrbs*vPnvrsParrayBig,axis=2)
@@ -1281,7 +1313,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
             for j in range(pLvlCount): # Make 1D functions by pLvl
                 m_temp = np.insert(mLvlArray[:,j],0,0.0)
                 vNvrs_temp   = np.insert(vNvrsArray[:,j],0,0.0)
-                vNvrsP_temp  = np.insert(vNvrsParray[:,j],0,vNvrsParray[0,j])
+                #vNvrsP_temp  = np.insert(vNvrsParray[:,j],0,vNvrsParray[0,j])
                 #vNvrsFuncs_by_pLvl.append(CubicInterp(m_temp,vNvrs_temp,vNvrsP_temp))
                 vNvrsFuncs_by_pLvl.append(LinearInterp(m_temp,vNvrs_temp))
                 vPnvrs_temp  = np.insert(vPnvrsArray[:,j],0,0.0)
@@ -1356,7 +1388,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         MrkvNow = np.searchsorted(Cutoffs,base_draws).astype(int)
         
         # Make initial permanent income and asset levels, etc
-        pLvlInit = drawMeanOneLognormal(N=self.AgentCount,sigma=self.PermIncStdInit,seed=self.RNG.randint(0,2**31-1))
+        pLvlInit = self.PermIncAvgInit*drawMeanOneLognormal(N=self.AgentCount,sigma=self.PermIncStdInit,seed=self.RNG.randint(0,2**31-1))
         self.aLvlInit = 0.0*pLvlInit
         pLvlNow = pLvlInit
         Live = np.ones(self.AgentCount,dtype=bool)
@@ -1366,14 +1398,17 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         MedShkNow  = np.zeros_like(pLvlInit)
         
         # Make blank histories for the state and shock variables
-        pLvlHist = np.zeros((self.T_cycle,self.AgentCount)) + np.nan
-        MrkvHist = -np.ones((self.T_cycle,self.AgentCount),dtype=int)
-        PrefShkHist = np.reshape(drawUniform(N=self.T_cycle*self.AgentCount,seed=self.RNG.randint(0,2**31-1)),(self.T_cycle,self.AgentCount))
-        MedShkHist = np.zeros((self.T_cycle,self.AgentCount)) + np.nan
-        IncomeHist = np.zeros((self.T_cycle,self.AgentCount)) + np.nan
+        T_sim = self.T_sim
+        N_agents = N
+        pLvlHist = np.zeros((T_sim,N_agents)) + np.nan
+        MrkvHist = -np.ones((T_sim,N_agents),dtype=int)
+        PrefShkHist = np.reshape(drawUniform(N=T_sim*N_agents,seed=self.RNG.randint(0,2**31-1)),(T_sim,N_agents))
+        MedShkHist = np.zeros((T_sim,N_agents)) + np.nan
+        IncomeHist = np.zeros((T_sim,N_agents)) + np.nan
 
         # Loop through each period of life and update histories
-        for t in range(self.T_cycle):
+        t_cycle=0
+        for t in range(T_sim):
             # Add current states to histories
             pLvlHist[t,Live] = pLvlNow[Live]
             MrkvHist[t,Live] = MrkvNow[Live]
@@ -1388,16 +1423,16 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
                 N = np.sum(these)
                 
                 # First income shocks for next period...
-                IncDstn_temp = self.IncomeDstn[t][h]
+                IncDstn_temp = self.IncomeDstn[t_cycle][h]
                 probs = IncDstn_temp[0]
                 events = np.arange(probs.size)
                 idx = drawDiscrete(N=N,P=probs,X=events,seed=self.RNG.randint(0,2**31-1)).astype(int)
-                PermShkNow[these] = IncDstn_temp[1][idx]*self.PermGroFac[t][h]
+                PermShkNow[these] = IncDstn_temp[1][idx]*self.PermGroFac[t_cycle][h]
                 TranShkNow[these] = IncDstn_temp[2][idx]
 
                 # Then medical needs shocks for this period...
-                sigma = self.MedShkStd[t][h]
-                mu = np.log(self.MedShkAvg[t][h]) - 0.5*sigma**2.
+                sigma = self.MedShkStd[t_cycle][h]
+                mu = np.log(self.MedShkAvg[t_cycle][h]) - 0.5*sigma**2.
                 MedShkNow[these] = drawLognormal(N=N,mu=mu,sigma=sigma,seed=self.RNG.randint(0,2**31-1))
                 
             # Store the medical shocks and update permanent income for next period
@@ -1405,7 +1440,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
             pLvlNow = pLvlNow*PermShkNow
             
             # Determine which agents die based on their mortality probability
-            LivPrb_temp = self.LivPrb[t][MrkvNow[Live]]
+            LivPrb_temp = self.LivPrb[t_cycle][MrkvNow[Live]]
             LivPrbAll = np.zeros_like(pLvlNow)
             LivPrbAll[Live] = LivPrb_temp
             MortShkNow = drawUniform(N=self.AgentCount,seed=self.RNG.randint(0,2**31-1))
@@ -1418,11 +1453,23 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
             for h in range(5):
                 these = MrkvNow == h
                 N = np.sum(these)
-                probs = self.MrkvArray[t][h,:]
+                probs = self.MrkvArray[t_cycle][h,:]
                 idx = drawDiscrete(N=N,P=probs,X=events,seed=self.RNG.randint(0,2**31-1)).astype(int)
                 MrkvNext[these] = idx
             MrkvNext[Dead] = -1 # Actually kill those who died
             MrkvNow = MrkvNext  # Next period will soon be this period
+            
+            # Advance t_cycle or reset it to zero
+            t_cycle += 1
+            if t_cycle == self.T_cycle:
+                t_cycle = 0
+                
+        # Make boolean arrays for health state for all agents
+        HealthBoolArray = np.zeros((self.T_sim,self.AgentCount,5),dtype=bool)
+        for h in range(5):
+            HealthBoolArray[:,:,h] = MrkvHist == h
+        self.HealthBoolArray = HealthBoolArray
+        self.LiveBoolArray = np.any(HealthBoolArray,axis=2)
             
         # Store the history arrays as attributes of self
         self.pLvlHist = pLvlHist
@@ -1474,8 +1521,8 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
             
             # Get the pseudo-inverse value of holding each contract
             vNvrs_temp = np.zeros((N,Z)) + np.nan
-            m_temp = mLvlNow(these)
-            p_temp = pLvlNow(these)
+            m_temp = mLvlNow[these]
+            p_temp = pLvlNow[these]
             for z in range(Z):                
                 Premium = self.solution[t].policyFunc[h][z].Contract.Premium(m_temp,p_temp)
                 vNvrs_temp[:,z] = self.solution[t].vFuncByContract[h][z].func(m_temp-Premium,p_temp)
@@ -1484,30 +1531,31 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
             vNvrs_temp[np.isnan(vNvrs_temp)] = -np.inf
             v_best = np.max(vNvrs_temp,axis=1)
             v_best_big = np.tile(np.reshape(v_best,(N,1)),(1,Z))
-            v_adj_exp = np.exp((vNvrs_temp - v_best_big)/self.PrefShkMag)
+            v_adj_exp = np.exp((vNvrs_temp - v_best_big)/self.ChoiceShkMag[0]) # THIS NEEDS TO LOOK UP t_cycle TO BE CORRECT IN ALL CASES
             v_sum_rep = np.tile(np.reshape(np.sum(v_adj_exp,axis=1),(N,1)),(1,Z))
             ChoicePrbs = v_adj_exp/v_sum_rep
             Cutoffs = np.cumsum(ChoicePrbs,axis=1)
             
             # Select a contract for each agent based on the unified preference shock
-            PrefShk_temp = np.tile(np.reshape(PrefShkNow[these],(N,1)),(Z,1))
+            PrefShk_temp = np.tile(np.reshape(PrefShkNow[these],(N,1)),(1,Z))
             z_choice = np.sum(PrefShk_temp > Cutoffs,axis=1).astype(int)
             
             # For each contract, get controls for agents who buy it
             c_temp = np.zeros(N) + np.nan
             Med_temp = np.zeros(N) + np.nan
-            x_temp = np.zeros(N) + np.nan
+            OOP_temp = np.zeros(N) + np.nan
             Prem_temp = np.zeros(N) + np.nan
             MedShk_temp = MedShkNow[these]
             for z in range(Z):
                 idx = z_choice == z
                 Prem_temp[idx] = self.solution[t].policyFunc[h][z].Contract.Premium(m_temp[idx],p_temp[idx])
-                c_temp[idx],Med_temp[idx],x_temp[idx] = self.solution[t].policyFunc[h][z](m_temp[idx]-Prem_temp[idx],p_temp[idx],MedShk_temp[idx])
+                c_temp[idx],Med_temp[idx] = self.solution[t].policyFunc[h][z](m_temp[idx]-Prem_temp[idx],p_temp[idx],MedShk_temp[idx])
+                OOP_temp[idx] = self.solution[t].policyFunc[h][z].Contract.OOPfunc(Med_temp[idx])
             
             # Store the controls for this health
             cLvlNow[these] = c_temp
             MedLvlNow[these] = Med_temp
-            xLvlNow[these] = x_temp
+            xLvlNow[these] = c_temp + OOP_temp
             PremNow[these] = Prem_temp
             ContractNow[these] = z_choice
 

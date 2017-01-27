@@ -9,16 +9,18 @@ import numpy as np
 import DynInsSelParameters as Params
 from copy import copy
 from InsuranceSelectionModel import MedInsuranceContract, InsSelConsumerType
+from LoadDataMoments import data_moments
 from HARKinterpolation import ConstantFunction
 from HARKutilities import approxUniform, getPercentiles
 from HARKcore import Market
+from HARKparallel import multiThreadCommands, multiThreadCommandsFake
 
 
 class DynInsSelType(InsSelConsumerType):
     '''
     An extension of InsSelConsumerType that adds and adjusts methods for estimation.
     '''    
-    def makeBooleanArrays(self):
+    def makeIncBoolArray(self):
         '''
         Makes the attribute IncQuintBoolArray, specifying which income quintile
         each agent is in for each period of life.  Should only be run after the
@@ -33,24 +35,19 @@ class DynInsSelType(InsSelConsumerType):
         -------
         None
         '''
-        IncQuintBoolArray = np.zeros((self.T_cycle,self.AgentCount,5),dtype=bool)
-        for t in range(self.T_cycle):
+        IncQuintBoolArray = np.zeros((self.T_sim,self.AgentCount,5),dtype=bool)
+        for t in range(self.T_sim):
             for q in range(5):
-                bot = self.IncomeQuintiles[t,q-1]
-                top = self.IncomeQuintiles[t,q]
                 if q == 0:
                     bot = 0.0
+                else:
+                    bot = self.IncomeQuintiles[t,q-1]
                 if q == 4:
                     top = np.inf
+                else:
+                    top = self.IncomeQuintiles[t,q]
                 IncQuintBoolArray[t,:,q] = np.logical_and(self.pLvlHist[t,:] >= bot, self.pLvlHist[t,:] < top)
         self.IncQuintBoolArray = IncQuintBoolArray
-        
-        # Make boolean arrays for health state for all agents
-        HealthBoolArray = np.zeros((self.T_cycle,self.AgentCount,5))
-        for h in range(5):
-            HealthBoolArray[:,:,h] = self.MrkvHist == h
-        self.HealthBoolArray = HealthBoolArray
-        self.LiveBoolArray = np.any(HealthBoolArray,axis=2)
         
     def preSolve(self):
         self.updateSolutionTerminal()
@@ -63,7 +60,7 @@ class DynInsSelType(InsSelConsumerType):
     def postSim(self):
         MedPrice_temp = np.tile(np.reshape(self.MedPrice[0:self.T_sim],(self.T_sim,1)),(1,self.AgentCount))
         self.TotalMedHist = self.MedLvlNow_hist*MedPrice_temp
-        self.WealthRatioHist = self.aLvlNow_hist/self.pLvlNowHist
+        self.WealthRatioHist = self.aLvlNow_hist/self.pLvlHist
         self.InsuredBoolArray = self.ContractNow_hist > 0
     
 class DynInsSelMarket(Market):
@@ -110,21 +107,24 @@ class DynInsSelMarket(Market):
                 if t < 40:
                     WealthRatioList.append(ThisType.WealthRatioHist[t,these])
                     these = ThisType.InsuredBoolArray[t,:]
-                    PremiumList.append(ThisType.Premium_hist[t,these])
+                    PremiumList.append(ThisType.PremNow_hist[t,these])
                     LiveCount += np.sum(ThisType.LiveBoolArray[t,:])
                     temp = np.sum(ThisType.InsuredBoolArray[t,:])
                     InsuredCount += temp
-                    if ThisType.ZeroSubsidyool:
+                    if ThisType.ZeroSubsidyBool:
                         ZeroCount += temp
             if t < 40:
-                WealthRatioArray = np.hcat(WealthRatioList)
+                WealthRatioArray = np.hstack(WealthRatioList)
                 WealthMedianByAge[t] = np.median(WealthRatioArray)
-                PremiumArray = np.hcat(PremiumList)
+                PremiumArray = np.hstack(PremiumList)
                 PremiumMeanByAge[t] = np.mean(PremiumArray)
                 PremiumStdByAge[t] = np.std(PremiumArray)
                 InsuredRateByAge[t] = InsuredCount/LiveCount
-                ZeroSubsidyRateByAge[t] = ZeroCount/InsuredCount
-            LogTotalMedArray = np.hcat(LogTotalMedList)
+                if InsuredCount > 0.0:
+                    ZeroSubsidyRateByAge[t] = ZeroCount/InsuredCount
+                else:
+                    ZeroSubsidyRateByAge[t] = 0.0 # This only happens with no insurance choice
+            LogTotalMedArray = np.hstack(LogTotalMedList)
             LogTotalMedMeanByAge[t] = np.mean(LogTotalMedArray)
             LogTotalMedStdByAge[t] = np.std(LogTotalMedArray)
             
@@ -135,14 +135,14 @@ class DynInsSelMarket(Market):
 
         # Calculate all simulated moments by age-health
         for a in range(12):
-            bot = AgeBounds[a,0]
-            top = AgeBounds[a,1]
+            bot = AgeBounds[a][0]
+            top = AgeBounds[a][1]
             for h in range(5):
                 LogTotalMedList = []
                 for ThisType in Agents:
                     these = ThisType.HealthBoolArray[bot:top,:,h]
                     LogTotalMedList.append(np.log(ThisType.TotalMedHist[bot:top,:][these]+0.0001))
-                LogTotalMedArray = np.hcat(LogTotalMedList)
+                LogTotalMedArray = np.hstack(LogTotalMedList)
                 LogTotalMedMeanByAgeHealth[a,h] = np.mean(LogTotalMedArray)
                 LogTotalMedStdByAgeHealth[a,h] = np.std(LogTotalMedArray)
                 
@@ -155,8 +155,8 @@ class DynInsSelMarket(Market):
 
         # Calculated all simulated moments by age-income
         for a in range(8):
-            bot = AgeBounds[a,0]
-            top = AgeBounds[a,1]
+            bot = AgeBounds[a][0]
+            top = AgeBounds[a][1]
             for i in range(5):
                 WealthRatioList = []
                 LogTotalMedList = []
@@ -164,38 +164,67 @@ class DynInsSelMarket(Market):
                 LiveCount = 0.0
                 InsuredCount = 0.0
                 for ThisType in Agents:
-                    these = ThisType.IncQuintBoolArray[bot:top,:,h]
+                    these = ThisType.IncQuintBoolArray[bot:top,:,i]
                     LiveCount += np.sum(ThisType.LiveBoolArray[bot:top,:][these])
                     LogTotalMedList.append(np.log(ThisType.TotalMedHist[bot:top,:][these]+0.0001))
                     WealthRatioList.append(ThisType.WealthRatioHist[bot:top,:][these])
                     these = np.logical_and(ThisType.InsuredBoolArray[bot:top,:],these)
-                    PremiumList.append(ThisType.Premium_hist[bot:top,:][these])                    
+                    PremiumList.append(ThisType.PremNow_hist[bot:top,:][these])                    
                     temp = np.sum(ThisType.InsuredBoolArray[bot:top,:][these])
                     InsuredCount += temp
-                WealthRatioArray = np.hcat(WealthRatioList)
-                WealthMedianByAgeIncome[a,h] = np.median(WealthRatioArray)
-                PremiumArray = np.hcat(PremiumList)
-                PremiumMeanByAgeIncome[a,h] = np.mean(PremiumArray)
-                InsuredRateByAgeIncome[a,h] = InsuredCount/LiveCount
-                LogTotalMedArray = np.hcat(LogTotalMedList)
-                LogTotalMedMeanByAgeIncome[a,h] = np.mean(LogTotalMedArray)
-                LogTotalMedStdByAgeIncome[a,h] = np.std(LogTotalMedArray)
+                WealthRatioArray = np.hstack(WealthRatioList)
+                WealthMedianByAgeIncome[a,i] = np.median(WealthRatioArray)
+                PremiumArray = np.hstack(PremiumList)
+                PremiumMeanByAgeIncome[a,i] = np.mean(PremiumArray)
+                InsuredRateByAgeIncome[a,i] = InsuredCount/LiveCount
+                LogTotalMedArray = np.hstack(LogTotalMedList)
+                LogTotalMedMeanByAgeIncome[a,i] = np.mean(LogTotalMedArray)
+                LogTotalMedStdByAgeIncome[a,i] = np.std(LogTotalMedArray)
         
         # Store all of the simulated moments as attributes of self
         self.WealthMedianByAge = WealthMedianByAge
-        self.LogTotalMedMeanByAge = LogTotalMedMeanByAge
+        self.LogTotalMedMeanByAge = LogTotalMedMeanByAge + 9.21
         self.LogTotalMedStdByAge = LogTotalMedStdByAge
         self.InsuredRateByAge = InsuredRateByAge
         self.ZeroSubsidyRateByAge = ZeroSubsidyRateByAge
         self.PremiumMeanByAge = PremiumMeanByAge
         self.PremiumStdByAge = PremiumStdByAge
-        self.LogTotalMedMeanByAgeHealth = LogTotalMedMeanByAgeHealth
+        self.LogTotalMedMeanByAgeHealth = LogTotalMedMeanByAgeHealth + 9.21
         self.LogTotalMedStdByAgeHealth = LogTotalMedStdByAgeHealth
         self.WealthMedianByAgeIncome = WealthMedianByAgeIncome
-        self.LogTotalMedMeanByAgeIncome = LogTotalMedMeanByAgeIncome
+        self.LogTotalMedMeanByAgeIncome = LogTotalMedMeanByAgeIncome + 9.21
         self.LogTotalMedStdByAgeIncome = LogTotalMedStdByAgeIncome
         self.InsuredRateByAgeIncome = InsuredRateByAgeIncome
         self.PremiumMeanByAgeIncome = PremiumMeanByAgeIncome
+        
+    def combineSimulatedMoments(self):
+        '''
+        Creates a single 1D array with all simulated moments, stored as an
+        attribute of self.  Should only be run after calcSimulatedMoments().
+        
+        Parameters
+        ----------
+        None
+        
+        Returns
+        -------
+        None
+        '''
+        MomentList = [self.WealthMedianByAge,
+                      self.LogTotalMedMeanByAge,
+                      self.LogTotalMedStdByAge,
+                      self.InsuredRateByAge,
+                      self.ZeroSubsidyRateByAge,
+                      self.PremiumMeanByAge,
+                      self.PremiumStdByAge,
+                      self.LogTotalMedMeanByAgeHealth.flatten(),
+                      self.LogTotalMedStdByAgeHealth.flatten(),
+                      self.WealthMedianByAgeIncome.flatten(),
+                      self.LogTotalMedMeanByAgeIncome.flatten(),
+                      self.LogTotalMedStdByAgeIncome.flatten(),
+                      self.InsuredRateByAgeIncome.flatten(),
+                      self.PremiumMeanByAgeIncome.flatten()]
+        self.simulated_moments = np.hstack(MomentList)
         
     def getIncomeQuintiles(self):
         '''
@@ -211,22 +240,21 @@ class DynInsSelMarket(Market):
         None
         '''
         Cuts = np.array([0.2,0.4,0.6,0.8])
-        IncomeQuintiles = np.zeros((self.Agents[0].T_cycle,Cuts.size))
+        IncomeQuintiles = np.zeros((self.Agents[0].T_sim,Cuts.size))
         
         # Get income quintile cut points for each age
-        for t in range(self.Agents[0].T_cycle):
+        for t in range(self.Agents[0].T_sim):
             pLvlList = []
             for ThisType in self.Agents:
-                pLvlList.append(ThisType.pLvlHist[t,:][ThisType.LivBoolArray[t,:]])
-            pLvlArray = np.hcat(pLvlList)
+                pLvlList.append(ThisType.pLvlHist[t,:][ThisType.LiveBoolArray[t,:]])
+            pLvlArray = np.hstack(pLvlList)
             IncomeQuintiles[t,:] = getPercentiles(pLvlArray,percentiles = Cuts)
         
         # Store the income quintile cut points in each AgentType
         for ThisType in self.Agents:
             ThisType.IncomeQuintiles = IncomeQuintiles
                     
-               
-                
+                               
 def makeDynInsSelType(CRRAcon,CRRAmed,DiscFac,ChoiceShkMag,MedShkMeanAgeParams,MedShkMeanVGparams,
                       MedShkMeanGDparams,MedShkMeanFRparams,MedShkMeanPRparams,MedShkStdAgeParams,
                       MedShkStdVGparams,MedShkStdGDparams,MedShkStdFRparams,MedShkStdPRparams,
@@ -341,10 +369,14 @@ def makeDynInsSelType(CRRAcon,CRRAmed,DiscFac,ChoiceShkMag,MedShkMeanAgeParams,M
     # Make and return a DynInsSelType
     ThisType = DynInsSelType(**TypeDict)
     ThisType.track_vars = ['aLvlNow','cLvlNow','MedLvlNow','PremNow','ContractNow']
+    if PremiumSubsidy == 0.0:
+        ThisType.ZeroSubsidyBool = True
+    else:
+        ThisType.ZeroSubsidyBool = False
     return ThisType
         
 
-def makeAllTypesFromParams(ParamArray,PremiumArray,InsChoiceBool):
+def makeMarketFromParams(ParamArray,PremiumArray,InsChoiceBool):
     '''
     Makes a list of 3 or 24 DynInsSelTypes, to be used for estimation.
     
@@ -400,7 +432,12 @@ def makeAllTypesFromParams(ParamArray,PremiumArray,InsChoiceBool):
                       MedShkStdAgeParams,MedShkStdVGparams,MedShkStdGDparams,MedShkStdFRparams,
                       MedShkStdPRparams,PremiumArray,SubsidyArray[j],k,InsChoiceBool))
             AgentList[-1].Weight = WeightArray[j]*Params.EducWeight[k]
-    return AgentList
+
+    # Make a market to hold the agents
+    InsuranceMarket = DynInsSelMarket()
+    InsuranceMarket.Agents = AgentList
+    InsuranceMarket.data_moments = data_moments
+    return InsuranceMarket
     
     
     
@@ -409,17 +446,29 @@ if __name__ == '__main__':
     from time import clock
     mystr = lambda number : "{:.4f}".format(number)
     
+    t_start = clock()
     InsChoice = False
-    AgentList = makeAllTypesFromParams(Params.test_param_vec,np.array([1,2,3,4,5]),InsChoice)
-    MyType = AgentList[1]
+    MyMarket = makeMarketFromParams(Params.test_param_vec,np.array([1,2,3,4,5]),InsChoice)
+    t_end = clock()
+    print('Making the agents took ' + mystr(t_end-t_start) + ' seconds.')
 
     t_start = clock()
-    MyType.update()
-    MyType.solve()
-    MyType.makeShockHistory()
-    MyType.initializeSim
+    solve_commands = ['update()','solve()']
+    multiThreadCommandsFake(MyMarket.Agents,solve_commands)
     t_end = clock()
-    print('Solving the agent took ' + mystr(t_end-t_start) + ' seconds.')
+    print('Solving the agents took ' + mystr(t_end-t_start) + ' seconds.')
+    
+    t_start = clock()
+    sim_commands = ['makeShockHistory()','initializeSim()','simulate()','postSim()']
+    multiThreadCommandsFake(MyMarket.Agents,sim_commands)
+    MyMarket.getIncomeQuintiles()
+    multiThreadCommandsFake(MyMarket.Agents,['makeIncBoolArray()'])
+    t_end = clock()
+    print('Simulating agents took ' + mystr(t_end-t_start) + ' seconds.')
+    
+    MyMarket.calcSimulatedMoments()
+    
+    MyType = MyMarket.Agents[0]
     
 #    print('Terminal pseudo-inverse value function by contract:')
 #    mLvl = np.linspace(0,5,200)
@@ -466,7 +515,7 @@ if __name__ == '__main__':
 #        plt.plot(mLvl,cLvl)
 #    plt.show()
     
-    p = 1.0
+    p = 2.0
     
     print('Pseudo-inverse value function by health:')
     mLvl = np.linspace(0.0,10,200)

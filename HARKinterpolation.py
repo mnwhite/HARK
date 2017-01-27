@@ -562,6 +562,9 @@ class ConstantFunction(HARKobject):
         '''
         self.value = float(value)
         
+    def getMemSize(self):
+        return 0 # Roughly speaking
+        
     def __call__(self,*args):
         '''
         Evaluate the constant function.  The first input must exist and should be an array.
@@ -672,6 +675,9 @@ class CubicInterp(HARKinterpolator1D):
             temp = [intercept_limit, slope_limit, gap, 0]
         self.coeffs.append(temp)
         self.coeffs = np.array(self.coeffs)
+        
+    def getMemSize(self):
+        return (self.x_list.nbytes + self.y_list.nbytes + self.dydx_list.nbytes + self.coeffs.nbytes)
 
     def _evaluate(self,x):
         '''
@@ -788,15 +794,17 @@ class CubicInterp(HARKinterpolator1D):
                 y[out_top] = self.coeffs[self.n,0] + x[out_top]*self.coeffs[self.n,1] - self.coeffs[self.n,2]*np.exp(alpha*self.coeffs[self.n,3])
                 dydx[out_top] = self.coeffs[self.n,1] - self.coeffs[self.n,2]*self.coeffs[self.n,3]*np.exp(alpha*self.coeffs[self.n,3])
         return y, dydx
+        
 
 
 class LinearInterp(HARKinterpolator1D):
     '''
     A slight extension of scipy.interpolate's UnivariateSpline for linear inter-
     polation.  Allows for linear or decay extrapolation (approaching a limiting
-    linear function from below).
-    
+    linear function from below).    
     '''
+    distance_criteria = ['x_list','y_list']
+    
     def __init__(self,x_list,y_list,intercept_limit=None,slope_limit=None,lower_extrap=False):
         '''
         The interpolation constructor to make a new linear spline interpolation.
@@ -823,11 +831,10 @@ class LinearInterp(HARKinterpolator1D):
         extrapolation is used above the highest gridpoint.        
         '''
         # Make the basic linear spline interpolation
-        self.x_list = x_list
-        self.y_list = y_list
+        self.x_list = np.array(x_list)
+        self.y_list = np.array(y_list)
         self.function = UnivariateSpline(x_list,y_list,k=1,s=0)
         self.lower_extrap = lower_extrap
-        self.distance_criteria = ['x_list','y_list']
         
         # Make a decay extrapolation
         if intercept_limit is not None and slope_limit is not None:
@@ -841,6 +848,9 @@ class LinearInterp(HARKinterpolator1D):
             self.decay_extrap = True
         else:
             self.decay_extrap = False
+    
+    def getMemSize(self):
+        return (self.x_list.nbytes + self.y_list.nbytes)
         
     def _evaluate(self,x):
         '''
@@ -919,8 +929,8 @@ class BilinearInterp(HARKinterpolator2D):
         new instance of BilinearInterp
         '''
         self.f_values = f_values
-        self.x_list = x_list
-        self.y_list = y_list
+        self.x_list = np.array(x_list)
+        self.y_list = np.array(y_list)
         self.x_n = x_list.size
         self.y_n = y_list.size
         if xSearchFunc is None:
@@ -930,6 +940,9 @@ class BilinearInterp(HARKinterpolator2D):
         self.xSearchFunc = xSearchFunc
         self.ySearchFunc = ySearchFunc
         self.distance_criteria = ['x_list','y_list','f_values']
+
+    def getMemSize(self):
+        return (self.x_list.nbytes + self.y_list.nbytes + self.f_values.nbytes)
         
     def _evaluate(self,x,y):
         '''
@@ -1036,9 +1049,9 @@ class TrilinearInterp(HARKinterpolator3D):
         new instance of TrilinearInterp
         '''
         self.f_values = f_values
-        self.x_list = x_list
-        self.y_list = y_list
-        self.z_list = z_list
+        self.x_list = np.array(x_list)
+        self.y_list = np.array(y_list)
+        self.z_list = np.array(z_list)
         self.x_n = x_list.size
         self.y_n = y_list.size
         self.z_n = z_list.size
@@ -1052,6 +1065,9 @@ class TrilinearInterp(HARKinterpolator3D):
         self.ySearchFunc = ySearchFunc
         self.zSearchFunc = zSearchFunc
         self.distance_criteria = ['f_values','x_list','y_list','z_list']
+
+    def getMemSize(self):
+        return(self.f_values.nbytes + self.x_list.nbytes + self.y_list.nbytes + self.z_list.nbytes)
         
     def _evaluate(self,x,y,z):
         '''
@@ -1520,6 +1536,9 @@ class LowerEnvelope(HARKinterpolator1D):
         for function in functions:
             self.functions.append(function)
         self.funcCount = len(self.functions)
+        
+    def getMemSize(self):
+        return sum([self.functions[j].getMemSize() for j in range(self.funcCount)])
 
     def _evaluate(self,x):
         '''
@@ -1588,6 +1607,9 @@ class UpperEnvelope(HARKinterpolator1D):
         for function in functions:
             self.functions.append(function)
         self.funcCount = len(self.functions)
+        
+    def getMemSize(self):
+        return sum([self.functions[j].getMemSize() for j in range(self.funcCount)])
 
     def _evaluate(self,x):
         '''
@@ -1636,7 +1658,8 @@ class LowerEnvelope2D(HARKinterpolator2D):
     The lower envelope of a finite set of 2D functions, each of which can be of
     any class that has the methods __call__, derivativeX, and derivativeY.
     Generally: it combines HARKinterpolator2Ds. 
-    ''' 
+    '''
+    distance_criteria = ['functions']
 
     def __init__(self,*functions):
         '''
@@ -1655,7 +1678,9 @@ class LowerEnvelope2D(HARKinterpolator2D):
         for function in functions:
             self.functions.append(function)
         self.funcCount = len(self.functions)
-        self.distance_criteria = ['functions']
+
+    def getMemSize(self):
+        return sum([self.functions[j].getMemSize() for j in range(self.funcCount)])
 
     def _evaluate(self,x,y):
         '''
@@ -1734,6 +1759,9 @@ class LowerEnvelope3D(HARKinterpolator3D):
         for function in functions:
             self.functions.append(function)
         self.funcCount = len(self.functions)
+    
+    def getMemSize(self):
+        return sum([self.functions[j].getMemSize() for j in range(self.funcCount)])
 
     def _evaluate(self,x,y,z):
         '''
@@ -1833,6 +1861,9 @@ class VariableLowerBoundFunc2D(HARKobject):
         self.func = func
         self.lowerBound = lowerBound
         
+    def getMemSize(self):
+        return (self.func.getMemSize() + self.lowerBound.getMemSize())
+        
     def __call__(self,x,y):
         '''
         Evaluate the function at given state space points.
@@ -1925,6 +1956,9 @@ class VariableLowerBoundFunc3D(HARKobject):
         '''
         self.func = func
         self.lowerBound = lowerBound
+        
+    def getMemSize(self):
+        return (self.func.getMemSize() + self.lowerBound.getMemSize())
         
     def __call__(self,x,y,z):
         '''
@@ -2025,7 +2059,9 @@ class VariableLowerBoundFunc3D(HARKobject):
 class LinearInterpOnInterp1D(HARKinterpolator2D):
     '''
     A 2D interpolator that linearly interpolates among a list of 1D interpolators.
-    '''    
+    '''
+    distance_criteria = ['xInterpolators','y_list']
+    
     def __init__(self,xInterpolators,y_values):
         '''
         Constructor for the class, generating an approximation to a function of
@@ -2047,7 +2083,10 @@ class LinearInterpOnInterp1D(HARKinterpolator2D):
         self.xInterpolators = xInterpolators
         self.y_list = y_values
         self.y_n = y_values.size
-        self.distance_criteria = ['xInterpolators','y_list']
+
+    def getMemSize(self):
+        temp = sum([self.xInterpolators[j].getMemSize() for j in range(self.y_n)])
+        return (temp + self.y_list.nbytes)
         
     def _evaluate(self,x,y):
         '''
@@ -2122,6 +2161,8 @@ class BilinearInterpOnInterp1D(HARKinterpolator3D):
     A 3D interpolator that bilinearly interpolates among a list of lists of 1D
     interpolators.
     '''
+    distance_criteria = ['xInterpolators','y_list','z_list']
+    
     def __init__(self,xInterpolators,y_values,z_values):
         '''
         Constructor for the class, generating an approximation to a function of
@@ -2147,7 +2188,12 @@ class BilinearInterpOnInterp1D(HARKinterpolator3D):
         self.y_n = y_values.size
         self.z_list = z_values
         self.z_n = z_values.size
-        self.distance_criteria = ['xInterpolators','y_list','z_list']
+
+    def getMemSize(self):
+        temp = 0
+        for j in range(self.y_n):
+            temp += sum([self.xInterpolators[j][k].getMemSize() for k in range(self.z_n)])
+        return (temp + self.y_list.nbytes + self.z_list.nbytes)
         
     def _evaluate(self,x,y,z):
         '''

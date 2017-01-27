@@ -58,6 +58,9 @@ class ValueFunc2D(HARKobject):
         self.func = deepcopy(vFuncNvrs)
         self.CRRA = CRRA
         
+    def getMemSize(self):
+        return self.func.getMemSize()
+        
     def __call__(self,m,p):
         '''
         Evaluate the value function at given levels of market resources m and
@@ -108,6 +111,9 @@ class MargValueFunc2D(HARKobject):
         '''
         self.cFunc = deepcopy(cFunc)
         self.CRRA = CRRA
+        
+    def getMemSize(self):
+        return self.cFunc.getMemSize()
         
     def __call__(self,m,p):
         '''
@@ -182,6 +188,9 @@ class MargMargValueFunc2D(HARKobject):
         '''
         self.cFunc = deepcopy(cFunc)
         self.CRRA = CRRA
+        
+    def getMemSize(self):
+        return self.cFunc.getMemSize()
         
     def __call__(self,m,p):
         '''

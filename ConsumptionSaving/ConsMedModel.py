@@ -108,6 +108,9 @@ class MedShockPolicyFunc(HARKobject):
             cFunc = BilinearInterp(cLvlGrid,xLvlGrid,MedShkGrid)
         self.cFunc = cFunc
         
+    def getMemSize(self):
+        return(self.xFunc.getMemSize())
+        
     def __call__(self,mLvl,pLvl,MedShk):
         '''
         Evaluate optimal consumption and medical care at given levels of market
