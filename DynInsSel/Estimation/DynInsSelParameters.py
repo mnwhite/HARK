@@ -202,6 +202,8 @@ MrkvArray = MrkvArray[7:] # Begin at age 25, dropping first 7 years
 
 # Reformat LivPrb into a lifeycle list, from age 25 to 120
 LivPrb = []
+#LivPrbYoung[:,:] = LivPrbYoung[4,:] # Shut off health-based mortality
+#LivPrbOld[:,:] = LivPrbOld[4,:]
 for t in range(40):
     LivPrb.append(LivPrbYoung[:,t+1])
 for t in range(55):
@@ -355,25 +357,25 @@ CollegeDictionary['PermIncAvgInit'] = PermIncAvgInit_c
 # Make a test parameter vector for estimation
 test_param_vec = np.array([0.95, # DiscFac
                            2.0,  # CRRAcon
-                          -0.7,  # CRRAmed scaler
+                           -0.7,  # CRRAmed scaler
                            -7.0, # ChoiceShkMag in log
                            2.0,  # SubsidyZeroRate scaler
                            0.0,  # SubsidyAvg
                            0.0,  # SubsidyWidth scaler
-                          -3.0,  # MedShkMean constant coefficient
-                           0.03, # MedShkMean linear age coefficient
-                        -0.0001,  # MedShkMean quadratic age coefficient
+                          -7.5,  # MedShkMean constant coefficient
+                           0.15, # MedShkMean linear age coefficient
+                         0.0003,  # MedShkMean quadratic age coefficient
                            0.0,  # MedShkMean cubic age coefficient
                            0.0,  # MedShkMean quartic age coefficient
-                           0.1,  # MedShkMean "very good" constant coefficient
+                           0.4,  # MedShkMean "very good" constant coefficient
                            0.0,  # MedShkMean "very good" linear coefficient
-                           0.2,  # MedShkMean "good" constant coefficient
+                           0.4,  # MedShkMean "good" constant coefficient
                            0.0,  # MedShkMean "good" linear coefficient
-                           0.3,  # MedShkMean "fair" constant coefficient
+                           0.8,  # MedShkMean "fair" constant coefficient
                            0.0,  # MedShkMean "fair" linear coefficient
-                           0.4,  # MedShkMean "poor" constant coefficient
+                           1.0,  # MedShkMean "poor" constant coefficient
                            0.0,  # MedShkMean "poor" linear coefficient
-                           1.0,  # MedShkStd constant coefficient
+                           1.6,  # MedShkStd constant coefficient
                            0.0,  # MedShkStd linear age coefficient
                            0.0,  # MedShkStd quadratic age coefficient
                            0.0,  # MedShkStd cubic age coefficient

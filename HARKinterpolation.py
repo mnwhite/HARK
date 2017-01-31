@@ -599,6 +599,133 @@ class ConstantFunction(HARKobject):
     derivativeZ = derivative
     derivativeW = derivative
     derivativeXX= derivative
+    
+    
+class LinearInterp(HARKinterpolator1D):
+    '''
+    A "from scratch" 1D linear interpolation class.  Allows for linear or decay
+    extrapolation (approaching a limiting linear function from below).  
+    '''
+    distance_criteria = ['x_list','y_list']
+    
+    def __init__(self,x_list,y_list,intercept_limit=None,slope_limit=None,lower_extrap=False):
+        '''
+        The interpolation constructor to make a new linear spline interpolation.
+        
+        Parameters
+        ----------
+        x_list : np.array
+            List of x values composing the grid.
+        y_list : np.array
+            List of y values, representing f(x) at the points in x_list.
+        intercept_limit : float
+            Intercept of limiting linear function.
+        slope_limit : float
+            Slope of limiting linear function.
+        lower_extrap : boolean
+            Indicator for whether lower extrapolation is allowed.  False means
+            f(x) = NaN for x < min(x_list); True means linear extrapolation.
+            
+        Returns
+        -------
+        new instance of LinearInterp
+            
+        NOTE: When no input is given for the limiting linear function, linear
+        extrapolation is used above the highest gridpoint.        
+        '''
+        # Make the basic linear spline interpolation
+        self.x_list = np.array(x_list)
+        self.y_list = np.array(y_list)
+        self.lower_extrap = lower_extrap
+        self.x_n = self.x_list.size
+        
+        # Make a decay extrapolation
+        if intercept_limit is not None and slope_limit is not None:
+            slope_at_top = (y_list[-1] - y_list[-2])/(x_list[-1] - x_list[-2])
+            level_diff = intercept_limit + slope_limit*x_list[-1] - y_list[-1]
+            slope_diff = slope_limit - slope_at_top
+            self.decay_extrap_A = level_diff
+            self.decay_extrap_B = -slope_diff/level_diff
+            self.intercept_limit = intercept_limit
+            self.slope_limit = slope_limit
+            self.decay_extrap = True
+        else:
+            self.decay_extrap = False
+        
+    def _evaluate(self,x):
+        '''
+        Returns the level of the interpolated function at each value in x.  Only
+        called internally by HARKinterpolator1D.__call__ (etc).
+        '''
+        if _isscalar(x):
+            i = max(min(np.searchsorted(self.x_list,x),self.x_n-1),1)
+            alpha = (x-self.x_list[i-1])/(self.x_list[i]-self.x_list[i-1])
+            y = (1-alpha)*self.y_list[i-1] + alpha*self.y_list[i]
+        else:
+            y = np.zeros_like(x,dtype=float)
+            if y.size > 0:
+                i = np.maximum(np.searchsorted(self.x_list[:-1],x),1)
+                alpha = (x-self.x_list[i-1])/(self.x_list[i]-self.x_list[i-1])
+                y = (1-alpha)*self.y_list[i-1] + alpha*self.y_list[i]                        
+        if not self.lower_extrap:
+            below_lower_bound = x < self.x_list[0]
+            y[below_lower_bound] = np.nan
+        if self.decay_extrap:
+            above_upper_bound = x > self.x_list[-1]
+            x_temp = x[above_upper_bound] - self.x_list[-1]
+            y[above_upper_bound] = self.intercept_limit + self.slope_limit*x[above_upper_bound] - self.decay_extrap_A*np.exp(-self.decay_extrap_B*x_temp)
+        return y
+        
+    def _der(self,x):
+        '''
+        Returns the first derivative of the interpolated function at each value
+        in x. Only called internally by HARKinterpolator1D.derivative (etc).
+        '''
+        if _isscalar(x):
+            i = max(min(np.searchsorted(self.x_list,x),self.x_n-1),1)
+            dydx = (self.y_list[i] - self.y_list[i-1])/(self.x_list[i] - self.x_list[i-1])
+        else:
+            dydx = np.zeros_like(x,dtype=float)
+            if dydx.size > 0:
+                i = np.maximum(np.searchsorted(self.x_list[:-1],x),1)
+                dydx = (self.y_list[i] - self.y_list[i-1])/(self.x_list[i] - self.x_list[i-1])
+        if not self.lower_extrap:
+            below_lower_bound = x < self.x_list[0]
+            dydx[below_lower_bound] = np.nan
+        if self.decay_extrap:
+            above_upper_bound = x > self.x_list[-1]
+            x_temp = x[above_upper_bound] - self.x_list[-1]
+            dydx[above_upper_bound] = self.slope_limit + self.decay_extrap_B*self.decay_extrap_A*np.exp(-self.decay_extrap_B*x_temp)
+        return dydx
+        
+    def _evalAndDer(self,x):
+        '''
+        Returns the level and first derivative of the function at each value in
+        x.  Only called internally by HARKinterpolator1D.eval_and_der (etc).
+        '''
+        if _isscalar(x):
+            i = max(min(np.searchsorted(self.x_list,x),self.x_n-1),1)
+            alpha = (x-self.x_list[i-1])/(self.x_list[i]-self.x_list[i-1])
+            y = (1-alpha)*self.y_list[i-1] + alpha*self.y_list[i]
+            dydx = (self.y_list[i] - self.y_list[i-1])/(self.x_list[i] - self.x_list[i-1])
+        else:
+            y = np.zeros_like(x,dtype=float)
+            dydx = np.zeros_like(x,dtype=float)
+            if y.size > 0:
+                i = np.maximum(np.searchsorted(self.x_list[:-1],x),1)
+                alpha = (x-self.x_list[i-1])/(self.x_list[i]-self.x_list[i-1])
+                y = (1-alpha)*self.y_list[i-1] + alpha*self.y_list[i]
+                dydx = (self.y_list[i] - self.y_list[i-1])/(self.x_list[i] - self.x_list[i-1])
+        if not self.lower_extrap:
+            below_lower_bound = x < self.x_list[0]
+            y[below_lower_bound] = np.nan
+            dydx[below_lower_bound] = np.nan
+        if self.decay_extrap:
+            above_upper_bound = x > self.x_list[-1]
+            x_temp = x[above_upper_bound] - self.function.x_list[-1]
+            y[above_upper_bound] = self.intercept_limit + self.slope_limit*x[above_upper_bound] - self.decay_extrap_A*np.exp(-self.decay_extrap_B*x_temp)
+            dydx[above_upper_bound] = self.slope_limit + self.decay_extrap_B*self.decay_extrap_A*np.exp(-self.decay_extrap_B*x_temp)
+        return y, dydx
 
 
 class CubicInterp(HARKinterpolator1D):
@@ -797,7 +924,7 @@ class CubicInterp(HARKinterpolator1D):
         
 
 
-class LinearInterp(HARKinterpolator1D):
+class LinearInterpOLD(HARKinterpolator1D):
     '''
     A slight extension of scipy.interpolate's UnivariateSpline for linear inter-
     polation.  Allows for linear or decay extrapolation (approaching a limiting
@@ -905,6 +1032,8 @@ class BilinearInterp(HARKinterpolator2D):
     '''
     Bilinear full (or tensor) grid interpolation of a function f(x,y).
     '''
+    distance_criteria = ['x_list','y_list','f_values']
+    
     def __init__(self,f_values,x_list,y_list,xSearchFunc=None,ySearchFunc=None):
         '''
         Constructor to make a new bilinear interpolation.
@@ -939,7 +1068,6 @@ class BilinearInterp(HARKinterpolator2D):
             ySearchFunc = np.searchsorted
         self.xSearchFunc = xSearchFunc
         self.ySearchFunc = ySearchFunc
-        self.distance_criteria = ['x_list','y_list','f_values']
 
     def getMemSize(self):
         return (self.x_list.nbytes + self.y_list.nbytes + self.f_values.nbytes)

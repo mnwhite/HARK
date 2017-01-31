@@ -1565,6 +1565,83 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         self.MedLvlNow = MedLvlNow
         self.PremNow = PremNow
         self.ContractNow = ContractNow
+    
+    
+    def plotvFunc(self,t,p,mMin=0.0,mMax=10.0,H=None):
+        mLvl = np.linspace(mMin,mMax,200)
+        if H is None:
+            H = range(len(self.LivPrb[0]))
+        for h in H:
+            f = lambda x : self.solution[t].vFunc[h].func(x,p*np.ones_like(x))
+            plt.plot(mLvl,f(mLvl))
+        plt.xlabel('Market resources mLvl')
+        plt.ylabel('Pseudo-inverse value uinv(v(mLvl))')
+        plt.show()
+        
+    def plotvPfunc(self,t,p,mMin=0.0,mMax=10.0,H=None):
+        mLvl = np.linspace(mMin,mMax,200)
+        if H is None:
+            H = range(len(self.LivPrb[0]))
+        for h in H:
+            f = lambda x : self.solution[t].vPfunc[h].cFunc(x,p*np.ones_like(x))
+            plt.plot(mLvl,f(mLvl))
+        plt.xlabel('Market resources mLvl')
+        plt.ylabel('Pseudo-inverse marg value uPinv(vP(mLvl))')
+        plt.show()
+        
+    def plotvFuncByContract(self,t,h,p,mMin=0.0,mMax=10.0,Z=None):
+        print('Pseudo-inverse value function by contract:')
+        mLvl = np.linspace(mMin,mMax,200)
+        if Z is None:
+            Z = range(len(self.solution[t].vFuncByContract[h]))
+        for z in Z:
+            f = lambda x : self.solution[t].vFuncByContract[h][z].func(x,p*np.ones_like(x))
+            Prem = self.ContractList[t][h][z].Premium(0)
+            plt.plot(mLvl+Prem,f(mLvl))
+        f = lambda x : self.solution[t].vFunc[h].func(x,p*np.ones_like(x))
+        plt.plot(mLvl,f(mLvl),'-k')
+        plt.xlabel('Market resources mLvl')
+        plt.ylabel('Contract pseudo-inverse value uinv(v(mLvl))')
+        plt.ylim(ymin=0.0)
+        plt.show()
+        
+    def plotcFuncByContract(self,t,h,p,MedShk,mMin=0.0,mMax=10.0,Z=None):
+        mLvl = np.linspace(mMin,mMax,200)
+        if Z is None:
+            Z = range(len(self.solution[t].policyFunc[h]))
+        for z in Z:
+            cLvl,MedLvl = self.solution[t].policyFunc[h][z](mLvl,p*np.ones_like(mLvl),MedShk*np.ones_like(mLvl))
+            plt.plot(mLvl,cLvl)
+        plt.xlabel('Market resources mLvl')
+        plt.ylabel('Consumption c(mLvl)')
+        plt.ylim(ymin=0.0)
+        plt.show()
+        
+    def plotcFuncByMedShk(self,t,h,z,p,mMin=0.0,mMax=10.0,MedShkSet=None):        
+        mLvl = np.linspace(0,10,200)
+        if MedShkSet is None:
+            MedShkSet = self.MedShkDstn[t][h][1]
+        for MedShk in MedShkSet:            
+            cLvl,MedLvl = self.solution[t].policyFunc[h][z](mLvl,p*np.ones_like(mLvl),MedShk*np.ones_like(mLvl))
+            plt.plot(mLvl,cLvl)
+        plt.xlabel('Market resources mLvl')
+        plt.ylabel('Consumption c(mLvl)')
+        plt.ylim(ymin=0.0)
+        plt.show()
+        
+    def plotMedFuncByMedShk(self,t,h,z,p,mMin=0.0,mMax=10.0,MedShkSet=None):        
+        mLvl = np.linspace(0,10,200)
+        if MedShkSet is None:
+            MedShkSet = self.MedShkDstn[t][h][1]
+        for MedShk in MedShkSet:            
+            cLvl,MedLvl = self.solution[t].policyFunc[h][z](mLvl,p*np.ones_like(mLvl),MedShk*np.ones_like(mLvl))
+            plt.plot(mLvl,MedLvl)
+        plt.xlabel('Market resources mLvl')
+        plt.ylabel('Medical care Med(mLvl)')
+        plt.ylim(ymin=0.0)
+        plt.show()
+        
+    
         
         
         

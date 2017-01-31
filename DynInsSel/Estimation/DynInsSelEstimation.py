@@ -62,6 +62,9 @@ class DynInsSelType(InsSelConsumerType):
         self.TotalMedHist = self.MedLvlNow_hist*MedPrice_temp
         self.WealthRatioHist = self.aLvlNow_hist/self.pLvlHist
         self.InsuredBoolArray = self.ContractNow_hist > 0
+        
+    def deleteSolution(self):
+        del self.solution
     
 class DynInsSelMarket(Market):
     '''
@@ -362,9 +365,10 @@ def makeDynInsSelType(CRRAcon,CRRAmed,DiscFac,ChoiceShkMag,MedShkMeanAgeParams,M
             Deductible = Params.DeductibleList[j]
             WorkingContractList.append(MedInsuranceContract(ConstantFunction(Premium),Deductible,Copay,Params.MedPrice))
     else:
-        WorkingContractList.append(MedInsuranceContract(ConstantFunction(0.0),0.2,0.05,Params.MedPrice))
-    RetiredContractList = [MedInsuranceContract(ConstantFunction(0.0),0.0,0.1,Params.MedPrice)]
-    TypeDict['ContractList'] = Params.working_T*[5*[WorkingContractList]] + Params.retired_T*[5*[RetiredContractList]]
+        WorkingContractList.append(MedInsuranceContract(ConstantFunction(0.0),0.1,0.05,Params.MedPrice))
+    RetiredContractListA = [MedInsuranceContract(ConstantFunction(0.0),0.0,0.05,Params.MedPrice)]
+    RetiredContractListB = [MedInsuranceContract(ConstantFunction(0.0),0.2,0.05,Params.MedPrice)]
+    TypeDict['ContractList'] = Params.working_T*[5*[WorkingContractList]] + (Params.retired_T)*[5*[RetiredContractListA]]
     
     # Make and return a DynInsSelType
     ThisType = DynInsSelType(**TypeDict)
@@ -439,159 +443,86 @@ def makeMarketFromParams(ParamArray,PremiumArray,InsChoiceBool):
     InsuranceMarket.data_moments = data_moments
     return InsuranceMarket
     
+
+def objectiveFunction(Parameters):
+    InsChoice = False
+    MyMarket = makeMarketFromParams(Parameters,np.array([1,2,3,4,5]),InsChoice)
+    multiThreadCommandsFake(MyMarket.Agents,['update()','makeShockHistory()'])
+    MyMarket.getIncomeQuintiles()
+    multiThreadCommandsFake(MyMarket.Agents,['makeIncBoolArray()'])
     
+    all_commands = ['update()','solve()','initializeSim()','simulate()','postSim()','deleteSolution()']
+    multiThreadCommands(MyMarket.Agents,all_commands)
+    
+    MyMarket.calcSimulatedMoments()
+    MyMarket.combineSimulatedMoments()
+    
+    return MyMarket.simulated_moments.size
+
     
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
     from time import clock
     mystr = lambda number : "{:.4f}".format(number)
     
-    t_start = clock()
-    InsChoice = False
-    MyMarket = makeMarketFromParams(Params.test_param_vec,np.array([1,2,3,4,5]),InsChoice)
-    t_end = clock()
-    print('Making the agents took ' + mystr(t_end-t_start) + ' seconds.')
+#    t_start = clock()
+#    InsChoice = False
+#    MyMarket = makeMarketFromParams(Params.test_param_vec,np.array([1,2,3,4,5]),InsChoice)
+#    multiThreadCommandsFake(MyMarket.Agents,['update()','makeShockHistory()'])
+#    MyMarket.getIncomeQuintiles()
+#    multiThreadCommandsFake(MyMarket.Agents,['makeIncBoolArray()'])
+#    t_end = clock()
+#    print('Making the agents took ' + mystr(t_end-t_start) + ' seconds.')
+
+#    t_start = clock()
+#    solve_commands = ['solve()']
+#    multiThreadCommands(MyMarket.Agents,solve_commands)
+#    t_end = clock()
+#    print('Solving the agents took ' + mystr(t_end-t_start) + ' seconds.')
+#    
+#    t_start = clock()
+#    sim_commands = ['initializeSim()','simulate()','postSim()']
+#    multiThreadCommands(MyMarket.Agents,sim_commands)
+#    t_end = clock()
+#    print('Simulating agents took ' + mystr(t_end-t_start) + ' seconds.')
+    
+#    t_start = clock()
+#    all_commands = ['update()','solve()','initializeSim()','simulate()','postSim()']
+#    multiThreadCommands(MyMarket.Agents,all_commands)
+#    t_end = clock()
+#    print('Solving and simulating agents took ' + mystr(t_end-t_start) + ' seconds.')
+#    
+#    MyMarket.calcSimulatedMoments()
 
     t_start = clock()
-    solve_commands = ['update()','solve()']
-    multiThreadCommandsFake(MyMarket.Agents,solve_commands)
+    X = objectiveFunction(Params.test_param_vec)
     t_end = clock()
-    print('Solving the agents took ' + mystr(t_end-t_start) + ' seconds.')
+    print('Objective function evaluation took ' + mystr(t_end-t_start) + ' seconds.')
     
-    t_start = clock()
-    sim_commands = ['makeShockHistory()','initializeSim()','simulate()','postSim()']
-    multiThreadCommandsFake(MyMarket.Agents,sim_commands)
-    MyMarket.getIncomeQuintiles()
-    multiThreadCommandsFake(MyMarket.Agents,['makeIncBoolArray()'])
-    t_end = clock()
-    print('Simulating agents took ' + mystr(t_end-t_start) + ' seconds.')
-    
-    MyMarket.calcSimulatedMoments()
-    
-    MyType = MyMarket.Agents[0]
-    
-#    print('Terminal pseudo-inverse value function by contract:')
-#    mLvl = np.linspace(0,5,200)
-#    h = 1
-#    J = len(MyType.solution_terminal.vFuncByContract[h])
-#    for j in range(J):
-#        f = lambda x : MyType.solution_terminal.vFuncByContract[h][j].func(x,np.ones_like(x))
-#        Prem = MyType.ContractList[-1][h][j].Premium(0)
-#        plt.plot(mLvl+Prem,f(mLvl))
-#    f = lambda x : MyType.solution_terminal.vFunc[h].func(x,np.ones_like(x))
-#    plt.plot(mLvl,f(mLvl))
-#    plt.show()    
-#    
-#    print('Terminal pseudo-inverse value function by health:')
-#    mLvl = np.linspace(0,5,200)
-#    H = len(MyType.LivPrb[0])
-#    for h in range(H):
-#        f = lambda x : MyType.solution_terminal.vFunc[h].func(x,np.ones_like(x))
-#        plt.plot(mLvl,f(mLvl))
-#    plt.show()
-#    
-#    print('Terminal pseudo-inverse marginal value function by health:')
-#    mLvl = np.linspace(0,0.25,200)
-#    H = len(MyType.LivPrb[0])
-#    for h in range(H):
-#        f = lambda x : MyType.solution_terminal.vPfunc[h].cFunc(x,np.ones_like(x))
-#        plt.plot(mLvl,f(mLvl))
-#    plt.show()
-#    
-#    h = 1
-#    print('Terminal pseudo-inverse value function by coinsurance rate:')
-#    mLvl = np.linspace(0,5,200)
-#    J = len(MyType.solution_terminal.vFuncByContract[0])
-#    for j in range(J):
-#        v = MyType.solution_terminal.policyFunc[0][j].ValueFuncCopay.vFuncNvrs(mLvl,np.ones_like(mLvl),1*np.ones_like(mLvl))
-#        plt.plot(mLvl,v)
-#    plt.show()
-#    
-#    print('Terminal consumption function by contract:')
-#    mLvl = np.linspace(0,5,200)
-#    J = len(MyType.solution_terminal.vFuncByContract[h])
-#    for j in range(J):
-#        cLvl,MedLvl = MyType.solution_terminal.policyFunc[h][j](mLvl,1*np.ones_like(mLvl),1*np.ones_like(mLvl))
-#        plt.plot(mLvl,cLvl)
-#    plt.show()
-    
-    p = 2.0
-    
-    print('Pseudo-inverse value function by health:')
-    mLvl = np.linspace(0.0,10,200)
-    H = len(MyType.LivPrb[0])
-    for h in range(H):
-        f = lambda x : MyType.solution[0].vFunc[h].func(x,p*np.ones_like(x))
-        plt.plot(mLvl,f(mLvl))
-    plt.show()
-    
-    print('Pseudo-inverse marginal value function by health:')
-    mLvl = np.linspace(0,10,200)
-    H = len(MyType.LivPrb[0])
-    for h in range(H):
-        f = lambda x : MyType.solution[0].vPfunc[h].cFunc(x,p*np.ones_like(x))
-        plt.plot(mLvl,f(mLvl))
-    plt.show()
-    
-    h = 4    
-    
-    print('Pseudo-inverse value function by contract:')
-    mLvl = np.linspace(0,10,200)
-    J = len(MyType.solution[0].vFuncByContract[h])
-    for j in range(J):
-        f = lambda x : MyType.solution[0].vFuncByContract[h][j].func(x,p*np.ones_like(x))
-        Prem = MyType.ContractList[0][h][j].Premium(0)
-        plt.plot(mLvl+Prem,f(mLvl))
-    f = lambda x : MyType.solution[0].vFunc[h].func(x,p*np.ones_like(x))
-    plt.plot(mLvl,f(mLvl),'-k')
-    plt.show()
-    
+    MyType = MyMarket.Agents[0]    
+    t = 0
+    p = 2.0    
+    h = 4        
     MedShk = 1.0e-2
+    z = 0
     
-    print('Pseudo-inverse value function by coinsurance rate:')
-    mLvl = np.linspace(0,10,200)
-    J = len(MyType.solution[0].vFuncByContract[h])
-    v = MyType.solution[0].policyFunc[h][0].ValueFuncFullPrice.vFuncNvrs(mLvl,p*np.ones_like(mLvl),MedShk*np.ones_like(mLvl))
-    plt.plot(mLvl,v)
-    for j in range(J):
-        v = MyType.solution[0].policyFunc[h][j].ValueFuncCopay.vFuncNvrs(mLvl,p*np.ones_like(mLvl),MedShk*np.ones_like(mLvl))
-        plt.plot(mLvl,v)    
+    MyType.plotvFunc(t,p)
+    MyType.plotvPfunc(t,p)
+    MyType.plotvFuncByContract(t,h,p)
+    MyType.plotcFuncByContract(t,h,p,MedShk)
+    MyType.plotcFuncByMedShk(t,h,z,p)
+    MyType.plotMedFuncByMedShk(t,h,z,p)
+    
+    plt.plot(MyMarket.WealthMedianByAge)
     plt.show()
     
-    print('Consumption function by coinsurance rate:')
-    mLvl = np.linspace(0,10,200)
-    J = len(MyType.solution[0].vFuncByContract[h])
-    cLvl,MedLvl = MyType.solution[0].policyFunc[h][0].PolicyFuncFullPrice(mLvl,p*np.ones_like(mLvl),MedShk*np.ones_like(mLvl))
-    plt.plot(mLvl,cLvl)
-    for j in range(J):
-        cLvl,MedLvl = MyType.solution[0].policyFunc[h][j].PolicyFuncCopay(mLvl,p*np.ones_like(mLvl),MedShk*np.ones_like(mLvl))
-        plt.plot(mLvl,cLvl)
+    plt.plot(MyMarket.LogTotalMedMeanByAgeHealth)
     plt.show()
     
-    print('Consumption function by contract:')
-    mLvl = np.linspace(0,10,200)
-    J = len(MyType.solution[0].vFuncByContract[0])
-    for j in range(J):
-        cLvl,MedLvl = MyType.solution[0].policyFunc[h][j](mLvl,p*np.ones_like(mLvl),MedShk*np.ones_like(mLvl))
-        plt.plot(mLvl,cLvl)
+    plt.plot(MyMarket.LogTotalMedMeanByAgeIncome)
     plt.show()
     
-    print('Consumption function by medical need shock for one contract')
-    mLvl = np.linspace(0,10,200)
-    j = 0
-    for i in range(MyType.MedShkDstn[0][h][0].size):
-        MedShk = MyType.MedShkDstn[0][h][1][i]*np.ones_like(mLvl)
-        cLvl,MedLvl = MyType.solution[0].policyFunc[h][j](mLvl,p*np.ones_like(mLvl),MedShk)
-        plt.plot(mLvl,cLvl)
-    plt.show()
-    
-    print('Medical care function by medical need shock for one contract')
-    mLvl = np.linspace(0,10,200)
-    j = 0
-    for i in range(MyType.MedShkDstn[0][h][0].size):
-        MedShk = MyType.MedShkDstn[0][h][1][i]*np.ones_like(mLvl)
-        cLvl,MedLvl = MyType.solution[0].policyFunc[h][j](mLvl,p*np.ones_like(mLvl),MedShk)
-        plt.plot(mLvl,MedLvl)
+    plt.plot(MyMarket.LogTotalMedStdByAge)
     plt.show()
     
         
