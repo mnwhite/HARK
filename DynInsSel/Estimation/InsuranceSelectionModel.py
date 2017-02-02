@@ -923,8 +923,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
             for h in range(self.MrkvArray[0].shape[0]):
                 MedShkAvgNow  = self.MedShkAvg[t][h] # get shock distribution parameters
                 MedShkStdNow  = self.MedShkStd[t][h]
-                MedShkDstnNow = approxLognormal(mu=np.log(MedShkAvgNow)-0.5*MedShkStdNow**2,\
-                                sigma=MedShkStdNow,N=self.MedShkCount, tail_N=self.MedShkCountTail, 
+                MedShkDstnNow = approxLognormal(mu=MedShkAvgNow,sigma=MedShkStdNow,N=self.MedShkCount, tail_N=self.MedShkCountTail, 
                                 tail_bound=[0,0.9])
                 MedShkDstnNow = addDiscreteOutcomeConstantMean(MedShkDstnNow,0.0,0.0,sort=True) # add point at zero with no probability
                 temp_list.append(MedShkDstnNow)
@@ -1432,7 +1431,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
 
                 # Then medical needs shocks for this period...
                 sigma = self.MedShkStd[t_cycle][h]
-                mu = np.log(self.MedShkAvg[t_cycle][h]) - 0.5*sigma**2.
+                mu = self.MedShkAvg[t_cycle][h]
                 MedShkNow[these] = drawLognormal(N=N,mu=mu,sigma=sigma,seed=self.RNG.randint(0,2**31-1))
                 
             # Store the medical shocks and update permanent income for next period
@@ -1510,6 +1509,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
 
         # Loop through each health state and get agents' controls
         cLvlNow = np.zeros_like(mLvlNow) + np.nan
+        OOPnow = np.zeros_like(mLvlNow) + np.nan
         MedLvlNow = np.zeros_like(mLvlNow) + np.nan
         xLvlNow = np.zeros_like(mLvlNow) + np.nan
         PremNow = np.zeros_like(mLvlNow) + np.nan
@@ -1550,12 +1550,14 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
                 idx = z_choice == z
                 Prem_temp[idx] = self.solution[t].policyFunc[h][z].Contract.Premium(m_temp[idx],p_temp[idx])
                 c_temp[idx],Med_temp[idx] = self.solution[t].policyFunc[h][z](m_temp[idx]-Prem_temp[idx],p_temp[idx],MedShk_temp[idx])
+                Med_temp[idx] = np.maximum(Med_temp[idx],1e-8) # Prevents numeric glitching
                 OOP_temp[idx] = self.solution[t].policyFunc[h][z].Contract.OOPfunc(Med_temp[idx])
             
             # Store the controls for this health
             cLvlNow[these] = c_temp
             MedLvlNow[these] = Med_temp
             xLvlNow[these] = c_temp + OOP_temp
+            OOPnow[these] = OOP_temp
             PremNow[these] = Prem_temp
             ContractNow[these] = z_choice
 
@@ -1563,8 +1565,48 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         self.aLvlNow = mLvlNow - PremNow - xLvlNow
         self.cLvlNow = cLvlNow
         self.MedLvlNow = MedLvlNow
+        self.OOPnow = OOPnow
         self.PremNow = PremNow
         self.ContractNow = ContractNow
+        
+    def calcInsurancePayments(self):
+        '''
+        Uses the results of a simulation to calculate the expected payments of
+        each insurance contract by age-health.  Requires that track_vars
+        includes 'MedLvlNow' and 'OOPnow' or will fail.  Results are stored
+        in the attributes ContractPayments and ContractCounts.
+        
+        Parameters
+        ----------
+        None
+        
+        Returns
+        -------
+        None
+        '''
+        # Get dimensions of output objects and initialize them
+        StateCount = self.MrkvArray[0].shape[0]
+        MaxContracts = max([max([self.ContractList[t][h] for h in range(StateCount)]) for t in range(self.T_sim)])
+        ContractPayments = np.zeros((self.T_sim,StateCount,MaxContracts)) + np.nan
+        ContractCounts = np.zeros((self.T_sim,StateCount,MaxContracts),dtype=int)
+        
+        # Make arrays of payments by insurance and the indices of contracts and states
+        MedPrice_temp = np.tile(np.reshape(self.MedPrice[0:self.T_sim],(self.T_sim,1)),(1,self.AgentCount))
+        Payments = self.MedLvlNow_hist*MedPrice_temp - self.OOPnow_hist
+        Choices = self.ContractNow_hist
+        States = self.MrkvHist
+        
+        # Calculate insurance payment and individual count for each age-state-contract
+        for j in range(StateCount):
+            temp = States == j
+            for z in range(MaxContracts):
+                these = np.logical_and(temp,Choices == z)
+                ContractPayments[:,j,z] = np.sum(Payments*these,axis=1)
+                ContractCounts[:,j,z] = np.sum(these,axis=1)
+                
+        # Store the results as attributes of self
+        self.ContractPayments = ContractPayments
+        self.ContractCounts = ContractCounts
     
     
     def plotvFunc(self,t,p,mMin=0.0,mMax=10.0,H=None):

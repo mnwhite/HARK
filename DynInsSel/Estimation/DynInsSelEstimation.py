@@ -9,7 +9,7 @@ import numpy as np
 import DynInsSelParameters as Params
 from copy import copy
 from InsuranceSelectionModel import MedInsuranceContract, InsSelConsumerType
-from LoadDataMoments import data_moments
+from LoadDataMoments import data_moments, moment_weights, UseOOPbool
 from HARKinterpolation import ConstantFunction
 from HARKutilities import approxUniform, getPercentiles
 from HARKcore import Market
@@ -48,6 +48,8 @@ class DynInsSelType(InsSelConsumerType):
                     top = self.IncomeQuintiles[t,q]
                 IncQuintBoolArray[t,:,q] = np.logical_and(self.pLvlHist[t,:] >= bot, self.pLvlHist[t,:] < top)
         self.IncQuintBoolArray = IncQuintBoolArray
+        #plt.plot(np.cumsum(np.sum(IncQuintBoolArray,axis=1),axis=1))
+        #plt.show()
         
     def preSolve(self):
         self.updateSolutionTerminal()
@@ -58,8 +60,11 @@ class DynInsSelType(InsSelConsumerType):
             self.ContractNow_hist = np.zeros_like(self.ContractNow_hist).astype(int)
             
     def postSim(self):
-        MedPrice_temp = np.tile(np.reshape(self.MedPrice[0:self.T_sim],(self.T_sim,1)),(1,self.AgentCount))
-        self.TotalMedHist = self.MedLvlNow_hist*MedPrice_temp
+        if self.UseOOPbool:
+            self.MedHist = self.OOPnow_hist
+        else:
+            MedPrice_temp = np.tile(np.reshape(self.MedPrice[0:self.T_sim],(self.T_sim,1)),(1,self.AgentCount))
+            self.MedHist = self.MedLvlNow_hist*MedPrice_temp
         self.WealthRatioHist = self.aLvlNow_hist/self.pLvlHist
         self.InsuredBoolArray = self.ContractNow_hist > 0
         
@@ -89,8 +94,8 @@ class DynInsSelMarket(Market):
         
         # Initialize moments by age
         WealthMedianByAge = np.zeros(40) + np.nan
-        LogTotalMedMeanByAge = np.zeros(60) + np.nan
-        LogTotalMedStdByAge = np.zeros(60) + np.nan
+        LogMedMeanByAge = np.zeros(60) + np.nan
+        LogMedStdByAge = np.zeros(60) + np.nan
         InsuredRateByAge = np.zeros(40) + np.nan
         ZeroSubsidyRateByAge = np.zeros(40) + np.nan
         PremiumMeanByAge = np.zeros(40) + np.nan
@@ -99,14 +104,14 @@ class DynInsSelMarket(Market):
         # Calculate all simulated moments by age
         for t in range(60):
             WealthRatioList = []
-            LogTotalMedList = []
+            LogMedList = []
             PremiumList = []
             LiveCount = 0.0
             InsuredCount = 0.0
             ZeroCount = 0.0
             for ThisType in Agents:
                 these = ThisType.LiveBoolArray[t,:]
-                LogTotalMedList.append(np.log(ThisType.TotalMedHist[t,these]+0.0001))
+                LogMedList.append(np.log(ThisType.MedHist[t,these]+0.0001))
                 if t < 40:
                     WealthRatioList.append(ThisType.WealthRatioHist[t,these])
                     these = ThisType.InsuredBoolArray[t,:]
@@ -127,13 +132,13 @@ class DynInsSelMarket(Market):
                     ZeroSubsidyRateByAge[t] = ZeroCount/InsuredCount
                 else:
                     ZeroSubsidyRateByAge[t] = 0.0 # This only happens with no insurance choice
-            LogTotalMedArray = np.hstack(LogTotalMedList)
-            LogTotalMedMeanByAge[t] = np.mean(LogTotalMedArray)
-            LogTotalMedStdByAge[t] = np.std(LogTotalMedArray)
+            LogMedArray = np.hstack(LogMedList)
+            LogMedMeanByAge[t] = np.mean(LogMedArray)
+            LogMedStdByAge[t] = np.std(LogMedArray)
             
         # Initialize moments by age-health and define age band bounds
-        LogTotalMedMeanByAgeHealth = np.zeros((12,5)) + np.nan
-        LogTotalMedStdByAgeHealth = np.zeros((12,5)) + np.nan
+        LogMedMeanByAgeHealth = np.zeros((12,5)) + np.nan
+        LogMedStdByAgeHealth = np.zeros((12,5)) + np.nan
         AgeBounds = [[0,5],[5,10],[10,15],[15,20],[20,25],[25,30],[30,35],[35,40],[40,45],[45,50],[50,55],[55,60]]
 
         # Calculate all simulated moments by age-health
@@ -141,18 +146,18 @@ class DynInsSelMarket(Market):
             bot = AgeBounds[a][0]
             top = AgeBounds[a][1]
             for h in range(5):
-                LogTotalMedList = []
+                LogMedList = []
                 for ThisType in Agents:
                     these = ThisType.HealthBoolArray[bot:top,:,h]
-                    LogTotalMedList.append(np.log(ThisType.TotalMedHist[bot:top,:][these]+0.0001))
-                LogTotalMedArray = np.hstack(LogTotalMedList)
-                LogTotalMedMeanByAgeHealth[a,h] = np.mean(LogTotalMedArray)
-                LogTotalMedStdByAgeHealth[a,h] = np.std(LogTotalMedArray)
+                    LogMedList.append(np.log(ThisType.MedHist[bot:top,:][these]+0.0001))
+                LogMedArray = np.hstack(LogMedList)
+                LogMedMeanByAgeHealth[a,h] = np.mean(LogMedArray)
+                LogMedStdByAgeHealth[a,h] = np.std(LogMedArray)
                 
         # Initialize moments by age-income
         WealthMedianByAgeIncome = np.zeros((8,5)) + np.nan
-        LogTotalMedMeanByAgeIncome = np.zeros((8,5)) + np.nan
-        LogTotalMedStdByAgeIncome = np.zeros((8,5)) + np.nan
+        LogMedMeanByAgeIncome = np.zeros((8,5)) + np.nan
+        LogMedStdByAgeIncome = np.zeros((8,5)) + np.nan
         InsuredRateByAgeIncome = np.zeros((8,5)) + np.nan
         PremiumMeanByAgeIncome = np.zeros((8,5)) + np.nan
 
@@ -162,14 +167,14 @@ class DynInsSelMarket(Market):
             top = AgeBounds[a][1]
             for i in range(5):
                 WealthRatioList = []
-                LogTotalMedList = []
+                LogMedList = []
                 PremiumList = []
                 LiveCount = 0.0
                 InsuredCount = 0.0
                 for ThisType in Agents:
                     these = ThisType.IncQuintBoolArray[bot:top,:,i]
                     LiveCount += np.sum(ThisType.LiveBoolArray[bot:top,:][these])
-                    LogTotalMedList.append(np.log(ThisType.TotalMedHist[bot:top,:][these]+0.0001))
+                    LogMedList.append(np.log(ThisType.MedHist[bot:top,:][these]+0.0001))
                     WealthRatioList.append(ThisType.WealthRatioHist[bot:top,:][these])
                     these = np.logical_and(ThisType.InsuredBoolArray[bot:top,:],these)
                     PremiumList.append(ThisType.PremNow_hist[bot:top,:][these])                    
@@ -180,23 +185,23 @@ class DynInsSelMarket(Market):
                 PremiumArray = np.hstack(PremiumList)
                 PremiumMeanByAgeIncome[a,i] = np.mean(PremiumArray)
                 InsuredRateByAgeIncome[a,i] = InsuredCount/LiveCount
-                LogTotalMedArray = np.hstack(LogTotalMedList)
-                LogTotalMedMeanByAgeIncome[a,i] = np.mean(LogTotalMedArray)
-                LogTotalMedStdByAgeIncome[a,i] = np.std(LogTotalMedArray)
+                LogMedArray = np.hstack(LogMedList)
+                LogMedMeanByAgeIncome[a,i] = np.mean(LogMedArray)
+                LogMedStdByAgeIncome[a,i] = np.std(LogMedArray)
         
         # Store all of the simulated moments as attributes of self
         self.WealthMedianByAge = WealthMedianByAge
-        self.LogTotalMedMeanByAge = LogTotalMedMeanByAge + 9.21
-        self.LogTotalMedStdByAge = LogTotalMedStdByAge
+        self.LogMedMeanByAge = LogMedMeanByAge + 9.21
+        self.LogMedStdByAge = LogMedStdByAge
         self.InsuredRateByAge = InsuredRateByAge
         self.ZeroSubsidyRateByAge = ZeroSubsidyRateByAge
         self.PremiumMeanByAge = PremiumMeanByAge
         self.PremiumStdByAge = PremiumStdByAge
-        self.LogTotalMedMeanByAgeHealth = LogTotalMedMeanByAgeHealth + 9.21
-        self.LogTotalMedStdByAgeHealth = LogTotalMedStdByAgeHealth
+        self.LogMedMeanByAgeHealth = LogMedMeanByAgeHealth + 9.21
+        self.LogMedStdByAgeHealth = LogMedStdByAgeHealth
         self.WealthMedianByAgeIncome = WealthMedianByAgeIncome
-        self.LogTotalMedMeanByAgeIncome = LogTotalMedMeanByAgeIncome + 9.21
-        self.LogTotalMedStdByAgeIncome = LogTotalMedStdByAgeIncome
+        self.LogMedMeanByAgeIncome = LogMedMeanByAgeIncome + 9.21
+        self.LogMedStdByAgeIncome = LogMedStdByAgeIncome
         self.InsuredRateByAgeIncome = InsuredRateByAgeIncome
         self.PremiumMeanByAgeIncome = PremiumMeanByAgeIncome
         
@@ -214,20 +219,42 @@ class DynInsSelMarket(Market):
         None
         '''
         MomentList = [self.WealthMedianByAge,
-                      self.LogTotalMedMeanByAge,
-                      self.LogTotalMedStdByAge,
+                      self.LogMedMeanByAge,
+                      self.LogMedStdByAge,
                       self.InsuredRateByAge,
                       self.ZeroSubsidyRateByAge,
                       self.PremiumMeanByAge,
                       self.PremiumStdByAge,
-                      self.LogTotalMedMeanByAgeHealth.flatten(),
-                      self.LogTotalMedStdByAgeHealth.flatten(),
+                      self.LogMedMeanByAgeHealth.flatten(),
+                      self.LogMedStdByAgeHealth.flatten(),
                       self.WealthMedianByAgeIncome.flatten(),
-                      self.LogTotalMedMeanByAgeIncome.flatten(),
-                      self.LogTotalMedStdByAgeIncome.flatten(),
+                      self.LogMedMeanByAgeIncome.flatten(),
+                      self.LogMedStdByAgeIncome.flatten(),
                       self.InsuredRateByAgeIncome.flatten(),
                       self.PremiumMeanByAgeIncome.flatten()]
         self.simulated_moments = np.hstack(MomentList)
+        
+    def aggregateMomentConditions(self):
+        '''
+        Calculates the overall "model fit" at the current parameters by adding
+        up the weighted sum of squared moments.  The market should already have
+        run the combineSimulatedMoments() method, and should also have the
+        attributes data_moments and moment_weights defined (usually at init).
+        
+        Parameters
+        ----------
+        None
+        
+        Returns
+        -------
+        moment_sum : float
+             Weighted sum of moment conditions.
+        '''
+        moment_conditions = np.log(self.simulated_moments/self.data_moments)
+        moment_conditions[self.moment_weights == 0.0] = 0.0
+        moment_sum = np.dot(moment_conditions**2,self.moment_weights)
+        self.moment_sum = moment_sum
+        return moment_sum
         
     def getIncomeQuintiles(self):
         '''
@@ -342,11 +369,11 @@ def makeDynInsSelType(CRRAcon,CRRAmed,DiscFac,ChoiceShkMag,MedShkMeanAgeParams,M
     MedShkStdGDfunc = lambda age : MedShkStdVGfunc(age) + MedShkStdGDparams[0] + MedShkStdGDparams[1]*age
     MedShkStdFRfunc = lambda age : MedShkStdGDfunc(age) + MedShkStdFRparams[0] + MedShkStdFRparams[1]*age
     MedShkStdPRfunc = lambda age : MedShkStdFRfunc(age) + MedShkStdPRparams[0] + MedShkStdPRparams[1]*age
-    MedShkMeanArray[4,:] = np.exp(MedShkMeanEXfunc(AgeArray))
-    MedShkMeanArray[3,:] = np.exp(MedShkMeanVGfunc(AgeArray))
-    MedShkMeanArray[2,:] = np.exp(MedShkMeanGDfunc(AgeArray))
-    MedShkMeanArray[1,:] = np.exp(MedShkMeanFRfunc(AgeArray))
-    MedShkMeanArray[0,:] = np.exp(MedShkMeanPRfunc(AgeArray))
+    MedShkMeanArray[4,:] = MedShkMeanEXfunc(AgeArray)
+    MedShkMeanArray[3,:] = MedShkMeanVGfunc(AgeArray)
+    MedShkMeanArray[2,:] = MedShkMeanGDfunc(AgeArray)
+    MedShkMeanArray[1,:] = MedShkMeanFRfunc(AgeArray)
+    MedShkMeanArray[0,:] = MedShkMeanPRfunc(AgeArray)
     MedShkStdArray[4,:] = np.exp(MedShkStdEXfunc(AgeArray))
     MedShkStdArray[3,:] = np.exp(MedShkStdVGfunc(AgeArray))
     MedShkStdArray[2,:] = np.exp(MedShkStdGDfunc(AgeArray))
@@ -365,14 +392,15 @@ def makeDynInsSelType(CRRAcon,CRRAmed,DiscFac,ChoiceShkMag,MedShkMeanAgeParams,M
             Deductible = Params.DeductibleList[j]
             WorkingContractList.append(MedInsuranceContract(ConstantFunction(Premium),Deductible,Copay,Params.MedPrice))
     else:
-        WorkingContractList.append(MedInsuranceContract(ConstantFunction(0.0),0.1,0.05,Params.MedPrice))
+        WorkingContractList.append(MedInsuranceContract(ConstantFunction(0.0),0.05,0.05,Params.MedPrice))
     RetiredContractListA = [MedInsuranceContract(ConstantFunction(0.0),0.0,0.05,Params.MedPrice)]
-    RetiredContractListB = [MedInsuranceContract(ConstantFunction(0.0),0.2,0.05,Params.MedPrice)]
+    #RetiredContractListB = [MedInsuranceContract(ConstantFunction(0.0),0.2,0.05,Params.MedPrice)]
     TypeDict['ContractList'] = Params.working_T*[5*[WorkingContractList]] + (Params.retired_T)*[5*[RetiredContractListA]]
     
     # Make and return a DynInsSelType
     ThisType = DynInsSelType(**TypeDict)
-    ThisType.track_vars = ['aLvlNow','cLvlNow','MedLvlNow','PremNow','ContractNow']
+    ThisType.track_vars = ['aLvlNow','cLvlNow','MedLvlNow','PremNow','ContractNow','OOPnow']
+    ThisType.UseOOPbool = UseOOPbool
     if PremiumSubsidy == 0.0:
         ThisType.ZeroSubsidyBool = True
     else:
@@ -436,11 +464,13 @@ def makeMarketFromParams(ParamArray,PremiumArray,InsChoiceBool):
                       MedShkStdAgeParams,MedShkStdVGparams,MedShkStdGDparams,MedShkStdFRparams,
                       MedShkStdPRparams,PremiumArray,SubsidyArray[j],k,InsChoiceBool))
             AgentList[-1].Weight = WeightArray[j]*Params.EducWeight[k]
+            AgentList[-1].AgentCount = int(round(AgentList[-1].Weight*Params.AgentCountTotal))
 
     # Make a market to hold the agents
     InsuranceMarket = DynInsSelMarket()
     InsuranceMarket.Agents = AgentList
     InsuranceMarket.data_moments = data_moments
+    InsuranceMarket.moment_weights = moment_weights
     return InsuranceMarket
     
 
@@ -456,8 +486,8 @@ def objectiveFunction(Parameters):
     
     MyMarket.calcSimulatedMoments()
     MyMarket.combineSimulatedMoments()
-    
-    return MyMarket.simulated_moments.size
+    moment_sum = MyMarket.aggregateMomentConditions()    
+    return MyMarket
 
     
 if __name__ == '__main__':
@@ -473,6 +503,8 @@ if __name__ == '__main__':
 #    multiThreadCommandsFake(MyMarket.Agents,['makeIncBoolArray()'])
 #    t_end = clock()
 #    print('Making the agents took ' + mystr(t_end-t_start) + ' seconds.')
+    
+#    MyMarket.Agents[2].solve()
 
 #    t_start = clock()
 #    solve_commands = ['solve()']
@@ -495,7 +527,7 @@ if __name__ == '__main__':
 #    MyMarket.calcSimulatedMoments()
 
     t_start = clock()
-    X = objectiveFunction(Params.test_param_vec)
+    MyMarket = objectiveFunction(Params.test_param_vec)
     t_end = clock()
     print('Objective function evaluation took ' + mystr(t_end-t_start) + ' seconds.')
     
@@ -506,23 +538,31 @@ if __name__ == '__main__':
     MedShk = 1.0e-2
     z = 0
     
-    MyType.plotvFunc(t,p)
-    MyType.plotvPfunc(t,p)
-    MyType.plotvFuncByContract(t,h,p)
-    MyType.plotcFuncByContract(t,h,p,MedShk)
-    MyType.plotcFuncByMedShk(t,h,z,p)
-    MyType.plotMedFuncByMedShk(t,h,z,p)
+#    MyType.plotvFunc(t,p)
+#    MyType.plotvPfunc(t,p)
+#    MyType.plotvFuncByContract(t,h,p)
+#    MyType.plotcFuncByContract(t,h,p,MedShk)
+#    MyType.plotcFuncByMedShk(t,h,z,p)
+#    MyType.plotMedFuncByMedShk(t,h,z,p)
     
     plt.plot(MyMarket.WealthMedianByAge)
+    plt.plot(MyMarket.data_moments[0:40],'.k')
     plt.show()
     
-    plt.plot(MyMarket.LogTotalMedMeanByAgeHealth)
+    plt.plot(MyMarket.LogMedMeanByAge)
+    plt.plot(MyMarket.data_moments[40:100],'.k')
     plt.show()
     
-    plt.plot(MyMarket.LogTotalMedMeanByAgeIncome)
+    plt.plot(MyMarket.LogMedStdByAge)
+    plt.plot(MyMarket.data_moments[100:160],'.k')
     plt.show()
     
-    plt.plot(MyMarket.LogTotalMedStdByAge)
+    plt.plot(MyMarket.LogMedMeanByAgeHealth)
+    temp = np.reshape(MyMarket.data_moments[320:380],(12,5))
+    plt.plot(temp,'.')
+    plt.show()
+    
+    plt.plot(MyMarket.LogMedStdByAgeHealth)
     plt.show()
     
         
