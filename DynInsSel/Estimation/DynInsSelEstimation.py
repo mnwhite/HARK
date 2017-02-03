@@ -532,7 +532,7 @@ if __name__ == '__main__':
     print('Objective function evaluation took ' + mystr(t_end-t_start) + ' seconds.')
     
     MyType = MyMarket.Agents[0]    
-    t = 0
+    t = -1
     p = 2.0    
     h = 4        
     MedShk = 1.0e-2
@@ -563,6 +563,9 @@ if __name__ == '__main__':
     plt.show()
     
     plt.plot(MyMarket.LogMedStdByAgeHealth)
+    plt.show()
+    
+    plt.plot(MyMarket.LogMedMeanByAgeIncome)
     plt.show()
     
         
