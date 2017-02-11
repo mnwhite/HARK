@@ -379,6 +379,8 @@ def makeDynInsSelType(CRRAcon,CRRAmed,DiscFac,ChoiceShkMag,MedShkMeanAgeParams,M
     MedShkStdArray[2,:] = np.exp(MedShkStdGDfunc(AgeArray))
     MedShkStdArray[1,:] = np.exp(MedShkStdFRfunc(AgeArray))
     MedShkStdArray[0,:] = np.exp(MedShkStdPRfunc(AgeArray))
+    MedShkMeanArray[:,60:] = np.tile(np.reshape(MedShkMeanArray[:,60],(5,1)),(1,35)) # Hold distribution constant after age 85
+    MedShkStdArray[:,60:] = np.tile(np.reshape(MedShkStdArray[:,60],(5,1)),(1,35))
     TypeDict['MedShkAvg'] = MedShkMeanArray.transpose().tolist()
     TypeDict['MedShkStd'] = MedShkStdArray.transpose().tolist()
     
@@ -495,16 +497,16 @@ if __name__ == '__main__':
     from time import clock
     mystr = lambda number : "{:.4f}".format(number)
     
-#    t_start = clock()
-#    InsChoice = False
-#    MyMarket = makeMarketFromParams(Params.test_param_vec,np.array([1,2,3,4,5]),InsChoice)
-#    multiThreadCommandsFake(MyMarket.Agents,['update()','makeShockHistory()'])
-#    MyMarket.getIncomeQuintiles()
-#    multiThreadCommandsFake(MyMarket.Agents,['makeIncBoolArray()'])
-#    t_end = clock()
-#    print('Making the agents took ' + mystr(t_end-t_start) + ' seconds.')
+    t_start = clock()
+    InsChoice = False
+    MyMarket = makeMarketFromParams(Params.test_param_vec,np.array([1,2,3,4,5]),InsChoice)
+    multiThreadCommandsFake(MyMarket.Agents,['update()','makeShockHistory()'])
+    MyMarket.getIncomeQuintiles()
+    multiThreadCommandsFake(MyMarket.Agents,['makeIncBoolArray()'])
+    t_end = clock()
+    print('Making the agents took ' + mystr(t_end-t_start) + ' seconds.')
     
-#    MyMarket.Agents[2].solve()
+    MyMarket.Agents[0].solve()
 
 #    t_start = clock()
 #    solve_commands = ['solve()']
@@ -526,46 +528,82 @@ if __name__ == '__main__':
 #    
 #    MyMarket.calcSimulatedMoments()
 
-    t_start = clock()
-    MyMarket = objectiveFunction(Params.test_param_vec)
-    t_end = clock()
-    print('Objective function evaluation took ' + mystr(t_end-t_start) + ' seconds.')
+#    t_start = clock()
+#    MyMarket = objectiveFunction(Params.test_param_vec)
+#    t_end = clock()
+#    print('Objective function evaluation took ' + mystr(t_end-t_start) + ' seconds.')
     
     MyType = MyMarket.Agents[0]    
-    t = -1
+    t = 0
     p = 2.0    
     h = 4        
     MedShk = 1.0e-2
     z = 0
     
-#    MyType.plotvFunc(t,p)
-#    MyType.plotvPfunc(t,p)
-#    MyType.plotvFuncByContract(t,h,p)
-#    MyType.plotcFuncByContract(t,h,p,MedShk)
-#    MyType.plotcFuncByMedShk(t,h,z,p)
-#    MyType.plotMedFuncByMedShk(t,h,z,p)
+    MyType.plotvFunc(t,p)
+    MyType.plotvPfunc(t,p)
+    MyType.plotvFuncByContract(t,h,p)
+    MyType.plotcFuncByContract(t,h,p,MedShk)
+    MyType.plotcFuncByMedShk(t,h,z,p)
+    MyType.plotMedFuncByMedShk(t,h,z,p)
     
-    plt.plot(MyMarket.WealthMedianByAge)
-    plt.plot(MyMarket.data_moments[0:40],'.k')
-    plt.show()
-    
-    plt.plot(MyMarket.LogMedMeanByAge)
-    plt.plot(MyMarket.data_moments[40:100],'.k')
-    plt.show()
-    
-    plt.plot(MyMarket.LogMedStdByAge)
-    plt.plot(MyMarket.data_moments[100:160],'.k')
-    plt.show()
-    
-    plt.plot(MyMarket.LogMedMeanByAgeHealth)
-    temp = np.reshape(MyMarket.data_moments[320:380],(12,5))
-    plt.plot(temp,'.')
-    plt.show()
-    
-    plt.plot(MyMarket.LogMedStdByAgeHealth)
-    plt.show()
-    
-    plt.plot(MyMarket.LogMedMeanByAgeIncome)
-    plt.show()
-    
+#    Age = np.arange(25,85)
+#    Age5year = 25 + 5*np.arange(12)
+#
+#    plt.plot(Age[0:40],MyMarket.WealthMedianByAge)
+#    plt.plot(Age[0:40],MyMarket.data_moments[0:40],'.k')
+#    plt.xlabel('Age')
+#    plt.ylabel('Median wealth/income ratio')
+#    #plt.savefig('../Figures/WealthFitByAge.pdf')
+#    plt.show()
+#    
+#    plt.plot(Age,MyMarket.LogMedMeanByAge)
+#    plt.plot(Age,MyMarket.data_moments[40:100],'.k')
+#    plt.xlabel('Age')
+#    plt.ylabel('Mean log total medical expenses')
+#    plt.xlim((25,85))
+#    #plt.savefig('../Figures/MeanMedFitByAge.pdf')
+#    plt.show()
+#    
+#    # Make a "detrender" based on quadratic fit of data moments
+#    f = lambda x : 1.93597521 + 1.00792950e-01*x - 2.59202087e-04*x**2
+#    LogMedMeanAdj = np.mean(np.reshape(f(Age),(12,5)),axis=1)
+#    
+#    plt.plot(Age,MyMarket.LogMedStdByAge)
+#    plt.plot(Age,MyMarket.data_moments[100:160],'.k')
+#    plt.xlabel('Age')
+#    plt.ylabel('Stdev log total medical expenses')
+#    plt.xlim((25,85))
+#    #plt.savefig('../Figures/StdevMedFitByAge.pdf')
+#    plt.show()
+#    
+#    plt.plot(Age5year,MyMarket.LogMedMeanByAgeHealth - np.tile(np.reshape(LogMedMeanAdj,(12,1)),(1,5)))
+#    temp = np.reshape(MyMarket.data_moments[320:380],(12,5))
+#    plt.plot(Age5year,temp[:,0] - LogMedMeanAdj,'.b')
+#    plt.plot(Age5year,temp[:,1] - LogMedMeanAdj,'.g')
+#    plt.plot(Age5year,temp[:,2] - LogMedMeanAdj,'.r')
+#    plt.plot(Age5year,temp[:,3] - LogMedMeanAdj,'.c')
+#    plt.plot(Age5year,temp[:,4] - LogMedMeanAdj,'.m')
+#    plt.xlabel('Age')
+#    plt.ylabel('Detrended mean log total medical expenses')
+#    plt.xlim((25,85))
+#    #plt.savefig('../Figures/MeanMedFitByAgeHealth.pdf')
+#    plt.show()
+#    
+#    plt.plot(MyMarket.LogMedStdByAgeHealth)
+#    plt.show()
+#    
+#    plt.plot(Age5year[:8],MyMarket.LogMedMeanByAgeIncome - np.tile(np.reshape(LogMedMeanAdj[:8],(8,1)),(1,5)))
+#    temp = np.reshape(MyMarket.data_moments[480:520],(8,5))
+#    plt.plot(Age5year[:8],temp[:,0] - LogMedMeanAdj[:8],'.b')
+#    plt.plot(Age5year[:8],temp[:,1] - LogMedMeanAdj[:8],'.g')
+#    plt.plot(Age5year[:8],temp[:,2] - LogMedMeanAdj[:8],'.r')
+#    plt.plot(Age5year[:8],temp[:,3] - LogMedMeanAdj[:8],'.c')
+#    plt.plot(Age5year[:8],temp[:,4] - LogMedMeanAdj[:8],'.m')
+#    plt.xlabel('Age')
+#    plt.ylabel('Detrended mean log total medical expenses')
+#    plt.xlim((25,65))
+#    #plt.savefig('../Figures/MeanMedFitByAgeIncome.pdf')
+#    plt.show()
+#    
         

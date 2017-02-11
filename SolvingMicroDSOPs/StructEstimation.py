@@ -27,7 +27,7 @@ from time import time                           # Timing utility
 # Set booleans to determine which tasks should be done
 estimate_model = True             # Whether to estimate the model
 compute_standard_errors = False   # Whether to get standard errors via bootstrap
-make_contour_plot = False         # Whether to make a contour map of the objective function
+make_contour_plot = True          # Whether to make a contour map of the objective function
 
 #=====================================================
 # Define objects and functions used for the estimation
@@ -270,10 +270,10 @@ if __name__ == '__main__':
     
     # Make a contour plot of the objective function
     if make_contour_plot:
-        grid_density = 20   # Number of parameter values in each dimension
-        level_count = 100   # Number of contour levels to plot
-        DiscFacAdj_list = np.linspace(0.85,1.05,grid_density)
-        CRRA_list = np.linspace(2,8,grid_density)
+        grid_density = 50   # Number of parameter values in each dimension
+        level_count = 200   # Number of contour levels to plot
+        DiscFacAdj_list = np.linspace(0.98,1.05,grid_density)
+        CRRA_list = np.linspace(2.,4.,grid_density)
         CRRA_mesh, DiscFacAdj_mesh = pylab.meshgrid(CRRA_list,DiscFacAdj_list)
         smm_obj_levels = np.empty([grid_density,grid_density])
         for j in range(grid_density):
@@ -283,7 +283,7 @@ if __name__ == '__main__':
                 smm_obj_levels[j,k] = smmObjectiveFxn(DiscFacAdj,CRRA)    
         smm_contour = pylab.contourf(CRRA_mesh,DiscFacAdj_mesh,smm_obj_levels,level_count)
         pylab.colorbar(smm_contour)
-        pylab.plot(model_estimate[1],model_estimate[0],'*r',ms=15)
+        #pylab.plot(model_estimate[1],model_estimate[0],'*r',ms=15)
         pylab.xlabel(r'coefficient of relative risk aversion $\rho$',fontsize=14)
         pylab.ylabel(r'discount factor adjustment $\beth$',fontsize=14)
         pylab.savefig('SMMcontour.pdf')

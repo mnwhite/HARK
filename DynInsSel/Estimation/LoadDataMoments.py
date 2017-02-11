@@ -6,7 +6,7 @@ import csv
 import os
 
 # Choose which classes of moments will actually be used in estimation
-UseOOPbool = False # This should match value in DynInsSelParameters
+UseOOPbool = False
 MomentBools = np.array([
                True,  #WealthRatioByAge
                True,  #MeanLogMedByAge

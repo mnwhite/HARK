@@ -365,9 +365,9 @@ test_param_vec = np.array([0.96, # DiscFac
                            2.0,  # SubsidyZeroRate scaler
                            0.0,  # SubsidyAvg
                            0.0,  # SubsidyWidth scaler
-                         -24.5,  # MedShkMean constant coefficient
-                          0.14,  # MedShkMean linear age coefficient
-                         0.002,  # MedShkMean quadratic age coefficient
+                         -26.0,  # MedShkMean constant coefficient
+                          0.15,  # MedShkMean linear age coefficient
+                        0.0024,  # MedShkMean quadratic age coefficient
                      -0.000004,  # MedShkMean cubic age coefficient
                    -0.00000005,  # MedShkMean quartic age coefficient
                            1.5,  # MedShkMean "very good" constant coefficient
@@ -378,7 +378,7 @@ test_param_vec = np.array([0.96, # DiscFac
                          -0.04,  # MedShkMean "fair" linear coefficient
                            7.0,  # MedShkMean "poor" constant coefficient
                          -0.06,  # MedShkMean "poor" linear coefficient
-                           1.9,  # MedShkStd constant coefficient
+                          2.05,  # MedShkStd constant coefficient
                         -0.003,  # MedShkStd linear age coefficient
                            0.0,  # MedShkStd quadratic age coefficient
                            0.0,  # MedShkStd cubic age coefficient

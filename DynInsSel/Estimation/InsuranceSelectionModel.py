@@ -13,7 +13,7 @@ from HARKutilities import CRRAutility, CRRAutilityP, CRRAutilityPP, CRRAutilityP
                           approxLognormal, addDiscreteOutcomeConstantMean, makeGridExpMult
 from HARKinterpolation import LinearInterp, CubicInterp, BilinearInterpOnInterp1D, LinearInterpOnInterp1D, \
                               LowerEnvelope3D, UpperEnvelope, TrilinearInterp, ConstantFunction, \
-                              VariableLowerBoundFunc2D, VariableLowerBoundFunc3D
+                              VariableLowerBoundFunc2D, VariableLowerBoundFunc3D, IdentityFunction
 from HARKsimulation import drawUniform, drawLognormal, drawMeanOneLognormal, drawDiscrete
 from ConsMedModel import MedShockPolicyFunc, MedShockConsumerType
 from ConsPersistentShockModel import ValueFunc2D, MargValueFunc2D, MargMargValueFunc2D
@@ -503,9 +503,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,LivPrb,DiscFac,C
         mLvlMinNow = UpperEnvelope(BoroCnstNat,BoroCnstArt)
     else:
         mLvlMinNow = BoroCnstNat
-    trivial_grid = np.array([0.0,1.0]) # Trivial grid
-    spendAllFunc = TrilinearInterp(np.array([[[0.0,0.0],[0.0,0.0]],[[1.0,1.0],[1.0,1.0]]]),\
-                   trivial_grid,trivial_grid,trivial_grid)
+    spendAllFunc = IdentityFunction(i_dim=0,n_dims=3)
     xFuncNowCnst = VariableLowerBoundFunc3D(spendAllFunc,mLvlMinNow)
     
     # For each future health state, calculate expected value and marginal value on grids of m and p
@@ -549,10 +547,22 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,LivPrb,DiscFac,C
         mLvlNext = Rfree[h]*aLvlNow_tiled + pLvlNext*TranShkVals_tiled
         
         # Calculate future-health-conditional end of period value and marginal value
-        EndOfPrdvPcond[:,:,h]  = Rfree[h]*np.sum(vPfuncNext(mLvlNext,pLvlNext)*ShkPrbs_tiled,axis=0)
-        EndOfPrdvCond[:,:,h]   = np.sum(vFuncNext(mLvlNext,pLvlNext)*ShkPrbs_tiled,axis=0)
+        tempv = vFuncNext(mLvlNext,pLvlNext)
+        tempvP = vPfuncNext(mLvlNext,pLvlNext)
+        EndOfPrdvPcond[:,:,h]  = Rfree[h]*np.sum(tempvP*ShkPrbs_tiled,axis=0)
+        EndOfPrdvCond[:,:,h]   = np.sum(tempv*ShkPrbs_tiled,axis=0)
         if CubicBool:
             EndOfPrdvPPcond[:,:,h] = Rfree[h]*Rfree[h]*np.sum(vPPfuncNext(mLvlNext,pLvlNext)*ShkPrbs_tiled,axis=0)
+            
+        if np.sum(np.isnan(tempv)) > 0:
+            print(str(np.sum(np.isnan(tempv))) + ' next period value points are NaN at h=' + str(h))
+        if np.sum(np.isnan(tempvP)) > 0:
+            print(str(np.sum(np.isnan(tempvP))) + ' next period marg value points are NaN at h=' + str(h))
+                    
+    if np.sum(np.isnan(EndOfPrdvCond)) > 0:
+        print(str(np.sum(np.isnan(EndOfPrdvCond))) + ' end-of-period value points are NaN!')
+    if np.sum(np.isnan(EndOfPrdvPcond)) > 0:
+        print(str(np.sum(np.isnan(EndOfPrdvPcond))) + ' end-of-period marg value points are NaN!')
         
     # Calculate end of period value and marginal value conditional on each current health state
     EndOfPrdv = np.zeros((pLvlCount,aLvlCount,HealthCount))
@@ -672,8 +682,9 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,LivPrb,DiscFac,C
             #vPnow = uP(cLvlArray)
             vNvrsNow  = np.concatenate((np.zeros((MedCount,pCount,1)),uinv(vNow)),axis=2)
             #vNvrsPnow = np.concatenate((np.zeros((MedCount,pCount,1)),vPnow*uinvP(vNow)),axis=2)
-#            if np.sum(np.isnan(vNvrsNow)) > 0:
-#                print(h,k,np.sum(np.isnan(vNvrsNow)))
+            
+            #if np.sum(np.isinf(vNow)) > 0:
+            #    print(h,k,cLvlArray[np.isinf(vNow)])
             
             # Loop over each permanent income level and medical shock and make a vNvrsFunc
             vNvrsFunc_by_pLvl_and_MedShk = [] # Initialize the empty list of lists of 1D vNvrsFuncs
@@ -732,8 +743,11 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,LivPrb,DiscFac,C
             vParray  = np.sum(vParrayBig*ShkPrbsArray,axis=2)
             if CubicBool:
                 vPParray = np.sum(vPParrayBig*ShkPrbsArray,axis=2)
+                
             if np.sum(np.isnan(vArray)) > 0:
-                print(h,z,np.sum(np.isinf(vArrayBig)))
+                print(h,z,np.sum(np.isnan(vArrayBig)))
+                #print(np.argwhere(np.isnan(vArray)))
+                #print(mLvlArray[0,1,:])
             
             # Add vPnvrs=0 at m=mLvlMin to close it off at the bottom (and vNvrs=0)
             mGrid_small   = np.concatenate((np.reshape(mLvlMinNow(pLvlGrid),(1,pLvlCount)),mLvlArray[:,:,0]))
@@ -862,7 +876,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,LivPrb,DiscFac,C
                                         policyFunc=policyFuncsThisHealth,vFuncByContract=vFuncsThisHealth)
     
     # Return the solution for this period
-    #print('Solved a period of the problem!')
+    print('Solved a period of the problem!')
     return solution_now
     
 ####################################################################################################
@@ -1129,9 +1143,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         ChoiceShkMag = self.ChoiceShkMag[t]
         
         # Make the expenditure function for the terminal period
-        trivial_grid = np.array([0.0,1.0]) # Trivial grid
-        xFunc_terminal = TrilinearInterp(np.array([[[0.0,0.0],[0.0,0.0]],[[1.0,1.0],[1.0,1.0]]]),\
-                         trivial_grid,trivial_grid,trivial_grid)
+        xFunc_terminal = IdentityFunction(i_dim=0,n_dims=3)
             
         # Make grids for the three state dimensions
         MedShkGrid= cFromxFuncList[0].y_list
@@ -1660,7 +1672,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         plt.show()
         
     def plotcFuncByMedShk(self,t,h,z,p,mMin=0.0,mMax=10.0,MedShkSet=None):        
-        mLvl = np.linspace(0,10,200)
+        mLvl = np.linspace(mMin,mMax,200)
         if MedShkSet is None:
             MedShkSet = self.MedShkDstn[t][h][1]
         for MedShk in MedShkSet:            
@@ -1672,7 +1684,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         plt.show()
         
     def plotMedFuncByMedShk(self,t,h,z,p,mMin=0.0,mMax=10.0,MedShkSet=None):        
-        mLvl = np.linspace(0,10,200)
+        mLvl = np.linspace(mMin,mMax,200)
         if MedShkSet is None:
             MedShkSet = self.MedShkDstn[t][h][1]
         for MedShk in MedShkSet:            
