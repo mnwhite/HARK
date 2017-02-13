@@ -12,7 +12,7 @@ import numpy as np                  # Python's numeric library, abbreviated "np"
 import pylab as plt                 # Python's plotting library
 import scipy.stats as stats         # Python's statistics library
 from scipy.interpolate import interp1d
-from scipy.special import erf
+from scipy.special import erf, erfc
 
 def _warning(message,category = UserWarning,filename = '',lineno = -1):
     '''
@@ -496,8 +496,7 @@ def approxLognormal(N, mu=0.0, sigma=1.0, tail_N=0, tail_bound=[0.02,0.98], tail
             for x in range(tail_N):
                 upper_CDF_vals.append(upper_CDF_vals[-1] + (1.0-hi_cut)*scale**x/mag)
         CDF_vals       = lower_CDF_vals + inner_CDF_vals + upper_CDF_vals
-        temp_cutoffs   = list(stats.lognorm.ppf(CDF_vals[1:-1], s=sigma, loc=0, 
-                                                scale=np.exp(mu)))
+        temp_cutoffs   = list(stats.lognorm.ppf(CDF_vals[1:-1], s=sigma, loc=0, scale=np.exp(mu)))
         cutoffs        = [0] + temp_cutoffs + [np.inf]
         CDF_vals       = np.array(CDF_vals)
     
@@ -508,9 +507,12 @@ def approxLognormal(N, mu=0.0, sigma=1.0, tail_N=0, tail_bound=[0.02,0.98], tail
         for i in range(K):
             zBot  = cutoffs[i]
             zTop = cutoffs[i+1]
-            X[i] = (-0.5)*np.exp(mu+(sigma**2)*0.5)*(erf((mu+sigma**2-np.log(zTop))*(
-                   (np.sqrt(2)*sigma)**(-1)))-erf((mu+sigma**2-np.log(zBot))*((np.sqrt(2)*sigma)
-                   **(-1))))*(pmf[i]**(-1))           
+            tempBot = (mu+sigma**2-np.log(zBot))/(np.sqrt(2)*sigma)
+            tempTop = (mu+sigma**2-np.log(zTop))/(np.sqrt(2)*sigma)
+            if tempBot <= 4:
+                X[i] = -0.5*np.exp(mu+(sigma**2)*0.5)*(erf(tempTop) - erf(tempBot))/pmf[i]
+            else:
+                X[i] = -0.5*np.exp(mu+(sigma**2)*0.5)*(erfc(tempBot) - erfc(tempTop))/pmf[i]
     else:
         pmf = np.ones(N)/N
         X   = np.exp(mu)*np.ones(N)

@@ -70,43 +70,53 @@ class MedShockPolicyFunc(HARKobject):
         self.MedPrice = MedPrice
         self.xFunc = xFunc
         
-        # Calculate optimal consumption at each combination of mLvl and MedShk.
-        cLvlGrid = np.zeros((xLvlGrid.size,MedShkGrid.size)) # Initialize consumption grid
+        # Calculate optimal transformed consumption/spending ratio at each combination of mLvl and MedShk.
+        bGrid = np.zeros((xLvlGrid.size,MedShkGrid.size)) # Initialize consumption grid
+        tempf = lambda b : np.exp(-b)
         for i in range(xLvlGrid.size):
             xLvl = xLvlGrid[i]
             for j in range(MedShkGrid.size):
                 MedShk = MedShkGrid[j]
-                if xLvl == 0: # Zero consumption when mLvl = 0
-                    cLvl = 0.0
-                elif MedShk == 0: # All consumption when MedShk = 0
-                    cLvl = xLvl
+                if xLvl == 0: 
+                    bOpt = 0.0  # Split 50-50, which still makes cLvl=0
+                elif MedShk == 0: 
+                    bOpt = np.nan # Placeholder for when MedShk = 0
                 else:
-                    optMedZeroFunc = lambda c : (MedShk/MedPrice)**(-1.0/CRRAcon)*\
-                                     ((xLvl-c)/MedPrice)**(CRRAmed/CRRAcon) - c
-                    cLvl = brentq(optMedZeroFunc,0.0,xLvl) # Find solution to FOC
-                cLvlGrid[i,j] = cLvl
+                    optMedZeroFunc = lambda q : (MedShk/MedPrice)**(-1.0/CRRAcon)*(xLvl/MedPrice*(q/(1.+q)))**(CRRAmed/CRRAcon) - (xLvl/(1.+q))
+                    optFuncTransformed = lambda b : optMedZeroFunc(tempf(b))
+                    #cLvl = brentq(optMedZeroFunc,0.0,xLvl) # Find solution to FOC
+                    #bOpt = newton(optFuncTransformed,0.0,maxiter=200)
+                    bOpt = brentq(optFuncTransformed,-700.0,700.0)
+                bGrid[i,j] = bOpt
+
+        # Fill in the missing values
+        bGridMax = np.nanmax(bGrid,axis=1)
+        for i in range(xLvlGrid.size):
+            these = np.isnan(bGrid[i,:])
+            bGrid[i,these] = bGridMax[i] + 3.
                 
         # Construct the consumption function and medical care function
         if xLvlCubicBool:
-            if MedShkCubicBool:
-                raise NotImplementedError(), 'Bicubic interpolation not yet implemented'
-            else:
-                xLvlGrid_tiled   = np.tile(np.reshape(xLvlGrid,(xLvlGrid.size,1)),
-                                           (1,MedShkGrid.size))
-                MedShkGrid_tiled = np.tile(np.reshape(MedShkGrid,(1,MedShkGrid.size)),
-                                           (xLvlGrid.size,1))
-                dfdx = (CRRAmed/(CRRAcon*MedPrice))*(MedShkGrid_tiled/MedPrice)**(-1.0/CRRAcon)*\
-                       ((xLvlGrid_tiled - cLvlGrid)/MedPrice)**(CRRAmed/CRRAcon - 1.0)
-                dcdx = dfdx/(dfdx + 1.0)
-                dcdx[0,:] = dcdx[1,:] # approximation; function goes crazy otherwise
-                dcdx[:,0] = 1.0 # no Med when MedShk=0, so all x is c
-                cFromxFunc_by_MedShk = []
-                for j in range(MedShkGrid.size):
-                    cFromxFunc_by_MedShk.append(CubicInterp(xLvlGrid,cLvlGrid[:,j],dcdx[:,j]))
-                cFunc = LinearInterpOnInterp1D(cFromxFunc_by_MedShk,MedShkGrid)
+            raise NotImplementedError(), 'Cubic interpolation in x dimension must be fixed'
+#            if MedShkCubicBool:
+#                raise NotImplementedError(), 'Bicubic interpolation not yet implemented'
+#            else:
+#                xLvlGrid_tiled   = np.tile(np.reshape(xLvlGrid,(xLvlGrid.size,1)),
+#                                           (1,MedShkGrid.size))
+#                MedShkGrid_tiled = np.tile(np.reshape(MedShkGrid,(1,MedShkGrid.size)),
+#                                           (xLvlGrid.size,1))
+#                dfdx = (CRRAmed/(CRRAcon*MedPrice))*(MedShkGrid_tiled/MedPrice)**(-1.0/CRRAcon)*\
+#                       ((xLvlGrid_tiled - cLvlGrid)/MedPrice)**(CRRAmed/CRRAcon - 1.0)
+#                dcdx = dfdx/(dfdx + 1.0)
+#                dcdx[0,:] = dcdx[1,:] # approximation; function goes crazy otherwise
+#                dcdx[:,0] = 1.0 # no Med when MedShk=0, so all x is c
+#                cFromxFunc_by_MedShk = []
+#                for j in range(MedShkGrid.size):
+#                    cFromxFunc_by_MedShk.append(CubicInterp(xLvlGrid,cLvlGrid[:,j],dcdx[:,j]))
+#                cFunc = LinearInterpOnInterp1D(cFromxFunc_by_MedShk,MedShkGrid)
         else:
-            cFunc = BilinearInterp(cLvlGrid,xLvlGrid,MedShkGrid)
-        self.cFunc = cFunc
+            bFunc = BilinearInterp(bGrid,xLvlGrid,MedShkGrid)
+        self.bFunc = bFunc
         
     def getMemSize(self):
         return(self.xFunc.getMemSize())
@@ -133,8 +143,10 @@ class MedShockPolicyFunc(HARKobject):
             Optimal medical care for each point in (xLvl,MedShk).    
         '''
         xLvl = self.xFunc(mLvl,pLvl,MedShk)
-        cLvl = self.cFunc(xLvl,MedShk)
-        Med  = (xLvl-cLvl)/self.MedPrice
+        b = self.bFunc(xLvl,MedShk)
+        q = np.exp(-b)
+        cLvl = xLvl/(1.+q)
+        Med  = (xLvl*q/(1.+q))/self.MedPrice
         return cLvl,Med
         
     def derivativeX(self,mLvl,pLvl,MedShk):

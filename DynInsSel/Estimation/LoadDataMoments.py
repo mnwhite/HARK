@@ -6,22 +6,23 @@ import csv
 import os
 
 # Choose which classes of moments will actually be used in estimation
-UseOOPbool = False
 MomentBools = np.array([
                True,  #WealthRatioByAge
-               True,  #MeanLogMedByAge
-               False, #StdevLogMedByAge
+               True,  #MeanLogTotalMedByAge
+               False, #StdevLogTotalMedByAge
                False, #InsuredRateByAge
                False, #NoPremShareRateByAge
                False, #MeanPremiumByAge
                False, #StdevPremiumByAge
-               False, #MeanLogMedByAgeHealth
-               False, #StdevLogMedByAgeHealth
+               False, #MeanLogTotalMedByAgeHealth
+               False, #StdevLogTotalMedByAgeHealth
                False, #WealthRatioByAgeIncome
-               False, #MeanLogMedByAgeIncome
-               False, #StdevLogMedByAgeIncome
+               False, #MeanLogTotalMedByAgeIncome
+               False, #StdevLogTotalMedByAgeIncome
                False, #InsuredRateByAgeIncome
                False, #MeanPremiumByAgeIncome
+               False, #MeanLogOOPmedByAge
+               False, #StdevLogOOPmedByAge
               ])
 
 # Load the moments by one-year age groups into a CSV reader object
@@ -141,38 +142,24 @@ for j in range(40):
     i = int(raw_moments[j][1])-1
     k = int(raw_moments[j][0])-1
     WealthRatioByAgeIncome[i,k] = float(raw_moments[j][2])
-    
-# Choose whether to use total or out-of-pocket medical expenses
-if UseOOPbool:
-    MeanLogMedByAge = MeanLogOOPmedByAge
-    StdevLogMedByAge = StdevLogOOPmedByAge
-    MeanLogMedByAgeHealth = MeanLogOOPmedByAgeHealth
-    StdevLogMedByAgeHealth = StdevLogOOPmedByAgeHealth
-    MeanLogMedByAgeIncome = MeanLogOOPmedByAgeIncome
-    StdevLogMedByAgeIncome = StdevLogOOPmedByAgeIncome
-else:
-    MeanLogMedByAge = MeanLogTotalMedByAge
-    StdevLogMedByAge = StdevLogTotalMedByAge
-    MeanLogMedByAgeHealth = MeanLogTotalMedByAgeHealth
-    StdevLogMedByAgeHealth = StdevLogTotalMedByAgeHealth
-    MeanLogMedByAgeIncome = MeanLogTotalMedByAgeIncome
-    StdevLogMedByAgeIncome = StdevLogTotalMedByAgeIncome
   
 # Combine all data moments into a single 1D array
 MomentList = [WealthRatioByAge,
-              MeanLogMedByAge,
-              StdevLogMedByAge,
+              MeanLogTotalMedByAge,
+              StdevLogTotalMedByAge,
               InsuredRateByAge,
               NoPremShareRateByAge,
               MeanPremiumByAge,
               StdevPremiumByAge,
-              MeanLogMedByAgeHealth.flatten(),
-              StdevLogMedByAgeHealth.flatten(),
+              MeanLogTotalMedByAgeHealth.flatten(),
+              StdevLogTotalMedByAgeHealth.flatten(),
               WealthRatioByAgeIncome.flatten(),
-              MeanLogMedByAgeIncome.flatten(),
-              StdevLogMedByAgeIncome.flatten(),
+              MeanLogTotalMedByAgeIncome.flatten(),
+              StdevLogTotalMedByAgeIncome.flatten(),
               InsuredRateByAgeIncome.flatten(),
-              MeanPremiumByAgeIncome.flatten()]
+              MeanPremiumByAgeIncome.flatten(),
+              MeanLogOOPmedByAge.flatten(),
+              StdevLogOOPmedByAge.flatten()]
 data_moments = np.hstack(MomentList)
 
 # Make a moment weighting vector by turning on/off each type of moment
@@ -205,6 +192,10 @@ if not MomentBools[12]:
     moment_weights[560:600] = 0.0
 if not MomentBools[13]:
     moment_weights[600:640] = 0.0
+if not MomentBools[14]:
+    moment_weights[640:700] = 0.0
+if not MomentBools[15]:
+    moment_weights[700:760] = 0.0
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
