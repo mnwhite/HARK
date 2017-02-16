@@ -10,11 +10,11 @@ from copy import copy, deepcopy
 from HARKcore import HARKobject, AgentType
 from HARKutilities import CRRAutility, CRRAutilityP, CRRAutilityPP, CRRAutilityP_inv,\
                           CRRAutility_invP, CRRAutility_inv, CRRAutilityP_invP, NullFunc,\
-                          approxLognormal, addDiscreteOutcomeConstantMean, makeGridExpMult
+                          approxLognormal, addDiscreteOutcome, makeGridExpMult
 from HARKinterpolation import LinearInterp, CubicInterp, BilinearInterpOnInterp1D, LinearInterpOnInterp1D, \
                               LowerEnvelope3D, UpperEnvelope, TrilinearInterp, ConstantFunction, \
                               VariableLowerBoundFunc2D, VariableLowerBoundFunc3D, IdentityFunction
-from HARKsimulation import drawUniform, drawLognormal, drawMeanOneLognormal, drawDiscrete
+from HARKsimulation import drawUniform, drawLognormal, drawMeanOneLognormal, drawDiscrete, drawBernoulli
 from ConsMedModel import MedShockPolicyFunc, MedShockConsumerType
 from ConsPersistentShockModel import ValueFunc2D, MargValueFunc2D, MargMargValueFunc2D
 from ConsMarkovModel import MarkovConsumerType
@@ -274,6 +274,7 @@ class InsSelPolicyFunc(HARKobject):
         # Fill in output using better of two choices
         cLvl[Copay_better], MedLvl[Copay_better] = self.PolicyFuncCopay(mLvl[Copay_better]-self.OptionCost,pLvl[Copay_better],MedShk[Copay_better])
         cLvl[FullPrice_better], MedLvl[FullPrice_better] = self.PolicyFuncFullPrice(mLvl[FullPrice_better],pLvl[FullPrice_better],MedShk[FullPrice_better])
+        MedLvl[MedShk == 0.0] = 0.0
         return cLvl, MedLvl
         
     def evalvAndvPandvPP(self,mLvl,pLvl,MedShk):
@@ -391,7 +392,10 @@ class MedInsuranceContract(HARKobject):
         
         # Define an out-of-pocket spending function that maps quantity of care purchased to OOP cost
         kink_point = Deductible/MedPrice
-        OOPfunc = LinearInterp(np.array([0.0,kink_point,kink_point+1.0]),np.array([0.0,Deductible,Deductible+MedPrice*Copay]))
+        if kink_point > 0.0:
+            OOPfunc = LinearInterp(np.array([0.0,kink_point,kink_point+1.0]),np.array([0.0,Deductible,Deductible+MedPrice*Copay]))
+        else: # Fixes a problem with Deductible = 0, which would create an invalid x_list for interpolation
+            OOPfunc = LinearInterp(np.array([0.0,1.0]),np.array([0.0,MedPrice*Copay]))
         self.OOPfunc = OOPfunc
         
     def getMemSize(self):
@@ -938,8 +942,9 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
                 MedShkAvgNow  = self.MedShkAvg[t][h] # get shock distribution parameters
                 MedShkStdNow  = self.MedShkStd[t][h]
                 MedShkDstnNow = approxLognormal(mu=MedShkAvgNow,sigma=MedShkStdNow,N=self.MedShkCount, tail_N=self.MedShkCountTail, 
-                                tail_bound=[0,0.9])
-                MedShkDstnNow = addDiscreteOutcomeConstantMean(MedShkDstnNow,0.0,0.0,sort=True) # add point at zero with no probability
+                                tail_bound=self.MedShkTailBound)
+                ZeroMedShkPrbNow = self.ZeroMedShkPrb[t,h]
+                MedShkDstnNow = addDiscreteOutcome(MedShkDstnNow,x=0.0,p=ZeroMedShkPrbNow,sort=True) # add point at zero with no probability
                 temp_list.append(MedShkDstnNow)
             MedShkDstn.append(deepcopy(temp_list))
         self.MedShkDstn = MedShkDstn
@@ -1038,7 +1043,12 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
             MedShkAll = np.concatenate((MedShkAll,np.concatenate(temp_list)))
         MedShkAll = np.unique(MedShkAll)
         MedShkAllCount = MedShkAll.size
-        MedShkListCount = min([aug_factor*(self.MedShkCount + self.MedShkCountTail), MedShkAllCount])
+        MedShkCountTemp = self.MedShkCount
+        if type(self.MedShkCountTail) is int:
+            MedShkCountTemp += self.MedShkCountTail
+        else:
+            MedShkCountTemp += self.MedShkCountTail[0] + self.MedShkCountTail[1]
+        MedShkListCount = min([aug_factor*(MedShkCountTemp), MedShkAllCount])
         MedShkList = [MedShkAll[0],MedShkAll[1],MedShkAll[-1]]
         for j in range(1,MedShkListCount-1):
             idx = int(float(j)/float(MedShkListCount-1)*float(MedShkAllCount))
@@ -1444,7 +1454,11 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
                 # Then medical needs shocks for this period...
                 sigma = self.MedShkStd[t_cycle][h]
                 mu = self.MedShkAvg[t_cycle][h]
-                MedShkNow[these] = drawLognormal(N=N,mu=mu,sigma=sigma,seed=self.RNG.randint(0,2**31-1))
+                MedShkDraws = drawLognormal(N=N,mu=mu,sigma=sigma,seed=self.RNG.randint(0,2**31-1))
+                zero_prb = self.ZeroMedShkPrb[t_cycle,h]
+                zero_med = drawBernoulli(N=N,p=zero_prb,seed=self.RNG.randint(0,2**31-1))
+                MedShkDraws[zero_med] = 0.0
+                MedShkNow[these] = MedShkDraws
                 
             # Store the medical shocks and update permanent income for next period
             MedShkHist[t,:] = MedShkNow
@@ -1562,8 +1576,8 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
                 idx = z_choice == z
                 Prem_temp[idx] = self.solution[t].policyFunc[h][z].Contract.Premium(m_temp[idx],p_temp[idx])
                 c_temp[idx],Med_temp[idx] = self.solution[t].policyFunc[h][z](m_temp[idx]-Prem_temp[idx],p_temp[idx],MedShk_temp[idx])
-                Med_temp[idx] = np.maximum(Med_temp[idx],1e-8) # Prevents numeric glitching
-                OOP_temp[idx] = self.solution[t].policyFunc[h][z].Contract.OOPfunc(Med_temp[idx])
+                Med_temp[idx] = np.maximum(Med_temp[idx],0.0) # Prevents numeric glitching
+                OOP_temp[idx] = self.solution[t].policyFunc[h][z].Contract.OOPfunc(Med_temp[idx])            
             
             # Store the controls for this health
             cLvlNow[these] = c_temp

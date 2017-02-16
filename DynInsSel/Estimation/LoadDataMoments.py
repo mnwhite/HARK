@@ -103,8 +103,8 @@ MeanPremiumByAgeHealth = np.zeros((8,5)) + np.nan
 StdevPremiumByAgeHealth = np.zeros((8,5)) + np.nan
 NoPremShareRateByAgeHealth = np.zeros((8,5)) + np.nan
 for j in range(60):
-    i = int(raw_moments[j][0])-1
-    k = int(raw_moments[j][1])-1
+    i = int(raw_moments[j][1])-1
+    k = int(raw_moments[j][0])-1
     MeanLogOOPmedByAgeHealth[i,k] = float(raw_moments[j][2])
     MeanLogTotalMedByAgeHealth[i,k] = float(raw_moments[j][3])
     StdevLogOOPmedByAgeHealth[i,k] = float(raw_moments[j][4])

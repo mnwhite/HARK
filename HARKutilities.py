@@ -474,27 +474,38 @@ def approxLognormal(N, mu=0.0, sigma=1.0, tail_N=0, tail_bound=[0.02,0.98], tail
       (http://www.econ2.jhu.edu/people/ccarroll/solvingmicrodsops/) toolkit.
     Latest update: 21 April 2016 by Matthew N. White
     '''
+    # Unpack the tail_N argument
+    if type(tail_N) is int:
+        tail_N_lower = tail_N
+        tail_N_upper = tail_N
+    else:
+        tail_N_lower = tail_N[0]
+        tail_N_upper = tail_N[1]
+    
     # Find the CDF boundaries of each segment
     if sigma > 0.0:        
-        if tail_N > 0:
+        if tail_N_lower > 0:
             lo_cut     = tail_bound[0]
+        else:
+            lo_cut = 0.0
+        if tail_N_upper > 0:
             hi_cut     = tail_bound[1]
         else:
-            lo_cut     = 0.0
             hi_cut     = 1.0
         inner_size     = hi_cut - lo_cut
         inner_CDF_vals = [lo_cut + x*N**(-1.0)*inner_size for x in range(1, N)]
         if inner_size < 1.0:
             scale      = 1.0/tail_order
-            mag        = (1.0-scale**tail_N)/(1.0-scale)
+            mag_lower  = (1.0-scale**tail_N_lower)/(1.0-scale)
+            mag_upper  = (1.0-scale**tail_N_upper)/(1.0-scale)
         lower_CDF_vals = [0.0]
         if lo_cut > 0.0:
-            for x in range(tail_N-1,-1,-1):
-                lower_CDF_vals.append(lower_CDF_vals[-1] + lo_cut*scale**x/mag)
+            for x in range(tail_N_lower-1,-1,-1):
+                lower_CDF_vals.append(lower_CDF_vals[-1] + lo_cut*scale**x/mag_lower)
         upper_CDF_vals  = [hi_cut]
         if hi_cut < 1.0:
-            for x in range(tail_N):
-                upper_CDF_vals.append(upper_CDF_vals[-1] + (1.0-hi_cut)*scale**x/mag)
+            for x in range(tail_N_upper):
+                upper_CDF_vals.append(upper_CDF_vals[-1] + (1.0-hi_cut)*scale**x/mag_upper)
         CDF_vals       = lower_CDF_vals + inner_CDF_vals + upper_CDF_vals
         temp_cutoffs   = list(stats.lognorm.ppf(CDF_vals[1:-1], s=sigma, loc=0, scale=np.exp(mu)))
         cutoffs        = [0] + temp_cutoffs + [np.inf]

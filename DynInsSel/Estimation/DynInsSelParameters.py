@@ -34,8 +34,9 @@ PermInc_tail_N = 3                  # Number of permanent income gridpoints in e
 PermIncStdInit = 0.4                # Initial standard deviation of (log) permanent income (not used in example)
 PermIncAvgInit = 1.0                # Initial average of permanent income (not used in example)
 PermIncCorr = 1.0                   # Serial correlation coefficient for permanent income
-MedShkCount = 3                     # Number of medical shock points in "body"
-MedShkCountTail = 10                # Number of medical shock points in "tail" (upper only)
+MedShkCount = 5                     # Number of medical shock points in "body"
+MedShkCountTail = [2,8]           # Number of medical shock points in "upper tail"
+MedShkTailBound = [0.05,0.98]         # Boundaries of body (in CDF terms)
 MedPrice = 1.0                      # Relative price of a unit of medical care
 AgentCount = 10000                  # Number of agents of this type (only matters for simulation)
 DeductibleList = [0.3,0.2,0.1,0.05,0.0] # List of deductibles for working-age insurance contracts
@@ -306,6 +307,17 @@ for t in range(95):
     PermGroFac_cx.append(5*[PermGroFac_c[t]+1.0])
     
     
+# Construct the probability of getting zero medical need shock by age-health
+ZeroMedExFunc = lambda a : -0.2082171 - 0.0248579*a
+ZeroMedShkPrb = np.zeros((95,5))
+Age = np.arange(95)
+ZeroMedShkPrb[:,4] = ZeroMedExFunc(Age)
+ZeroMedShkPrb[:,3] = ZeroMedShkPrb[:,4] - 0.2081694 
+ZeroMedShkPrb[:,2] = ZeroMedShkPrb[:,4] - 0.2503833 
+ZeroMedShkPrb[:,1] = ZeroMedShkPrb[:,4] - 0.3943548 
+ZeroMedShkPrb[:,0] = ZeroMedShkPrb[:,4] - 0.7203905 
+ZeroMedShkPrb = norm.cdf(ZeroMedShkPrb)
+    
 # Make a basic dictionary with parameters that never change
 BasicDictionary = { 'Rfree': Rfree,
                     'LivPrb': LivPrb,
@@ -332,6 +344,8 @@ BasicDictionary = { 'Rfree': Rfree,
                     'PermIncCorr': PermIncCorr,
                     'MedShkCount': MedShkCount,
                     'MedShkCountTail': MedShkCountTail,
+                    'MedShkTailBound': MedShkTailBound,
+                    'ZeroMedShkPrb': ZeroMedShkPrb,
                     'MedPrice': T_cycle*[MedPrice],
                     'MrkvArray': MrkvArray,
                     'MrkvPrbsInit': HealthPrbsInit,
@@ -358,28 +372,28 @@ CollegeDictionary['MrkvArray'] = MrkvArray_c
 CollegeDictionary['PermIncAvgInit'] = PermIncAvgInit_c
 
 # Make a test parameter vector for estimation
-test_param_vec = np.array([0.96, # DiscFac
+test_param_vec = np.array([0.955, # DiscFac
                            2.0,  # CRRAcon
                            0.5,  # CRRAmed scaler
                           -7.0,  # ChoiceShkMag in log
                            2.0,  # SubsidyZeroRate scaler
                            0.0,  # SubsidyAvg
                            0.0,  # SubsidyWidth scaler
-                         -26.0,  # MedShkMean constant coefficient
-                          0.15,  # MedShkMean linear age coefficient
-                        0.0024,  # MedShkMean quadratic age coefficient
+                         -20.0,  # MedShkMean constant coefficient
+                         0.039,  # MedShkMean linear age coefficient
+                        0.0028,  # MedShkMean quadratic age coefficient
                      -0.000004,  # MedShkMean cubic age coefficient
                    -0.00000005,  # MedShkMean quartic age coefficient
-                           1.5,  # MedShkMean "very good" constant coefficient
+                           1.4,  # MedShkMean "very good" constant coefficient
                            0.0,  # MedShkMean "very good" linear coefficient
                            1.5,  # MedShkMean "good" constant coefficient
                            0.0,  # MedShkMean "good" linear coefficient
-                           4.0,  # MedShkMean "fair" constant coefficient
-                         -0.04,  # MedShkMean "fair" linear coefficient
-                           7.0,  # MedShkMean "poor" constant coefficient
+                           2.3,  # MedShkMean "fair" constant coefficient
+                         -0.00,  # MedShkMean "fair" linear coefficient
+                           6.5,  # MedShkMean "poor" constant coefficient
                          -0.06,  # MedShkMean "poor" linear coefficient
-                          2.05,  # MedShkStd constant coefficient
-                        -0.003,  # MedShkStd linear age coefficient
+                          1.81,  # MedShkStd constant coefficient
+                         0.002,  # MedShkStd linear age coefficient
                            0.0,  # MedShkStd quadratic age coefficient
                            0.0,  # MedShkStd cubic age coefficient
                            0.0,  # MedShkStd quartic age coefficient

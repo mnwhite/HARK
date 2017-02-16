@@ -112,8 +112,9 @@ class DynInsSelMarket(Market):
             ZeroCount = 0.0
             for ThisType in Agents:
                 these = ThisType.LiveBoolArray[t,:]
-                LogTotalMedList.append(np.log(ThisType.TotalMedHist[t,these]+0.0001))
-                LogOOPmedList.append(np.log(ThisType.OOPmedHist[t,these]+0.0001))
+                those = np.logical_and(these,ThisType.TotalMedHist[t,:]>0.0)
+                LogTotalMedList.append(np.log(ThisType.TotalMedHist[t,those]))
+                LogOOPmedList.append(np.log(ThisType.OOPmedHist[t,those]))
                 if t < 40:
                     WealthRatioList.append(ThisType.WealthRatioHist[t,these])
                     these = ThisType.InsuredBoolArray[t,:]
@@ -154,7 +155,8 @@ class DynInsSelMarket(Market):
                 LogTotalMedList = []
                 for ThisType in Agents:
                     these = ThisType.HealthBoolArray[bot:top,:,h]
-                    LogTotalMedList.append(np.log(ThisType.TotalMedHist[bot:top,:][these]+0.0001))
+                    those = np.logical_and(these,ThisType.TotalMedHist[bot:top,:]>0.0)
+                    LogTotalMedList.append(np.log(ThisType.TotalMedHist[bot:top,:][those]))
                 LogTotalMedArray = np.hstack(LogTotalMedList)
                 LogTotalMedMeanByAgeHealth[a,h] = np.mean(LogTotalMedArray)
                 LogTotalMedStdByAgeHealth[a,h] = np.std(LogTotalMedArray)
@@ -178,8 +180,9 @@ class DynInsSelMarket(Market):
                 InsuredCount = 0.0
                 for ThisType in Agents:
                     these = ThisType.IncQuintBoolArray[bot:top,:,i]
+                    those = np.logical_and(these,ThisType.TotalMedHist[bot:top,:]>0.0)
                     LiveCount += np.sum(ThisType.LiveBoolArray[bot:top,:][these])
-                    LogTotalMedList.append(np.log(ThisType.TotalMedHist[bot:top,:][these]+0.0001))
+                    LogTotalMedList.append(np.log(ThisType.TotalMedHist[bot:top,:][those]))
                     WealthRatioList.append(ThisType.WealthRatioHist[bot:top,:][these])
                     these = np.logical_and(ThisType.InsuredBoolArray[bot:top,:],these)
                     PremiumList.append(ThisType.PremNow_hist[bot:top,:][these])                    
@@ -403,7 +406,7 @@ def makeDynInsSelType(CRRAcon,CRRAmed,DiscFac,ChoiceShkMag,MedShkMeanAgeParams,M
             Deductible = Params.DeductibleList[j]
             WorkingContractList.append(MedInsuranceContract(ConstantFunction(Premium),Deductible,Copay,Params.MedPrice))
     else:
-        WorkingContractList.append(MedInsuranceContract(ConstantFunction(0.0),0.05,0.02,Params.MedPrice))
+        WorkingContractList.append(MedInsuranceContract(ConstantFunction(0.0),0.05,0.05,Params.MedPrice))
     RetiredContractListA = [MedInsuranceContract(ConstantFunction(0.0),0.0,0.05,Params.MedPrice)]
     #RetiredContractListB = [MedInsuranceContract(ConstantFunction(0.0),0.2,0.05,Params.MedPrice)]
     TypeDict['ContractList'] = Params.working_T*[5*[WorkingContractList]] + (Params.retired_T)*[5*[RetiredContractListA]]
@@ -583,11 +586,7 @@ if __name__ == '__main__':
     plt.xlim((25,85))
     #plt.savefig('../Figures/MeanMedFitByAge.pdf')
     plt.show()
-    
-    # Make a "detrender" based on quadratic fit of data moments
-    f = lambda x : 1.93597521 + 1.00792950e-01*x - 2.59202087e-04*x**2
-    LogMedMeanAdj = np.mean(np.reshape(f(Age),(12,5)),axis=1)
-    
+
     plt.plot(Age,MyMarket.LogTotalMedStdByAge)
     plt.plot(Age,MyMarket.data_moments[100:160],'.k')
     plt.xlabel('Age')
@@ -596,6 +595,18 @@ if __name__ == '__main__':
     #plt.savefig('../Figures/StdevMedFitByAge.pdf')
     plt.show()
     
+    plt.plot(Age,MyMarket.LogOOPmedStdByAge)
+    plt.plot(Age,MyMarket.data_moments[700:760],'.k')
+    plt.xlabel('Age')
+    plt.ylabel('Stdev log OOP medical expenses')
+    plt.xlim((25,85))
+    #plt.savefig('../Figures/StdevMedFitByAge.pdf')
+    plt.show()    
+    
+    # Make a "detrender" based on quadratic fit of data moments
+    f = lambda x : 5.14607229 + 0.04242741*x
+    LogMedMeanAdj = np.mean(np.reshape(f(Age),(12,5)),axis=1)
+        
     plt.plot(Age5year,MyMarket.LogTotalMedMeanByAgeHealth - np.tile(np.reshape(LogMedMeanAdj,(12,1)),(1,5)))
     temp = np.reshape(MyMarket.data_moments[320:380],(12,5))
     plt.plot(Age5year,temp[:,0] - LogMedMeanAdj,'.b')
@@ -608,8 +619,7 @@ if __name__ == '__main__':
     plt.xlim((25,85))
     #plt.savefig('../Figures/MeanMedFitByAgeHealth.pdf')
     plt.show()
-    
-    
+        
     plt.plot(Age5year[:8],MyMarket.LogTotalMedMeanByAgeIncome - np.tile(np.reshape(LogMedMeanAdj[:8],(8,1)),(1,5)))
     temp = np.reshape(MyMarket.data_moments[480:520],(8,5))
     plt.plot(Age5year[:8],temp[:,0] - LogMedMeanAdj[:8],'.b')
@@ -622,8 +632,8 @@ if __name__ == '__main__':
     plt.xlim((25,65))
     #plt.savefig('../Figures/MeanMedFitByAgeIncome.pdf')
     plt.show()
-    
-    plt.plot(MyMarket.LogTotalMedStdByAgeHealth)
-    plt.show()
+#    
+#    plt.plot(MyMarket.LogTotalMedStdByAgeHealth)
+#    plt.show()
     
         

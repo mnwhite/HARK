@@ -79,7 +79,7 @@ class MedShockPolicyFunc(HARKobject):
                 MedShk = MedShkGrid[j]
                 if xLvl == 0: 
                     bOpt = 0.0  # Split 50-50, which still makes cLvl=0
-                elif MedShk == 0: 
+                elif MedShk == 0.0: 
                     bOpt = np.nan # Placeholder for when MedShk = 0
                 else:
                     optMedZeroFunc = lambda q : (MedShk/MedPrice)**(-1.0/CRRAcon)*(xLvl/MedPrice*(q/(1.+q)))**(CRRAmed/CRRAcon) - (xLvl/(1.+q))
