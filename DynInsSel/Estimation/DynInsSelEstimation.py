@@ -61,8 +61,10 @@ class DynInsSelType(InsSelConsumerType):
             
     def postSim(self):
         self.OOPmedHist = self.OOPnow_hist
+        self.OOPmedHist[np.logical_and(self.OOPmedHist < 0.0001,self.OOPmedHist > 0.0,)] = 0.0001
         MedPrice_temp = np.tile(np.reshape(self.MedPrice[0:self.T_sim],(self.T_sim,1)),(1,self.AgentCount))
         self.TotalMedHist = self.MedLvlNow_hist*MedPrice_temp
+        self.TotalMedHist[np.logical_and(self.TotalMedHist < 0.0001,self.TotalMedHist > 0.0,)] = 0.0001
         self.WealthRatioHist = self.aLvlNow_hist/self.pLvlHist
         self.InsuredBoolArray = self.ContractNow_hist > 0
         
@@ -562,7 +564,7 @@ if __name__ == '__main__':
 #    MyType.plotMedFuncByMedShk(t,h,z,p)
     
     Age = np.arange(25,85)
-    Age5year = 25 + 5*np.arange(12)
+    Age5year = 27.5 + 5*np.arange(12)
 
     plt.plot(Age[0:40],MyMarket.WealthMedianByAge)
     plt.plot(Age[0:40],MyMarket.data_moments[0:40],'.k')
@@ -574,33 +576,33 @@ if __name__ == '__main__':
     plt.plot(Age,MyMarket.LogTotalMedMeanByAge)
     plt.plot(Age,MyMarket.data_moments[40:100],'.k')
     plt.xlabel('Age')
-    plt.ylabel('Mean log total medical expenses')
+    plt.ylabel('Mean log total (nonzero) medical expenses')
     plt.xlim((25,85))
-    #plt.savefig('../Figures/MeanMedFitByAge.pdf')
+    #plt.savefig('../Figures/MeanTotalMedFitByAge.pdf')
     plt.show()
     
     plt.plot(Age,MyMarket.LogOOPmedMeanByAge)
     plt.plot(Age,MyMarket.data_moments[640:700],'.k')
     plt.xlabel('Age')
-    plt.ylabel('Mean log OOP medical expenses')
+    plt.ylabel('Mean log OOP (nonzero) medical expenses')
     plt.xlim((25,85))
-    #plt.savefig('../Figures/MeanMedFitByAge.pdf')
+    #plt.savefig('../Figures/MeanOOPmedFitByAge.pdf')
     plt.show()
 
     plt.plot(Age,MyMarket.LogTotalMedStdByAge)
     plt.plot(Age,MyMarket.data_moments[100:160],'.k')
     plt.xlabel('Age')
-    plt.ylabel('Stdev log total medical expenses')
+    plt.ylabel('Stdev log total (nonzero) medical expenses')
     plt.xlim((25,85))
-    #plt.savefig('../Figures/StdevMedFitByAge.pdf')
+    #plt.savefig('../Figures/StdevTotalMedFitByAge.pdf')
     plt.show()
     
     plt.plot(Age,MyMarket.LogOOPmedStdByAge)
     plt.plot(Age,MyMarket.data_moments[700:760],'.k')
     plt.xlabel('Age')
-    plt.ylabel('Stdev log OOP medical expenses')
+    plt.ylabel('Stdev log OOP (nonzero) medical expenses')
     plt.xlim((25,85))
-    #plt.savefig('../Figures/StdevMedFitByAge.pdf')
+    #plt.savefig('../Figures/StdevOOPmedFitByAge.pdf')
     plt.show()    
     
     # Make a "detrender" based on quadratic fit of data moments
@@ -615,9 +617,10 @@ if __name__ == '__main__':
     plt.plot(Age5year,temp[:,3] - LogMedMeanAdj,'.c')
     plt.plot(Age5year,temp[:,4] - LogMedMeanAdj,'.m')
     plt.xlabel('Age')
-    plt.ylabel('Detrended mean log total medical expenses')
+    plt.ylabel('Detrended mean log total (nonzero) medical expenses')
+    plt.title('Medical expenses by age group and health status')
     plt.xlim((25,85))
-    #plt.savefig('../Figures/MeanMedFitByAgeHealth.pdf')
+    #plt.savefig('../Figures/MeanTotalMedFitByAgeHealth.pdf')
     plt.show()
         
     plt.plot(Age5year[:8],MyMarket.LogTotalMedMeanByAgeIncome - np.tile(np.reshape(LogMedMeanAdj[:8],(8,1)),(1,5)))
@@ -628,12 +631,13 @@ if __name__ == '__main__':
     plt.plot(Age5year[:8],temp[:,3] - LogMedMeanAdj[:8],'.c')
     plt.plot(Age5year[:8],temp[:,4] - LogMedMeanAdj[:8],'.m')
     plt.xlabel('Age')
-    plt.ylabel('Detrended mean log total medical expenses')
+    plt.ylabel('Detrended mean log total (nonzero) medical expenses')
+    plt.title('Medical expenses by age group and income quintile')
     plt.xlim((25,65))
-    #plt.savefig('../Figures/MeanMedFitByAgeIncome.pdf')
+    #plt.savefig('../Figures/MeanTotalMedFitByAgeIncome.pdf')
     plt.show()
-#    
-#    plt.plot(MyMarket.LogTotalMedStdByAgeHealth)
-#    plt.show()
+    
+    plt.plot(MyMarket.LogTotalMedStdByAgeHealth)
+    plt.show()
     
         
