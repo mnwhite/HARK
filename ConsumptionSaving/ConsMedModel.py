@@ -699,7 +699,8 @@ class MedShockConsumerType(PersistentShockConsumerType):
         PersistentShockConsumerType.updatePermIncGrid(self)
         for j in range(len(self.pLvlGrid)): # Then add 0 to the bottom of each pLvlGrid
             this_grid = self.pLvlGrid[j]
-            self.pLvlGrid[j] = np.insert(this_grid,0,np.min(self.pLvlGrid[j])*0.5)
+            this_grid = np.insert(this_grid,0,np.min(this_grid)*0.5)
+            self.pLvlGrid[j] = np.insert(this_grid,0,np.min(this_grid)*0.0)
         
     def getShocks(self):
         '''
