@@ -262,8 +262,9 @@ class InsSelPolicyFunc(HARKobject):
             Optimal medical care at each point in the input.
         '''
         # Get value of paying full price or paying "option cost" to pay coinsurance rate
-        v_Copay     = self.ValueFuncCopay(mLvl-self.OptionCost,pLvl,MedShk)
-        v_Copay[np.isnan(v_Copay)] = -np.inf
+        mTemp = mLvl-self.OptionCost
+        v_Copay     = self.ValueFuncCopay(mTemp,pLvl,MedShk)
+        v_Copay[mTemp < 0.] = -np.inf
         #if self.OptionCost > 0.:
         v_FullPrice = self.ValueFuncFullPrice(mLvl,pLvl,MedShk)
         
@@ -277,7 +278,7 @@ class InsSelPolicyFunc(HARKobject):
         MedLvl = np.zeros_like(mLvl)
         
         # Fill in output using better of two choices
-        cLvl[Copay_better], MedLvl[Copay_better] = self.PolicyFuncCopay(mLvl[Copay_better]-self.OptionCost,pLvl[Copay_better],MedShk[Copay_better])
+        cLvl[Copay_better], MedLvl[Copay_better] = self.PolicyFuncCopay(mTemp[Copay_better],pLvl[Copay_better],MedShk[Copay_better])
         cLvl[FullPrice_better], MedLvl[FullPrice_better] = self.PolicyFuncFullPrice(mLvl[FullPrice_better],pLvl[FullPrice_better],MedShk[FullPrice_better])
         MedLvl[MedShk == 0.0] = 0.0
         return cLvl, MedLvl
@@ -309,12 +310,13 @@ class InsSelPolicyFunc(HARKobject):
             Marginal marginal value (with respect to market resources) at each point in the input.
         '''
         # Get value of paying full price or paying "option cost" to pay coinsurance rate
+        mTemp = mLvl-self.OptionCost
         v_FullPrice = self.ValueFuncFullPrice(mLvl,pLvl,MedShk)
-        v_Copay     = self.ValueFuncCopay(mLvl-self.OptionCost,pLvl,MedShk)
-        v_Copay[np.isnan(v_Copay)] = -np.inf
+        v_Copay     = self.ValueFuncCopay(mTemp,pLvl,MedShk)
+        v_Copay[mTemp < 0.] = -np.inf
         
         # Decide which option is better and initialize output
-        Copay_better = v_Copay >= v_FullPrice
+        Copay_better = v_Copay > v_FullPrice
         FullPrice_better = np.logical_not(Copay_better)
         cLvl = np.zeros_like(mLvl)
         MedLvl = np.zeros_like(mLvl)
@@ -323,7 +325,7 @@ class InsSelPolicyFunc(HARKobject):
         #    print(np.sum(FullPrice_better > 0))
         
         # Fill in output using better of two choices
-        cLvl[Copay_better], MedLvl[Copay_better] = self.PolicyFuncCopay(mLvl[Copay_better]-self.OptionCost,pLvl[Copay_better],MedShk[Copay_better])
+        cLvl[Copay_better], MedLvl[Copay_better] = self.PolicyFuncCopay(mTemp[Copay_better],pLvl[Copay_better],MedShk[Copay_better])
         cLvl[FullPrice_better], MedLvl[FullPrice_better] = self.PolicyFuncFullPrice(mLvl[FullPrice_better],pLvl[FullPrice_better],MedShk[FullPrice_better])
         #MPC[Copay_better], trash1 = self.PolicyFuncCopay.derivativeX(mLvl[Copay_better]-self.OptionCost,pLvl[Copay_better],MedShk[Copay_better])
         #MPC[FullPrice_better], trash2 = self.PolicyFuncFullPrice.derivativeX(mLvl[FullPrice_better],pLvl[FullPrice_better],MedShk[FullPrice_better])
@@ -457,9 +459,11 @@ def solveInsuranceSelectionStatic(solution_next,MedShkDstn,CRRA,MedPrice,xLvlGri
         vFuncs_this_state = []
 
         # Loop through the various contracts
-        for policyFunc in PolicyFuncList:
+        for policyFunc in PolicyFuncList[j]:
             # Get medical expenses, (marginal) value, and insurance payout
             cLvl, MedLvl = policyFunc(xLvlGrid_tiled,ones_tiled,MedShkVals_tiled)
+            cLvl[0,:] = 0.0
+            MedLvl[0,:] = 0.0
             vGrid, vPgrid, trash = policyFunc.evalvAndvPandvPP(xLvlGrid_tiled,ones_tiled,MedShkVals_tiled)
             InsPayGrid = MedPrice*MedLvl - policyFunc.Contract.OOPfunc(MedLvl)
             
@@ -469,10 +473,13 @@ def solveInsuranceSelectionStatic(solution_next,MedShkDstn,CRRA,MedPrice,xLvlGri
             vPnow = np.sum(vPgrid*MedShkPrbs,axis=1)
             
             # Construct solution functions for this contract-state
-            AVfunc = LinearInterp(np.insert(xLvlGrid,0,0.0),np.insert(ActuarialValue,0,0.0))
-            vNvrs = np.insert(utility_inv(vNow,CRRA),0,0.0)
-            vNvrsP = np.insert(vPnow*utility_invP(vNow,CRRA),0,0.0)
-            vNvrsFunc = CubicInterp(np.insert(xLvlGrid,0,0.0),vNvrs,vNvrsP)
+            AVfunc = LinearInterp(xLvlGrid,ActuarialValue)
+            vNvrs = utility_inv(vNow,CRRA)
+            vNvrs[0] = 0.0
+            vNvrsP = vPnow*utility_invP(vNow,CRRA)
+            vNvrsP[0] = 0.0
+            #vNvrsFunc = CubicInterp(xLvlGrid,vNvrs,vNvrsP)
+            vNvrsFunc = LinearInterp(xLvlGrid,vNvrs)
             vFunc = ValueFunc(vNvrsFunc,CRRA)
             
             # Add the functions to the list of solutions
@@ -487,7 +494,8 @@ def solveInsuranceSelectionStatic(solution_next,MedShkDstn,CRRA,MedPrice,xLvlGri
     solution_now = InsuranceSelectionSolution()
     solution_now.policyFunc = PolicyFuncList
     solution_now.vFuncByContract = vFuncs
-    solution_now.AVfuncs = AVfuncs
+    solution_now.AVfunc = AVfuncs
+    #print('Solved a period of the static model!')
     return solution_now
 
 
@@ -1804,7 +1812,30 @@ class InsSelStaticConsumerType(InsSelConsumerType):
     A class to represent consumer types in the "static" version of the insurance
     selection model.  Extends / simplifies the standard InsSelConsumerType.
     '''
-    
+    def __init__(self,cycles=1,time_flow=True,**kwds):
+        '''
+        Instantiate a new InsSelConsumerType with given data, and construct objects
+        to be used during solution (income distribution, assets grid, etc).
+        See ConsumerParameters.init_med_shock for a dictionary of the keywords
+        that should be passed to the constructor.
+        
+        Parameters
+        ----------
+        cycles : int
+            Number of times the sequence of periods should be solved.
+        time_flow : boolean
+            Whether time is currently "flowing" forward for this instance.
+        
+        Returns
+        -------
+        None
+        '''
+        # Initialize a basic AgentType
+        InsSelConsumerType.__init__(self,**kwds)
+        self.solveOnePeriod = solveInsuranceSelectionStatic # Choose correct solver
+        self.PermIncCount *= 4
+        self.PermInc_tail_N *= 3
+           
     def update(self):
         '''
         Make constructed inputs for solving the model.
@@ -1825,6 +1856,14 @@ class InsSelStaticConsumerType(InsSelConsumerType):
         self.distributebFromxFuncs()
         self.makevFuncsAndPolicyFuncsByCopay()
         self.makePolicyFuncList()
+        
+    def updateSolutionTerminal(self):
+        return None
+        
+    def updatePermIncGrid(self):
+        InsSelConsumerType.updatePermIncGrid(self)
+        self.xLvlGrid = deepcopy(self.pLvlGrid)
+        self.addToTimeVary('xLvlGrid')
         
     def makevFuncsAndPolicyFuncsByCopay(self):
         '''
@@ -1864,15 +1903,17 @@ class InsSelStaticConsumerType(InsSelConsumerType):
             
             # Calculate the value of each gridpoint and take pseudo inverse
             vGrid = u(cLvlGrid) + ShkGrid*uMed(MedLvlGrid)
-            vGrid[ShkGrid == 0.0] = u(cLvlGrid)
+            ShkZero = ShkGrid == 0.0
+            vGrid[ShkZero] = u(cLvlGrid[ShkZero])
             vNvrsGrid = uinv(vGrid)
             vNvrsGrid[0,:] = 0.0
-            vNvrsFunc = BilinearInterp(vNvrsGrid,xLvlVec,ShkGrid)
+            vNvrsGridX = np.tile(np.reshape(vNvrsGrid,(xLvlVec.size,1,ShkVec.size)),(1,2,1))
+            vNvrsFunc = TrilinearInterp(vNvrsGridX,xLvlVec,np.array([0.0,100.0]),ShkVec)
             
             # Make policy and value functions
             policyFuncThisCopay = MedShockPolicyFuncPrecalc(SpendAllFunc,self.bFromxFuncListAll[k],MedPriceEff)
             PolicyFuncByCopay.append(policyFuncThisCopay)
-            vFuncThisCopay = ValueFunc2D(vNvrsFunc,self.CRRA)
+            vFuncThisCopay = ValueFunc3D(vNvrsFunc,self.CRRA)
             vFuncByCopay.append(vFuncThisCopay)
         
         # Store results in self
@@ -1913,6 +1954,93 @@ class InsSelStaticConsumerType(InsSelConsumerType):
             PolicyFuncList.append(policyFuncs_this_t)
         self.PolicyFuncList = PolicyFuncList
         self.addToTimeVary('PolicyFuncList')
+
+        
+    def simOnePeriod(self):
+        '''
+        Simulates one period of the static insurance selection model.  The
+        simulator uses the "history" style of simulation and should only be run
+        after executing both the solve() and makeShockHistory() methods.
+        
+        Parameters
+        ----------
+        None
+        
+        Returns
+        -------
+        None
+        '''
+        t = self.t_sim
+        
+        # Get state and shock vectors for (living) agents
+        yLvlNow = self.pLvlHist[t,:]
+        HealthNow = self.MrkvHist[t,:]
+        MedShkNow = self.MedShkHist[t,:]
+        PrefShkNow = self.PrefShkHist[t,:]
+
+        # Loop through each health state and get agents' controls
+        cLvlNow = np.zeros_like(yLvlNow) + np.nan
+        OOPnow = np.zeros_like(yLvlNow) + np.nan
+        MedLvlNow = np.zeros_like(yLvlNow) + np.nan
+        xLvlNow = np.zeros_like(yLvlNow) + np.nan
+        PremNow = np.zeros_like(yLvlNow) + np.nan
+        ContractNow = -np.ones(self.AgentCount,dtype=int)
+        for h in range(5):
+            these = HealthNow == h
+            N = np.sum(these)
+            Z = len(self.solution[t].policyFunc[h])
+            
+            # Get the pseudo-inverse value of holding each contract
+            vNvrs_temp = np.zeros((N,Z)) + np.nan
+            m_temp = yLvlNow[these]
+            p_temp = yLvlNow[these]
+            for z in range(Z):                
+                Premium = self.solution[t].policyFunc[h][z].Contract.Premium(m_temp)
+                x_temp = m_temp-Premium
+                vNvrs_temp[:,z] = self.solution[t].vFuncByContract[h][z].func(x_temp)
+                vNvrs_temp[x_temp<0.,z] = -np.inf
+            
+            # Get choice probabilities for each contract
+            vNvrs_temp[np.isnan(vNvrs_temp)] = -np.inf
+            v_best = np.max(vNvrs_temp,axis=1)
+            v_best_big = np.tile(np.reshape(v_best,(N,1)),(1,Z))
+            v_adj_exp = np.exp((vNvrs_temp - v_best_big)/self.ChoiceShkMag[0]) # THIS NEEDS TO LOOK UP t_cycle TO BE CORRECT IN ALL CASES
+            v_sum_rep = np.tile(np.reshape(np.sum(v_adj_exp,axis=1),(N,1)),(1,Z))
+            ChoicePrbs = v_adj_exp/v_sum_rep
+            Cutoffs = np.cumsum(ChoicePrbs,axis=1)
+            
+            # Select a contract for each agent based on the unified preference shock
+            PrefShk_temp = np.tile(np.reshape(PrefShkNow[these],(N,1)),(1,Z))
+            z_choice = np.sum(PrefShk_temp > Cutoffs,axis=1).astype(int)
+            
+            # For each contract, get controls for agents who buy it
+            c_temp = np.zeros(N) + np.nan
+            Med_temp = np.zeros(N) + np.nan
+            OOP_temp = np.zeros(N) + np.nan
+            Prem_temp = np.zeros(N) + np.nan
+            MedShk_temp = MedShkNow[these]
+            for z in range(Z):
+                idx = z_choice == z
+                Prem_temp[idx] = self.solution[t].policyFunc[h][z].Contract.Premium(m_temp[idx],p_temp[idx])
+                c_temp[idx],Med_temp[idx] = self.solution[t].policyFunc[h][z](m_temp[idx]-Prem_temp[idx],p_temp[idx],MedShk_temp[idx])
+                Med_temp[idx] = np.maximum(Med_temp[idx],0.0) # Prevents numeric glitching
+                OOP_temp[idx] = self.solution[t].policyFunc[h][z].Contract.OOPfunc(Med_temp[idx])            
+            
+            # Store the controls for this health
+            cLvlNow[these] = c_temp
+            MedLvlNow[these] = Med_temp
+            xLvlNow[these] = c_temp + OOP_temp
+            OOPnow[these] = OOP_temp
+            PremNow[these] = Prem_temp
+            ContractNow[these] = z_choice
+
+        # Calculate end of period assets and store results as attributes of self
+        self.aLvlNow = np.zeros_like(cLvlNow)
+        self.cLvlNow = cLvlNow
+        self.MedLvlNow = MedLvlNow
+        self.OOPnow = OOPnow
+        self.PremNow = PremNow
+        self.ContractNow = ContractNow
         
 ####################################################################################################
         

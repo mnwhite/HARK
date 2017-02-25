@@ -12,6 +12,7 @@ import csv
 
 # Set parameters for estimation
 AgentCountTotal = 100000
+StaticBool = False
 
 # Calibrated / other parameters (grid sizes, etc)
 Rfree = 5*[1.03]                    # Interest factor on assets
@@ -34,8 +35,8 @@ PermInc_tail_N = 3                  # Number of permanent income gridpoints in e
 PermIncStdInit = 0.4                # Initial standard deviation of (log) permanent income (not used in example)
 PermIncAvgInit = 1.0                # Initial average of permanent income (not used in example)
 PermIncCorr = 1.0                   # Serial correlation coefficient for permanent income
-MedShkCount = 6                     # Number of medical shock points in "body"
-MedShkCountTail = [3,10]            # Number of medical shock points in "upper tail"
+MedShkCount = 5                     # Number of medical shock points in "body"
+MedShkCountTail = [2,8]            # Number of medical shock points in "upper tail"
 MedShkTailBound = [0.05,0.98]         # Boundaries of body (in CDF terms)
 MedPrice = 1.0                      # Relative price of a unit of medical care
 AgentCount = 10000                  # Number of agents of this type (only matters for simulation)
@@ -406,28 +407,29 @@ test_param_vec = np.array([0.955, # DiscFac
                            0.0,  # MedShkStd "poor" constant coefficient
                            0.0   # MedShkStd "poor" linear coefficient
                            ])
-# These are some parameters where things go crazy
+
+# These are some parameters where things go crazy (only works with static model)
 #test_param_vec = np.array([0.9, # DiscFac
 #                           2.0,  # CRRAcon
-#                           1.7,  # CRRAmed scaler
+#                           2.2,  # CRRAmed scaler
 #                          -7.0,  # ChoiceShkMag in log
 #                           2.0,  # SubsidyZeroRate scaler
 #                           0.0,  # SubsidyAvg
 #                           0.0,  # SubsidyWidth scaler
-#                         -43.0,  # MedShkMean constant coefficient
-#                          0.30,  # MedShkMean linear age coefficient
-#                        0.0040,  # MedShkMean quadratic age coefficient
+#                         -66.5,  # MedShkMean constant coefficient
+#                          0.40,  # MedShkMean linear age coefficient
+#                        0.0060,  # MedShkMean quadratic age coefficient
 #                     -0.000004,  # MedShkMean cubic age coefficient
 #                   -0.00000005,  # MedShkMean quartic age coefficient
-#                           1.4,  # MedShkMean "very good" constant coefficient
+#                           5.5,  # MedShkMean "very good" constant coefficient
 #                           0.0,  # MedShkMean "very good" linear coefficient
-#                           1.5,  # MedShkMean "good" constant coefficient
+#                           6.0,  # MedShkMean "good" constant coefficient
 #                           0.0,  # MedShkMean "good" linear coefficient
-#                           2.3,  # MedShkMean "fair" constant coefficient
+#                           8.0,  # MedShkMean "fair" constant coefficient
 #                         -0.00,  # MedShkMean "fair" linear coefficient
-#                           6.5,  # MedShkMean "poor" constant coefficient
-#                         -0.06,  # MedShkMean "poor" linear coefficient
-#                          2.40,  # MedShkStd constant coefficient
+#                          25.0,  # MedShkMean "poor" constant coefficient
+#                         -0.20,  # MedShkMean "poor" linear coefficient
+#                          3.25,  # MedShkStd constant coefficient
 #                         0.002,  # MedShkStd linear age coefficient
 #                           0.0,  # MedShkStd quadratic age coefficient
 #                           0.0,  # MedShkStd cubic age coefficient

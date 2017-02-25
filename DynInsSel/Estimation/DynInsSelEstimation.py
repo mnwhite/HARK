@@ -8,15 +8,19 @@ sys.path.insert(0,'../../')
 import numpy as np
 import DynInsSelParameters as Params
 from copy import copy
-from InsuranceSelectionModel import MedInsuranceContract, InsSelConsumerType
+from InsuranceSelectionModel import MedInsuranceContract, InsSelConsumerType, InsSelStaticConsumerType
 from LoadDataMoments import data_moments, moment_weights
 from HARKinterpolation import ConstantFunction
 from HARKutilities import approxUniform, getPercentiles
 from HARKcore import Market
 from HARKparallel import multiThreadCommands, multiThreadCommandsFake
 
+if Params.StaticBool:
+    BaseType = InsSelStaticConsumerType
+else:
+    BaseType = InsSelConsumerType
 
-class DynInsSelType(InsSelConsumerType):
+class DynInsSelType(BaseType):
     '''
     An extension of InsSelConsumerType that adds and adjusts methods for estimation.
     '''    
@@ -495,7 +499,7 @@ def makeMarketFromParams(ParamArray,PremiumArray,InsChoiceBool):
 def objectiveFunction(Parameters):
     InsChoice = False
     MyMarket = makeMarketFromParams(Parameters,np.array([1,2,3,4,5]),InsChoice)
-    multiThreadCommandsFake(MyMarket.Agents,['update()','makeShockHistory()'])
+    multiThreadCommands(MyMarket.Agents,['update()','makeShockHistory()'])
     MyMarket.getIncomeQuintiles()
     multiThreadCommandsFake(MyMarket.Agents,['makeIncBoolArray()'])
     
@@ -512,7 +516,30 @@ if __name__ == '__main__':
     import matplotlib.pyplot as plt
     from time import clock
     mystr = lambda number : "{:.4f}".format(number)
-    
+
+    t_start = clock()
+    MyMarket = objectiveFunction(Params.test_param_vec)
+    t_end = clock()
+    print('Objective function evaluation took ' + mystr(t_end-t_start) + ' seconds.')
+
+#    t_start = clock()
+#    InsChoice = False
+#    MyMarket = makeMarketFromParams(Params.test_param_vec,np.array([1,2,3,4,5]),InsChoice)
+#    StaticType = MyMarket.Agents[1]
+#    StaticType.update()
+#    StaticType.makeShockHistory()
+#    t_end = clock()
+#    print('Making a static agent type took ' + mystr(t_end-t_start) + ' seconds.')
+#    t_start = clock()
+#    StaticType.solve()
+#    t_end = clock()
+#    print('Solving a static agent type took ' + mystr(t_end-t_start) + ' seconds.')
+#    t_start = clock()
+#    StaticType.initializeSim()
+#    StaticType.simulate()
+#    t_end = clock()
+#    print('Simulating a static agent type took ' + mystr(t_end-t_start) + ' seconds.')
+
 #    t_start = clock()
 #    InsChoice = False
 #    MyMarket = makeMarketFromParams(Params.test_param_vec,np.array([1,2,3,4,5]),InsChoice)
@@ -544,10 +571,7 @@ if __name__ == '__main__':
 #    
 #    MyMarket.calcSimulatedMoments()
 
-    t_start = clock()
-    MyMarket = objectiveFunction(Params.test_param_vec)
-    t_end = clock()
-    print('Objective function evaluation took ' + mystr(t_end-t_start) + ' seconds.')
+
     
 #    MyType = MyMarket.Agents[0]    
 #    t = 0
@@ -562,16 +586,18 @@ if __name__ == '__main__':
 #    MyType.plotcFuncByContract(t,h,p,MedShk)
 #    MyType.plotcFuncByMedShk(t,h,z,p)
 #    MyType.plotMedFuncByMedShk(t,h,z,p)
-    
+  
+  
     Age = np.arange(25,85)
     Age5year = 27.5 + 5*np.arange(12)
-
-    plt.plot(Age[0:40],MyMarket.WealthMedianByAge)
-    plt.plot(Age[0:40],MyMarket.data_moments[0:40],'.k')
-    plt.xlabel('Age')
-    plt.ylabel('Median wealth/income ratio')
-    #plt.savefig('../Figures/WealthFitByAge.pdf')
-    plt.show()
+    
+    if not Params.StaticBool:
+        plt.plot(Age[0:40],MyMarket.WealthMedianByAge)
+        plt.plot(Age[0:40],MyMarket.data_moments[0:40],'.k')
+        plt.xlabel('Age')
+        plt.ylabel('Median wealth/income ratio')
+        #plt.savefig('../Figures/WealthFitByAge.pdf')
+        plt.show()
     
     plt.plot(Age,MyMarket.LogTotalMedMeanByAge)
     plt.plot(Age,MyMarket.data_moments[40:100],'.k')
