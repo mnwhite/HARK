@@ -306,7 +306,7 @@ class DynInsSelMarket(Market):
 def makeDynInsSelType(CRRAcon,CRRAmed,DiscFac,ChoiceShkMag,MedShkMeanAgeParams,MedShkMeanVGparams,
                       MedShkMeanGDparams,MedShkMeanFRparams,MedShkMeanPRparams,MedShkStdAgeParams,
                       MedShkStdVGparams,MedShkStdGDparams,MedShkStdFRparams,MedShkStdPRparams,
-                      PremiumArray,PremiumSubsidy,EducType,InsChoiceBool):
+                      PremiumArray,PremiumSubsidy,EducType,InsChoiceType):
     '''
     Makes an InsSelConsumerType using (human-organized) structural parameters for the estimation.
     
@@ -346,10 +346,11 @@ def makeDynInsSelType(CRRAcon,CRRAmed,DiscFac,ChoiceShkMag,MedShkMeanAgeParams,M
         Employer contribution to any (non-null) insurance contract.
     EducType : int
         Discrete education type.  0 --> dropout, 1 --> high school, 2 --> college graduate.
-    InsChoiceBool : boolean
-        Indicator for whether insurance choice is in the model.  When True, working-age agents can
+    InsChoiceType : int
+        Indicator for whether insurance choice is in the model.  When 2, working-age agents can
         choose among several insurance contracts, while retirees choose between basic Medicare,
-        Medicare A+B, or Medicare A+B + Medigap.  When false, agents get exogenous contracts.
+        Medicare A+B, or Medicare A+B + Medigap.  When 0, agents get exogenous contracts.
+        When 1, agents have a binary contract choice when working.
     
     Returns
     -------
@@ -404,13 +405,19 @@ def makeDynInsSelType(CRRAcon,CRRAmed,DiscFac,ChoiceShkMag,MedShkMeanAgeParams,M
     
     # Make insurance contracts when working and retired, then combine into a lifecycle list
     WorkingContractList = []
-    if InsChoiceBool:
+    if InsChoiceType == 2:
         WorkingContractList.append(MedInsuranceContract(ConstantFunction(0.0),0.0,1.0,Params.MedPrice))
         for j in range(PremiumArray.size):
             Premium = max([PremiumArray[j] - PremiumSubsidy,0.0])
             Copay = 0.05
             Deductible = Params.DeductibleList[j]
             WorkingContractList.append(MedInsuranceContract(ConstantFunction(Premium),Deductible,Copay,Params.MedPrice))
+    elif InsChoiceType == 1:
+        WorkingContractList.append(MedInsuranceContract(ConstantFunction(0.0),0.0,1.0,Params.MedPrice))
+        Premium = max([PremiumArray[0] - PremiumSubsidy,0.0])
+        Copay = 0.05
+        Deductible = 0.05
+        WorkingContractList.append(MedInsuranceContract(ConstantFunction(Premium),Deductible,Copay,Params.MedPrice))
     else:
         WorkingContractList.append(MedInsuranceContract(ConstantFunction(0.0),0.05,0.05,Params.MedPrice))
     RetiredContractListA = [MedInsuranceContract(ConstantFunction(0.0),0.0,0.05,Params.MedPrice)]
@@ -427,7 +434,7 @@ def makeDynInsSelType(CRRAcon,CRRAmed,DiscFac,ChoiceShkMag,MedShkMeanAgeParams,M
     return ThisType
         
 
-def makeMarketFromParams(ParamArray,PremiumArray,InsChoiceBool):
+def makeMarketFromParams(ParamArray,PremiumArray,InsChoiceType):
     '''
     Makes a list of 3 or 24 DynInsSelTypes, to be used for estimation.
     
@@ -437,7 +444,7 @@ def makeMarketFromParams(ParamArray,PremiumArray,InsChoiceBool):
         Array of size 33, representing all of the structural parameters.
     PremiumArray : np.array
         Array of premiums for insurance contracts for workers. Irrelevant if InsChoiceBool = False.
-    InsChoiceBool : boolean
+    InsChoiceType : int
         Indicator for whether the agents should have a choice of insurance contract.
         
     Returns
@@ -448,7 +455,7 @@ def makeMarketFromParams(ParamArray,PremiumArray,InsChoiceBool):
     # Unpack the parameters
     DiscFac = ParamArray[0]
     CRRAcon = ParamArray[1]
-    CRRAmed = (1.0 + np.exp(ParamArray[2]))*CRRAcon
+    CRRAmed = ParamArray[2]
     ChoiceShkMag = np.exp(ParamArray[3])
     SubsidyZeroRate = 1.0/(1.0 + np.exp(ParamArray[4]))
     SubsidyAvg = np.exp(ParamArray[5])
@@ -465,7 +472,7 @@ def makeMarketFromParams(ParamArray,PremiumArray,InsChoiceBool):
     MedShkStdPRparams = ParamArray[31:33]
     
     # Make the array of premium subsidies (trivial if there is no insurance choice)
-    if InsChoiceBool:
+    if InsChoiceType == 2:
         Temp = approxUniform(7,SubsidyAvg-SubsidyWidth,SubsidyAvg+SubsidyWidth)
         SubsidyArray = Temp[1]
         SubsidyArray = np.insert(SubsidyArray,0,0.0)
@@ -482,7 +489,7 @@ def makeMarketFromParams(ParamArray,PremiumArray,InsChoiceBool):
             AgentList.append(makeDynInsSelType(CRRAcon,CRRAmed,DiscFac,ChoiceShkMag,MedShkMeanAgeParams,
                       MedShkMeanVGparams,MedShkMeanGDparams,MedShkMeanFRparams,MedShkMeanPRparams,
                       MedShkStdAgeParams,MedShkStdVGparams,MedShkStdGDparams,MedShkStdFRparams,
-                      MedShkStdPRparams,PremiumArray,SubsidyArray[j],k,InsChoiceBool))
+                      MedShkStdPRparams,PremiumArray,SubsidyArray[j],k,InsChoiceType))
             AgentList[-1].Weight = WeightArray[j]*Params.EducWeight[k]
             AgentList[-1].AgentCount = int(round(AgentList[-1].Weight*Params.AgentCountTotal))
             AgentList[-1].seed = i # Assign different seeds to each type
@@ -497,13 +504,13 @@ def makeMarketFromParams(ParamArray,PremiumArray,InsChoiceBool):
     
 
 def objectiveFunction(Parameters):
-    InsChoice = False
-    MyMarket = makeMarketFromParams(Parameters,np.array([1,2,3,4,5]),InsChoice)
+    InsChoice = 0
+    MyMarket = makeMarketFromParams(Parameters,np.array([0.5,2,3,4,5]),InsChoice)
     multiThreadCommands(MyMarket.Agents,['update()','makeShockHistory()'])
     MyMarket.getIncomeQuintiles()
     multiThreadCommandsFake(MyMarket.Agents,['makeIncBoolArray()'])
     
-    all_commands = ['update()','solve()','initializeSim()','simulate()','postSim()','deleteSolution()']
+    all_commands = ['update()','solve()','initializeSim()','simulate()','postSim()']
     multiThreadCommands(MyMarket.Agents,all_commands)
     
     MyMarket.calcSimulatedMoments()
@@ -665,5 +672,11 @@ if __name__ == '__main__':
     
     plt.plot(MyMarket.LogTotalMedStdByAgeHealth)
     plt.show()
+    
+    plt.plot(MyMarket.InsuredRateByAge,'-b')
+    plt.plot(MyMarket.data_moments[160:200],'.k')
+    plt.show()
+    
+    
     
         

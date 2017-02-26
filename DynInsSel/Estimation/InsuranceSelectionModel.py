@@ -2001,17 +2001,21 @@ class InsSelStaticConsumerType(InsSelConsumerType):
                 vNvrs_temp[x_temp<0.,z] = -np.inf
             
             # Get choice probabilities for each contract
+            random_choice = False
             vNvrs_temp[np.isnan(vNvrs_temp)] = -np.inf
-            v_best = np.max(vNvrs_temp,axis=1)
-            v_best_big = np.tile(np.reshape(v_best,(N,1)),(1,Z))
-            v_adj_exp = np.exp((vNvrs_temp - v_best_big)/self.ChoiceShkMag[0]) # THIS NEEDS TO LOOK UP t_cycle TO BE CORRECT IN ALL CASES
-            v_sum_rep = np.tile(np.reshape(np.sum(v_adj_exp,axis=1),(N,1)),(1,Z))
-            ChoicePrbs = v_adj_exp/v_sum_rep
-            Cutoffs = np.cumsum(ChoicePrbs,axis=1)
-            
-            # Select a contract for each agent based on the unified preference shock
-            PrefShk_temp = np.tile(np.reshape(PrefShkNow[these],(N,1)),(1,Z))
-            z_choice = np.sum(PrefShk_temp > Cutoffs,axis=1).astype(int)
+            if random_choice:
+                v_best = np.max(vNvrs_temp,axis=1)
+                v_best_big = np.tile(np.reshape(v_best,(N,1)),(1,Z))
+                v_adj_exp = np.exp((vNvrs_temp - v_best_big)/self.ChoiceShkMag[0]) # THIS NEEDS TO LOOK UP t_cycle TO BE CORRECT IN ALL CASES
+                v_sum_rep = np.tile(np.reshape(np.sum(v_adj_exp,axis=1),(N,1)),(1,Z))
+                ChoicePrbs = v_adj_exp/v_sum_rep
+                Cutoffs = np.cumsum(ChoicePrbs,axis=1)
+                
+                # Select a contract for each agent based on the unified preference shock
+                PrefShk_temp = np.tile(np.reshape(PrefShkNow[these],(N,1)),(1,Z))
+                z_choice = np.sum(PrefShk_temp > Cutoffs,axis=1).astype(int)
+            else:
+                z_choice = np.argmax(vNvrs_temp,axis=1)
             
             # For each contract, get controls for agents who buy it
             c_temp = np.zeros(N) + np.nan

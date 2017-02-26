@@ -12,7 +12,7 @@ import csv
 
 # Set parameters for estimation
 AgentCountTotal = 100000
-StaticBool = False
+StaticBool = True
 
 # Calibrated / other parameters (grid sizes, etc)
 Rfree = 5*[1.03]                    # Interest factor on assets
@@ -373,63 +373,27 @@ CollegeDictionary['MrkvArray'] = MrkvArray_c
 CollegeDictionary['PermIncAvgInit'] = PermIncAvgInit_c
 
 # Make a test parameter vector for estimation
-test_param_vec = np.array([0.955, # DiscFac
-                           2.0,  # CRRAcon
-                           0.5,  # CRRAmed scaler
-                          -7.0,  # ChoiceShkMag in log
-                           2.0,  # SubsidyZeroRate scaler
-                           0.0,  # SubsidyAvg
-                           0.0,  # SubsidyWidth scaler
-                         -20.0,  # MedShkMean constant coefficient
-                         0.039,  # MedShkMean linear age coefficient
-                        0.0028,  # MedShkMean quadratic age coefficient
-                     -0.000004,  # MedShkMean cubic age coefficient
-                   -0.00000005,  # MedShkMean quartic age coefficient
-                           1.4,  # MedShkMean "very good" constant coefficient
-                           0.0,  # MedShkMean "very good" linear coefficient
-                           1.5,  # MedShkMean "good" constant coefficient
-                           0.0,  # MedShkMean "good" linear coefficient
-                           2.3,  # MedShkMean "fair" constant coefficient
-                         -0.00,  # MedShkMean "fair" linear coefficient
-                           6.5,  # MedShkMean "poor" constant coefficient
-                         -0.06,  # MedShkMean "poor" linear coefficient
-                          1.81,  # MedShkStd constant coefficient
-                         0.002,  # MedShkStd linear age coefficient
-                           0.0,  # MedShkStd quadratic age coefficient
-                           0.0,  # MedShkStd cubic age coefficient
-                           0.0,  # MedShkStd quartic age coefficient
-                           0.0,  # MedShkStd "very good" constant coefficient
-                           0.0,  # MedShkStd "very good" linear coefficient
-                           0.0,  # MedShkStd "good" constant coefficient
-                           0.0,  # MedShkStd "good" linear coefficient
-                           0.0,  # MedShkStd "fair" constant coefficient
-                           0.0,  # MedShkStd "fair" linear coefficient
-                           0.0,  # MedShkStd "poor" constant coefficient
-                           0.0   # MedShkStd "poor" linear coefficient
-                           ])
-
-# These are some parameters where things go crazy (only works with static model)
-#test_param_vec = np.array([0.9, # DiscFac
+#test_param_vec = np.array([0.955, # DiscFac
 #                           2.0,  # CRRAcon
-#                           2.2,  # CRRAmed scaler
+#                           5.3,  # CRRAmed 
 #                          -7.0,  # ChoiceShkMag in log
 #                           2.0,  # SubsidyZeroRate scaler
 #                           0.0,  # SubsidyAvg
 #                           0.0,  # SubsidyWidth scaler
-#                         -66.5,  # MedShkMean constant coefficient
-#                          0.40,  # MedShkMean linear age coefficient
-#                        0.0060,  # MedShkMean quadratic age coefficient
+#                         -20.0,  # MedShkMean constant coefficient
+#                         0.039,  # MedShkMean linear age coefficient
+#                        0.0028,  # MedShkMean quadratic age coefficient
 #                     -0.000004,  # MedShkMean cubic age coefficient
 #                   -0.00000005,  # MedShkMean quartic age coefficient
-#                           5.5,  # MedShkMean "very good" constant coefficient
+#                           1.4,  # MedShkMean "very good" constant coefficient
 #                           0.0,  # MedShkMean "very good" linear coefficient
-#                           6.0,  # MedShkMean "good" constant coefficient
+#                           1.5,  # MedShkMean "good" constant coefficient
 #                           0.0,  # MedShkMean "good" linear coefficient
-#                           8.0,  # MedShkMean "fair" constant coefficient
+#                           2.3,  # MedShkMean "fair" constant coefficient
 #                         -0.00,  # MedShkMean "fair" linear coefficient
-#                          25.0,  # MedShkMean "poor" constant coefficient
-#                         -0.20,  # MedShkMean "poor" linear coefficient
-#                          3.25,  # MedShkStd constant coefficient
+#                           6.5,  # MedShkMean "poor" constant coefficient
+#                         -0.06,  # MedShkMean "poor" linear coefficient
+#                          1.81,  # MedShkStd constant coefficient
 #                         0.002,  # MedShkStd linear age coefficient
 #                           0.0,  # MedShkStd quadratic age coefficient
 #                           0.0,  # MedShkStd cubic age coefficient
@@ -443,3 +407,39 @@ test_param_vec = np.array([0.955, # DiscFac
 #                           0.0,  # MedShkStd "poor" constant coefficient
 #                           0.0   # MedShkStd "poor" linear coefficient
 #                           ])
+
+# These are some parameters where things go crazy (only works with static model)
+test_param_vec = np.array([0.9, # DiscFac
+                           2.0,  # CRRAcon
+                           20.,  # CRRAmed
+                          -7.0,  # ChoiceShkMag in log
+                           2.0,  # SubsidyZeroRate scaler
+                           0.0,  # SubsidyAvg
+                           0.0,  # SubsidyWidth scaler
+                         -66.5,  # MedShkMean constant coefficient
+                          0.40,  # MedShkMean linear age coefficient
+                        0.0060,  # MedShkMean quadratic age coefficient
+                     -0.000004,  # MedShkMean cubic age coefficient
+                   -0.00000005,  # MedShkMean quartic age coefficient
+                           5.5,  # MedShkMean "very good" constant coefficient
+                           0.0,  # MedShkMean "very good" linear coefficient
+                           6.0,  # MedShkMean "good" constant coefficient
+                           0.0,  # MedShkMean "good" linear coefficient
+                           8.0,  # MedShkMean "fair" constant coefficient
+                         -0.00,  # MedShkMean "fair" linear coefficient
+                          25.0,  # MedShkMean "poor" constant coefficient
+                         -0.20,  # MedShkMean "poor" linear coefficient
+                          3.25,  # MedShkStd constant coefficient
+                         0.002,  # MedShkStd linear age coefficient
+                           0.0,  # MedShkStd quadratic age coefficient
+                           0.0,  # MedShkStd cubic age coefficient
+                           0.0,  # MedShkStd quartic age coefficient
+                           0.0,  # MedShkStd "very good" constant coefficient
+                           0.0,  # MedShkStd "very good" linear coefficient
+                           0.0,  # MedShkStd "good" constant coefficient
+                           0.0,  # MedShkStd "good" linear coefficient
+                           0.0,  # MedShkStd "fair" constant coefficient
+                           0.0,  # MedShkStd "fair" linear coefficient
+                           0.0,  # MedShkStd "poor" constant coefficient
+                           0.0   # MedShkStd "poor" linear coefficient
+                           ])
