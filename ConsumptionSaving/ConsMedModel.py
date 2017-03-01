@@ -82,11 +82,10 @@ class MedShockPolicyFunc(HARKobject):
                 elif MedShk == 0.0: 
                     bOpt = np.nan # Placeholder for when MedShk = 0
                 else:
-                    optMedZeroFunc = lambda q : (MedShk/MedPrice)**(-1.0/CRRAcon)*(xLvl/MedPrice*(q/(1.+q)))**(CRRAmed/CRRAcon) - (xLvl/(1.+q))
+                    #optMedZeroFunc = lambda q : (MedShk/MedPrice)**(-1.0/CRRAcon)*(xLvl/MedPrice*(q/(1.+q)))**(CRRAmed/CRRAcon) - (xLvl/(1.+q))
+                    optMedZeroFunc = lambda q : 1. + CRRAmed/(MedPrice*MedShk)*xLvl/(1.+q) - np.exp((xLvl*q/(1.+q))/MedShk)
                     optFuncTransformed = lambda b : optMedZeroFunc(tempf(b))
-                    #cLvl = brentq(optMedZeroFunc,0.0,xLvl) # Find solution to FOC
-                    #bOpt = newton(optFuncTransformed,0.0,maxiter=200)
-                    bOpt = brentq(optFuncTransformed,-700.0,700.0)
+                    bOpt = brentq(optFuncTransformed,-100.0,100.0)
                 bGrid[i,j] = bOpt
 
         # Fill in the missing values

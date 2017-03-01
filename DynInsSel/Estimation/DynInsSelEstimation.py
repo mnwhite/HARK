@@ -580,13 +580,13 @@ if __name__ == '__main__':
 
 
     
-#    MyType = MyMarket.Agents[0]    
+#    MyType = MyMarket.Agents[1]    
 #    t = 0
 #    p = 2.0    
 #    h = 4        
 #    MedShk = 1.0e-2
 #    z = 0
-#    
+    
 #    MyType.plotvFunc(t,p)
 #    MyType.plotvPfunc(t,p)
 #    MyType.plotvFuncByContract(t,h,p)
@@ -670,13 +670,11 @@ if __name__ == '__main__':
     #plt.savefig('../Figures/MeanTotalMedFitByAgeIncome.pdf')
     plt.show()
     
-    plt.plot(MyMarket.LogTotalMedStdByAgeHealth)
-    plt.show()
+#    plt.plot(MyMarket.LogTotalMedStdByAgeHealth)
+#    plt.show()
     
-    plt.plot(MyMarket.InsuredRateByAge,'-b')
-    plt.plot(MyMarket.data_moments[160:200],'.k')
-    plt.show()
+#    plt.plot(MyMarket.InsuredRateByAge,'-b')
+#    plt.plot(MyMarket.data_moments[160:200],'.k')
+#    plt.show()
     
-    
-    
-        
+     

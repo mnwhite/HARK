@@ -1881,7 +1881,6 @@ class InsSelStaticConsumerType(InsSelConsumerType):
         None
         '''
         u = lambda x : utility(x,self.CRRA)
-        uMed = lambda x : utility(x,self.CRRAmed)
         uinv = lambda x : utility_inv(x,self.CRRA)
         SpendAllFunc = IdentityFunction(n_dims=3)
         PolicyFuncByCopay = []
@@ -1902,7 +1901,7 @@ class InsSelStaticConsumerType(InsSelConsumerType):
             MedLvlGrid = (xLvlGrid/MedPriceEff)*qGrid/(1.+qGrid)
             
             # Calculate the value of each gridpoint and take pseudo inverse
-            vGrid = u(cLvlGrid) + ShkGrid*uMed(MedLvlGrid)
+            vGrid = u((1.-np.exp(-MedLvlGrid/ShkGrid))**self.CRRAmed*cLvlGrid)
             ShkZero = ShkGrid == 0.0
             vGrid[ShkZero] = u(cLvlGrid[ShkZero])
             vNvrsGrid = uinv(vGrid)
