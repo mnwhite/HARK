@@ -380,21 +380,21 @@ test_param_vec = np.array([0.955, # DiscFac
                            2.0,  # SubsidyZeroRate scaler
                            0.0,  # SubsidyAvg
                            0.0,  # SubsidyWidth scaler
-                          -4.7,  # MedShkMean constant coefficient
+                         -4.85,  # MedShkMean constant coefficient
                          0.010,  # MedShkMean linear age coefficient
-                        0.0007,  # MedShkMean quadratic age coefficient
+                        0.0009,  # MedShkMean quadratic age coefficient
                      -0.000000,  # MedShkMean cubic age coefficient
                    -0.00000000,  # MedShkMean quartic age coefficient
-                           0.2,  # MedShkMean "very good" constant coefficient
+                          0.45,  # MedShkMean "very good" constant coefficient
                            0.0,  # MedShkMean "very good" linear coefficient
-                           0.2,  # MedShkMean "good" constant coefficient
+                           0.4,  # MedShkMean "good" constant coefficient
                            0.0,  # MedShkMean "good" linear coefficient
-                           0.3,  # MedShkMean "fair" constant coefficient
+                           0.7,  # MedShkMean "fair" constant coefficient
                          -0.00,  # MedShkMean "fair" linear coefficient
-                           0.8,  # MedShkMean "poor" constant coefficient
+                           1.7,  # MedShkMean "poor" constant coefficient
                          -0.01,  # MedShkMean "poor" linear coefficient
-                           0.7,  # MedShkStd constant coefficient
-                        -0.000,  # MedShkStd linear age coefficient
+                           0.6,  # MedShkStd constant coefficient
+                         0.003,  # MedShkStd linear age coefficient
                            0.0,  # MedShkStd quadratic age coefficient
                            0.0,  # MedShkStd cubic age coefficient
                            0.0,  # MedShkStd quartic age coefficient
