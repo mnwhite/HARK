@@ -1606,6 +1606,13 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         beginning of simulation because this type uses "history style".
         '''
         self.aLvlNow[which_agents] = self.aLvlInit[which_agents]
+
+    def marketAction(self):
+        '''
+        Calculates total expected medical costs by age-state-contract, as well
+        as the number of agents who buy the contract.
+        '''
+        self.calcExpInsPaybyContract()
         
     def simOnePeriod(self):
         '''
@@ -1709,7 +1716,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         '''
         # Get dimensions of output objects and initialize them
         StateCount = self.MrkvArray[0].shape[0]
-        MaxContracts = max([max([self.ContractList[t][h] for h in range(StateCount)]) for t in range(self.T_sim)])
+        MaxContracts = max([max([len(self.ContractList[t][h]) for h in range(StateCount)]) for t in range(self.T_sim)])
         ContractPayments = np.zeros((self.T_sim,StateCount,MaxContracts)) + np.nan
         ContractCounts = np.zeros((self.T_sim,StateCount,MaxContracts),dtype=int)
         
@@ -1718,6 +1725,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         Payments = self.MedLvlNow_hist*MedPrice_temp - self.OOPnow_hist
         Choices = self.ContractNow_hist
         States = self.MrkvHist
+        Payments[States == -1] = 0.0 # Dead people have no costs
         
         # Calculate insurance payment and individual count for each age-state-contract
         for j in range(StateCount):
@@ -1730,6 +1738,59 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         # Store the results as attributes of self
         self.ContractPayments = ContractPayments
         self.ContractCounts = ContractCounts
+        
+    def calcExpInsPaybyContract(self):
+        '''
+        Calculates the expected insurance payout for each contract in each health
+        state at each age for this type.  Makes use of the premium functions
+        in the attribute PremiumFuncs, which does not necessarily contain the
+        premium functions used to solve the dynamic problem.  This function is
+        called as part of marketAction to find "statically stable" premiums.
+        
+        Parameters
+        ----------
+        None
+        
+        Returns
+        -------
+        None
+        '''
+        StateCount = self.MrkvArray[0].size[0]
+        MaxContracts = max([max([len(self.ContractList[t][h]) for h in range(StateCount)]) for t in range(self.T_sim)])
+        ExpInsPay = np.zeros((self.T_sim,StateCount,MaxContracts))
+        ExpBuyers = np.zeros((self.T_sim,StateCount,MaxContracts))
+        
+        for t in range(self.T_sim):
+            random_choice = self.ChoiceShkMag[0] > 0.
+            for j in range(StateCount):
+                these = self.MrkvHist[t,:] == j
+                N = these.size
+                mLvl = self.mLvlNow_hist[t,these]
+                pLvl = self.pLvlHist[t,these]
+                Z = len(self.PremiumFuncs[t][j])
+                vNvrs_array = np.zeros((N,Z))
+                AV_array = np.zeros((N,Z))
+                for z in range(Z):
+                    Premium = self.PremiumFuncs[t][j][z](mLvl,pLvl)
+                    mLvl_temp = mLvl - Premium
+                    AV_array[:,z] = self.solution[t].AVfunc[j][z](mLvl_temp,pLvl)
+                    vNvrs_array[:,z] = self.solution[t].vFuncByContract[j][z].func(mLvl_temp,pLvl)
+                if random_choice:
+                    v_best = np.max(vNvrs_array,axis=1)
+                    v_best_big = np.tile(np.reshape(v_best,(N,1)),(1,Z))
+                    v_adj_exp = np.exp((vNvrs_array - v_best_big)/self.ChoiceShkMag[0]) # THIS NEEDS TO LOOK UP t_cycle TO BE CORRECT IN ALL CASES
+                    v_sum_rep = np.tile(np.reshape(np.sum(v_adj_exp,axis=1),(N,1)),(1,Z))
+                    ChoicePrbs = v_adj_exp/v_sum_rep
+                else:
+                    z_choice = np.argmax(vNvrs_array,axis=1)
+                    ChoicePrbs = np.zeros((N,Z))
+                    for z in range(Z): # is there a non-loop way to do this?
+                        ChoicePrbs[z_choice==z,z] == 1.0
+                ExpInsPay[t,j,0:Z] = np.sum(ChoicePrbs*AV_array,axis=0)
+                ExpBuyers[t,j,0:Z] = np.sum(ChoicePrbs,axis=0)
+                
+        self.ExpInsPay = ExpInsPay
+        self.ExpBuyers = ExpBuyers
     
     
     def plotvFunc(self,t,p,mMin=0.0,mMax=10.0,H=None):
@@ -1954,7 +2015,7 @@ class InsSelStaticConsumerType(InsSelConsumerType):
         self.PolicyFuncList = PolicyFuncList
         self.addToTimeVary('PolicyFuncList')
 
-        
+                         
     def simOnePeriod(self):
         '''
         Simulates one period of the static insurance selection model.  The
@@ -2000,7 +2061,7 @@ class InsSelStaticConsumerType(InsSelConsumerType):
                 vNvrs_temp[x_temp<0.,z] = -np.inf
             
             # Get choice probabilities for each contract
-            random_choice = False
+            random_choice = self.ChoiceShkMag[t] > 0.
             vNvrs_temp[np.isnan(vNvrs_temp)] = -np.inf
             if random_choice:
                 v_best = np.max(vNvrs_temp,axis=1)
@@ -2044,6 +2105,60 @@ class InsSelStaticConsumerType(InsSelConsumerType):
         self.OOPnow = OOPnow
         self.PremNow = PremNow
         self.ContractNow = ContractNow
+        
+    def calcExpInsPaybyContract(self):
+        '''
+        Calculates the expected insurance payout for each contract in each health
+        state at each age for this type.  Makes use of the premium functions
+        in the attribute PremiumFuncs, which does not necessarily contain the
+        premium functions used to solve the dynamic problem.  This function is
+        called as part of marketAction to find "statically stable" premiums.
+        
+        Parameters
+        ----------
+        None
+        
+        Returns
+        -------
+        None
+        '''
+        StateCount = self.MrkvArray[0].shape[0]
+        MaxContracts = max([max([len(self.ContractList[t][h]) for h in range(StateCount)]) for t in range(self.T_sim)])
+        ExpInsPay = np.zeros((self.T_sim,StateCount,MaxContracts))
+        ExpBuyers = np.zeros((self.T_sim,StateCount,MaxContracts))
+        
+        for t in range(self.T_sim):
+            random_choice = self.ChoiceShkMag[0] > 0.
+            for j in range(StateCount):
+                these = self.MrkvHist[t,:] == j
+                N = np.sum(these)
+                pLvl = self.pLvlHist[t,these]
+                Z = len(self.solution[t].AVfunc[j])
+                vNvrs_array = np.zeros((N,Z))
+                AV_array = np.zeros((N,Z))
+                for z in range(Z):
+                    Premium = self.PremiumFuncs[t][j][z](pLvl)
+                    xLvl_temp = pLvl - Premium
+                    AV_array[:,z] = self.solution[t].AVfunc[j][z](xLvl_temp)
+                    vNvrs_array[:,z] = self.solution[t].vFuncByContract[j][z].func(xLvl_temp)
+                if random_choice:
+                    v_best = np.max(vNvrs_array,axis=1)
+                    v_best_big = np.tile(np.reshape(v_best,(N,1)),(1,Z))
+                    v_adj_exp = np.exp((vNvrs_array - v_best_big)/self.ChoiceShkMag[0]) # THIS NEEDS TO LOOK UP t_cycle TO BE CORRECT IN ALL CASES
+                    v_sum_rep = np.tile(np.reshape(np.sum(v_adj_exp,axis=1),(N,1)),(1,Z))
+                    ChoicePrbs = v_adj_exp/v_sum_rep
+                else:
+                    z_choice = np.argmax(vNvrs_array,axis=1)
+                    ChoicePrbs = np.zeros((N,Z))
+                    for z in range(Z): # is there a non-loop way to do this?
+                        ChoicePrbs[z_choice==z,z] == 1.0
+                print(t,j,np.sum(np.isnan(AV_array)),np.sum(np.isnan(ChoicePrbs)))
+                ExpInsPay[t,j,0:Z] = np.sum(ChoicePrbs*AV_array,axis=0)
+                ExpBuyers[t,j,0:Z] = np.sum(ChoicePrbs,axis=0)
+        
+        #print(ExpInsPay)
+        self.ExpInsPay = ExpInsPay
+        self.ExpBuyers = ExpBuyers
         
 ####################################################################################################
         

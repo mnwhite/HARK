@@ -10,9 +10,10 @@ import DynInsSelParameters as Params
 from copy import copy
 from InsuranceSelectionModel import MedInsuranceContract, InsSelConsumerType, InsSelStaticConsumerType
 from LoadDataMoments import data_moments, moment_weights
+from ActuarialRules import flatActuarialRule
 from HARKinterpolation import ConstantFunction
 from HARKutilities import approxUniform, getPercentiles
-from HARKcore import Market
+from HARKcore import Market, HARKobject
 from HARKparallel import multiThreadCommands, multiThreadCommandsFake
 
 if Params.StaticBool:
@@ -58,6 +59,11 @@ class DynInsSelType(BaseType):
     def preSolve(self):
         self.updateSolutionTerminal()
         
+#    def postSolve(self):
+#        self.initializeSim()
+#        self.simulate()
+#        self.postSim()
+        
     def initializeSim(self):
         InsSelConsumerType.initializeSim(self)
         if 'ContractNow' in self.track_vars:
@@ -74,11 +80,36 @@ class DynInsSelType(BaseType):
         
     def deleteSolution(self):
         del self.solution
+        
+    def reset(self):
+        return None
+        
+
+# This is a trivial "container" class
+class PremiumFuncsContainer(HARKobject):
+    distance_criteria = ['PremiumFuncs']
     
+    def __init__(self,PremiumFuncs):
+        self.PremiumFuncs = PremiumFuncs
+        
+        
 class DynInsSelMarket(Market):
     '''
     A class for representing the "insurance economy" with many agent types.
-    '''    
+    '''
+
+    def __init__(self):
+        Market.__init__(self,agents=[],sow_vars=['PremiumFuncs'],reap_vars=['ExpInsPay','ExpBuyers'],
+                        const_vars=[],track_vars=['Premiums'],dyn_vars=['PremiumFuncs'],
+                 millRule=None,calcDynamics=None,act_T=1,tolerance=0.0001)
+
+    def millRule(self,ExpInsPay,ExpBuyers):
+        return flatActuarialRule(self,ExpInsPay,ExpBuyers)
+        
+    def calcDynamics(self,Premiums):
+        return PremiumFuncsContainer(self.PremiumFuncs)
+        
+    
     def calcSimulatedMoments(self):
         '''
         Calculates all simulated moments for this economy's AgentTypes.
@@ -94,7 +125,7 @@ class DynInsSelMarket(Market):
         -------
         None
         '''
-        Agents = self.Agents
+        Agents = self.agents
         
         # Initialize moments by age
         WealthMedianByAge = np.zeros(40) + np.nan
@@ -288,18 +319,18 @@ class DynInsSelMarket(Market):
         None
         '''
         Cuts = np.array([0.2,0.4,0.6,0.8])
-        IncomeQuintiles = np.zeros((self.Agents[0].T_sim,Cuts.size))
+        IncomeQuintiles = np.zeros((self.agents[0].T_sim,Cuts.size))
         
         # Get income quintile cut points for each age
-        for t in range(self.Agents[0].T_sim):
+        for t in range(self.agents[0].T_sim):
             pLvlList = []
-            for ThisType in self.Agents:
+            for ThisType in self.agents:
                 pLvlList.append(ThisType.pLvlHist[t,:][ThisType.LiveBoolArray[t,:]])
             pLvlArray = np.hstack(pLvlList)
             IncomeQuintiles[t,:] = getPercentiles(pLvlArray,percentiles = Cuts)
         
         # Store the income quintile cut points in each AgentType
-        for ThisType in self.Agents:
+        for ThisType in self.agents:
             ThisType.IncomeQuintiles = IncomeQuintiles
                     
                                
@@ -480,6 +511,7 @@ def makeMarketFromParams(ParamArray,PremiumArray,InsChoiceType):
     else:
         SubsidyArray = np.array([0.0])
         WeightArray  = np.array([1.0])
+    ContractCounts = [1,2,5]
     
     # Make the list of types
     AgentList = []
@@ -494,25 +526,47 @@ def makeMarketFromParams(ParamArray,PremiumArray,InsChoiceType):
             AgentList[-1].AgentCount = int(round(AgentList[-1].Weight*Params.AgentCountTotal))
             AgentList[-1].seed = i # Assign different seeds to each type
             i += 1
+    StateCount = AgentList[0].MrkvArray[0].shape[0]
+            
+    # Construct an initial nested list for premiums
+    PremiumFuncBase = []
+    for z in range(ContractCounts[InsChoiceType]):
+        PremiumFuncBase.append(ConstantFunction(PremiumArray[z]))
+    ZeroPremiumFunc = ConstantFunction(0.0)
+    PremiumFuncs_init = 40*[StateCount*[PremiumFuncBase]] + 20*[StateCount*[ContractCounts[InsChoiceType]*[ZeroPremiumFunc]]]
 
     # Make a market to hold the agents
     InsuranceMarket = DynInsSelMarket()
-    InsuranceMarket.Agents = AgentList
+    InsuranceMarket.agents = AgentList
     InsuranceMarket.data_moments = data_moments
     InsuranceMarket.moment_weights = moment_weights
+    InsuranceMarket.PremiumFuncs_init = PremiumFuncs_init
+    if Params.StaticBool:
+        InsuranceMarket.max_loops = 1
+    else:
+        InsuranceMarket.max_loops = 10
+    InsuranceMarket.LoadFac = 1.1 # Make this an input later
     return InsuranceMarket
     
 
 def objectiveFunction(Parameters):
     InsChoice = 0
-    MyMarket = makeMarketFromParams(Parameters,np.array([0.5,2,3,4,5]),InsChoice)
-    multiThreadCommands(MyMarket.Agents,['update()','makeShockHistory()'])
+    MyMarket = makeMarketFromParams(Parameters,np.array([0.1,2,3,4,5]),InsChoice)
+    multiThreadCommands(MyMarket.agents,['update()','makeShockHistory()'])
     MyMarket.getIncomeQuintiles()
-    multiThreadCommandsFake(MyMarket.Agents,['makeIncBoolArray()'])
+    multiThreadCommandsFake(MyMarket.agents,['makeIncBoolArray()'])
     
-    all_commands = ['update()','solve()','initializeSim()','simulate()','postSim()']
-    multiThreadCommands(MyMarket.Agents,all_commands)
+    solve_commands = ['update()','solve()']
+    sim_commands = ['initializeSim()','simulate()','postSim()']
+    all_commands = solve_commands + sim_commands
     
+    multiThreadCommands(MyMarket.agents,all_commands)
+    
+    #multiThreadCommands(MyMarket.agents,['update()'])
+    #MyMarket.solve()
+    #if Params.StaticBool:
+    #    multiThreadCommands(MyMarket.agents,sim_commands)
+        
     MyMarket.calcSimulatedMoments()
     MyMarket.combineSimulatedMoments()
     moment_sum = MyMarket.aggregateMomentConditions()    
@@ -532,7 +586,7 @@ if __name__ == '__main__':
 #    t_start = clock()
 #    InsChoice = False
 #    MyMarket = makeMarketFromParams(Params.test_param_vec,np.array([1,2,3,4,5]),InsChoice)
-#    StaticType = MyMarket.Agents[1]
+#    StaticType = MyMarket.agents[1]
 #    StaticType.update()
 #    StaticType.makeShockHistory()
 #    t_end = clock()
@@ -550,29 +604,29 @@ if __name__ == '__main__':
 #    t_start = clock()
 #    InsChoice = False
 #    MyMarket = makeMarketFromParams(Params.test_param_vec,np.array([1,2,3,4,5]),InsChoice)
-#    multiThreadCommandsFake(MyMarket.Agents,['update()','makeShockHistory()'])
+#    multiThreadCommandsFake(MyMarket.agents,['update()','makeShockHistory()'])
 #    MyMarket.getIncomeQuintiles()
-#    multiThreadCommandsFake(MyMarket.Agents,['makeIncBoolArray()'])
+#    multiThreadCommandsFake(MyMarket.agents,['makeIncBoolArray()'])
 #    t_end = clock()
 #    print('Making the agents took ' + mystr(t_end-t_start) + ' seconds.')
 #    
-#    MyMarket.Agents[0].solve()
+#    MyMarket.agents[0].solve()
 
 #    t_start = clock()
 #    solve_commands = ['solve()']
-#    multiThreadCommands(MyMarket.Agents,solve_commands)
+#    multiThreadCommands(MyMarket.agents,solve_commands)
 #    t_end = clock()
 #    print('Solving the agents took ' + mystr(t_end-t_start) + ' seconds.')
 #    
 #    t_start = clock()
 #    sim_commands = ['initializeSim()','simulate()','postSim()']
-#    multiThreadCommands(MyMarket.Agents,sim_commands)
+#    multiThreadCommands(MyMarket.agents,sim_commands)
 #    t_end = clock()
 #    print('Simulating agents took ' + mystr(t_end-t_start) + ' seconds.')
     
 #    t_start = clock()
 #    all_commands = ['update()','solve()','initializeSim()','simulate()','postSim()']
-#    multiThreadCommands(MyMarket.Agents,all_commands)
+#    multiThreadCommands(MyMarket.agents,all_commands)
 #    t_end = clock()
 #    print('Solving and simulating agents took ' + mystr(t_end-t_start) + ' seconds.')
 #    
@@ -580,7 +634,7 @@ if __name__ == '__main__':
 
 
     
-#    MyType = MyMarket.Agents[1]    
+#    MyType = MyMarket.agents[1]    
 #    t = 0
 #    p = 2.0    
 #    h = 4        
@@ -673,8 +727,8 @@ if __name__ == '__main__':
 #    plt.plot(MyMarket.LogTotalMedStdByAgeHealth)
 #    plt.show()
     
-#    plt.plot(MyMarket.InsuredRateByAge,'-b')
-#    plt.plot(MyMarket.data_moments[160:200],'.k')
-#    plt.show()
+    plt.plot(MyMarket.InsuredRateByAge,'-b')
+    plt.plot(MyMarket.data_moments[160:200],'.k')
+    plt.show()
     
      
