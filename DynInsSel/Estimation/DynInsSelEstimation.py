@@ -101,10 +101,11 @@ class DynInsSelMarket(Market):
     def __init__(self):
         Market.__init__(self,agents=[],sow_vars=['PremiumFuncs'],reap_vars=['ExpInsPay','ExpBuyers'],
                         const_vars=[],track_vars=['Premiums'],dyn_vars=['PremiumFuncs'],
-                 millRule=None,calcDynamics=None,act_T=1,tolerance=0.0001)
+                 millRule=None,calcDynamics=None,act_T=12,tolerance=0.0001)
 
     def millRule(self,ExpInsPay,ExpBuyers):
-        return flatActuarialRule(self,ExpInsPay,ExpBuyers)
+        temp = flatActuarialRule(self,ExpInsPay,ExpBuyers)
+        return temp
         
     def calcDynamics(self,Premiums):
         return PremiumFuncsContainer(self.PremiumFuncs)
@@ -240,7 +241,7 @@ class DynInsSelMarket(Market):
         self.LogTotalMedStdByAge = LogTotalMedStdByAge
         self.InsuredRateByAge = InsuredRateByAge
         self.ZeroSubsidyRateByAge = ZeroSubsidyRateByAge
-        self.PremiumMeanByAge = PremiumMeanByAge
+        self.PremiumMeanByAge = PremiumMeanByAge*10000.
         self.PremiumStdByAge = PremiumStdByAge
         self.LogTotalMedMeanByAgeHealth = LogTotalMedMeanByAgeHealth + 9.21034
         self.LogTotalMedStdByAgeHealth = LogTotalMedStdByAgeHealth
@@ -248,7 +249,7 @@ class DynInsSelMarket(Market):
         self.LogTotalMedMeanByAgeIncome = LogTotalMedMeanByAgeIncome + 9.21034
         self.LogTotalMedStdByAgeIncome = LogTotalMedStdByAgeIncome
         self.InsuredRateByAgeIncome = InsuredRateByAgeIncome
-        self.PremiumMeanByAgeIncome = PremiumMeanByAgeIncome
+        self.PremiumMeanByAgeIncome = PremiumMeanByAgeIncome*10000.
         self.LogOOPmedMeanByAge = LogOOPmedMeanByAge + 9.21034
         self.LogOOPmedStdByAge = LogOOPmedStdByAge
         
@@ -503,7 +504,7 @@ def makeMarketFromParams(ParamArray,PremiumArray,InsChoiceType):
     MedShkStdPRparams = ParamArray[31:33]
     
     # Make the array of premium subsidies (trivial if there is no insurance choice)
-    if InsChoiceType == 2:
+    if InsChoiceType > 2:
         Temp = approxUniform(7,SubsidyAvg-SubsidyWidth,SubsidyAvg+SubsidyWidth)
         SubsidyArray = Temp[1]
         SubsidyArray = np.insert(SubsidyArray,0,0.0)
@@ -511,7 +512,7 @@ def makeMarketFromParams(ParamArray,PremiumArray,InsChoiceType):
     else:
         SubsidyArray = np.array([0.0])
         WeightArray  = np.array([1.0])
-    ContractCounts = [1,2,5]
+    ContractCounts = [0,1,5] # plus one
     
     # Make the list of types
     AgentList = []
@@ -529,10 +530,11 @@ def makeMarketFromParams(ParamArray,PremiumArray,InsChoiceType):
     StateCount = AgentList[0].MrkvArray[0].shape[0]
             
     # Construct an initial nested list for premiums
-    PremiumFuncBase = []
+    ZeroPremiumFunc = ConstantFunction(0.0)
+    PremiumFuncBase = [ZeroPremiumFunc]
+    Premiums_init = np.concatenate((np.array([0]),PremiumArray[0:ContractCounts[InsChoiceType]]))
     for z in range(ContractCounts[InsChoiceType]):
         PremiumFuncBase.append(ConstantFunction(PremiumArray[z]))
-    ZeroPremiumFunc = ConstantFunction(0.0)
     PremiumFuncs_init = 40*[StateCount*[PremiumFuncBase]] + 20*[StateCount*[ContractCounts[InsChoiceType]*[ZeroPremiumFunc]]]
 
     # Make a market to hold the agents
@@ -541,6 +543,7 @@ def makeMarketFromParams(ParamArray,PremiumArray,InsChoiceType):
     InsuranceMarket.data_moments = data_moments
     InsuranceMarket.moment_weights = moment_weights
     InsuranceMarket.PremiumFuncs_init = PremiumFuncs_init
+    InsuranceMarket.Premiums = Premiums_init
     if Params.StaticBool:
         InsuranceMarket.max_loops = 1
     else:
@@ -550,8 +553,8 @@ def makeMarketFromParams(ParamArray,PremiumArray,InsChoiceType):
     
 
 def objectiveFunction(Parameters):
-    InsChoice = 0
-    MyMarket = makeMarketFromParams(Parameters,np.array([0.1,2,3,4,5]),InsChoice)
+    InsChoice = 2
+    MyMarket = makeMarketFromParams(Parameters,np.array([0.1,0.11,0.12,0.13,0.14]),InsChoice)
     multiThreadCommands(MyMarket.agents,['update()','makeShockHistory()'])
     MyMarket.getIncomeQuintiles()
     multiThreadCommandsFake(MyMarket.agents,['makeIncBoolArray()'])
@@ -560,12 +563,12 @@ def objectiveFunction(Parameters):
     sim_commands = ['initializeSim()','simulate()','postSim()']
     all_commands = solve_commands + sim_commands
     
-    multiThreadCommands(MyMarket.agents,all_commands)
+    #multiThreadCommands(MyMarket.agents,all_commands)
     
-    #multiThreadCommands(MyMarket.agents,['update()'])
-    #MyMarket.solve()
-    #if Params.StaticBool:
-    #    multiThreadCommands(MyMarket.agents,sim_commands)
+    multiThreadCommands(MyMarket.agents,['update()'])
+    MyMarket.solve()
+    if Params.StaticBool:
+        multiThreadCommands(MyMarket.agents,sim_commands)
         
     MyMarket.calcSimulatedMoments()
     MyMarket.combineSimulatedMoments()
@@ -729,6 +732,10 @@ if __name__ == '__main__':
     
     plt.plot(MyMarket.InsuredRateByAge,'-b')
     plt.plot(MyMarket.data_moments[160:200],'.k')
+    plt.show()
+    
+    plt.plot(MyMarket.PremiumMeanByAge,'-b')
+    plt.plot(MyMarket.data_moments[240:280],'.k')
     plt.show()
     
      

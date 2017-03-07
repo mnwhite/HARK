@@ -34,7 +34,7 @@ def flatActuarialRule(self,ExpInsPay,ExpBuyers):
     TotalInsPay = np.sum(ExpInsPayX[0:40,:,:,:],axis=(0,1,3))
     TotalBuyers = np.sum(ExpBuyersX[0:40,:,:,:],axis=(0,1,3))
     AvgInsPay   = TotalInsPay/TotalBuyers
-    NewPremiums = self.LoadFac*AvgInsPay
+    NewPremiums = 0.5*self.LoadFac*AvgInsPay + 0.5*self.Premiums
     print(NewPremiums)
 
     PremiumFuncBase = []

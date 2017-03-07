@@ -2055,7 +2055,7 @@ class InsSelStaticConsumerType(InsSelConsumerType):
             m_temp = yLvlNow[these]
             p_temp = yLvlNow[these]
             for z in range(Z):                
-                Premium = self.solution[t].policyFunc[h][z].Contract.Premium(m_temp)
+                Premium = self.PremiumFuncs[t][h][z](m_temp)
                 x_temp = m_temp-Premium
                 vNvrs_temp[:,z] = self.solution[t].vFuncByContract[h][z].func(x_temp)
                 vNvrs_temp[x_temp<0.,z] = -np.inf
@@ -2085,7 +2085,7 @@ class InsSelStaticConsumerType(InsSelConsumerType):
             MedShk_temp = MedShkNow[these]
             for z in range(Z):
                 idx = z_choice == z
-                Prem_temp[idx] = self.solution[t].policyFunc[h][z].Contract.Premium(m_temp[idx],p_temp[idx])
+                Prem_temp[idx] = self.PremiumFuncs[t][h][z](m_temp[idx],p_temp[idx])
                 c_temp[idx],Med_temp[idx] = self.solution[t].policyFunc[h][z](m_temp[idx]-Prem_temp[idx],p_temp[idx],MedShk_temp[idx])
                 Med_temp[idx] = np.maximum(Med_temp[idx],0.0) # Prevents numeric glitching
                 OOP_temp[idx] = self.solution[t].policyFunc[h][z].Contract.OOPfunc(Med_temp[idx])            
@@ -2141,6 +2141,9 @@ class InsSelStaticConsumerType(InsSelConsumerType):
                     xLvl_temp = pLvl - Premium
                     AV_array[:,z] = self.solution[t].AVfunc[j][z](xLvl_temp)
                     vNvrs_array[:,z] = self.solution[t].vFuncByContract[j][z].func(xLvl_temp)
+                    unaffordable = xLvl_temp < 0.
+                    AV_array[unaffordable,z] = 0.0
+                    vNvrs_array[unaffordable,z] = -np.inf
                 if random_choice:
                     v_best = np.max(vNvrs_array,axis=1)
                     v_best_big = np.tile(np.reshape(v_best,(N,1)),(1,Z))
@@ -2151,12 +2154,10 @@ class InsSelStaticConsumerType(InsSelConsumerType):
                     z_choice = np.argmax(vNvrs_array,axis=1)
                     ChoicePrbs = np.zeros((N,Z))
                     for z in range(Z): # is there a non-loop way to do this?
-                        ChoicePrbs[z_choice==z,z] == 1.0
-                print(t,j,np.sum(np.isnan(AV_array)),np.sum(np.isnan(ChoicePrbs)))
+                        ChoicePrbs[z_choice==z,z] = 1.0
                 ExpInsPay[t,j,0:Z] = np.sum(ChoicePrbs*AV_array,axis=0)
                 ExpBuyers[t,j,0:Z] = np.sum(ChoicePrbs,axis=0)
-        
-        #print(ExpInsPay)
+                
         self.ExpInsPay = ExpInsPay
         self.ExpBuyers = ExpBuyers
         

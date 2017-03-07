@@ -374,7 +374,7 @@ CollegeDictionary['PermIncAvgInit'] = PermIncAvgInit_c
 
 # Make a test parameter vector for estimation
 test_param_vec = np.array([0.955, # DiscFac
-                           1.8,  # CRRAcon
+                           2.6,  # CRRAcon
                            8.0,  # CRRAmed 
                           -7.0,  # ChoiceShkMag in log
                            2.0,  # SubsidyZeroRate scaler
