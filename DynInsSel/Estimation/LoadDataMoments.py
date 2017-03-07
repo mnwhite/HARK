@@ -145,8 +145,10 @@ f.close()
 
 # Store the moments for wealth-to-income ratio by age
 WealthRatioByAge = np.zeros(40) + np.nan
+WealthMomentWeightsByAge = np.zeros(40) + np.nan
 for j in range(40):
     WealthRatioByAge[j] = float(raw_moments[j][1])
+    WealthMomentWeightsByAge[j] = float(raw_moments[j][2])
 
 
 # Load the moments for wealth-to-income ratio by age and income quintile
@@ -158,10 +160,12 @@ f.close()
 
 # Store the moments for wealth-to-income ratio by age
 WealthRatioByAgeIncome = np.zeros((8,5)) + np.nan
+WealthMomentWeightsByAgeIncome = np.zeros((8,5)) + np.nan
 for j in range(40):
     i = int(raw_moments[j][1])-1
     k = int(raw_moments[j][0])-1
     WealthRatioByAgeIncome[i,k] = float(raw_moments[j][2])
+    WealthMomentWeightsByAgeIncome[i,k] = float(raw_moments[j][3])
   
 # Combine all data moments into a single 1D array
 MomentList = [WealthRatioByAge,
@@ -185,7 +189,7 @@ data_moments = np.hstack(MomentList)
 # Construct the vector of moment weights
 if use_data_weights:
     moment_weights = np.zeros_like(data_moments) + np.nan
-    moment_weights[0:40]    = np.nan # NEED TO GET THESE FROM SCF
+    moment_weights[0:40]    = WealthMomentWeightsByAge
     moment_weights[40:100]  = totMomentWeightsByAge
     moment_weights[100:160] = totMomentWeightsByAge
     moment_weights[160:200] = otherMomentWeightsByAge
@@ -194,7 +198,7 @@ if use_data_weights:
     moment_weights[280:320] = premMomentWeightsByAge
     moment_weights[320:380] = totMomentWeightsByAgeHealth.flatten()
     moment_weights[380:440] = totMomentWeightsByAgeHealth.flatten()
-    moment_weights[440:480] = np.nan # NEED TO GET THESE FROM SCF
+    moment_weights[440:480] = WealthMomentWeightsByAgeIncome.flatten()
     moment_weights[480:520] = totMomentWeightsByAgeIncome.flatten()
     moment_weights[520:560] = totMomentWeightsByAgeIncome.flatten()
     moment_weights[560:600] = otherMomentWeightsByAgeIncome.flatten()
