@@ -12,7 +12,7 @@ import csv
 
 # Set parameters for estimation
 AgentCountTotal = 100000
-StaticBool = True
+StaticBool = False
 
 # Calibrated / other parameters (grid sizes, etc)
 Rfree = 5*[1.03]                    # Interest factor on assets
@@ -233,7 +233,7 @@ educ_bonus = np.array([[.0673213,0.,.1527079],
 
 # Fill in the Markov array at each age (probably could have written this more cleverly but meh)
 MrkvArrayByEduc = np.zeros([67,5,5,3]) + np.nan
-Age = np.arange(67,dtype=float)
+Age = np.arange(7,74,dtype=float)
 for j in range(3):
     f1a = lambda x : f1(x) + educ_bonus[0,j]
     fitted = f1a(Age)

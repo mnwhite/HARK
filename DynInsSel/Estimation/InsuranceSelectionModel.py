@@ -202,11 +202,11 @@ class ValueFunc3D(HARKobject):
 class InsSelPolicyFunc(HARKobject):
     '''
     The policy function for a particular medical insurance contract, defined over market resources
-    (after paying premiums) permanent income, and the medical needs shock.
+    (after paying premiums), permanent income, and the medical needs shock.
     '''
     distance_criteria = ['ValueFuncFullPrice','ValueFuncCopay','PolicyFuncFullPrice','PolicyFuncCopay','OptionCost']
     
-    def __init__(self,ValueFuncFullPrice,ValueFuncCopay,PolicyFuncFullPrice,PolicyFuncCopay,Contract):
+    def __init__(self,ValueFuncFullPrice,ValueFuncCopay,PolicyFuncFullPrice,PolicyFuncCopay,DpFuncFullPrice,DpFuncCopay,Contract,CRRAmed):
         '''
         Make a new instance of ValueFuncContract.
         
@@ -224,8 +224,16 @@ class InsSelPolicyFunc(HARKobject):
         PolicyFuncFullPrice : MedShockPolicyFunc
             Policy function when paying the coinsurance rate for care, including consumption and
             medical care, defined over market resources, permanent income, and medical shock.
+        DpFuncFullPrice : function
+            Function that gives marginal cost of achieving a given effective consumption level
+            when facing a given medical shock, when paying full price for care.
+        DpFuncFullCopay : function
+            Function that gives marginal cost of achieving a given effective consumption level
+            when facing a given medical shock, when paying the coinsurance rate for care.
         Contract : MedInsuranceContract
             Medical insurance contract of interest.
+        CRRAmed : float
+            Curvature parameter nu for medical care in effective consumption calculation.
             
         Returns
         -------
@@ -235,12 +243,12 @@ class InsSelPolicyFunc(HARKobject):
         self.ValueFuncCopay = ValueFuncCopay
         self.PolicyFuncFullPrice = PolicyFuncFullPrice
         self.PolicyFuncCopay = PolicyFuncCopay
+        self.DpFuncFullPrice = DpFuncFullPrice
+        self.DpFuncCopay = DpFuncCopay
         self.Contract = Contract
         self.OptionCost = Contract.Deductible*(1.0-Contract.Copay)
-        
-    def getMemSize(self):
-        return (self.ValueFuncFullPrice.getMemSize() + self.ValueFuncCopay.getMemSize() + self.PolicyFuncFullPrice.getMemSize() + self.PolicyFuncCopay.getMemSize() + self.Contract.getMemSize())
-        
+        self.CRRAmed = CRRAmed
+               
     def __call__(self,mLvl,pLvl,MedShk):
         '''
         Evaluate the policy function for this contract.
@@ -330,8 +338,18 @@ class InsSelPolicyFunc(HARKobject):
         #MPC[Copay_better], trash1 = self.PolicyFuncCopay.derivativeX(mLvl[Copay_better]-self.OptionCost,pLvl[Copay_better],MedShk[Copay_better])
         #MPC[FullPrice_better], trash2 = self.PolicyFuncFullPrice.derivativeX(mLvl[FullPrice_better],pLvl[FullPrice_better],MedShk[FullPrice_better])
         
+        # Find the marginal cost of achieving this effective consumption level
+        ShkZero = MedShk==0.
+        cEffLvl = (1.-np.exp(-MedLvl/MedShk))**self.CRRAmed*cLvl
+        cEffLvl[ShkZero] = cLvl[ShkZero]
+        Dp = np.zeros_like(cEffLvl)
+        Dp[Copay_better] = self.DpFuncCopay(cEffLvl[Copay_better],MedShk[Copay_better])
+        Dp[FullPrice_better] = self.DpFuncFullPrice(cEffLvl[FullPrice_better],MedShk[FullPrice_better])
+        print(cEffLvl[np.isnan(Dp)])
+        
+        # Calculate value and marginal value and return them
         v   = np.maximum(v_Copay,v_FullPrice)
-        vP  = utilityP(cLvl,self.ValueFuncFullPrice.CRRA)
+        vP  = utilityP(cEffLvl,self.ValueFuncFullPrice.CRRA)/Dp
         #vPP = utilityPP(cLvl,self.ValueFuncFullPrice.CRRA)*MPC
         vPP = np.zeros_like(vP) # Don't waste time calculating
         return v, vP, vPP
@@ -501,7 +519,8 @@ def solveInsuranceSelectionStatic(solution_next,MedShkDstn,CRRA,MedPrice,xLvlGri
 
 def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,LivPrb,DiscFac,CRRA,CRRAmed,Rfree,
                             MedPrice,PermGroFac,PermIncCorr,BoroCnstArt,aXtraGrid,pLvlGrid,ContractList,
-                            MrkvArray,ChoiceShkMag,CopayList,bFromxFuncList,CubicBool):
+                            MrkvArray,ChoiceShkMag,CopayList,bFromxFuncList,DfuncList,DpFuncList,
+                            cEffFuncList,GfuncList,CubicBool):
     '''
     Solves one period of the insurance selection model.
     
@@ -560,6 +579,23 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,LivPrb,DiscFac,C
     bFromxFuncList : [function]
         Optimal consumption ratio as a function of total expenditure and medical need shock by
         coinsurance rate.  Elements of this list correspond to coinsurance rates in CopayList.
+    DfuncList : [function]
+        List of cost functions for each copay rate that can be achieved this period.  Each
+        function takes an "effective consumption" level and medical shock and returns the
+        cost of achieving that cEffLvl.
+    DpFuncList : [function]
+        List of marginal cost functions for each copay rate that can be achieved this period.
+        Each function takes an "effective consumption" level and medical shock and returns the
+        marginal cost of a bit more effective consumption at that cEffLvl.
+    cEffFuncList : [function]
+        List of functions for each copay rate this period that give the maximum effective
+        consumption as a function of total spending (on consumption and medical care) and
+        the medical need shock.
+    GfuncList : [function]
+        List of functions for each copay that solve the first order condition for effective
+        consumption.  Each function takes in a pseudo-inverse end-of-period marginal value
+        and a medical shock and return the level of effective consumption that solves the
+        first order condition for optimality.
     CubicBool: boolean
         An indicator for whether the solver should use cubic or linear interpolation.
                     
@@ -574,11 +610,8 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,LivPrb,DiscFac,C
     # Define utility function derivatives and inverses
     u = lambda x : utility(x,CRRA)
     #uP = lambda x : utilityP(x,CRRA)
-    uMed = lambda x : utility(x,CRRAmed)
     uPP = lambda x : utilityPP(x,CRRA)
-    uMedPP = lambda x : utilityPP(x,CRRAmed)
     uPinv = lambda x : utilityP_inv(x,CRRA)
-    uMedPinv = lambda x : utilityP_inv(x,CRRAmed)
     uinvP = lambda x : utility_invP(x,CRRA)
     uinv = lambda x : utility_inv(x,CRRA)
     uPinvP = lambda x : utilityP_invP(x,CRRA)
@@ -714,19 +747,20 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,LivPrb,DiscFac,C
         EndOfPrdvFunc = ValueFunc2D(EndOfPrdvNvrsFunc,CRRA)
         
         # For each coinsurance rate, make policy and value functions (for this health state)
+        EndOfPrdvPnvrs_tiled = np.tile(np.reshape(uPinv(EndOfPrdvP[:,:,h]),(1,pCount,mCount)),(MedCount,1,1))
+        MedShkVals_tiled  = np.tile(np.reshape(MedShkVals,(MedCount,1,1)),(1,pCount,mCount))
         for k in range(len(CopayList)):
             MedPriceEff = CopayList[k]
+            Dfunc = DfuncList[k]
+            Gfunc = GfuncList[k]
+            cEffFunc = cEffFuncList[k]
             
-            # Calculate endogenous gridpoints and controls            
-            cLvlNow = np.tile(np.reshape(uPinv(EndOfPrdvP[:,:,h]),(1,pCount,mCount)),(MedCount,1,1))
-            MedBaseNow = np.tile(np.reshape(uMedPinv(MedPriceEff*EndOfPrdvP[:,:,h]),(1,pCount,mCount)),(MedCount,1,1))
-            MedShkVals_temp  = np.tile(np.reshape(MedShkVals,(MedCount,1,1)),(1,pCount,mCount))
-            MedShkVals_tiled = np.tile(np.reshape(MedShkVals**(1.0/CRRAmed),(MedCount,1,1)),(1,pCount,mCount))
-            MedLvlNow = MedShkVals_tiled*MedBaseNow
+            # Calculate endogenous gridpoints and controls
+            cEffNow = Gfunc(EndOfPrdvPnvrs_tiled,MedShkVals_tiled)
+            xLvlNow = Dfunc(cEffNow,MedShkVals_tiled)
             aLvlNow_tiled = np.tile(np.reshape(aLvlNow,(1,pCount,mCount)),(MedCount,1,1))
             #if pLvlGrid[0] == 0.0:  # aLvl turns out badly if pLvl is 0 at bottom
             #    aLvlNow_tiled[:,0,:] = np.tile(aXtraGrid,(MedCount,1))
-            xLvlNow = cLvlNow + MedPriceEff*MedLvlNow
             mLvlNow = xLvlNow + aLvlNow_tiled
             
             # Add bottom entry for zero expenditure at the lower bound of market resources
@@ -735,14 +769,15 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,LivPrb,DiscFac,C
             
             # Calculate marginal propensity to spend
             if CubicBool:
-                EndOfPrdvPP_temp = np.tile(np.reshape(EndOfPrdvPP[:,:,h],(1,pCount,EndOfPrdvPP.shape[1])),(MedCount,1,1))
-                dcda        = EndOfPrdvPP_temp/uPP(np.array(cLvlNow))
-                dMedda      = EndOfPrdvPP_temp/(MedShkVals_temp*uMedPP(MedLvlNow))
-                dMedda[0,:,:] = 0.0 # dMedda goes crazy when MedShk=0
-                MPC         = dcda/(1.0 + dcda + MedPriceEff*dMedda)
-                MPM         = dMedda/(1.0 + dcda + MedPriceEff*dMedda)
-                MPX         = MPC + MedPriceEff*MPM
-                MPX = np.concatenate((np.reshape(MPX[:,:,0],(MedCount,pCount,1)),MPX),axis=2)
+                print("CubicBool=True doesn't work at this time")
+#                EndOfPrdvPP_temp = np.tile(np.reshape(EndOfPrdvPP[:,:,h],(1,pCount,EndOfPrdvPP.shape[1])),(MedCount,1,1))
+#                dcda        = EndOfPrdvPP_temp/uPP(np.array(cLvlNow))
+#                dMedda      = EndOfPrdvPP_temp/(MedShkVals_temp*uMedPP(MedLvlNow))
+#                dMedda[0,:,:] = 0.0 # dMedda goes crazy when MedShk=0
+#                MPC         = dcda/(1.0 + dcda + MedPriceEff*dMedda)
+#                MPM         = dMedda/(1.0 + dcda + MedPriceEff*dMedda)
+#                MPX         = MPC + MedPriceEff*MPM
+#                MPX = np.concatenate((np.reshape(MPX[:,:,0],(MedCount,pCount,1)),MPX),axis=2)
                 
             # Loop over each permanent income level and medical shock and make an xFunc
             xFunc_by_pLvl_and_MedShk = [] # Initialize the empty list of lists of 1D xFuncs
@@ -754,11 +789,11 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,LivPrb,DiscFac,C
                     m_temp = mLvlNow[j,i,:] - mLvlMin_i
                     x_temp = xLvlNow[j,i,:]
                     if CubicBool:
-                        MPX_temp = MPX[j,i,:]
-                        temp_list.append(CubicInterp(m_temp,x_temp,MPX_temp))
+                        None
+#                        MPX_temp = MPX[j,i,:]
+#                        temp_list.append(CubicInterp(m_temp,x_temp,MPX_temp))
                     else:
                         temp_list.append(LinearInterp(m_temp,x_temp))
-                #xFunc_by_pLvl_and_MedShk.append(deepcopy(temp_list))
                 xFunc_by_pLvl_and_MedShk.append(temp_list)
             
             # Combine the many expenditure functions into a single one and adjust for the natural borrowing constraint
@@ -775,11 +810,12 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,LivPrb,DiscFac,C
             mLvlArray = mMinArray + np.tile(np.reshape(aXtraGrid,(1,1,mCount)),(MedCount,pCount,1))*pLvlArray
             if pLvlGrid[0] == 0.0:  # mLvl turns out badly if pLvl is 0 at bottom
                 mLvlArray[:,0,:] = np.tile(aXtraGrid,(MedCount,1))
-            MedShkArray = MedShkVals_temp
-            cLvlArray, MedLvlArray = policyFuncsThisHealthCopay[-1](mLvlArray,pLvlArray,MedShkArray)
-            aLvlArray = np.abs(mLvlArray - cLvlArray - MedPriceEff*MedLvlArray) # OCCASIONAL VIOLATIONS BY 1E-18 !!!
-            vNow = u(cLvlArray) + MedShkArray*uMed(MedLvlArray) + EndOfPrdvFunc(aLvlArray,pLvlArray)
-            vNow[0,:,:] = u(cLvlArray[0,:,:]) + EndOfPrdvFunc(aLvlArray[0,:,:],pLvlArray[0,:,:]) # Fix problem when MedShk=0
+            MedShkArray = MedShkVals_tiled
+            xLvlArray = xFuncNow(mLvlArray,pLvlArray,MedShkArray)
+            cEffLvlArray = cEffFunc(xLvlArray,MedShkArray)
+            aLvlArray = np.abs(mLvlArray - xLvlArray) # OCCASIONAL VIOLATIONS BY 1E-18 !!!
+            vNow = u(cEffLvlArray) + EndOfPrdvFunc(aLvlArray,pLvlArray)
+            vNow[0,:,:] = u(cEffLvlArray[0,:,:]) + EndOfPrdvFunc(aLvlArray[0,:,:],pLvlArray[0,:,:]) # Fix problem when MedShk=0
             #vPnow = uP(cLvlArray)
             vNvrsNow  = np.concatenate((np.zeros((MedCount,pCount,1)),uinv(vNow)),axis=2)
             #vNvrsPnow = np.concatenate((np.zeros((MedCount,pCount,1)),vPnow*uinvP(vNow)),axis=2)
@@ -834,9 +870,11 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,LivPrb,DiscFac,C
             vFuncCopay = vFuncsThisHealthCopay[Copay_idx]
             policyFuncFullPrice = policyFuncsThisHealthCopay[FullPrice_idx]
             policyFuncCopay = policyFuncsThisHealthCopay[Copay_idx]
+            DpFuncFullPrice = DpFuncList[FullPrice_idx]
+            DpFuncCopay = DpFuncList[Copay_idx]
             
             # Make the policy function for this contract
-            policyFuncsThisHealth.append(InsSelPolicyFunc(vFuncFullPrice,vFuncCopay,policyFuncFullPrice,policyFuncCopay,Contract))
+            policyFuncsThisHealth.append(InsSelPolicyFunc(vFuncFullPrice,vFuncCopay,policyFuncFullPrice,policyFuncCopay,DpFuncFullPrice,DpFuncCopay,Contract,CRRAmed))
             
             # Get value and marginal value at an array of states and integrate across medical shocks
             vArrayBig, vParrayBig, vPParrayBig = policyFuncsThisHealth[-1].evalvAndvPandvPP(mLvlArray,pLvlArray,MedShkArray)            
@@ -1129,9 +1167,11 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         
         # Make a master grid of expenditure levels
         pLvlGridAll = np.concatenate([pLvlGrid for pLvlGrid in self.pLvlGrid])
+        pLvlGridAll = pLvlGridAll[pLvlGridAll > 0.]
         xLvlMax = 2.0*np.max(self.aXtraGrid)*np.max(pLvlGridAll)
         xLvlMin = np.min(self.aXtraGrid)*np.min(pLvlGridAll)
         xLvlGrid = makeGridExpMult(xLvlMin,xLvlMax,aug_factor*self.aXtraCount,timestonest=8)
+        xLvlGrid = np.insert(xLvlGrid,0,0.0)
         
         # Make a master grid of medical need shocks
         MedShkAll = np.array([])
@@ -1173,11 +1213,11 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         self.bFromxFuncListAll = bFromxFuncListAll
         
         
-    def distributebFromxFuncs(self):
+    def distributeConstructedFuncs(self):
         '''
-        Constructs the attributes bFromxFuncList and CopayList for each period in the agent's cycle.
-        Should only be run after makeMasterbFromxFuncs(), which constructs the attributes CopayListAll
-        and bFromxFuncListAll.
+        Constructs the attributes bFromxFuncList, CopayList, DfuncList, DpFuncList, cEffFuncList, and
+        GfuncList for each period in the agent's cycle. Should only be run after makeMasterbFromxFuncs()
+        and makeMasterDfuncs(), which constructs the functions that will be reorganized here.
         
         Parameters
         ----------
@@ -1190,8 +1230,15 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         orig_time = self.time_flow
         self.timeFwd()
         
+        # Initialize lists
         CopayList = [] # Coinsurance rates / effective medical care price for each period in the cycle
         bFromxFuncList = [] # Consumption ratio as function of expenditure and medical need for each period
+        DfuncList = [] # Cost as a function of effective consumption and medical shock for each period
+        DpFuncList = [] # Marginal cost as a function of effective consumption and medical shock for each period
+        cEffFuncList = [] # Effective consumption as a function of total spending and medical shock for each period
+        GfuncList = [] # Solution to first order condition as a function of pseudo inverse end-of-period marginal value and medical shock for each period
+
+        # Loop through time and construct the lists above
         for t in range(self.T_cycle):
             MedPrice = self.MedPrice[t]
             CopayList_temp = [MedPrice]
@@ -1200,17 +1247,117 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
                     CopayList_temp.append(Contract.Copay*MedPrice)
             CopayList.append(np.unique(np.array(CopayList_temp)))
             bFromxFuncList_temp = []
+            DfuncList_temp = []
+            DpFuncList_temp = []
+            cEffFuncList_temp = []
+            GfuncList_temp = []
             for Copay in CopayList[-1]:
+                # For each copay, add the appropriate function to each list
                 idx = np.argwhere(np.array(self.CopayListAll)==Copay)[0][0]
                 bFromxFuncList_temp.append(self.bFromxFuncListAll[idx])
+                DfuncList_temp.append(self.DfuncListAll[idx])
+                DpFuncList_temp.append(self.DpFuncListAll[idx])
+                cEffFuncList_temp.append(self.cEffFuncListAll[idx])
+                GfuncList_temp.append(self.GfuncListAll[idx])
+                
+            # Add the one-period lists to the full list
             bFromxFuncList.append(copy(bFromxFuncList_temp))
+            DfuncList.append(copy(DfuncList_temp))
+            DpFuncList.append(copy(DpFuncList_temp))
+            cEffFuncList.append(copy(cEffFuncList_temp))
+            GfuncList.append(copy(GfuncList_temp))
             
         # Store the results in self, add to time_vary, and restore time to its original direction
         self.CopayList = CopayList
         self.bFromxFuncList = bFromxFuncList
-        self.addToTimeVary('CopayList','bFromxFuncList')
+        self.DfuncList = DfuncList
+        self.DpFuncList = DpFuncList
+        self.cEffFuncList = cEffFuncList
+        self.GfuncList = GfuncList
+        self.addToTimeVary('CopayList','bFromxFuncList','DfuncList','DpFuncList','cEffFuncList','GfuncList')
         if not orig_time:
             self.timeRev()
+            
+            
+    def makeMasterDfuncs(self):
+        '''
+        For each effective price across all contracts that the individual will experience in his
+        lifetime, construct a Dfunc that gives the dollar cost of attaining "effective consumption"
+        C when facing medical need shock MedShk: D = Dfunc(C,eta).  Can only be executed after
+        running the method makeMasterbFromxFuncs(), as the construction of Dfunc and DpFunc use
+        the solution to the optimal spending composition problem solved there.  Also makes
+        cEffFunc for each effective price, mapping expenditure levels and medical shocks to
+        maximum effective consumption levels achievable.
+        
+        Parameters
+        ----------
+        None
+        
+        Returns
+        -------
+        None
+        '''
+        K = self.CopayListAll.size # These are really EffMedPrice values
+        DfuncList = []
+        DpFuncList = []
+        cEffFuncList = []
+        GfuncList = []
+        
+        # Loops through the effective medical prices and construct a cost function for each
+        for k in range(K):
+            # Unpack basics from the bFromxFunc
+            MedPriceEff = self.CopayListAll[k]
+            bFromxFunc = self.bFromxFuncListAll[k]
+            bGrid = bFromxFunc.f_values
+            xVec = bFromxFunc.x_list
+            ShkVec = bFromxFunc.y_list
+            
+            # Construct a grid of effective consumption values
+            xGrid = np.tile(np.reshape(xVec,(xVec.size,1)),(1,ShkVec.size))
+            ShkGrid = np.tile(np.reshape(ShkVec,(1,ShkVec.size)),(xVec.size,1))
+            qGrid = np.exp(-bGrid)
+            cGrid = 1./(1.+qGrid)*xGrid
+            MedGrid = qGrid/(1.+qGrid)*xGrid/MedPriceEff
+            cEffGrid = (1.-np.exp(-MedGrid/ShkGrid))**self.CRRAmed*cGrid
+            cEffGrid[0,0] = 0.0
+
+            # Construct a grid of marginal effective consumption values
+            temp1 = np.exp(-MedGrid/ShkGrid)
+            temp2 = np.exp(MedGrid/ShkGrid)
+            dcdx = temp2/(temp2 + self.CRRAmed)
+            ShkZero = ShkGrid == 0.
+            dcdx[ShkZero] = 1.
+            dMeddx = (1./MedPriceEff)*self.CRRAmed/(temp2 + self.CRRAmed)
+            dMeddx[ShkZero] = 0.
+            dcEffdx = self.CRRAmed/ShkGrid*temp1*dMeddx*(1.-temp1)**(self.CRRAmed-1.)*cGrid + (1.-temp1)**self.CRRAmed*dcdx
+            dcEffdx[ShkZero] = 1.
+            dDdcEff = (dcEffdx)**(-1.) # Inverting the derivative
+            dDdcEff[0,:] = 2*dDdcEff[1,:] - dDdcEff[2,:]
+            
+            # Calculate the grid to be used to make the G functions
+            gothicvPnvrs = cEffGrid*dDdcEff**(1./self.CRRA)
+
+            # Construct a 2D interpolation for the Dfunc, DpFunc, and Gfunc
+            Dfunc_by_Shk_list = []
+            DpFunc_by_Shk_list = []
+            Gfunc_by_Shk_list = []
+            for j in range(ShkVec.size):
+                Dfunc_by_Shk_list.append(LinearInterp(cEffGrid[:,j],xVec))
+                DpFunc_by_Shk_list.append(LinearInterp(cEffGrid[:,j],dDdcEff[:,j]))
+                Gfunc_by_Shk_list.append(LinearInterp(gothicvPnvrs[:,j],cEffGrid[:,j]))
+            DfuncList.append(LinearInterpOnInterp1D(Dfunc_by_Shk_list,ShkVec))
+            DpFuncList.append(LinearInterpOnInterp1D(DpFunc_by_Shk_list,ShkVec))
+            GfuncList.append(LinearInterpOnInterp1D(Gfunc_by_Shk_list,ShkVec))
+            
+            # Make a 2D interpolation for the cEffFunc
+            cEffFunc = BilinearInterp(cEffGrid,xVec,ShkVec)
+            cEffFuncList.append(cEffFunc)
+            
+        # Store these functions as attributes of the agent
+        self.DfuncListAll = DfuncList
+        self.DpFuncListAll = DpFuncList
+        self.cEffFuncListAll = cEffFuncList
+        self.GfuncListAll = GfuncList
             
     
     def updateSolutionTerminal(self):
@@ -1230,7 +1377,6 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         CRRA = self.CRRA
         CRRAmed = self.CRRAmed
         u = lambda x : utility(x,gam=CRRA)
-        uMed = lambda x : utility(x,gam=CRRAmed)
         #uP = lambda x : utilityP(x,gam=CRRA)
         uPinv = lambda x : utilityP_inv(x,gam=CRRA)
         uinvP = lambda x : utility_invP(x,gam=CRRA)
@@ -1248,6 +1394,9 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         bFromxFuncList = self.bFromxFuncList[t]
         pLvlGrid = self.pLvlGrid[t]
         ChoiceShkMag = self.ChoiceShkMag[t]
+        DfuncList = self.DfuncList[t]
+        DpFuncList = self.DpFuncList[t]
+        cEffFuncList = self.cEffFuncList[t]
         
         # Make the expenditure function for the terminal period
         xFunc_terminal = IdentityFunction(i_dim=0,n_dims=3)
@@ -1272,10 +1421,9 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         for j in range(len(CopayList)):
             Copay = CopayList[j]
             policyFuncs_by_copay.append(MedShockPolicyFuncPrecalc(xFunc_terminal,bFromxFuncList[j],Copay))
-            cLvlNow,MedLvlNow = policyFuncs_by_copay[j](mLvlNow_tiled,pLvlNow_tiled,MedShkVals_tiled)
-            vNow = u(cLvlNow) + MedShkVals_tiled*uMed(MedLvlNow)
-            if MedShkGrid[0] == 0.0:
-                vNow[0,:,:] = u(cLvlNow[0,:,:])
+            xLvlNow = xFunc_terminal(mLvlNow_tiled,pLvlNow_tiled,MedShkVals_tiled)
+            cEffLvlNow = cEffFuncList[j](xLvlNow,MedShkVals_tiled)
+            vNow = u(cEffLvlNow)
             #vPnow = uP(cLvlNow)
             vNvrsNow  = np.concatenate((np.zeros((ShkCount,pLvlCount,1)),uinv(vNow)),axis=2)
             #vNvrsPnow = np.concatenate((np.zeros((ShkCount,pLvlCount,1)),vPnow*uinvP(vNow)),axis=2)
@@ -1327,12 +1475,15 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
                 vFuncCopay = vFuncs_by_copay[Copay_idx]
                 policyFuncFullPrice = policyFuncs_by_copay[FullPrice_idx]
                 policyFuncCopay = policyFuncs_by_copay[Copay_idx]
-                
-                # Make the policy function for this contract               
-                policyFuncsThisHealth.append(InsSelPolicyFunc(vFuncFullPrice,vFuncCopay,policyFuncFullPrice,policyFuncCopay,Contract))
-                
+                DpFuncFullPrice = DpFuncList[FullPrice_idx]
+                DpFuncCopay = DpFuncList[Copay_idx]
+            
+                # Make the policy function for this contract
+                policyFuncsThisHealth.append(InsSelPolicyFunc(vFuncFullPrice,vFuncCopay,policyFuncFullPrice,policyFuncCopay,DpFuncFullPrice,DpFuncCopay,Contract,CRRAmed))
+            
                 # Get value and marginal value at an array of states and integrate across medical shocks
                 vArrayBig, vParrayBig, vPParrayBig = policyFuncsThisHealth[-1].evalvAndvPandvPP(mLvlArray,pLvlArray,MedShkArray)
+                #print(mLvlArray[np.isnan(vParrayBig)])
                 vArray   = np.sum(vArrayBig*ShkPrbsArray,axis=2)
                 vParray  = np.sum(vParrayBig*ShkPrbsArray,axis=2)
                 if self.CubicBool:
@@ -1479,8 +1630,8 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         self.updateMedShockProcess()
         self.updateIncomeProcess()
         self.makeMasterbFromxFuncs()
-        self.distributebFromxFuncs()
-        self.updateSolutionTerminal()
+        self.makeMasterDfuncs()
+        self.distributeConstructedFuncs()
         
     def preSolve(self):
         self.update()
@@ -1914,7 +2065,8 @@ class InsSelStaticConsumerType(InsSelConsumerType):
         self.updateMedShockProcess()
         self.updateIncomeProcess()
         self.makeMasterbFromxFuncs()
-        self.distributebFromxFuncs()
+        self.makeMasterDfuncs()
+        self.distributeConstructedFuncs()
         self.makevFuncsAndPolicyFuncsByCopay()
         self.makePolicyFuncList()
         
@@ -1941,8 +2093,6 @@ class InsSelStaticConsumerType(InsSelConsumerType):
         -------
         None
         '''
-        u = lambda x : utility(x,self.CRRA)
-        uinv = lambda x : utility_inv(x,self.CRRA)
         SpendAllFunc = IdentityFunction(n_dims=3)
         PolicyFuncByCopay = []
         vFuncByCopay = []
@@ -1962,10 +2112,9 @@ class InsSelStaticConsumerType(InsSelConsumerType):
             MedLvlGrid = (xLvlGrid/MedPriceEff)*qGrid/(1.+qGrid)
             
             # Calculate the value of each gridpoint and take pseudo inverse
-            vGrid = u((1.-np.exp(-MedLvlGrid/ShkGrid))**self.CRRAmed*cLvlGrid)
+            vNvrsGrid = (1.-np.exp(-MedLvlGrid/ShkGrid))**self.CRRAmed*cLvlGrid
             ShkZero = ShkGrid == 0.0
-            vGrid[ShkZero] = u(cLvlGrid[ShkZero])
-            vNvrsGrid = uinv(vGrid)
+            vNvrsGrid[ShkZero] = cLvlGrid[ShkZero]
             vNvrsGrid[0,:] = 0.0
             vNvrsGridX = np.tile(np.reshape(vNvrsGrid,(xLvlVec.size,1,ShkVec.size)),(1,2,1))
             vNvrsFunc = TrilinearInterp(vNvrsGridX,xLvlVec,np.array([0.0,100.0]),ShkVec)
@@ -2008,7 +2157,10 @@ class InsSelStaticConsumerType(InsSelConsumerType):
                                                   ValueFuncCopay=self.vFuncByCopay[idx1],
                                                   PolicyFuncFullPrice=self.PolicyFuncByCopay[idx0],
                                                   PolicyFuncCopay=self.PolicyFuncByCopay[idx1],
-                                                  Contract=Contract)
+                                                  DpFuncFullPrice=self.DpFuncListAll[idx0],
+                                                  DpFuncCopay=self.DpFuncListAll[idx1],
+                                                  Contract=Contract,
+                                                  CRRAmed=self.CRRAmed)
                     policyFuncs_this_state.append(policyFunc)
                 policyFuncs_this_t.append(policyFuncs_this_state)
             PolicyFuncList.append(policyFuncs_this_t)
@@ -2130,7 +2282,7 @@ class InsSelStaticConsumerType(InsSelConsumerType):
         for t in range(self.T_sim):
             random_choice = self.ChoiceShkMag[0] > 0.
             for j in range(StateCount):
-                these = self.MrkvHist[t,:] == j
+                these = self.HealthBoolArray[t,:,j]
                 N = np.sum(these)
                 pLvl = self.pLvlHist[t,these]
                 Z = len(self.solution[t].AVfunc[j])

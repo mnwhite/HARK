@@ -97,22 +97,6 @@ class MedShockPolicyFunc(HARKobject):
         # Construct the consumption function and medical care function
         if xLvlCubicBool:
             raise NotImplementedError(), 'Cubic interpolation in x dimension must be fixed'
-#            if MedShkCubicBool:
-#                raise NotImplementedError(), 'Bicubic interpolation not yet implemented'
-#            else:
-#                xLvlGrid_tiled   = np.tile(np.reshape(xLvlGrid,(xLvlGrid.size,1)),
-#                                           (1,MedShkGrid.size))
-#                MedShkGrid_tiled = np.tile(np.reshape(MedShkGrid,(1,MedShkGrid.size)),
-#                                           (xLvlGrid.size,1))
-#                dfdx = (CRRAmed/(CRRAcon*MedPrice))*(MedShkGrid_tiled/MedPrice)**(-1.0/CRRAcon)*\
-#                       ((xLvlGrid_tiled - cLvlGrid)/MedPrice)**(CRRAmed/CRRAcon - 1.0)
-#                dcdx = dfdx/(dfdx + 1.0)
-#                dcdx[0,:] = dcdx[1,:] # approximation; function goes crazy otherwise
-#                dcdx[:,0] = 1.0 # no Med when MedShk=0, so all x is c
-#                cFromxFunc_by_MedShk = []
-#                for j in range(MedShkGrid.size):
-#                    cFromxFunc_by_MedShk.append(CubicInterp(xLvlGrid,cLvlGrid[:,j],dcdx[:,j]))
-#                cFunc = LinearInterpOnInterp1D(cFromxFunc_by_MedShk,MedShkGrid)
         else:
             bFunc = BilinearInterp(bGrid,xLvlGrid,MedShkGrid)
         self.bFunc = bFunc
