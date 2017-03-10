@@ -376,7 +376,7 @@ CollegeDictionary['PermIncAvgInit'] = PermIncAvgInit_c
 test_param_vec = np.array([0.955, # DiscFac
                            2.6,  # CRRAcon
                            8.0,  # CRRAmed 
-                          -7.0,  # ChoiceShkMag in log
+                       -np.inf,  # ChoiceShkMag in log
                            2.0,  # SubsidyZeroRate scaler
                            0.0,  # SubsidyAvg
                            0.0,  # SubsidyWidth scaler
