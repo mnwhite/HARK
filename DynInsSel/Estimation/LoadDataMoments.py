@@ -44,6 +44,7 @@ InsuredRateByAge = np.zeros(40) + np.nan
 MeanPremiumByAge = np.zeros(40) + np.nan
 StdevPremiumByAge = np.zeros(40) + np.nan
 NoPremShareRateByAge = np.zeros(40) + np.nan
+OOPshareByAge = np.zeros(60) + np.nan
 OOPmomentWeightsByAge = np.zeros(60) + np.nan
 totMomentWeightsByAge = np.zeros(60) + np.nan
 premMomentWeightsByAge = np.zeros(40) + np.nan
@@ -53,15 +54,16 @@ for j in range(60):
     MeanLogTotalMedByAge[j] = float(raw_moments[j][2])
     StdevLogOOPmedByAge[j] = float(raw_moments[j][3])
     StdevLogTotalMedByAge[j] = float(raw_moments[j][4])
-    OOPmomentWeightsByAge[j] = float(raw_moments[j][9])
-    totMomentWeightsByAge[j] = float(raw_moments[j][10])
+    OOPshareByAge[j] = float(raw_moments[j][9])
+    OOPmomentWeightsByAge[j] = float(raw_moments[j][10])
+    totMomentWeightsByAge[j] = float(raw_moments[j][11])
     if j < 40:
         InsuredRateByAge[j] = float(raw_moments[j][5])
         MeanPremiumByAge[j] = float(raw_moments[j][6])
         StdevPremiumByAge[j] = float(raw_moments[j][7])
         NoPremShareRateByAge[j] = float(raw_moments[j][8])
-        premMomentWeightsByAge[j] = float(raw_moments[j][11])
-        otherMomentWeightsByAge[j] = float(raw_moments[j][12])    
+        premMomentWeightsByAge[j] = float(raw_moments[j][12])
+        otherMomentWeightsByAge[j] = float(raw_moments[j][13])    
 
 # Load the moments by five-year age groups and income quintile into a CSV reader object
 data_location = os.path.dirname(os.path.abspath(__file__))
@@ -337,6 +339,13 @@ if __name__ == '__main__':
     plt.savefig('MeanLogTotalMedByAgeHealth.pdf')
     plt.show()
     
+    plt.plot(OneYearAgeLong,OOPshareByAge,'.k')
+    plt.xlabel('Age')
+    plt.ylabel('Out-of-pocket medical spending share')
+    plt.ylim([0.0,0.25])
+    plt.savefig('OOPshareByAge.pdf')
+    plt.show()
+    
     plt.plot(OneYearAgeLong,StdevLogOOPmedByAge,'.k')
     plt.plot(FiveYearAgeLong,StdevLogOOPmedByAgeHealth)
     plt.xlabel('Age')
@@ -384,5 +393,11 @@ if __name__ == '__main__':
     plt.ylabel('Pct ESI buyers with no employer contribution')
     plt.legend(['Overall average','Poor health','Fair health','Good health','Very good health','Excellent health'],loc=0,fontsize=8)
     plt.savefig('NoPremShareByAgeHealth.pdf')
+    plt.show()
+    
+    plt.plot(OneYearAge,NoPremShareRateByAge,'.k')
+    plt.xlabel('Age')
+    plt.ylabel('Pct ESI buyers with no employer contribution')
+    plt.savefig('NoPremShareByAge.pdf')
     plt.show()
 

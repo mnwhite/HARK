@@ -3,10 +3,12 @@ This script runs some kernel regressions to extract insurance functions.
 '''
 import sys 
 sys.path.insert(0,'../')
+sys.path.insert(0,'../../')
 
 import csv
 import numpy as np
-from HARKutilities import kernelRegression, plotFunc, plotFuncs
+from HARKutilities import kernelRegression, plotFuncs
+import matplotlib.pyplot as plt
 
 infile = open('premkernelregbig.txt','r') 
 my_reader = csv.reader(infile,delimiter='\t')
@@ -52,3 +54,12 @@ lowg = lambda x : lowf(np.log(x+1))
 highg = lambda x : highf(np.log(x+1))
 plotFuncs([lowg,highg],50,5000)
 plotFuncs([lowg,highg],5000,40000)
+
+these = np.logical_or(np.random.rand(totalmed.size) < 0.2,totalmed > 10000)
+plt.plot(totalmed[these],altmed[these],'.k')
+plt.xlim([0.,30000.])
+plt.ylim([0.,30000.])
+plt.xlabel('Total medical expenses')
+plt.ylabel('Medical expenses not paid OOP')
+plt.savefig('ExpenseScatter.pdf')
+plt.show()

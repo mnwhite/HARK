@@ -2018,9 +2018,23 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
             Z = range(len(self.solution[t].policyFunc[h]))
         for z in Z:
             cLvl,MedLvl = self.solution[t].policyFunc[h][z](mLvl,p*np.ones_like(mLvl),MedShk*np.ones_like(mLvl))
+            #plt.plot(mLvl[:-1],(cLvl[1:]-cLvl[0:-1])/(mLvl[1]-mLvl[0]))
             plt.plot(mLvl,cLvl)
         plt.xlabel('Market resources mLvl')
         plt.ylabel('Consumption c(mLvl)')
+        plt.ylim(ymin=0.0)
+        plt.show()
+        
+    def plotMedFuncByContract(self,t,h,p,MedShk,mMin=0.0,mMax=10.0,Z=None):
+        mLvl = np.linspace(mMin,mMax,200)
+        if Z is None:
+            Z = range(len(self.solution[t].policyFunc[h]))
+        for z in Z:
+            cLvl,MedLvl = self.solution[t].policyFunc[h][z](mLvl,p*np.ones_like(mLvl),MedShk*np.ones_like(mLvl))
+            #plt.plot(mLvl[:-1],(MedLvl[1:]-MedLvl[0:-1])/(mLvl[1]-mLvl[0]))
+            plt.plot(mLvl,MedLvl)
+        plt.xlabel('Market resources mLvl')
+        plt.ylabel('Medical care Med(mLvl)')
         plt.ylim(ymin=0.0)
         plt.show()
         
@@ -2237,8 +2251,8 @@ class InsSelStaticConsumerType(InsSelConsumerType):
             m_temp = yLvlNow[these]
             p_temp = yLvlNow[these]
             for z in range(Z):                
-                Premium = self.PremiumFuncs[t][h][z](m_temp)
-                x_temp = m_temp-Premium
+                Premium = np.maximum(self.PremiumFuncs[t][h][z](m_temp)  - self.PremiumSubsidy,0.0)
+                x_temp = m_temp - Premium
                 vNvrs_temp[:,z] = self.solution[t].vFuncByContract[h][z].func(x_temp)
                 vNvrs_temp[x_temp<0.,z] = -np.inf
             
@@ -2267,7 +2281,7 @@ class InsSelStaticConsumerType(InsSelConsumerType):
             MedShk_temp = MedShkNow[these]
             for z in range(Z):
                 idx = z_choice == z
-                Prem_temp[idx] = self.PremiumFuncs[t][h][z](m_temp[idx],p_temp[idx])
+                Prem_temp[idx] = np.maximum(self.PremiumFuncs[t][h][z](m_temp[idx],p_temp[idx]) - self.PremiumSubsidy, 0.0)
                 c_temp[idx],Med_temp[idx] = self.solution[t].policyFunc[h][z](m_temp[idx]-Prem_temp[idx],p_temp[idx],MedShk_temp[idx])
                 Med_temp[idx] = np.maximum(Med_temp[idx],0.0) # Prevents numeric glitching
                 OOP_temp[idx] = self.solution[t].policyFunc[h][z].Contract.OOPfunc(Med_temp[idx])            
@@ -2287,6 +2301,7 @@ class InsSelStaticConsumerType(InsSelConsumerType):
         self.OOPnow = OOPnow
         self.PremNow = PremNow
         self.ContractNow = ContractNow
+
         
     def calcExpInsPaybyContract(self):
         '''
@@ -2319,7 +2334,7 @@ class InsSelStaticConsumerType(InsSelConsumerType):
                 vNvrs_array = np.zeros((N,Z))
                 AV_array = np.zeros((N,Z))
                 for z in range(Z):
-                    Premium = self.PremiumFuncs[t][j][z](pLvl)
+                    Premium = np.maximum(self.PremiumFuncs[t][j][z](pLvl) - self.PremiumSubsidy, 0.0)
                     xLvl_temp = pLvl - Premium
                     AV_array[:,z] = self.solution[t].AVfunc[j][z](xLvl_temp)
                     vNvrs_array[:,z] = self.solution[t].vFuncByContract[j][z].func(xLvl_temp)

@@ -12,7 +12,7 @@ import csv
 
 # Set parameters for estimation
 AgentCountTotal = 100000
-StaticBool = False
+StaticBool = True
 
 # Calibrated / other parameters (grid sizes, etc)
 Rfree = 5*[1.03]                    # Interest factor on assets
@@ -21,11 +21,11 @@ aXtraMin = 0.001                    # Minimum end-of-period "assets above minimu
 aXtraMax = 80                       # Minimum end-of-period "assets above minimum" value               
 aXtraExtra = [0.005,0.01]           # Some other value of "assets above minimum" to add to the grid, not used
 aXtraNestFac = 3                    # Exponential nesting factor when constructing "assets above minimum" grid
-aXtraCount = 32                    # Number of points in the grid of "assets above minimum"
+aXtraCount = 32                     # Number of points in the grid of "assets above minimum"
 PermShkCount = 7                    # Number of points in discrete approximation to permanent income shocks
 TranShkCount = 7                    # Number of points in discrete approximation to transitory income shocks
 UnempPrb = 0.05                     # Probability of unemployment while working
-UnempPrbRet = 0.0005                # Probability of "unemployment" while retired
+UnempPrbRet = 0.0000                # Probability of "unemployment" while retired
 IncUnemp = 0.3                      # Unemployment benefits replacement rate
 IncUnempRet = 0.0                   # "Unemployment" benefits when retired
 BoroCnstArt = 0.0                   # Artificial borrowing constraint; imposed minimum level of end-of period assets
@@ -36,11 +36,11 @@ PermIncStdInit = 0.4                # Initial standard deviation of (log) perman
 PermIncAvgInit = 1.0                # Initial average of permanent income (not used in example)
 PermIncCorr = 1.0                   # Serial correlation coefficient for permanent income
 MedShkCount = 5                     # Number of medical shock points in "body"
-MedShkCountTail = [2,8]            # Number of medical shock points in "upper tail"
+MedShkCountTail = [2,8]             # Number of medical shock points in "upper tail"
 MedShkTailBound = [0.05,0.98]         # Boundaries of body (in CDF terms)
 MedPrice = 1.0                      # Relative price of a unit of medical care
 AgentCount = 10000                  # Number of agents of this type (only matters for simulation)
-DeductibleList = [0.3,0.2,0.1,0.05,0.0] # List of deductibles for working-age insurance contracts
+DeductibleList = [0.25,0.2,0.15,0.1,0.05] # List of deductibles for working-age insurance contracts
 T_sim = 60                          # Number of periods to simulate (age 25 to 84)
 
 # These are the results of ordered probits of h_t and age on h_t+1 using MEPS data
@@ -374,13 +374,13 @@ CollegeDictionary['PermIncAvgInit'] = PermIncAvgInit_c
 
 # Make a test parameter vector for estimation
 test_param_vec = np.array([0.955, # DiscFac
-                           2.6,  # CRRAcon
+                           2.2,  # CRRAcon
                            8.0,  # CRRAmed 
-                       -np.inf,  # ChoiceShkMag in log
-                           2.0,  # SubsidyZeroRate scaler
-                           0.0,  # SubsidyAvg
-                           0.0,  # SubsidyWidth scaler
-                          -5.5,  # MedShkMean constant coefficient
+                          -2.5,  # ChoiceShkMag in log
+                           2.8,  # SubsidyZeroRate scaler
+                          -3.0,  # SubsidyAvg
+                          -3.0,  # SubsidyWidth scaler
+                          -5.3,  # MedShkMean constant coefficient
                          0.014,  # MedShkMean linear age coefficient
                         0.0005,  # MedShkMean quadratic age coefficient
                      -0.000000,  # MedShkMean cubic age coefficient

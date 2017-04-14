@@ -11,6 +11,7 @@ from HARKutilities import getArgNames, NullFunc
 from copy import copy, deepcopy
 import numpy as np
 from time import clock
+from HARKparallel import multiThreadCommands
   
 def distanceMetric(thing_A,thing_B):
     '''
@@ -936,8 +937,9 @@ class Market(HARKobject):
         -------
         None
         '''
-        for this_type in self.agents:
-            this_type.solve()  
+        #for this_type in self.agents:
+        #    this_type.solve()
+        multiThreadCommands(self.agents,['solve()'])
     
     def solve(self):
         '''
@@ -1059,6 +1061,7 @@ class Market(HARKobject):
         '''
         for this_type in self.agents:
             this_type.marketAction()
+        #multiThreadCommands(self.agents,['marketAction()'])
             
     def reset(self):
         '''
