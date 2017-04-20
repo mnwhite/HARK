@@ -57,6 +57,7 @@ class DynInsSelType(BaseType):
         #plt.show()
         
     def preSolve(self):
+        self.installPremiumFuncs()
         self.updateSolutionTerminal()
         
 #    def postSolve(self):
@@ -101,7 +102,7 @@ class DynInsSelMarket(Market):
     def __init__(self):
         Market.__init__(self,agents=[],sow_vars=['PremiumFuncs'],reap_vars=['ExpInsPay','ExpBuyers'],
                         const_vars=[],track_vars=['Premiums'],dyn_vars=['PremiumFuncs'],
-                 millRule=None,calcDynamics=None,act_T=12,tolerance=0.0001)
+                 millRule=None,calcDynamics=None,act_T=10,tolerance=0.0001)
 
     def millRule(self,ExpInsPay,ExpBuyers):
         temp = flatActuarialRule(self,ExpInsPay,ExpBuyers)
@@ -138,6 +139,7 @@ class DynInsSelMarket(Market):
         PremiumStdByAge = np.zeros(40) + np.nan
         LogOOPmedMeanByAge = np.zeros(60) + np.nan
         LogOOPmedStdByAge = np.zeros(60) + np.nan
+        OOPshareByAge = np.zeros(60) + np.nan
 
         # Calculate all simulated moments by age
         for t in range(60):
@@ -145,6 +147,8 @@ class DynInsSelMarket(Market):
             LogTotalMedList = []
             LogOOPmedList = []
             PremiumList = []
+            TotalMedSum = 0.0
+            OOPmedSum = 0.0
             LiveCount = 0.0
             InsuredCount = 0.0
             ZeroCount = 0.0
@@ -158,10 +162,15 @@ class DynInsSelMarket(Market):
                     these = ThisType.InsuredBoolArray[t,:]
                     PremiumList.append(ThisType.PremNow_hist[t,these])
                     LiveCount += np.sum(ThisType.LiveBoolArray[t,:])
+                    TotalMedSum += np.sum(ThisType.TotalMedHist[t,ThisType.InsuredBoolArray[t,:]])
+                    OOPmedSum += np.sum(ThisType.OOPmedHist[t,ThisType.InsuredBoolArray[t,:]])
                     temp = np.sum(ThisType.InsuredBoolArray[t,:])
                     InsuredCount += temp
                     if ThisType.ZeroSubsidyBool:
                         ZeroCount += temp
+                else:
+                    TotalMedSum += np.sum(ThisType.TotalMedHist[t,these])
+                    OOPmedSum += np.sum(ThisType.OOPmedHist[t,these])
             if t < 40:
                 WealthRatioArray = np.hstack(WealthRatioList)
                 WealthMedianByAge[t] = np.median(WealthRatioArray)
@@ -179,6 +188,7 @@ class DynInsSelMarket(Market):
             LogOOPmedArray = np.hstack(LogOOPmedList)
             LogOOPmedMeanByAge[t] = np.mean(LogOOPmedArray)
             LogOOPmedStdByAge[t] = np.std(LogOOPmedArray)
+            OOPshareByAge[t] = OOPmedSum/TotalMedSum
             
         # Initialize moments by age-health and define age band bounds
         LogTotalMedMeanByAgeHealth = np.zeros((12,5)) + np.nan
@@ -252,6 +262,7 @@ class DynInsSelMarket(Market):
         self.PremiumMeanByAgeIncome = PremiumMeanByAgeIncome*10000.
         self.LogOOPmedMeanByAge = LogOOPmedMeanByAge + 9.21034
         self.LogOOPmedStdByAge = LogOOPmedStdByAge
+        self.OOPshareByAge = OOPshareByAge
         
     def combineSimulatedMoments(self):
         '''
@@ -280,8 +291,9 @@ class DynInsSelMarket(Market):
                       self.LogTotalMedStdByAgeIncome.flatten(),
                       self.InsuredRateByAgeIncome.flatten(),
                       self.PremiumMeanByAgeIncome.flatten(),
-                      self.LogOOPmedMeanByAge.flatten(),
-                      self.LogOOPmedStdByAge.flatten()]
+                      self.LogOOPmedMeanByAge,
+                      self.LogOOPmedStdByAge,
+                      self.OOPshareByAge]
         self.simulated_moments = np.hstack(MomentList)
         
     def aggregateMomentConditions(self):
@@ -440,18 +452,19 @@ def makeDynInsSelType(CRRAcon,CRRAmed,DiscFac,ChoiceShkMag,MedShkMeanAgeParams,M
         WorkingContractList.append(MedInsuranceContract(ConstantFunction(0.0),0.0,1.0,Params.MedPrice))
         for j in range(PremiumArray.size):
             Premium = max([PremiumArray[j] - PremiumSubsidy,0.0])
-            Copay = 0.05
+            Copay = 0.08
             Deductible = Params.DeductibleList[j]
             WorkingContractList.append(MedInsuranceContract(ConstantFunction(Premium),Deductible,Copay,Params.MedPrice))
     elif InsChoiceType == 1:
         WorkingContractList.append(MedInsuranceContract(ConstantFunction(0.0),0.0,1.0,Params.MedPrice))
         Premium = max([PremiumArray[0] - PremiumSubsidy,0.0])
-        Copay = 0.05
-        Deductible = 0.05
+        Copay = 0.1
+        Deductible = 0.025
         WorkingContractList.append(MedInsuranceContract(ConstantFunction(Premium),Deductible,Copay,Params.MedPrice))
     else:
-        WorkingContractList.append(MedInsuranceContract(ConstantFunction(0.0),0.05,0.02,Params.MedPrice))
-    RetiredContractListA = [MedInsuranceContract(ConstantFunction(0.0),0.0,0.02,Params.MedPrice)]
+        WorkingContractList.append(MedInsuranceContract(ConstantFunction(0.0),0.05,0.05,Params.MedPrice))
+        
+    RetiredContractListA = [MedInsuranceContract(ConstantFunction(0.0),0.1,0.05,Params.MedPrice)]
     #RetiredContractListB = [MedInsuranceContract(ConstantFunction(0.0),0.2,0.05,Params.MedPrice)]
     TypeDict['ContractList'] = Params.working_T*[5*[WorkingContractList]] + (Params.retired_T)*[5*[RetiredContractListA]]
     
@@ -466,7 +479,7 @@ def makeDynInsSelType(CRRAcon,CRRAmed,DiscFac,ChoiceShkMag,MedShkMeanAgeParams,M
     return ThisType
         
 
-def makeMarketFromParams(ParamArray,PremiumArray,InsChoiceType):
+def makeMarketFromParams(ParamArray,PremiumArray,InsChoiceType,SubsidyTypeCount,ZeroSubsidyBool):
     '''
     Makes a list of 3 or 24 DynInsSelTypes, to be used for estimation.
     
@@ -477,7 +490,12 @@ def makeMarketFromParams(ParamArray,PremiumArray,InsChoiceType):
     PremiumArray : np.array
         Array of premiums for insurance contracts for workers. Irrelevant if InsChoiceBool = False.
     InsChoiceType : int
-        Indicator for whether the agents should have a choice of insurance contract.
+        Indicator for the extent of consumer choice over contracts.  0 --> no choice,
+        1 --> one non-null contract, 2 --> five non-null contracts.
+    SubsidyTypeCount : int
+        Number of different non-zero subsidy levels for consumers in this market.
+    ZeroSubsidyBool : bool
+        Indicator for whether there is a zero subsidy type.
         
     Returns
     -------
@@ -504,15 +522,17 @@ def makeMarketFromParams(ParamArray,PremiumArray,InsChoiceType):
     MedShkStdPRparams = ParamArray[31:33]
     
     # Make the array of premium subsidies (trivial if there is no insurance choice)
-    if InsChoiceType > 2:
-        Temp = approxUniform(7,SubsidyAvg-SubsidyWidth,SubsidyAvg+SubsidyWidth)
+    if InsChoiceType > 0:
+        Temp = approxUniform(SubsidyTypeCount,SubsidyAvg-SubsidyWidth,SubsidyAvg+SubsidyWidth)
         SubsidyArray = Temp[1]
-        SubsidyArray = np.insert(SubsidyArray,0,0.0)
-        WeightArray  = np.insert(Temp[0]*(1.0-SubsidyZeroRate),0,SubsidyZeroRate)
+        WeightArray  = Temp[0]
+        if ZeroSubsidyBool and SubsidyZeroRate > 0.0: 
+            SubsidyArray = np.insert(SubsidyArray,0,0.0)
+            WeightArray  = np.insert(Temp[0]*(1.0-SubsidyZeroRate),0,SubsidyZeroRate)
     else:
-        SubsidyArray = np.array([SubsidyAvg])
+        SubsidyArray = np.array([0.0])
         WeightArray  = np.array([1.0])
-    ContractCounts = [0,1,5,5] # plus one
+    ContractCounts = [0,1,5] # plus one
     
     # Make the list of types
     AgentList = []
@@ -532,7 +552,7 @@ def makeMarketFromParams(ParamArray,PremiumArray,InsChoiceType):
     # Construct an initial nested list for premiums
     ZeroPremiumFunc = ConstantFunction(0.0)
     PremiumFuncBase = [ZeroPremiumFunc]
-    Premiums_init = np.concatenate((np.array([0]),PremiumArray[0:ContractCounts[InsChoiceType]]))
+    Premiums_init = np.concatenate((np.array([0.]),PremiumArray[0:ContractCounts[InsChoiceType]]))
     for z in range(ContractCounts[InsChoiceType]):
         PremiumFuncBase.append(ConstantFunction(PremiumArray[z]))
     PremiumFuncs_init = 40*[StateCount*[PremiumFuncBase]] + 20*[StateCount*[(ContractCounts[InsChoiceType]+1)*[ZeroPremiumFunc]]]
@@ -548,13 +568,20 @@ def makeMarketFromParams(ParamArray,PremiumArray,InsChoiceType):
         InsuranceMarket.max_loops = 1
     else:
         InsuranceMarket.max_loops = 10
-    InsuranceMarket.LoadFac = 1.1 # Make this an input later
+    InsuranceMarket.LoadFac = 1.2 # Make this an input later
+    #print('I made an insurance market with ' + str(len(InsuranceMarket.agents)) + ' agent types!')
     return InsuranceMarket
     
 
 def objectiveFunction(Parameters):
-    InsChoice = 3
-    MyMarket = makeMarketFromParams(Parameters,np.array([0.0, 0.0, 0.0, 0.0, 0.0]),InsChoice)
+    '''
+    The objective function for the estimation.  Makes and solves a market, then
+    returns the weighted sum of moment differences between simulation and data.
+    '''
+    InsChoice = 2
+    SubsidyTypeCount = 7
+    ZeroSubsidyBool = True
+    MyMarket = makeMarketFromParams(Parameters,np.array([0.0, 0.0, 0.0, 0.0, 0.0]),InsChoice,SubsidyTypeCount,ZeroSubsidyBool)
     multiThreadCommands(MyMarket.agents,['update()','makeShockHistory()'])
     MyMarket.getIncomeQuintiles()
     multiThreadCommandsFake(MyMarket.agents,['makeIncBoolArray()'])
@@ -668,14 +695,6 @@ if __name__ == '__main__':
     plt.xlim((25,85))
     #plt.savefig('../Figures/MeanTotalMedFitByAge.pdf')
     plt.show()
-    
-    plt.plot(Age,MyMarket.LogOOPmedMeanByAge)
-    plt.plot(Age,MyMarket.data_moments[640:700],'.k')
-    plt.xlabel('Age')
-    plt.ylabel('Mean log OOP (nonzero) medical expenses')
-    plt.xlim((25,85))
-    #plt.savefig('../Figures/MeanOOPmedFitByAge.pdf')
-    plt.show()
 
     plt.plot(Age,MyMarket.LogTotalMedStdByAge)
     plt.plot(Age,MyMarket.data_moments[100:160],'.k')
@@ -684,14 +703,6 @@ if __name__ == '__main__':
     plt.xlim((25,85))
     #plt.savefig('../Figures/StdevTotalMedFitByAge.pdf')
     plt.show()
-    
-    plt.plot(Age,MyMarket.LogOOPmedStdByAge)
-    plt.plot(Age,MyMarket.data_moments[700:760],'.k')
-    plt.xlabel('Age')
-    plt.ylabel('Stdev log OOP (nonzero) medical expenses')
-    plt.xlim((25,85))
-    #plt.savefig('../Figures/StdevOOPmedFitByAge.pdf')
-    plt.show()    
     
     # Make a "detrender" based on quadratic fit of data moments
     f = lambda x : 5.14607229 + 0.04242741*x
@@ -736,18 +747,28 @@ if __name__ == '__main__':
     plt.plot(Age[0:40],MyMarket.data_moments[240:280],'.k')
     plt.xlabel('Age')
     plt.ylabel('Mean out-of-pocket premiums paid')
+    plt.xlim((25,65))
     plt.show()
     
     plt.plot(Age[0:40],MyMarket.PremiumStdByAge,'-b')
     plt.plot(Age[0:40],MyMarket.data_moments[280:320],'.k')
     plt.xlabel('Age')
     plt.ylabel('Stdev out-of-pocket premiums paid')
+    plt.xlim((25,65))
     plt.show()
     
     plt.plot(Age[0:40],MyMarket.ZeroSubsidyRateByAge,'-b')
     plt.plot(Age[0:40],MyMarket.data_moments[200:240],'.k')
     plt.xlabel('Age')
     plt.ylabel('Pct insured with zero employer contribution')
+    plt.xlim((25,65))
+    plt.show()
+    
+    plt.plot(Age,MyMarket.OOPshareByAge,'-b')
+    plt.plot(Age,MyMarket.data_moments[760:820],'.k')
+    plt.xlabel('Age')
+    plt.ylabel('Share of medical expenses paid out-of-pocket')
+    plt.xlim((25,85))
     plt.show()
     
      

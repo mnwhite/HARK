@@ -8,7 +8,7 @@ import os
 # Choose which classes of moments will actually be used in estimation
 use_data_weights = False # Whether to use moment weights from data or just all ones
 MomentBools = np.array([
-               True,  #WealthRatioByAge
+               False,  #WealthRatioByAge
                True,  #MeanLogTotalMedByAge
                False, #StdevLogTotalMedByAge
                False, #InsuredRateByAge
@@ -24,6 +24,7 @@ MomentBools = np.array([
                False, #MeanPremiumByAgeIncome
                False, #MeanLogOOPmedByAge
                False, #StdevLogOOPmedByAge
+               False, # OOPshareByAge
               ])
 
 # Load the moments by one-year age groups into a CSV reader object
@@ -185,7 +186,8 @@ MomentList = [WealthRatioByAge,
               InsuredRateByAgeIncome.flatten(),
               MeanPremiumByAgeIncome.flatten(),
               MeanLogOOPmedByAge.flatten(),
-              StdevLogOOPmedByAge.flatten()]
+              StdevLogOOPmedByAge.flatten(),
+              OOPshareByAge]
 data_moments = np.hstack(MomentList)
 
 # Construct the vector of moment weights
@@ -207,6 +209,7 @@ if use_data_weights:
     moment_weights[600:640] = premMomentWeightsByAgeIncome.flatten()
     moment_weights[640:700] = OOPmomentWeightsByAge
     moment_weights[700:760] = OOPmomentWeightsByAge
+    moment_weights[760:820] = otherMomentWeightsByAge
     
 else:
     moment_weights = np.ones_like(data_moments)
@@ -244,6 +247,8 @@ if not MomentBools[14]:
     moment_weights[640:700] = 0.0
 if not MomentBools[15]:
     moment_weights[700:760] = 0.0
+if not MomentBools[16]:
+    moment_weights[760:820] = 0.0
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt

@@ -886,11 +886,6 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,LivPrb,DiscFac,C
             MedArray = np.sum(ConArrayBig*ShkPrbsArray,axis=2)
             if CubicBool:
                 vPParray = np.sum(vPParrayBig*ShkPrbsArray,axis=2)
-                
-#            if np.sum(np.isnan(vArray)) > 0:
-#                print(h,z,np.sum(np.isnan(vArrayBig)))
-                #print(np.argwhere(np.isnan(vArray)))
-                #print(mLvlArray[0,1,:])
             
             # Add vPnvrs=0 at m=mLvlMin to close it off at the bottom (and vNvrs=0)
             mGrid_small   = np.concatenate((np.reshape(mLvlMinNow(pLvlGrid),(1,pLvlCount)),mLvlArray[:,:,0]))
@@ -1166,6 +1161,47 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         self.TranShkDstn = TranShkDstn
         self.addToTimeVary('IncomeDstn')
         if not original_time:
+            self.timeRev()
+            
+            
+    def installPremiumFuncs(self):
+        '''
+        Applies the premium data in the attribute PremiumFuncs to the contracts
+        in the attribute ContractList, accounting for the employer contribution
+        in PremiumSubsidy.  The premiums in PremiumFuncs are used in the static
+        solver to find quasi-equilibrium premiums; this method feeds these back
+        into ContractList to use on the next dynamic solution pass.
+        
+        Parameters
+        ----------
+        None
+        
+        Returns
+        -------
+        None
+        '''
+        if not hasattr(self,'PremiumFuncs'):
+            return # Don't do anything if PremiumFuncs hasn't been defined
+        time_orig = self.time_flow
+        self.timeFwd()
+        T_retire = 40 # For determining whether the apply subsidy
+        T = len(self.ContractList)
+        
+        # Loop through each age-state-contract, filling in the updated premium in ContractList
+        for t in range(T):
+            StateCount = len(self.ContractList[t])
+            for h in range(StateCount):
+                ContractCount = len(self.ContractList[t][h])
+                for z in range(ContractCount):
+                    PremiumFunc = self.PremiumFuncs[t][h][z]
+                    if PremiumFunc.__class__.__name__ == 'ConstantFunction':
+                        NetPremium = np.maximum(PremiumFunc.value - (t < T_retire)*self.PremiumSubsidy, 0.0)
+                        self.ContractList[t][h][z].Premium = ConstantFunction(NetPremium)
+                    else:
+                        raise TypeError("installPremiumFuncs can't yet handle non-ConstantFunctions!")
+                        
+        # Restore the original flow of time
+        if not time_orig:
             self.timeRev()
             
             

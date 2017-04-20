@@ -40,7 +40,7 @@ MedShkCountTail = [2,8]             # Number of medical shock points in "upper t
 MedShkTailBound = [0.05,0.98]         # Boundaries of body (in CDF terms)
 MedPrice = 1.0                      # Relative price of a unit of medical care
 AgentCount = 10000                  # Number of agents of this type (only matters for simulation)
-DeductibleList = [0.25,0.2,0.15,0.1,0.05] # List of deductibles for working-age insurance contracts
+DeductibleList = [0.06,0.05,0.04,0.03,0.02] # List of deductibles for working-age insurance contracts
 T_sim = 60                          # Number of periods to simulate (age 25 to 84)
 
 # These are the results of ordered probits of h_t and age on h_t+1 using MEPS data
@@ -374,13 +374,13 @@ CollegeDictionary['PermIncAvgInit'] = PermIncAvgInit_c
 
 # Make a test parameter vector for estimation
 test_param_vec = np.array([0.955, # DiscFac
-                           2.2,  # CRRAcon
+                           1.8,  # CRRAcon
                            8.0,  # CRRAmed 
                           -2.5,  # ChoiceShkMag in log
-                           2.8,  # SubsidyZeroRate scaler
-                          -3.0,  # SubsidyAvg
+                           2.5,  # SubsidyZeroRate scaler
+                          -1.3,  # SubsidyAvg
                           -3.0,  # SubsidyWidth scaler
-                          -5.3,  # MedShkMean constant coefficient
+                          -5.4,  # MedShkMean constant coefficient
                          0.014,  # MedShkMean linear age coefficient
                         0.0005,  # MedShkMean quadratic age coefficient
                      -0.000000,  # MedShkMean cubic age coefficient
