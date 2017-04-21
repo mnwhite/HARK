@@ -10,7 +10,7 @@ import DynInsSelParameters as Params
 from copy import copy
 from InsuranceSelectionModel import MedInsuranceContract, InsSelConsumerType, InsSelStaticConsumerType
 from LoadDataMoments import data_moments, moment_weights
-from ActuarialRules import flatActuarialRule
+from ActuarialRules import flatActuarialRule, exclusionaryActuarialRule, healthRatedActuarialRule
 from HARKinterpolation import ConstantFunction
 from HARKutilities import approxUniform, getPercentiles
 from HARKcore import Market, HARKobject
@@ -590,11 +590,11 @@ def objectiveFunction(Parameters):
     sim_commands = ['initializeSim()','simulate()','postSim()']
     all_commands = solve_commands + sim_commands
     
-    #multiThreadCommands(MyMarket.agents,all_commands)
-    
     MyMarket.solve()
     if Params.StaticBool:
         multiThreadCommands(MyMarket.agents,sim_commands)
+        
+    MyMarket.agents[0].makeStynamicValueFunc()
         
     MyMarket.calcSimulatedMoments()
     MyMarket.combineSimulatedMoments()
@@ -721,6 +721,20 @@ if __name__ == '__main__':
     plt.xlim((25,85))
     #plt.savefig('../Figures/MeanTotalMedFitByAgeHealth.pdf')
     plt.show()
+    
+    plt.plot(Age5year,MyMarket.LogTotalMedStdByAgeHealth)
+    temp = np.reshape(MyMarket.data_moments[380:440],(12,5))
+    plt.plot(Age5year,temp[:,0],'.b')
+    plt.plot(Age5year,temp[:,1],'.g')
+    plt.plot(Age5year,temp[:,2],'.r')
+    plt.plot(Age5year,temp[:,3],'.c')
+    plt.plot(Age5year,temp[:,4],'.m')
+    plt.xlabel('Age')
+    plt.ylabel('Stdev log total (nonzero) medical expenses')
+    plt.title('Medical expenses by age group and health status')
+    plt.xlim((25,85))
+    #plt.savefig('../Figures/StdevTotalMedFitByAgeHealth.pdf')
+    plt.show()
         
     plt.plot(Age5year[:8],MyMarket.LogTotalMedMeanByAgeIncome - np.tile(np.reshape(LogMedMeanAdj[:8],(8,1)),(1,5)))
     temp = np.reshape(MyMarket.data_moments[480:520],(8,5))
@@ -736,8 +750,34 @@ if __name__ == '__main__':
     #plt.savefig('../Figures/MeanTotalMedFitByAgeIncome.pdf')
     plt.show()
     
+    plt.plot(Age5year[:8],MyMarket.LogTotalMedStdByAgeIncome)
+    temp = np.reshape(MyMarket.data_moments[520:560],(8,5))
+    plt.plot(Age5year[:8],temp[:,0],'.b')
+    plt.plot(Age5year[:8],temp[:,1],'.g')
+    plt.plot(Age5year[:8],temp[:,2],'.r')
+    plt.plot(Age5year[:8],temp[:,3],'.c')
+    plt.plot(Age5year[:8],temp[:,4],'.m')
+    plt.xlabel('Age')
+    plt.ylabel('Stdev log total (nonzero) medical expenses')
+    plt.title('Medical expenses by age group and income quintile')
+    plt.xlim((25,65))
+    #plt.savefig('../Figures/StdevTotalMedFitByAgeIncome.pdf')
+    plt.show()
+    
     plt.plot(Age[0:40],MyMarket.InsuredRateByAge,'-b')
     plt.plot(Age[0:40],MyMarket.data_moments[160:200],'.k')
+    plt.xlabel('Age')
+    plt.ylabel('ESI uptake rate')
+    plt.xlim((25,65))
+    plt.show()
+    
+    plt.plot(Age5year[:8],MyMarket.InsuredRateByAgeIncome)
+    temp = np.reshape(MyMarket.data_moments[560:600],(8,5))
+    plt.plot(Age5year[:8],temp[:,0],'.b')
+    plt.plot(Age5year[:8],temp[:,1],'.g')
+    plt.plot(Age5year[:8],temp[:,2],'.r')
+    plt.plot(Age5year[:8],temp[:,3],'.c')
+    plt.plot(Age5year[:8],temp[:,4],'.m')
     plt.xlabel('Age')
     plt.ylabel('ESI uptake rate')
     plt.xlim((25,65))

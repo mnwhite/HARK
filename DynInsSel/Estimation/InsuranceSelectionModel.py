@@ -691,16 +691,6 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,LivPrb,DiscFac,C
         if CubicBool:
             EndOfPrdvPPcond[:,:,h] = Rfree[h]*Rfree[h]*np.sum(vPPfuncNext(mLvlNext,pLvlNext)*ShkPrbs_tiled,axis=0)
         
-#        if np.sum(np.isnan(tempv)) > 0:
-#            print(str(np.sum(np.isnan(tempv))) + ' next period value points are NaN at h=' + str(h))
-#        if np.sum(np.isnan(tempvP)) > 0:
-#            print(str(np.sum(np.isnan(tempvP))) + ' next period marg value points are NaN at h=' + str(h))
-                    
-#    if np.sum(np.isnan(EndOfPrdvCond)) > 0:
-#        print(str(np.sum(np.isnan(EndOfPrdvCond))) + ' end-of-period value points are NaN!')
-#    if np.sum(np.isnan(EndOfPrdvPcond)) > 0:
-#        print(str(np.sum(np.isnan(EndOfPrdvPcond))) + ' end-of-period marg value points are NaN!')
-        
     # Calculate end of period value and marginal value conditional on each current health state
     EndOfPrdv = np.zeros((pLvlCount,aLvlCount,HealthCount))
     EndOfPrdvP = np.zeros((pLvlCount,aLvlCount,HealthCount))
@@ -2394,6 +2384,101 @@ class InsSelStaticConsumerType(InsSelConsumerType):
         self.ExpInsPay = ExpInsPay
         self.ExpBuyers = ExpBuyers
         
+        
+    def makeStynamicValueFunc(self):
+        '''
+        Constructs a "stynamic" value function over health and permanent income
+        in each period.  Agents behave according to the quasi-static model, spending
+        all income each period on premiums, consumption, and medical care, but
+        calculate their expected lifetime utility dynamically, using transition
+        probabilities on the permanent income process and health state.  Adds
+        the attribute vFunc to each element of the attribute solution.
+        
+        Parameters
+        ----------
+        None
+        
+        Returns
+        -------
+        None
+        '''
+        time_orig = self.time_flow
+        self.timeRev()
+        u = lambda x : CRRAutility(x,gam=self.CRRA)
+        uinv = lambda x : CRRAutility_inv(x,gam=self.CRRA)
+        
+        # Initialize the stynamic value function; in the terminal period, we didn't
+        # bother to solve the consumer's problem (no one lives that long).
+        vFuncStynamicNew = None
+
+        # Loop through each non-terminal period, constructing stynamic value function
+        for t in range(0,self.T_cycle):
+            vFuncStynamicPrev = vFuncStynamicNew
+            StateCount = len(self.solution[t+1].vFuncByContract)
+            pLvlGrid = self.xLvlGrid[t]
+            pLvlCount = pLvlGrid.size
+            
+            # In the last non-terminal period, we impose that there is no future
+            if vFuncStynamicPrev is None:
+                EndOfPrdv = np.zeros((pLvlCount,StateCount))
+                                            
+            else: # Otherwise, we must construct the end-of-period value function
+                # Calculate end-of-period value over permanent income *conditional*
+                # on next period's discrete health state.
+                vNextCond = np.zeros((pLvlCount,StateCount)) + np.nan
+                for j in range(StateCount):
+                    ShkPrbsNext      = self.IncomeDstn[t][j][0]
+                    PermShkValsNext  = self.IncomeDstn[t][j][1]
+                    ShkCount         = PermShkValsNext.size  
+                    vFuncNext        = vFuncStynamicPrev[j]
+                    
+                    # Calculate expected value conditional on achieving this future health state
+                    pLvlNext = np.tile(np.reshape(pLvlGrid,(pLvlCount,1)),(1,ShkCount))**self.PermIncCorr*np.tile(np.reshape(PermShkValsNext,(1,ShkCount)),(pLvlCount,1))
+                    vNextCond[:,j] = np.sum(vFuncNext(pLvlNext)*ShkPrbsNext,axis=1)
+                    
+                # Use the discrete transition probabilities to calculate end-of-period value before health transition
+                EndOfPrdv = np.dot(self.MrkvArray[t],vNextCond.transpose()).transpose()
+                for j in range(StateCount):
+                    DiscFacEff = self.DiscFac*self.LivPrb[t][j] # "effective" discount factor
+                    EndOfPrdv[:,j] = DiscFacEff*EndOfPrdv[:,j]
+
+            # Get current period expected utility / static value from purchasing each contract
+            ContractCounts = np.zeros(StateCount,dtype=int)
+            for j in range(StateCount):
+                ContractCounts[j] = len(self.solution[t+1].vFuncByContract[j])
+            ContractCount = np.max(ContractCounts)
+            UnvrsNow = np.zeros((pLvlCount,StateCount,ContractCount))
+            for j in range(StateCount):
+                for z in range(ContractCounts[j]):
+                    PremiumGrid = self.ContractList[t][j][z].Premium(pLvlGrid)
+                    xLvlGrid = pLvlGrid - PremiumGrid
+                    UnvrsNow[:,j,z] = self.solution[t+1].vFuncByContract[j][z].func(xLvlGrid)
+                    UnvrsNow[xLvlGrid < 0.0,j,z] = -np.inf
+                    
+            # Calculate expected value across contracts (from preference shocks)
+            U_best = np.max(UnvrsNow,axis=2)
+            U_exp = np.exp((UnvrsNow - np.tile(np.reshape(U_best,(pLvlCount,StateCount,1)),(1,1,ContractCount)))/self.ChoiceShkMag[t])
+            U_exp_sum = np.nansum(U_exp,axis=2)
+            UnvrsExp = np.log(U_exp_sum)*self.ChoiceShkMag[t] + U_best
+            UtilityExp = u(UnvrsExp)
+            
+            # Combine current period "static value" with future "stynamic value" and construct value functions
+            ValueArray = UtilityExp + EndOfPrdv
+            vFuncStynamicNew = []
+            for j in range(StateCount):
+                vNvrs_temp = uinv(ValueArray[:,j])
+                vNvrs_temp[0] = 0.0 # Fix issue at bottom
+                vFuncNvrs_contract = LinearInterp(pLvlGrid,vNvrs_temp)
+                vFuncStynamicNew.append(ValueFunc(vFuncNvrs_contract,self.CRRA))
+                
+            # Add the value function for the solution for this period
+            self.solution[t+1].vFunc = vFuncStynamicNew
+
+        # Restore the original flow of time
+        if time_orig:
+            self.timeFwd()
+             
+              
 ####################################################################################################
         
 if __name__ == '__main__':

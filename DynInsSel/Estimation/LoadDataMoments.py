@@ -8,7 +8,7 @@ import os
 # Choose which classes of moments will actually be used in estimation
 use_data_weights = False # Whether to use moment weights from data or just all ones
 MomentBools = np.array([
-               False,  #WealthRatioByAge
+               False, #WealthRatioByAge
                True,  #MeanLogTotalMedByAge
                False, #StdevLogTotalMedByAge
                False, #InsuredRateByAge
@@ -24,7 +24,7 @@ MomentBools = np.array([
                False, #MeanPremiumByAgeIncome
                False, #MeanLogOOPmedByAge
                False, #StdevLogOOPmedByAge
-               False, # OOPshareByAge
+               False, #OOPshareByAge
               ])
 
 # Load the moments by one-year age groups into a CSV reader object
