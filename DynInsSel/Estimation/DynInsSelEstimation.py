@@ -10,7 +10,7 @@ import DynInsSelParameters as Params
 from copy import copy
 from InsuranceSelectionModel import MedInsuranceContract, InsSelConsumerType, InsSelStaticConsumerType
 from LoadDataMoments import data_moments, moment_weights
-from ActuarialRules import flatActuarialRule, exclusionaryActuarialRule, healthRatedActuarialRule
+from ActuarialRules import flatActuarialRule, exclusionaryActuarialRule, healthRatedActuarialRule, ageHealthRatedActuarialRule, ageRatedActuarialRule
 from HARKinterpolation import ConstantFunction
 from HARKutilities import approxUniform, getPercentiles
 from HARKcore import Market, HARKobject
@@ -578,8 +578,8 @@ def objectiveFunction(Parameters):
     The objective function for the estimation.  Makes and solves a market, then
     returns the weighted sum of moment differences between simulation and data.
     '''
-    InsChoice = 2
-    SubsidyTypeCount = 7
+    InsChoice = 1
+    SubsidyTypeCount = 1
     ZeroSubsidyBool = True
     MyMarket = makeMarketFromParams(Parameters,np.array([0.0, 0.0, 0.0, 0.0, 0.0]),InsChoice,SubsidyTypeCount,ZeroSubsidyBool)
     multiThreadCommands(MyMarket.agents,['update()','makeShockHistory()'])
