@@ -15,6 +15,7 @@ AgentCountTotal = 100000
 StaticBool = True
 
 # Calibrated / other parameters (grid sizes, etc)
+Cfloor = 0.000                        # Effective consumption floor
 Rfree = 5*[1.03]                    # Interest factor on assets
 DiscFac = 0.96                      # Intertemporal discount factor
 aXtraMin = 0.001                    # Minimum end-of-period "assets above minimum" value
@@ -37,13 +38,13 @@ PermIncAvgInit = 1.0                # Initial average of permanent income (not u
 PermIncCorr = 1.0                   # Serial correlation coefficient for permanent income
 MedShkCount = 5                     # Number of medical shock points in "body"
 MedShkCountTail = [2,8]             # Number of medical shock points in "upper tail"
-MedShkTailBound = [0.05,0.98]         # Boundaries of body (in CDF terms)
+MedShkTailBound = [0.05,0.98]       # Boundaries of body (in CDF terms)
 MedPrice = 1.0                      # Relative price of a unit of medical care
 AgentCount = 10000                  # Number of agents of this type (only matters for simulation)
 DeductibleList = [0.06,0.05,0.04,0.03,0.02] # List of deductibles for working-age insurance contracts
 T_sim = 60                          # Number of periods to simulate (age 25 to 84)
 
-# These are the results of ordered probits of h_t and age on h_t+1 using MEPS data
+# These are the results of ordered probits of h_t and age on h_t+1 using MEPS data OLD VALUES
 f1 = lambda x : .0579051*x -.0046128*x**2 + .0001069*x**3 - 7.85e-07*x**4
 f2 = lambda x : -.0111249*x - .0010771*x**2 + .0000325*x**3 - 2.53e-07*x**4
 f3 = lambda x : -.0068616*x - .0006085*x**2 + .0000169*x**3 - 1.35e-07*x**4
@@ -130,12 +131,16 @@ f.close
 DiePrb = np.array(DiePrb)[24:] # Take from age 24 onward
 DiePrbBiannual = 1.0 - (1.0 - DiePrb[:-1])*(1.0 - DiePrb[1:])
 
-# Specify the initial distribution of health at age 24 or 25, taken directly from MEPS data
-HealthPrbsInit = [0.010,0.058,0.233,0.327,0.372]
-HealthPrbsInit_d = [0.023,0.104,0.323,0.288,0.262]
-HealthPrbsInit_h = [0.013,0.058,0.235,0.347,0.347]
-HealthPrbsInit_c = [0.004,0.027,0.173,0.380,0.416]
-EducWeight = [0.114,0.549,0.337]
+# Specify the initial distribution of health at age 24-26, taken directly from MEPS data
+#HealthPrbsInit = [0.010,0.058,0.233,0.327,0.372]
+#HealthPrbsInit_d = [0.023,0.104,0.323,0.288,0.262]
+#HealthPrbsInit_h = [0.013,0.058,0.235,0.347,0.347]
+#HealthPrbsInit_c = [0.004,0.027,0.173,0.380,0.416]
+HealthPrbsInit = [0.003,0.036,0.196,0.348,0.417]
+HealthPrbsInit_d = [0.004,0.063,0.304,0.297,0.332]
+HealthPrbsInit_h = [0.004,0.042,0.202,0.346,0.406]
+HealthPrbsInit_c = [0.003,0.019,0.163,0.363,0.452]
+EducWeight = [0.080,0.566,0.354]
 
 # Solve for survival probabilities at each health state for ages 24-60 by quasi-simulation
 HealthDstnNow = np.array(HealthPrbsInit)
@@ -215,25 +220,25 @@ for t in range(55):
     LivPrb.append(LivPrbOld[:,t+15])
     
 # Make education-specific health transitions, estimated directly from the MEPS
-f1 = lambda x :  .0573877*x - .0044485*x**2 + .0001006*x**3 - 7.23e-07*x**4
-f2 = lambda x : -.0020471*x - .0016886*x**2 + .0000476*x**3 - 3.73e-07*x**4
-f3 = lambda x : -.0280355*x + .0002937*x**2 + 1.80e-06*x**3 - 4.27e-08*x**4
-f4 = lambda x : -.0394604*x + .0010916*x**2 - .0000139*x**3 + 5.17e-08*x**4
-f5 = lambda x : -.032489*x  + .001016*x**2 - .0000131*x**3 + 4.30e-08*x**4
-cuts1 = np.array([-.2374138, .6798592,1.49877,2.060003])
-cuts2 = np.array([-2.004649,-.6456054,.4672089,1.24509])
-cuts3 = np.array([-2.65231,-1.631041,-.1872363,.8339742])
-cuts4 = np.array([-2.990194,-2.227373,-1.007045,.3960801])
-cuts5 = np.array([-2.994232,-2.410726,-1.434513,-.4883896])
-educ_bonus = np.array([[.0673213,0.,.1527079],
-                       [-.0882254,0.,.042295],
-                       [-.1054812,0.,.1704653],
-                       [-.1477634,0.,.1994524],
-                       [-.2401582,0.,.1918756]])
+f1 = lambda x :  .1780641*x - .0094783*x**2 + .0001773*x**3 - 1.12e-06*x**4
+f2 = lambda x : -.0319569*x + .0006053*x**2 - 8.86e-06*x**3 + 5.25e-08*x**4
+f3 = lambda x : -.0518241*x + .0014839*x**2 - .0000209*x**3 + 9.98e-08*x**4
+f4 = lambda x : -.0300812*x + .0008112*x**2 - .0000106*x**3 + 3.50e-08*x**4
+f5 = lambda x : -.0293762*x + .0007694*x**2 - 7.50e-06*x**3 + 2.58e-09*x**4
+cuts1 = np.array([.2567907, 1.192993,  2.062196, 2.54124])
+cuts2 = np.array([-2.247301,-.842383,.3368066,1.191534])
+cuts3 = np.array([-2.840044,-1.851338,-.3702818,.7215166])
+cuts4 = np.array([-2.921203,-2.215344,-.9558878,.4987979])
+cuts5 = np.array([-3.030165,-2.535108,-1.487266,-.4969349])
+educ_bonus = np.array([[.080082,0.,.1814115],
+                       [-.0648348,0.,.0607891],
+                       [-.0999835,0.,.169032],
+                       [-.1128418,0.,.199002],
+                       [-.2621089,0.,.1883597]])
 
 # Fill in the Markov array at each age (probably could have written this more cleverly but meh)
 MrkvArrayByEduc = np.zeros([67,5,5,3]) + np.nan
-Age = np.arange(7,74,dtype=float)
+Age = np.arange(0,67,dtype=float) # This is age minus 18
 for j in range(3):
     f1a = lambda x : f1(x) + educ_bonus[0,j]
     fitted = f1a(Age)
@@ -353,6 +358,7 @@ BasicDictionary = { 'Rfree': Rfree,
                     'T_cycle': T_cycle,
                     'T_sim': T_sim,
                     'AgentCount': AgentCount,
+                    'Cfloor': Cfloor
                     }
 
 # Make education-specific dictionaries
@@ -377,22 +383,22 @@ test_param_vec = np.array([0.955, # DiscFac
                            1.8,  # CRRAcon
                            8.0,  # CRRAmed 
                           -2.5,  # ChoiceShkMag in log
-                           2.5,  # SubsidyZeroRate scaler
-                          -1.3,  # SubsidyAvg
+                           2.6,  # SubsidyZeroRate scaler
+                          -1.6,  # SubsidyAvg
                           -3.0,  # SubsidyWidth scaler
                           -5.4,  # MedShkMean constant coefficient
-                         0.014,  # MedShkMean linear age coefficient
-                        0.0005,  # MedShkMean quadratic age coefficient
+                         0.017,  # MedShkMean linear age coefficient
+                       0.00045,  # MedShkMean quadratic age coefficient
                      -0.000000,  # MedShkMean cubic age coefficient
                    -0.00000000,  # MedShkMean quartic age coefficient
-                          0.35,  # MedShkMean "very good" constant coefficient
+                          0.25,  # MedShkMean "very good" constant coefficient
                            0.0,  # MedShkMean "very good" linear coefficient
-                           0.3,  # MedShkMean "good" constant coefficient
-                           0.0,  # MedShkMean "good" linear coefficient
-                          0.50,  # MedShkMean "fair" constant coefficient
-                         -0.00,  # MedShkMean "fair" linear coefficient
-                           1.3,  # MedShkMean "poor" constant coefficient
-                         -0.01,  # MedShkMean "poor" linear coefficient
+                          0.25,  # MedShkMean "good" constant coefficient
+                         0.003,  # MedShkMean "good" linear coefficient
+                          0.40,  # MedShkMean "fair" constant coefficient
+                         0.005,  # MedShkMean "fair" linear coefficient
+                           1.5,  # MedShkMean "poor" constant coefficient
+                        -0.016,  # MedShkMean "poor" linear coefficient
                            0.4,  # MedShkStd constant coefficient
                          0.001,  # MedShkStd linear age coefficient
                            0.0,  # MedShkStd quadratic age coefficient

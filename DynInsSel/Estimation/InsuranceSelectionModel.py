@@ -2183,6 +2183,8 @@ class InsSelStaticConsumerType(InsSelConsumerType):
             
             # Calculate the value of each gridpoint and take pseudo inverse
             vNvrsGrid = (1.-np.exp(-MedLvlGrid/ShkGrid))**self.CRRAmed*cLvlGrid
+            below_C_floor = vNvrsGrid < self.Cfloor
+            vNvrsGrid[below_C_floor] = self.Cfloor
             ShkZero = ShkGrid == 0.0
             vNvrsGrid[ShkZero] = cLvlGrid[ShkZero]
             vNvrsGrid[0,:] = 0.0
