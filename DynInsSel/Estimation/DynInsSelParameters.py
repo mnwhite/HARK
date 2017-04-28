@@ -15,7 +15,7 @@ AgentCountTotal = 100000
 StaticBool = True
 
 # Calibrated / other parameters (grid sizes, etc)
-Cfloor = 0.000                        # Effective consumption floor
+Cfloor = 0.002                        # Effective consumption floor
 Rfree = 5*[1.03]                    # Interest factor on assets
 DiscFac = 0.96                      # Intertemporal discount factor
 aXtraMin = 0.001                    # Minimum end-of-period "assets above minimum" value
@@ -31,6 +31,7 @@ IncUnemp = 0.3                      # Unemployment benefits replacement rate
 IncUnempRet = 0.0                   # "Unemployment" benefits when retired
 BoroCnstArt = 0.0                   # Artificial borrowing constraint; imposed minimum level of end-of period assets
 CubicBool = False                   # Use cubic spline interpolation when True, linear interpolation when False
+DecurveBool = True                  # "Decurve" value through the inverse utility function when applying preference shocks when True
 PermIncCount = 12                   # Number of permanent income gridpoints in "body"
 PermInc_tail_N = 3                  # Number of permanent income gridpoints in each "tail"
 PermIncStdInit = 0.4                # Initial standard deviation of (log) permanent income (not used in example)
@@ -343,6 +344,7 @@ BasicDictionary = { 'Rfree': Rfree,
                     'T_retire': working_T,
                     'BoroCnstArt': BoroCnstArt,
                     'CubicBool': CubicBool,
+                    'DecurveBool': DecurveBool,
                     'PermIncCount': PermIncCount,
                     'PermInc_tail_N': PermInc_tail_N,
                     'PermIncStdInit': PermIncStdInit,
@@ -380,7 +382,7 @@ CollegeDictionary['PermIncAvgInit'] = PermIncAvgInit_c
 
 # Make a test parameter vector for estimation
 test_param_vec = np.array([0.955, # DiscFac
-                           1.8,  # CRRAcon
+                          2.35,  # CRRAcon
                            8.0,  # CRRAmed 
                           -2.5,  # ChoiceShkMag in log
                            2.6,  # SubsidyZeroRate scaler

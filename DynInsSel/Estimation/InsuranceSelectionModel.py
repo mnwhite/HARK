@@ -2281,7 +2281,10 @@ class InsSelStaticConsumerType(InsSelConsumerType):
             for z in range(Z):                
                 Premium = np.maximum(self.PremiumFuncs[t][h][z](m_temp)  - self.PremiumSubsidy,0.0)
                 x_temp = m_temp - Premium
-                vNvrs_temp[:,z] = self.solution[t].vFuncByContract[h][z].func(x_temp)
+                if self.DecurveBool:
+                    vNvrs_temp[:,z] = self.solution[t].vFuncByContract[h][z].func(x_temp)
+                else:
+                    vNvrs_temp[:,z] = self.solution[t].vFuncByContract[h][z](x_temp)
                 vNvrs_temp[x_temp<0.,z] = -np.inf
             
             # Get choice probabilities for each contract
@@ -2365,7 +2368,10 @@ class InsSelStaticConsumerType(InsSelConsumerType):
                     Premium = np.maximum(self.PremiumFuncs[t][j][z](pLvl) - self.PremiumSubsidy, 0.0)
                     xLvl_temp = pLvl - Premium
                     AV_array[:,z] = self.solution[t].AVfunc[j][z](xLvl_temp)
-                    vNvrs_array[:,z] = self.solution[t].vFuncByContract[j][z].func(xLvl_temp)
+                    if self.DecurveBool:
+                        vNvrs_array[:,z] = self.solution[t].vFuncByContract[j][z].func(xLvl_temp)
+                    else:
+                        vNvrs_array[:,z] = self.solution[t].vFuncByContract[j][z](xLvl_temp)
                     unaffordable = xLvl_temp < 0.
                     AV_array[unaffordable,z] = 0.0
                     vNvrs_array[unaffordable,z] = -np.inf
@@ -2454,7 +2460,10 @@ class InsSelStaticConsumerType(InsSelConsumerType):
                 for z in range(ContractCounts[j]):
                     PremiumGrid = self.ContractList[t][j][z].Premium(pLvlGrid)
                     xLvlGrid = pLvlGrid - PremiumGrid
-                    UnvrsNow[:,j,z] = self.solution[t+1].vFuncByContract[j][z].func(xLvlGrid)
+                    if self.DecurveBool:
+                        UnvrsNow[:,j,z] = self.solution[t+1].vFuncByContract[j][z].func(xLvlGrid)
+                    else:
+                        UnvrsNow[:,j,z] = self.solution[t+1].vFuncByContract[j][z](xLvlGrid)
                     UnvrsNow[xLvlGrid < 0.0,j,z] = -np.inf
                     
             # Calculate expected value across contracts (from preference shocks)

@@ -7,12 +7,12 @@ sys.path.insert(0,'../../')
 
 import numpy as np
 import DynInsSelParameters as Params
-from copy import copy
+from copy import copy, deepcopy
 from InsuranceSelectionModel import MedInsuranceContract, InsSelConsumerType, InsSelStaticConsumerType
 from LoadDataMoments import data_moments, moment_weights
 from ActuarialRules import flatActuarialRule, exclusionaryActuarialRule, healthRatedActuarialRule, ageHealthRatedActuarialRule, ageRatedActuarialRule
 from HARKinterpolation import ConstantFunction
-from HARKutilities import approxUniform, getPercentiles
+from HARKutilities import approxUniform, getPercentiles, approxMeanOneLognormal
 from HARKcore import Market, HARKobject
 from HARKparallel import multiThreadCommands, multiThreadCommandsFake
 
@@ -479,7 +479,7 @@ def makeDynInsSelType(CRRAcon,CRRAmed,DiscFac,ChoiceShkMag,MedShkMeanAgeParams,M
     return ThisType
         
 
-def makeMarketFromParams(ParamArray,PremiumArray,InsChoiceType,SubsidyTypeCount,ZeroSubsidyBool):
+def makeMarketFromParams(ParamArray,PremiumArray,InsChoiceType,SubsidyTypeCount,CRRAtypeCount,ZeroSubsidyBool):
     '''
     Makes a list of 3 or 24 DynInsSelTypes, to be used for estimation.
     
@@ -494,6 +494,8 @@ def makeMarketFromParams(ParamArray,PremiumArray,InsChoiceType,SubsidyTypeCount,
         1 --> one non-null contract, 2 --> five non-null contracts.
     SubsidyTypeCount : int
         Number of different non-zero subsidy levels for consumers in this market.
+    CRRAtypeCount : int
+        Number of different CRRA values in the population.
     ZeroSubsidyBool : bool
         Indicator for whether there is a zero subsidy type.
         
@@ -545,8 +547,18 @@ def makeMarketFromParams(ParamArray,PremiumArray,InsChoiceType,SubsidyTypeCount,
                       MedShkStdPRparams,PremiumArray,SubsidyArray[j],k,InsChoiceType))
             AgentList[-1].Weight = WeightArray[j]*Params.EducWeight[k]
             AgentList[-1].AgentCount = int(round(AgentList[-1].Weight*Params.AgentCountTotal))
-            AgentList[-1].seed = i # Assign different seeds to each type
             i += 1
+    if CRRAtypeCount > 1: # Replicate the list of agent types if there is variation by CRRA
+        AgentListNew = []
+        CRRAlist = approxMeanOneLognormal(N=CRRAtypeCount,sigma=1.0)[1]*CRRAcon
+        for j in range(CRRAtypeCount):
+            TempList = deepcopy(AgentList)
+            for ThisType in TempList:
+                ThisType.CRRA = CRRAlist[j]
+            AgentListNew += TempList
+        AgentList = AgentListNew
+    for i in range(len(AgentList)):
+        AgentList[i].seed = i # Assign different seeds to each type
     StateCount = AgentList[0].MrkvArray[0].shape[0]
             
     # Construct an initial nested list for premiums
@@ -580,8 +592,9 @@ def objectiveFunction(Parameters):
     '''
     InsChoice = 2
     SubsidyTypeCount = 7
+    CRRAtypeCount = 1
     ZeroSubsidyBool = True
-    MyMarket = makeMarketFromParams(Parameters,np.array([0.0, 0.0, 0.0, 0.0, 0.0]),InsChoice,SubsidyTypeCount,ZeroSubsidyBool)
+    MyMarket = makeMarketFromParams(Parameters,np.array([0.0, 0.0, 0.0, 0.0, 0.0]),InsChoice,SubsidyTypeCount,CRRAtypeCount,ZeroSubsidyBool)
     multiThreadCommands(MyMarket.agents,['update()','makeShockHistory()'])
     MyMarket.getIncomeQuintiles()
     multiThreadCommandsFake(MyMarket.agents,['makeIncBoolArray()'])
