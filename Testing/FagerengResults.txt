@@ -1,0 +1,64 @@
+This document contains copy-pasted output from the quick and dirty Fagereng estimation.
+
+Finished estimating for scaling factor of 1.0.
+Optimal (beta,nabla) is [ 0.80006434  0.15155777], simulated MPCs are:
+[[ 0.73871806  0.66198376  0.55168048  0.39564706]
+ [ 0.71394609  0.64599355  0.54058097  0.38741264]
+ [ 0.67787212  0.61861743  0.51912775  0.37108987]
+ [ 0.60478095  0.55304601  0.46036147  0.32736019]]
+Distance from Fagereng et al Table 9 is 0.584530842623
+
+Finished estimating for scaling factor of 0.9.
+Optimal (beta,nabla) is [ 0.83610795  0.11882918], simulated MPCs are:
+[[ 0.63863636  0.58962441  0.5034899   0.35517316]
+ [ 0.62189657  0.57724956  0.49341962  0.3476903 ]
+ [ 0.5924527   0.55365916  0.47312898  0.33285426]
+ [ 0.5216763   0.49072584  0.41660899  0.29413544]]
+Distance from Fagereng et al Table 9 is 0.531307821758
+
+Finished estimating for scaling factor of 0.8.
+Optimal (beta,nabla) is [ 0.86942438  0.08545302], simulated MPCs are:
+[[ 0.5584514   0.51861359  0.45155017  0.31875744]
+ [ 0.54207712  0.50710661  0.44179143  0.31226943]
+ [ 0.51216252  0.48457307  0.42202785  0.29948865]
+ [ 0.43920994  0.42184684  0.36855532  0.26561479]]
+Distance from Fagereng et al Table 9 is 0.464043197053
+
+Finished estimating for scaling factor of 0.7.
+Optimal (beta,nabla) is [ 0.89516432  0.05981177], simulated MPCs are:
+[[ 0.49373874  0.4536533   0.39569821  0.2821164 ]
+ [ 0.47738075  0.44238459  0.3859746   0.27655814]
+ [ 0.44701531  0.41923595  0.36667578  0.26568808]
+ [ 0.37365927  0.35700526  0.31757206  0.2362296 ]]
+Distance from Fagereng et al Table 9 is 0.391857868338
+
+Optimal (beta,nabla) is [ 0.91464166  0.04025887], simulated MPCs are:
+[[ 0.43869837  0.3913245   0.3347987   0.24629867]
+ [ 0.4220211   0.37924453  0.32573987  0.24168803]
+ [ 0.39161044  0.35507941  0.30838276  0.232539  ]
+ [ 0.32008989  0.2974822   0.26607102  0.20687483]]
+Distance from Fagereng et al Table 9 is 0.318616367609
+
+Finished estimating for scaling factor of 0.5.
+Optimal (beta,nabla) is [ 0.92903513  0.0270035 ], simulated MPCs are:
+[[ 0.38826561  0.32516042  0.27093381  0.20682647]
+ [ 0.37197339  0.31354805  0.2638425   0.20310627]
+ [ 0.34331891  0.29236554  0.25058163  0.19563194]
+ [ 0.27624577  0.24495215  0.21749925  0.17427219]]
+Distance from Fagereng et al Table 9 is 0.253944397995
+
+Finished estimating for scaling factor of 0.4.
+Optimal (beta,nabla) is [ 0.9408514   0.01669975], simulated MPCs are:
+[[ 0.33121463  0.25028986  0.20687871  0.16741898]
+ [ 0.31709422  0.24213247  0.20228276  0.16476924]
+ [ 0.29128583  0.22738988  0.19333394  0.15894557]
+ [ 0.23209391  0.19265311  0.16941038  0.14172127]]
+Distance from Fagereng et al Table 9 is 0.202154729391
+
+Finished estimating for scaling factor of 0.3.
+Optimal (beta,nabla) is [ 0.95059246  0.01041772], simulated MPCs are:
+[[ 0.26058991  0.17629157  0.1440103   0.13209794]
+ [ 0.25000692  0.17194176  0.14166546  0.12991486]
+ [ 0.22976237  0.16319698  0.13639865  0.12476319]
+ [ 0.18360477  0.14087676  0.12174776  0.10992937]]
+Distance from Fagereng et al Table 9 is 0.160533625398

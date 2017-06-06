@@ -16,11 +16,12 @@ from time import clock
 
 from HARKutilities import approxUniform, getPercentiles
 from HARKparallel import multiThreadCommands
+from HARKestimation import minimizeNelderMead
 from ConsIndShockModel import IndShockConsumerType
 from SetupParamsCSTWnew import init_infinite # dictionary with most ConsumerType parameters
 
 TypeCount = 8    # Number of consumer types with heterogeneous discount factors
-AdjFactor = 1.0  # Factor by which to scale all of Fagereng's MPCs in Table 9
+AdjFactor = 0.3  # Factor by which to scale all of Fagereng's MPCs in Table 9
 T_kill = 100     # Don't let agents live past this age
 
 # Define the MPC targets from Table 9; element i,j is lottery quartile i, deposit quartile j
@@ -49,9 +50,10 @@ BaseType = IndShockConsumerType(**base_params)
 EstTypeList = []
 for j in range(TypeCount):
     EstTypeList.append(deepcopy(BaseType))
+    EstTypeList[-1](seed = j)
     
 # Define the objective function
-def FagerengObjFunc(center,spread):
+def FagerengObjFunc(center,spread,verbose=False):
     '''
     Objective function for the quick and dirty structural estimation to fit
     Fagereng, Holm, and Natvik's Table 9 results with a basic infinite horizon
@@ -119,17 +121,28 @@ def FagerengObjFunc(center,spread):
             
     # Calculate Euclidean distance between simulated MPC averages and Table 9 targets
     distance = np.sqrt(np.sum((simulated_MPC_means - MPC_target)**2))
-    #print(simulated_MPC_means)
+    if verbose:
+        print(simulated_MPC_means)
+    else:
+        print (center, spread, distance)
     return distance
 
 
 if __name__ == '__main__':
     
-    t_start = clock()
-    X = FagerengObjFunc(0.814,0.122)
-    t_end = clock()
-    print('That took ' + str(t_end - t_start) + ' seconds.')
-    print(X)
+    guess = [0.92,0.03]
+    f_temp = lambda x : FagerengObjFunc(x[0],x[1])
+    opt_params = minimizeNelderMead(f_temp, guess, verbose=True)
+    print('Finished estimating for scaling factor of ' + str(AdjFactor) + '.' )
+    print('Optimal (beta,nabla) is ' + str(opt_params) + ', simulated MPCs are:')
+    dist = FagerengObjFunc(opt_params[0],opt_params[1],True)
+    print('Distance from Fagereng et al Table 9 is ' + str(dist))
+    
+#    t_start = clock()
+#    X = FagerengObjFunc(0.814,0.122)
+#    t_end = clock()
+#    print('That took ' + str(t_end - t_start) + ' seconds.')
+#    print(X)
     
 #    test_vec = np.linspace(0.80,0.83,40)
 #    out_vec = np.empty(test_vec.size)
