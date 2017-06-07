@@ -1,5 +1,7 @@
 This document contains copy-pasted output from the quick and dirty Fagereng estimation.
 
+THESE ESTIMATES ARE FOR TYPECOUNT = 8
+
 Finished estimating for scaling factor of 1.0.
 Optimal (beta,nabla) is [ 0.80006434  0.15155777], simulated MPCs are:
 [[ 0.73871806  0.66198376  0.55168048  0.39564706]
@@ -32,6 +34,7 @@ Optimal (beta,nabla) is [ 0.89516432  0.05981177], simulated MPCs are:
  [ 0.37365927  0.35700526  0.31757206  0.2362296 ]]
 Distance from Fagereng et al Table 9 is 0.391857868338
 
+Finished estimating for scaling factor of 0.6.
 Optimal (beta,nabla) is [ 0.91464166  0.04025887], simulated MPCs are:
 [[ 0.43869837  0.3913245   0.3347987   0.24629867]
  [ 0.4220211   0.37924453  0.32573987  0.24168803]
@@ -62,3 +65,316 @@ Optimal (beta,nabla) is [ 0.95059246  0.01041772], simulated MPCs are:
  [ 0.22976237  0.16319698  0.13639865  0.12476319]
  [ 0.18360477  0.14087676  0.12174776  0.10992937]]
 Distance from Fagereng et al Table 9 is 0.160533625398
+
+#########################################################################
+
+THESE ESTIMATES ARE FOR TYPECOUNT = 1
+
+Finished estimating for scaling factor of 1.0.
+Optimal (beta,nabla) is [ 0.82403828  0.00], simulated MPCs are:
+[[ 0.58277038  0.56846793  0.56029214  0.55989512]
+ [ 0.56458863  0.55671272  0.55086624  0.55331999]
+ [ 0.53163687  0.53346632  0.53251282  0.53996407]
+ [ 0.45616302  0.46556826  0.47497071  0.49645931]]
+Distance from Fagereng et al Table 9 is 0.749084012753
+
+Finished estimating for scaling factor of 0.9.
+Optimal (beta,nabla) is [ 0.85946023  0.00], simulated MPCs are:
+[[ 0.52783419  0.5087678   0.49894795  0.50086804]
+ [ 0.50995107  0.49733302  0.49036466  0.49470151]
+ [ 0.47705311  0.47273379  0.47143673  0.48113565]
+ [ 0.40213132  0.40293584  0.41176532  0.43387183]]
+Distance from Fagereng et al Table 9 is 0.657641691809
+
+Finished estimating for scaling factor of 0.8.
+Optimal (beta,nabla) is [ 0.88913549  0.00], simulated MPCs are:
+[[ 0.47644604  0.44932588  0.43505596  0.4391808 ]
+ [ 0.4579353   0.43601242  0.42403207  0.43140831]
+ [ 0.42550335  0.40835917  0.40115951  0.41402362]
+ [ 0.35169146  0.34061569  0.34295966  0.36530973]]
+Distance from Fagereng et al Table 9 is 0.558062963058
+
+Finished estimating for scaling factor of 0.7.
+Optimal (beta,nabla) is [ 0.90562884  0.00], simulated MPCs are:
+[[ 0.44357077  0.40102259  0.38186444  0.38400359]
+ [ 0.42480517  0.38661401  0.37038457  0.37510088]
+ [ 0.39333617  0.35949325  0.34794206  0.35836504]
+ [ 0.3204305   0.29818533  0.29696473  0.31577692]]
+Distance from Fagereng et al Table 9 is 0.456239325564
+
+Finished estimating for scaling factor of 0.6.
+Optimal (beta,nabla) is [ 0.9185391   0.00], simulated MPCs are:
+[[ 0.41013218  0.35030251  0.32701446  0.3271778 ]
+ [ 0.39208294  0.33759373  0.31628127  0.31971058]
+ [ 0.36190247  0.31344417  0.29764108  0.30652904]
+ [ 0.29084466  0.2606481   0.25575113  0.27187711]]
+Distance from Fagereng et al Table 9 is 0.364930971583
+
+Finished estimating for scaling factor of 0.5.
+Optimal (beta,nabla) is [ 0.93111188  0.00], simulated MPCs are:
+[[ 0.36251945  0.29496854  0.26463205  0.26529525]
+ [ 0.34648009  0.28395683  0.25711991  0.26001653]
+ [ 0.31850442  0.26439591  0.24390973  0.25061621]
+ [ 0.2531349   0.2212576   0.21119691  0.22320013]]
+Distance from Fagereng et al Table 9 is 0.287677373888
+
+Finished estimating for scaling factor of 0.4.
+Optimal (beta,nabla) is [ 0.9415618  0.00], simulated MPCs are:
+[[ 0.31028498  0.23336233  0.20585777  0.20833295]
+ [ 0.29712331  0.22567541  0.20115944  0.2051287 ]
+ [ 0.27225838  0.211903    0.19176669  0.19791294]
+ [ 0.21549594  0.17897028  0.167128    0.1756795 ]]
+Distance from Fagereng et al Table 9 is 0.222025051685
+
+Finished estimating for scaling factor of 0.3.
+Optimal (beta,nabla) is [ 0.94999362  0.0328101 ], simulated MPCs are:
+[[ 0.24844647  0.16818293  0.1479729   0.15658196]
+ [ 0.23918757  0.16393589  0.14542971  0.15440184]
+ [ 0.22017325  0.15542616  0.13954232  0.14885945]
+ [ 0.17552804  0.13383532  0.12371907  0.13153515]]
+Distance from Fagereng et al Table 9 is 0.171305646422
+
+##########################################################################
+
+THESE SPECIFICATIONS USE A "SPLURGE AMOUNT" THAT IS AUTOMATICALLY SPENT
+
+Finished estimating for scaling factor of 1.0 and "splurge amount" of $100.0
+Optimal (beta,nabla) is [ 0.80719343  0.14834781], simulated MPCs are:
+[[ 0.74062324  0.67090558  0.57019193  0.41620328]
+ [ 0.70889589  0.64506066  0.54500041  0.38856231]
+ [ 0.66990249  0.61319302  0.51674759  0.36312019]
+ [ 0.59464846  0.54506373  0.45413874  0.31559439]]
+Distance from Fagereng et al Table 9 is 0.561289199361
+
+Finished estimating for scaling factor of 1.0 and "splurge amount" of $200.0
+Optimal (beta,nabla) is [ 0.81977039  0.13819244], simulated MPCs are:
+[[ 0.72911076  0.67186016  0.58375137  0.43782586]
+ [ 0.68905822  0.63491477  0.54352154  0.38967611]
+ [ 0.64735306  0.59842294  0.50817958  0.35463453]
+ [ 0.56986315  0.52771618  0.44183156  0.30325944]]
+Distance from Fagereng et al Table 9 is 0.537303578224
+
+Finished estimating for scaling factor of 1.0 and "splurge amount" of $300.0
+Optimal (beta,nabla) is [ 0.82754625  0.13458505], simulated MPCs are:
+[[ 0.73579199  0.68448791  0.60378039  0.45682926]
+ [ 0.68580869  0.63528403  0.5478505   0.38662903]
+ [ 0.63947265  0.59309301  0.50502714  0.34147304]
+ [ 0.55871955  0.519011    0.43463475  0.28648986]]
+Distance from Fagereng et al Table 9 is 0.513050529618
+
+Finished estimating for scaling factor of 1.0 and "splurge amount" of $400.0
+Optimal (beta,nabla) is [ 0.83790128  0.12512414], simulated MPCs are:
+[[ 0.73483176  0.69342764  0.62317896  0.48657033]
+ [ 0.67422646  0.63048192  0.55055052  0.39363607]
+ [ 0.62255998  0.58185375  0.49954817  0.33798239]
+ [ 0.53780022  0.5038597   0.4249237   0.27831468]]
+Distance from Fagereng et al Table 9 is 0.48947553554
+
+Finished estimating for scaling factor of 1.0 and "splurge amount" of $500.0
+Optimal (beta,nabla) is [ 0.85124107  0.11316667], simulated MPCs are:
+[[ 0.73537807  0.70103486  0.6399917   0.51247018]
+ [ 0.66014803  0.6219735   0.5485542   0.39488037]
+ [ 0.60101215  0.56570098  0.48847674  0.32815011]
+ [ 0.5107277   0.48306513  0.40963597  0.26442422]]
+Distance from Fagereng et al Table 9 is 0.464541855963
+
+Finished estimating for scaling factor of 1.0 and "splurge amount" of $600.0
+Optimal (beta,nabla) is [ 0.86149033  0.10467227], simulated MPCs are:
+[[ 0.74525578  0.71556546  0.66116086  0.54145058]
+ [ 0.65417995  0.61958246  0.55019449  0.39776195]
+ [ 0.58695566  0.55525406  0.48070656  0.31906997]
+ [ 0.49117759  0.46759622  0.3974833   0.25056497]]
+Distance from Fagereng et al Table 9 is 0.441340269934
+
+Finished estimating for scaling factor of 1.0 and "splurge amount" of $700.0
+Optimal (beta,nabla) is [ 0.87098834  0.10291716], simulated MPCs are:
+[[ 0.76254565  0.73395575  0.68211132  0.55990972]
+ [ 0.65597791  0.62035996  0.54969621  0.38368524]
+ [ 0.58095196  0.54767019  0.46999923  0.29074286]
+ [ 0.48020228  0.45533828  0.38250424  0.21828244]]
+Distance from Fagereng et al Table 9 is 0.420457864413
+
+Finished estimating for scaling factor of 1.0 and "splurge amount" of $800.0
+Optimal (beta,nabla) is [ 0.87915224  0.09654483], simulated MPCs are:
+[[ 0.77933823  0.75384188  0.70729811  0.59886281]
+ [ 0.65569133  0.62142289  0.55288867  0.39397558]
+ [ 0.57205559  0.53959906  0.46264844  0.28766417]
+ [ 0.46566786  0.44192611  0.37050497  0.20901791]]
+Distance from Fagereng et al Table 9 is 0.404019593026
+
+Finished estimating for scaling factor of 1.0 and "splurge amount" of $900.0
+Optimal (beta,nabla) is [ 0.88789869  0.09124623], simulated MPCs are:
+[[ 0.79829514  0.77576601  0.73221464  0.63636881]
+ [ 0.65612514  0.62330423  0.5530499   0.39948929]
+ [ 0.5633796   0.53169456  0.45122805  0.27841812]
+ [ 0.4513186   0.42836294  0.35469781  0.19347724]]
+Distance from Fagereng et al Table 9 is 0.39511878612
+
+Finished estimating for scaling factor of 1.0 and "splurge amount" of $1000.0
+Optimal (beta,nabla) is [ 0.89513555  0.08721945], simulated MPCs are:
+[[ 0.82093728  0.8005734   0.76093659  0.67643806]
+ [ 0.66059725  0.62756725  0.5563967   0.40620133]
+ [ 0.55881158  0.52584435  0.44278033  0.26959179]
+ [ 0.44113692  0.41692675  0.34166395  0.17798146]]
+Distance from Fagereng et al Table 9 is 0.396282642108
+
+Finished estimating for scaling factor of 1.0 and "splurge amount" of $1100.0
+Optimal (beta,nabla) is [ 0.90262776  0.07869199], simulated MPCs are:
+[[ 0.84323394  0.825728    0.79275659  0.7249148 ]
+ [ 0.66145177  0.62916494  0.56186365  0.42452175]
+ [ 0.54891065  0.51569102  0.43598047  0.27356322]
+ [ 0.42461044  0.40043832  0.32968253  0.17439292]]
+Distance from Fagereng et al Table 9 is 0.40950549282
+
+Finished estimating for scaling factor of 1.0 and "splurge amount" of $1200.0
+Optimal (beta,nabla) is [ 0.90902891  0.07254104], simulated MPCs are:
+[[ 0.86858621  0.85411024  0.82702796  0.77385782]
+ [ 0.66560038  0.63348018  0.56861341  0.44160072]
+ [ 0.54242311  0.50806182  0.43008234  0.27533716]
+ [ 0.41180458  0.38665996  0.31849357  0.16838858]]
+Distance from Fagereng et al Table 9 is 0.436243209274
+
+##################################################################################
+
+THESE SPECIFICATIONS SWITCHED TO LARGEST LOTTERY PRIZE OF $40K
+
+Finished estimating for scaling factor of 1.0 and "splurge amount" of $0.0
+Optimal (beta,nabla) is [ 0.79031248  0.15932077], simulated MPCs are:
+[[ 0.76596266  0.68224517  0.56436566  0.40804688]
+ [ 0.73919357  0.66463734  0.55287555  0.39969697]
+ [ 0.70065809  0.63549689  0.53096173  0.38303829]
+ [ 0.55918996  0.50507791  0.41353598  0.29539053]]
+Distance from Fagereng et al Table 9 is 0.50594455811
+
+Finished estimating for scaling factor of 1.0 and "splurge amount" of $600.0
+Optimal (beta,nabla) is [ 0.84895799  0.11764256], simulated MPCs are:
+[[ 0.7644877   0.73194737  0.67417436  0.5504626 ]
+ [ 0.67911486  0.64060791  0.56702053  0.40913812]
+ [ 0.61490876  0.57821037  0.49924571  0.33099612]
+ [ 0.44869801  0.42355872  0.35522219  0.22102778]]
+Distance from Fagereng et al Table 9 is 0.378532189109
+
+Finished estimating for scaling factor of 1.0 and "splurge amount" of $800.0
+Optimal (beta,nabla) is [ 0.86744765  0.10917924], simulated MPCs are:
+[[ 0.7945896   0.76772393  0.71928589  0.60500658]
+ [ 0.67832705  0.6419929   0.57070414  0.40291442]
+ [ 0.59851437  0.56325425  0.48301667  0.29746909]
+ [ 0.41934634  0.3973359   0.32994573  0.18105594]]
+Distance from Fagereng et al Table 9 is 0.353783052535
+
+Finished estimating for scaling factor of 1.0 and "splurge amount" of $875.0
+Optimal (beta,nabla) is [ 0.87353356  0.1056968 ], simulated MPCs are:
+[[ 0.80813539  0.78345866  0.73839417  0.63322011]
+ [ 0.67933305  0.64389695  0.57303186  0.40820771]
+ [ 0.59320562  0.55848769  0.47731168  0.29221195]
+ [ 0.40903512  0.38811857  0.32070852  0.17125408]]
+Distance from Fagereng et al Table 9 is 0.352019022063
+
+Finished estimating for scaling factor of 1.0 and "splurge amount" of $950.0
+Optimal (beta,nabla) is [ 0.87905711  0.10329785], simulated MPCs are:
+[[ 0.82324223  0.80098386  0.75828984  0.66234585]
+ [ 0.68212379  0.64760083  0.57524435  0.41287878]
+ [ 0.58980763  0.5555184   0.47109877  0.28570831]
+ [ 0.40077269  0.38057638  0.31131662  0.16013007]]
+Distance from Fagereng et al Table 9 is 0.35628702833
+
+Finished estimating for scaling factor of 1.0 and "splurge amount" of $1100.0
+Optimal (beta,nabla) is [ 0.89062501  0.09390446], simulated MPCs are:
+[[ 0.85443872  0.83693195  0.80255273  0.72812205]
+ [ 0.6850934   0.65236964  0.58213147  0.4311077 ]
+ [ 0.57877287  0.54502053  0.46044912  0.28139594]
+ [ 0.3789454   0.36025966  0.29326613  0.14468083]]
+Distance from Fagereng et al Table 9 is 0.38505353215
+
+#################################################################################
+
+THESE SPECIFICATIONS USE POINT MPC (RATHER THAN SECANT) AND TOP LOTTERY PRIZE OF $40K
+
+Finished estimating for scaling factor of 1.0 and "splurge amount" of $0.0
+Optimal (beta,nabla) is [ 0.76552268  0.17661984], simulated MPCs are:
+[[ 0.801061    0.71127032  0.58354733  0.43462992]
+ [ 0.7526398   0.67429846  0.56062456  0.41707369]
+ [ 0.69038583  0.62212012  0.51964281  0.38439914]
+ [ 0.50683925  0.44246877  0.35022315  0.25202299]]
+Distance from Fagereng et al Table 9 is 0.39811466586
+
+#################################################################################
+
+THESE SPECIFICATIONS USE POINT MPC, DROP UPPER LEFT ELEMENT, AND TOP LOTTERY PRIZE OF $40K
+
+Finished estimating for scaling factor of 1.0 and "splurge amount" of $0.0
+Optimal (beta,nabla) is [ 0.78501336  0.14728549], simulated MPCs are:
+[[ 0.72994223  0.66658842  0.5684356   0.44728905]
+ [ 0.68915947  0.63651934  0.5466604   0.42970854]
+ [ 0.63649285  0.58982238  0.50668659  0.39612831]
+ [ 0.45291364  0.41137106  0.33856185  0.26086131]]
+Distance from Fagereng et al Table 9 is 0.285288672645
+
+#################################################################################
+
+THESE SPECIFICATIONS DROP UPPER LEFT ELEMENT AND US TOP LOTTERY PRIZE OF $40K
+
+Finished estimating for scaling factor of 1.0 and "splurge amount" of $0.0
+Optimal (beta,nabla) is [ 0.81475291  0.12437747], simulated MPCs are:
+[[ 0.67855043  0.62462582  0.54129487  0.42169234]
+ [ 0.65827748  0.61101496  0.53050075  0.41313467]
+ [ 0.62693367  0.58616602  0.50947338  0.39612465]
+ [ 0.48987664  0.460265    0.39438284  0.30702996]]
+Distance from Fagereng et al Table 9 is 0.386818055215
+
+Finished estimating for scaling factor of 1.0 and "splurge amount" of $600.0
+Optimal (beta,nabla) is [ 0.8621056   0.10059628], simulated MPCs are:
+[[ 0.74192924  0.71331364  0.66136475  0.55268248]
+ [ 0.64980366  0.61667159  0.55040195  0.41202364]
+ [ 0.581955    0.55197668  0.48082772  0.33427671]
+ [ 0.41268593  0.39618394  0.3380294   0.22419146]]
+Distance from Fagereng et al Table 9 is 0.239854357156
+
+Finished estimating for scaling factor of 1.0 and "splurge amount" of $650.0
+Optimal (beta,nabla) is [ 0.86530505  0.09934121], simulated MPCs are:
+[[ 0.75162217  0.72409254  0.67414609  0.56565805]
+ [ 0.65214889  0.61932789  0.5534805   0.41107559]
+ [ 0.58056551  0.5507332   0.47926941  0.32697463]
+ [ 0.40823247  0.39209559  0.33417964  0.21503995]]
+Distance from Fagereng et al Table 9 is 0.235950938265
+
+Finished estimating for scaling factor of 1.0 and "splurge amount" of $675.0
+Optimal (beta,nabla) is [ 0.86731226  0.09732997], simulated MPCs are:
+[[ 0.75533482  0.72878182  0.68035908  0.57516574]
+ [ 0.65169068  0.61955705  0.55467204  0.41436644]
+ [ 0.57796464  0.54879826  0.47801819  0.32731733]
+ [ 0.40384338  0.38863539  0.3315846   0.21376491]]
+Distance from Fagereng et al Table 9 is 0.234943877684
+
+Finished estimating for scaling factor of 1.0 and "splurge amount" of $700.0
+Optimal (beta,nabla) is [ 0.86941869  0.09569   ], simulated MPCs are:
+[[ 0.75936846  0.73336567  0.68652188  0.5833115 ]
+ [ 0.65159273  0.61951467  0.55574618  0.41565542]
+ [ 0.57575624  0.54653043  0.4766384   0.32544873]
+ [ 0.39991185  0.38485928  0.32900539  0.21062304]]
+Distance from Fagereng et al Table 9 is 0.234761740179
+
+Finished estimating for scaling factor of 1.0 and "splurge amount" of $750.0
+Optimal (beta,nabla) is [ 0.87311659  0.09354776], simulated MPCs are:
+[[ 0.76864587  0.74374682  0.69973226  0.59850958]
+ [ 0.65275514  0.62089687  0.55877585  0.41621138]
+ [ 0.57283611  0.54355159  0.47473935  0.31938228]
+ [ 0.3937199   0.3789893   0.32453525  0.20242167]]
+Distance from Fagereng et al Table 9 is 0.23698401036
+
+Finished estimating for scaling factor of 1.0 and "splurge amount" of $800.0
+Optimal (beta,nabla) is [ 0.87531957  0.09803383], simulated MPCs are:
+[[ 0.78307465  0.75765843  0.71242282  0.60586568]
+ [ 0.66116648  0.6270483   0.56051047  0.40435874]
+ [ 0.57833133  0.54604315  0.47131151  0.29914326]
+ [ 0.39686914  0.37930789  0.31933774  0.18241716]]
+Distance from Fagereng et al Table 9 is 0.24138324564
+
+Finished estimating for scaling factor of 1.0 and "splurge amount" of $875.0
+Optimal (beta,nabla) is [ 0.88144639  0.09479103], simulated MPCs are:
+[[ 0.79731301  0.77404906  0.73152958  0.63302578]
+ [ 0.6623985   0.62898736  0.56214339  0.40803363]
+ [ 0.57311127  0.54094019  0.46465556  0.29198947]
+ [ 0.38681128  0.369578    0.30934249  0.17106342]]
+Distance from Fagereng et al Table 9 is 0.253887619294
+

@@ -21,8 +21,11 @@ from ConsIndShockModel import IndShockConsumerType
 from SetupParamsCSTWnew import init_infinite # dictionary with most ConsumerType parameters
 
 TypeCount = 8    # Number of consumer types with heterogeneous discount factors
-AdjFactor = 0.3  # Factor by which to scale all of Fagereng's MPCs in Table 9
+AdjFactor = 1.0  # Factor by which to scale all of Fagereng's MPCs in Table 9
 T_kill = 100     # Don't let agents live past this age
+Splurge = 0.675  # Consumers automatically spend this amount of any lottery prize
+do_secant = True # If True, calculate MPC by secant, else point MPC
+drop_corner = True # If True, ignore upper left corner when calculating distance
 
 # Define the MPC targets from Table 9; element i,j is lottery quartile i, deposit quartile j
 MPC_target_base = np.array([[1.047, 0.745, 0.720, 0.490],
@@ -32,7 +35,7 @@ MPC_target_base = np.array([[1.047, 0.745, 0.720, 0.490],
 MPC_target = AdjFactor*MPC_target_base
 
 # Define the four lottery sizes, in thousands of USD; these are eyeballed centers/averages
-lottery_size = np.array([1.625, 3.3741, 7.129, 20.0])
+lottery_size = np.array([1.625, 3.3741, 7.129, 40.0])
 
 # Make an initialization dictionary on an annual basis
 base_params = deepcopy(init_infinite)
@@ -43,7 +46,7 @@ base_params['TranShkStd'] = [0.1]
 base_params['T_age'] = T_kill # Kill off agents if they manage to achieve T_kill working years
 base_params['AgentCount'] = 10000
 base_params['pLvlInitMean'] = np.log(23.72) # From Table 1, in USD
-base_params['T_sim'] = T_kill # No point simulating past when agents would be killed off
+base_params['T_sim'] = T_kill  # No point simulating past when agents would be killed off
 
 # Make several consumer types to be used during estimation
 BaseType = IndShockConsumerType(**base_params)
@@ -98,19 +101,25 @@ def FagerengObjFunc(center,spread,verbose=False):
     for ThisType in EstTypeList:
         ThisType.simulate(1)
         c_base = ThisType.cNrmNow
-        MPC_secant = np.zeros((ThisType.AgentCount,4))
+        MPC_this_type = np.zeros((ThisType.AgentCount,4))
         for k in range(4): # Get secant MPC for all agents of this type
             Llvl = lottery_size[k]
             Lnrm = Llvl/ThisType.pLvlNow
-            mAdj = ThisType.mNrmNow + Lnrm
-            cAdj = ThisType.cFunc[0](mAdj)
-            MPC_secant[:,k] = (cAdj - c_base)/Lnrm
+            if do_secant == True:
+                SplurgeNrm = Splurge/ThisType.pLvlNow
+                mAdj = ThisType.mNrmNow + Lnrm - SplurgeNrm
+                cAdj = ThisType.cFunc[0](mAdj) + SplurgeNrm
+                MPC_this_type[:,k] = (cAdj - c_base)/Lnrm
+            else:
+                mAdj = ThisType.mNrmNow + Lnrm
+                MPC_this_type[:,k] = cAdj = ThisType.cFunc[0].derivative(mAdj)
+            
             
         # Sort the secant MPCs into the proper MPC sets
         for q in range(4):
             these = ThisType.WealthQ == q
             for k in range(4):
-                MPC_set_list[k][q].append(MPC_secant[these,k])
+                MPC_set_list[k][q].append(MPC_this_type[these,k])
                 
     # Calculate average within each MPC set
     simulated_MPC_means = np.zeros((4,4))
@@ -120,7 +129,10 @@ def FagerengObjFunc(center,spread,verbose=False):
             simulated_MPC_means[k,q] = np.mean(MPC_array)
             
     # Calculate Euclidean distance between simulated MPC averages and Table 9 targets
-    distance = np.sqrt(np.sum((simulated_MPC_means - MPC_target)**2))
+    diff = simulated_MPC_means - MPC_target
+    if drop_corner:
+        diff[0,0] = 0.0
+    distance = np.sqrt(np.sum((diff)**2))
     if verbose:
         print(simulated_MPC_means)
     else:
@@ -133,7 +145,7 @@ if __name__ == '__main__':
     guess = [0.92,0.03]
     f_temp = lambda x : FagerengObjFunc(x[0],x[1])
     opt_params = minimizeNelderMead(f_temp, guess, verbose=True)
-    print('Finished estimating for scaling factor of ' + str(AdjFactor) + '.' )
+    print('Finished estimating for scaling factor of ' + str(AdjFactor) + ' and "splurge amount" of $' + str(1000*Splurge))
     print('Optimal (beta,nabla) is ' + str(opt_params) + ', simulated MPCs are:')
     dist = FagerengObjFunc(opt_params[0],opt_params[1],True)
     print('Distance from Fagereng et al Table 9 is ' + str(dist))
