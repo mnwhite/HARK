@@ -10,8 +10,7 @@ sys.path.insert(0, os.path.abspath('../ConsumptionSaving'))
 sys.path.insert(0, os.path.abspath('../cstwMPC'))
 
 import numpy as np
-import matplotlib.pyplot as plt
-from copy import copy, deepcopy
+from copy import deepcopy
 from time import clock
 
 from HARKutilities import approxUniform, getPercentiles
@@ -23,9 +22,9 @@ from SetupParamsCSTWnew import init_infinite # dictionary with most ConsumerType
 TypeCount = 8    # Number of consumer types with heterogeneous discount factors
 AdjFactor = 1.0  # Factor by which to scale all of Fagereng's MPCs in Table 9
 T_kill = 100     # Don't let agents live past this age
-Splurge = 0.675  # Consumers automatically spend this amount of any lottery prize
+Splurge = 0.0    # Consumers automatically spend this amount of any lottery prize
 do_secant = True # If True, calculate MPC by secant, else point MPC
-drop_corner = True # If True, ignore upper left corner when calculating distance
+drop_corner = False # If True, ignore upper left corner when calculating distance
 
 # Define the MPC targets from Table 9; element i,j is lottery quartile i, deposit quartile j
 MPC_target_base = np.array([[1.047, 0.745, 0.720, 0.490],
@@ -39,7 +38,7 @@ lottery_size = np.array([1.625, 3.3741, 7.129, 40.0])
 
 # Make an initialization dictionary on an annual basis
 base_params = deepcopy(init_infinite)
-base_params['LivPrb'] = [1.0 - (1.0 - init_infinite['LivPrb'][0])*4]
+base_params['LivPrb'] = [0.975]
 base_params['Rfree'] = 1.04/base_params['LivPrb'][0]
 base_params['PermShkStd'] = [0.1]
 base_params['TranShkStd'] = [0.1]
@@ -68,6 +67,9 @@ def FagerengObjFunc(center,spread,verbose=False):
         Center of the uniform distribution of discount factors.
     spread : float
         Width of the uniform distribution of discount factors.
+    verbose : bool
+        When True, print to screen MPC table for these parameters.  When False,
+        print (center, spread, distance).
         
     Returns
     -------
@@ -86,7 +88,7 @@ def FagerengObjFunc(center,spread,verbose=False):
     # Get wealth quartile cutoffs and distribute them to each consumer type
     quartile_cuts = getPercentiles(WealthNow,percentiles=[0.25,0.50,0.75])
     for ThisType in EstTypeList:
-        WealthQ = np.zeros(ThisType.AgentCount)
+        WealthQ = np.zeros(ThisType.AgentCount,dtype=int)
         for n in range(3):
             WealthQ[ThisType.aLvlNow > quartile_cuts[n]] += 1
         ThisType(WealthQ = WealthQ)
@@ -97,15 +99,15 @@ def FagerengObjFunc(center,spread,verbose=False):
                      [[],[],[],[]],
                      [[],[],[],[]] ]
     
-    # Calculate the secant MPC for each of the four lottery sizes for all agents
+    # Calculate the MPC for each of the four lottery sizes for all agents
     for ThisType in EstTypeList:
         ThisType.simulate(1)
         c_base = ThisType.cNrmNow
         MPC_this_type = np.zeros((ThisType.AgentCount,4))
-        for k in range(4): # Get secant MPC for all agents of this type
+        for k in range(4): # Get MPC for all agents of this type
             Llvl = lottery_size[k]
             Lnrm = Llvl/ThisType.pLvlNow
-            if do_secant == True:
+            if do_secant:
                 SplurgeNrm = Splurge/ThisType.pLvlNow
                 mAdj = ThisType.mNrmNow + Lnrm - SplurgeNrm
                 cAdj = ThisType.cFunc[0](mAdj) + SplurgeNrm
@@ -113,9 +115,8 @@ def FagerengObjFunc(center,spread,verbose=False):
             else:
                 mAdj = ThisType.mNrmNow + Lnrm
                 MPC_this_type[:,k] = cAdj = ThisType.cFunc[0].derivative(mAdj)
-            
-            
-        # Sort the secant MPCs into the proper MPC sets
+                        
+        # Sort the MPCs into the proper MPC sets
         for q in range(4):
             these = ThisType.WealthQ == q
             for k in range(4):
@@ -155,15 +156,4 @@ if __name__ == '__main__':
 #    t_end = clock()
 #    print('That took ' + str(t_end - t_start) + ' seconds.')
 #    print(X)
-    
-#    test_vec = np.linspace(0.80,0.83,40)
-#    out_vec = np.empty(test_vec.size)
-#    for j in range(test_vec.size):
-#        beta = test_vec[j]
-#        out_vec[j] = FagerengObjFunc(beta,0.122)
-#        
-#    plt.plot(test_vec,out_vec)
-#    plt.show()
-    
-    
     
