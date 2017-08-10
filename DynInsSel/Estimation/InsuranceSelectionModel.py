@@ -1899,6 +1899,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
             ContractNow[these] = z_choice
 
         # Calculate end of period assets and store results as attributes of self
+        self.mLvlNow = mLvlNow
         self.aLvlNow = mLvlNow - PremNow - xLvlNow
         self.cLvlNow = cLvlNow
         self.MedLvlNow = MedLvlNow
@@ -1962,7 +1963,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         -------
         None
         '''
-        StateCount = self.MrkvArray[0].size[0]
+        StateCount = self.MrkvArray[0].shape[0]
         MaxContracts = max([max([len(self.ContractList[t][h]) for h in range(StateCount)]) for t in range(self.T_sim)])
         ExpInsPay = np.zeros((self.T_sim,StateCount,MaxContracts))
         ExpBuyers = np.zeros((self.T_sim,StateCount,MaxContracts))

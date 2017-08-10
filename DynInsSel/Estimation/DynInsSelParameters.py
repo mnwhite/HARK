@@ -12,7 +12,7 @@ import csv
 
 # Set parameters for estimation
 AgentCountTotal = 100000
-StaticBool = True
+StaticBool = False
 
 # Calibrated / other parameters (grid sizes, etc)
 Cfloor = 0.002                        # Effective consumption floor
