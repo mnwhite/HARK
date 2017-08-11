@@ -30,6 +30,44 @@ utility_invP  = CRRAutility_invP
 utility_inv   = CRRAutility_inv
 utilityP_invP = CRRAutilityP_invP
 
+class MargCostFunc(HARKobject):
+    '''
+    A class for representing "marginal cost of achieving effective consumption"
+    functions.  These functions take in a level of effective consumption and a
+    medical need shock and return the marginal cost of effective consumption at
+    this level when facing this shock.  This representation distorts the cEff
+    input by log and the marginal cost by -log(Dp-1) when storing the interpolated
+    function.  This class' __call__ function returns the de-distored marg cost.
+    '''
+    distance_criteria = ['func']
+    
+    def __init__(self,func):
+        self.func = func
+        
+    def __call__(self,x,y):
+        return np.exp(-self.func(np.log(x),y)) + 1.0
+
+class LogOnLogFunc2D(HARKobject):
+    '''
+    A class for 2D interpolated functions in which both the first argument and
+    the output are transformed through the natural log function.  This tends to
+    smooth out functions whose gridpoints have disparate spacing.  Takes as its
+    only argument a 2D function (whose x-domain and range are both R_+).
+    '''
+    distance_criteria = ['func']
+    
+    def __init__(self,func):
+        self.func = func
+        
+    def __call__(self,x,y):
+        return np.exp(self.func(np.log(x),y))
+    
+    def derivativeX(self,x,y):
+        return self.func.derivativeX(np.log(x),y)/x*self.__call__(x,y)
+    
+    def derivativeY(self,x,y):
+        return self.func.derivativeY(np.log(x),y)*self.__call__(x,y) 
+
 class InsuranceSelectionSolution(HARKobject):
     '''
     Class for representing the single period solution of the insurance selection model.
@@ -1212,12 +1250,23 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         '''
         aug_factor = 6
         
+#        # Make a master grid of expenditure levels
+#        pLvlGridAll = np.concatenate([pLvlGrid for pLvlGrid in self.pLvlGrid])
+#        pLvlGridAll = pLvlGridAll[pLvlGridAll > 0.]
+#        xLvlMax = 2.0*np.max(self.aXtraGrid)*np.max(pLvlGridAll)
+#        xLvlMin = np.min(self.aXtraGrid)*np.min(pLvlGridAll)
+#        xLvlGrid = makeGridExpMult(xLvlMin,xLvlMax,aug_factor*self.aXtraCount,timestonest=8)
+#        xLvlGrid = np.insert(xLvlGrid,0,0.0)
+        
         # Make a master grid of expenditure levels
         pLvlGridAll = np.concatenate([pLvlGrid for pLvlGrid in self.pLvlGrid])
-        pLvlGridAll = pLvlGridAll[pLvlGridAll > 0.]
-        xLvlMax = 2.0*np.max(self.aXtraGrid)*np.max(pLvlGridAll)
-        xLvlMin = np.min(self.aXtraGrid)*np.min(pLvlGridAll)
-        xLvlGrid = makeGridExpMult(xLvlMin,xLvlMax,aug_factor*self.aXtraCount,timestonest=8)
+        pLvlGridAll = np.unique(pLvlGridAll)[1:] # remove duplicates and p=0
+        pLogMin = np.log(pLvlGridAll[0])
+        pLogMax = np.log(pLvlGridAll[-1])
+        pLvlSet = np.exp(np.linspace(pLogMin,pLogMax,num=aug_factor+1))
+        pLvlSet = np.reshape(pLvlSet,(pLvlSet.size,1))
+        xNrmSet = np.reshape(self.aXtraGrid,(1,self.aXtraGrid.size))
+        xLvlGrid = np.unique((np.dot(pLvlSet,xNrmSet)).flatten())
         xLvlGrid = np.insert(xLvlGrid,0,0.0)
         
         # Make a master grid of medical need shocks
@@ -1362,17 +1411,17 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
             # Construct a grid of effective consumption values
             xGrid = np.tile(np.reshape(xVec,(xVec.size,1)),(1,ShkVec.size))
             ShkGrid = np.tile(np.reshape(ShkVec,(1,ShkVec.size)),(xVec.size,1))
+            ShkZero = ShkGrid == 0.
             qGrid = np.exp(-bGrid)
             cGrid = 1./(1.+qGrid)*xGrid
             MedGrid = qGrid/(1.+qGrid)*xGrid/MedPriceEff
             cEffGrid = (1.-np.exp(-MedGrid/ShkGrid))**self.CRRAmed*cGrid
-            cEffGrid[0,0] = 0.0
+            cEffGrid[:,0] = xVec
 
             # Construct a grid of marginal effective consumption values
             temp1 = np.exp(-MedGrid/ShkGrid)
             temp2 = np.exp(MedGrid/ShkGrid)
             dcdx = temp2/(temp2 + self.CRRAmed)
-            ShkZero = ShkGrid == 0.
             dcdx[ShkZero] = 1.
             dMeddx = (1./MedPriceEff)*self.CRRAmed/(temp2 + self.CRRAmed)
             dMeddx[ShkZero] = 0.
@@ -1385,16 +1434,17 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
             gothicvPnvrs = cEffGrid*dDdcEff**(1./self.CRRA)
 
             # Construct a 2D interpolation for the Dfunc, DpFunc, and Gfunc
-            Dfunc_by_Shk_list = []
-            DpFunc_by_Shk_list = []
-            Gfunc_by_Shk_list = []
+            DfuncBase_by_Shk_list = []
+            DpFuncBase_by_Shk_list = []
+            GfuncBase_by_Shk_list = []
             for j in range(ShkVec.size):
-                Dfunc_by_Shk_list.append(LinearInterp(cEffGrid[:,j],xVec))
-                DpFunc_by_Shk_list.append(LinearInterp(cEffGrid[:,j],dDdcEff[:,j]))
-                Gfunc_by_Shk_list.append(LinearInterp(gothicvPnvrs[:,j],cEffGrid[:,j]))
-            DfuncList.append(LinearInterpOnInterp1D(Dfunc_by_Shk_list,ShkVec))
-            DpFuncList.append(LinearInterpOnInterp1D(DpFunc_by_Shk_list,ShkVec))
-            GfuncList.append(LinearInterpOnInterp1D(Gfunc_by_Shk_list,ShkVec))
+                DfuncBase_by_Shk_list.append(LinearInterp(np.log(cEffGrid[1:,j]),np.log(xVec[1:]),lower_extrap=True))
+                temp = -np.log(dDdcEff[1:,j]-1.0)
+                DpFuncBase_by_Shk_list.append(LinearInterp(np.log(cEffGrid[1:,j]),temp,lower_extrap=True))
+                GfuncBase_by_Shk_list.append(LinearInterp(np.log(gothicvPnvrs[1:,j]),np.log(cEffGrid[1:,j]),lower_extrap=True))
+            DfuncList.append(LogOnLogFunc2D(LinearInterpOnInterp1D(DfuncBase_by_Shk_list,ShkVec)))
+            DpFuncList.append(MargCostFunc(LinearInterpOnInterp1D(DpFuncBase_by_Shk_list,ShkVec)))
+            GfuncList.append(LogOnLogFunc2D(LinearInterpOnInterp1D(GfuncBase_by_Shk_list,ShkVec)))
             
             # Make a 2D interpolation for the cEffFunc
             cEffFunc = BilinearInterp(cEffGrid,xVec,ShkVec)

@@ -60,10 +60,10 @@ class DynInsSelType(BaseType):
         self.installPremiumFuncs()
         self.updateSolutionTerminal()
         
-    def postSolve(self): # This needs to be active in the dynamic model
-        self.initializeSim()
-        self.simulate()
-        self.postSim()
+#    def postSolve(self): # This needs to be active in the dynamic model
+#        self.initializeSim()
+#        self.simulate()
+#        self.postSim()
         
     def initializeSim(self):
         InsSelConsumerType.initializeSim(self)
@@ -649,7 +649,7 @@ if __name__ == '__main__':
     InsChoice = 1
     SubsidyTypeCount = 1
     CRRAtypeCount = 1
-    ZeroSubsidyBool = True
+    ZeroSubsidyBool = False
     MyMarket = makeMarketFromParams(Params.test_param_vec,np.array([0.0, 0.0, 0.0, 0.0, 0.0]),InsChoice,SubsidyTypeCount,CRRAtypeCount,ZeroSubsidyBool)
     multiThreadCommandsFake(MyMarket.agents,['update()','makeShockHistory()'])
     MyMarket.getIncomeQuintiles()
