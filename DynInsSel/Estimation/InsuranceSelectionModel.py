@@ -1574,7 +1574,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
             mLvlArray    = mMinArray + tempArray*pLvlArray
             if pLvlGrid[0] == 0.0: # Fix the problem of all mLvls = 0 when pLvl = 0
                 mLvlArray[:,0,:] = np.tile(np.reshape(self.aXtraGrid*pLvlGrid[1],(aLvlCount,1)),(1,MedCount))            
-            #MedShkArray  = np.tile(np.reshape(MedShkVals,(1,1,MedCount)),(aLvlCount,pLvlCount,1))
+            MedShkArray  = np.tile(np.reshape(MedShkVals,(1,1,MedCount)),(aLvlCount,pLvlCount,1))
             #ShkPrbsArray = np.tile(np.reshape(MedShkPrbs,(1,1,MedCount)),(aLvlCount,pLvlCount,1))
             
             # For each insurance contract available in this health state, "integrate" across medical need
@@ -1604,57 +1604,41 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
                     C = cEff(cLvl,MedLvl+1e-12,MedShk)
                     return C
                 
-                # Get effective consumption level at MedShk=0 and MedShk=highest val
-                cEffShkZero = cEffFuncThisContract(mLvlArray[:,:,0],pLvlArray[:,:,0],np.zeros((aLvlCount,pLvlCount)))
-                cEffShkHigh = cEffFuncThisContract(mLvlArray[:,:,0],pLvlArray[:,:,0],MedShkVals[-1]*np.ones((aLvlCount,pLvlCount)))
+                # Determine indices to search within to find critical MedShk
+                cEffArrayBig = cEffFuncThisContract(mLvlArray,pLvlArray,MedShkArray)
+                CfloorIndexArray = np.minimum(np.sum(cEffArrayBig >= self.Cfloor, axis=2), MedCount-1).astype(int)
+                cEffArrayLog = np.log(cEffArrayBig)
                 
-                # Initialize arrays of Z values for medical need shocks and critical Z values where Cfloor begins to bind
-                CfloorPrbArray = np.zeros((aLvlCount,pLvlCount))
-                MedShkArray  = np.zeros((aLvlCount,pLvlCount,MedCount))
-                ShkPrbsArray = np.zeros((aLvlCount,pLvlCount,MedCount))
-                PrbsBase = norm.pdf(ZgridBase)
-                PrbsBase = PrbsBase/np.sum(PrbsBase)
-                PrbsBase *= (1.-MedShkPrbs[0])
-                PrbsBase[0] = MedShkPrbs[0]
+                # Find (approximate) MedShk where Cfloor begins to bind
+                alphaArray = np.zeros_like(CfloorIndexArray,dtype=float)
+                MedShkCritArray = np.zeros_like(alphaArray)
+                for i in range(1,MedCount):
+                    these = CfloorIndexArray == i
+                    logC0 = cEffArrayLog[:,:,i-1][these]
+                    logC1 = cEffArrayLog[:,:,i][these]
+                    alphaArray[these] = (np.log(self.Cfloor) - logC0)/(logC1 - logC0)
+                these = CfloorIndexArray > 0
+                MedShkCritArray[these] = (1.-alphaArray[these])*MedShkVals[CfloorIndexArray[these]-1] + alphaArray[these]*MedShkVals[CfloorIndexArray[these]]
                 
-                # Loop through each m and p value, filling in probabilities and shocks as appropriate
-                for j in range(pLvlCount):
-                    p = pLvlGrid[j]
-                    for i in range(aLvlCount):
-                        m = mLvlArray[i,j,0]
-                        if cEffShkHigh[i,j] >= self.Cfloor: # If even worst shock still doesn't make us hit Cfloor, use default
-                            MedShkArray[i,j,:] = MedShkVals
-                            ShkPrbsArray[i,j,] = PrbsBase
-                        elif cEffShkZero[i,j] < self.Cfloor: # If even zero shock means we are below Cfloor, no shock distribution is necessary
-                            CfloorPrbArray[i,j] = 1.0 # Put all weight on hitting Cfloor
-                        else: # Otherwise, we need to adjust default shocks
-                            tempf = lambda eta : cEffFuncThisContract(m,p,eta) - self.Cfloor
-                            CritShk = brentq(tempf,1e-10,MedShkVals[-1]) # Critical shock above which we hit the Cfloor
-                            CritZ = (np.log(CritShk) - MedShkAvg[h])/MedShkStd[h]
-                            Zadj = ZgridBase[-1] - CritZ # This should always be positive
-                            Zshocks = ZgridBase - Zadj
-                            MedShks = np.exp(Zshocks*MedShkStd[h] + MedShkAvg[h])
-                            PrbsTemp = norm.pdf(Zshocks)
-                            ShkPrbs = PrbsTemp/np.sum(PrbsTemp)
-                            CfloorPrb = norm.sf(CritZ)
-                            ShkPrbs *= (1.-CfloorPrb)*(1.-MedShkPrbs[0])
-                            ShkPrbs[0] = MedShkPrbs[0]
-                            CfloorPrbArray[i,j] = CfloorPrb*(1.-MedShkPrbs[0])
-                            MedShkArray[i,j,:] = MedShks
-                            ShkPrbsArray[i,j,:] = ShkPrbs
-                        #print('Finished h=' + str(h) + ', i=' + str(i) + ', j=' + str(j) + ', CfloorPrb=' + str(CfloorPrbArray[i,j]))
+                # Translate critical MedShk into array of shocks and probabilities to use in integration
+                AlwaysCfloor = np.logical_not(these)
+                ZcritArray = (np.log(MedShkCritArray) - MedShkAvg[h])/MedShkStd[h]
+                CfloorPrbArray = norm.sf(ZcritArray)*(1.-MedShkPrbs[0])
+                CfloorPrbArray[AlwaysCfloor] = 1.0 # These were shifted down by line above, but that's wrong
+                ZadjArray = np.minimum(ZcritArray - ZgridBase[-1],0.) # Should always be non-positive
+                ZshkArray = np.tile(np.reshape(ZgridBase,(1,1,ZgridBase.size)),(aLvlCount,pLvlCount,1)) + np.tile(np.reshape(ZadjArray,(aLvlCount,pLvlCount,1)),(1,1,MedCount))
+                MedShkArray = np.exp(ZshkArray*MedShkStd[h] + MedShkAvg[h])
+                TempPrbArray = norm.pdf(ZshkArray)
+                ReweightArray = (1.-MedShkPrbs[0]-CfloorPrbArray)/np.sum(TempPrbArray,axis=2)
+                ShkPrbsArray = TempPrbArray*np.tile(np.reshape(ReweightArray,(aLvlCount,pLvlCount,1)),(1,1,MedCount))
+                ShkPrbsArray[:,:,0] = MedShkPrbs[0]
+                AlwaysCfloor_tiled = np.tile(np.reshape(AlwaysCfloor,(aLvlCount,pLvlCount,1)),(1,1,MedCount))
+                ShkPrbsArray[AlwaysCfloor_tiled] = 0.0
                             
                 # Get value and marginal value at an array of states and integrate across medical shocks
-                print(np.sum(np.isnan(MedShkArray)),np.sum(np.isnan(ShkPrbsArray)))
                 vArrayBig, vParrayBig, vPParrayBig = policyFuncsThisHealth[-1].evalvAndvPandvPP(mLvlArray,pLvlArray,MedShkArray)
-                print(np.sum(np.isnan(vArrayBig)),np.sum(np.isnan(vParrayBig)))
-                
-                ## Find the level of value where the consumption floor binds
-                #vFloor = u(self.Cfloor)
-                #CfloorBinds = vArrayBig < vFloor
-                #vArrayBig[CfloorBinds] = vFloor
-                #vParrayBig[CfloorBinds] = 0.
-                
+                #print(np.sum(np.isnan(MedShkArray)),np.sum(np.isnan(ShkPrbsArray)))
+                #print(np.sum(np.isnan(vArrayBig)),np.sum(np.isnan(vParrayBig)))
                 vArray   = np.sum(vArrayBig*ShkPrbsArray,axis=2) + u(self.Cfloor)*CfloorPrbArray
                 vParray  = np.sum(vParrayBig*ShkPrbsArray,axis=2)
                 if self.CubicBool:
