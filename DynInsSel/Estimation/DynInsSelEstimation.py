@@ -657,9 +657,11 @@ if __name__ == '__main__':
     t_end = clock()
     print('Making the agents took ' + mystr(t_end-t_start) + ' seconds.')
     
-    MyMarket.agents[0].solve()
-    
-    MyType = MyMarket.agents[0]    
+    MyType = MyMarket.agents[0] 
+    MyType.preSolve()
+    MyType.solution = [MyType.solution_terminal]
+    #MyType.solve()
+       
     t = -1
     p = 1.0    
     h = 4        
@@ -668,10 +670,17 @@ if __name__ == '__main__':
     
     MyType.plotvFunc(t,p)
     MyType.plotvPfunc(t,p)
-    MyType.plotvFuncByContract(t,h,p)
+    #MyType.plotvFuncByContract(t,h,p)
     MyType.plotcFuncByContract(t,h,p,MedShk)
     MyType.plotcFuncByMedShk(t,h,z,p)
     MyType.plotMedFuncByMedShk(t,h,z,p)
+    MyType.plotcEffFuncByMedShk(t,h,z,p)
+    
+#    m = 5.0
+#    ShkArray = np.linspace(0.,10.,1000)
+#    V = MyType.solution[0].policyFunc[0][0].ValueFuncCopay.vFuncNvrs(m*np.ones_like(ShkArray),p*np.ones_like(ShkArray),ShkArray)
+#    plt.plot(np.log(ShkArray),np.log(V))
+#    plt.show()
   
 ## This block of code is for displaying moment fits after running objectiveFunc  
 #    Age = np.arange(25,85)
