@@ -464,7 +464,7 @@ def makeDynInsSelType(CRRAcon,CRRAmed,DiscFac,ChoiceShkMag,MedShkMeanAgeParams,M
     else:
         WorkingContractList.append(MedInsuranceContract(ConstantFunction(0.0),0.05,0.05,Params.MedPrice))
         
-    RetiredContractListA = [MedInsuranceContract(ConstantFunction(0.0),0.1,0.05,Params.MedPrice)]
+    RetiredContractListA = [MedInsuranceContract(ConstantFunction(0.0),0.0,0.05,Params.MedPrice)]
     #RetiredContractListB = [MedInsuranceContract(ConstantFunction(0.0),0.2,0.05,Params.MedPrice)]
     TypeDict['ContractList'] = Params.working_T*[5*[WorkingContractList]] + (Params.retired_T)*[5*[RetiredContractListA]]
     
@@ -671,16 +671,10 @@ if __name__ == '__main__':
     MyType.plotvFunc(t,p)
     MyType.plotvPfunc(t,p)
     #MyType.plotvFuncByContract(t,h,p)
-    MyType.plotcFuncByContract(t,h,p,MedShk)
-    MyType.plotcFuncByMedShk(t,h,z,p)
-    MyType.plotMedFuncByMedShk(t,h,z,p)
-    MyType.plotcEffFuncByMedShk(t,h,z,p)
-    
-#    m = 5.0
-#    ShkArray = np.linspace(0.,10.,1000)
-#    V = MyType.solution[0].policyFunc[0][0].ValueFuncCopay.vFuncNvrs(m*np.ones_like(ShkArray),p*np.ones_like(ShkArray),ShkArray)
-#    plt.plot(np.log(ShkArray),np.log(V))
-#    plt.show()
+    #MyType.plotcFuncByContract(t,h,p,MedShk)
+    #MyType.plotcFuncByMedShk(t,h,z,p)
+    #MyType.plotMedFuncByMedShk(t,h,z,p)
+    #MyType.plotcEffFuncByMedShk(t,h,z,p)
   
 ## This block of code is for displaying moment fits after running objectiveFunc  
 #    Age = np.arange(25,85)
