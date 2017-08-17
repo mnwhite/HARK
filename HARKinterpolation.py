@@ -2152,6 +2152,72 @@ class VariableLowerBoundFunc2D(HARKobject):
         xShift,xShiftDer = self.lowerBound.eval_with_derivative(y)
         dfdy_out = self.func.derivativeY(x-xShift,y) - xShiftDer*self.func.derivativeX(x-xShift,y)
         return dfdy_out
+    
+    
+class CompositeFunc2D(HARKinterpolator2D):
+    '''
+    A class for representing 2D functions f(x,y) that are composed of an "upper"
+    and "lower" function with a boundary defined by x* = g(y).
+    '''
+    def __init__(self,LowerFunc,UpperFunc,BoundFunc):
+        '''
+        Constructs a new CompositeFunc2D, storing inputs as attributes of self.
+        
+        Parameters
+        ----------
+        LowerFunc : HARKinterpolator2D
+            Function below the boundary seam.
+        UpperFunc : HARKinterpolator2D
+            Function above the boundary seam.
+        BoundFunc : HARKinterpolator1D
+            Boundary function x* = g(y) that gives seam in x for given value of y.
+             
+        Returns
+        -------
+        None
+        '''
+        self.LowerFunc = LowerFunc
+        self.UpperFunc = UpperFunc
+        self.BoundFunc = BoundFunc
+        
+    def _evaluate(self,x,y):
+        '''
+        Evaluates the composite function at given x and y values.  Only called
+        internally by HARKinterpolator2D.__call__.
+        '''
+        crit = self.BoundFunc(y)
+        below = x <= crit
+        above = np.logical_not(below)
+        out = np.zeros_like(x)
+        out[below] = self.LowerFunc(x[below],y[below])
+        out[above] = self.UpperFunc(x[above],y[above])
+        return out
+    
+    def _derX(self,x,y):
+        '''
+        Derivative of the composite function with respect to x at given x and y
+        values.  Only called internally by HARKinterpolator2D.derivativeX.
+        '''
+        crit = self.BoundFunc(y)
+        below = x <= crit
+        above = np.logical_not(below)
+        out = np.zeros_like(x)
+        out[below] = self.LowerFunc._derX(x[below],y[below])
+        out[above] = self.UpperFunc._derX(x[above],y[above])
+        return out
+    
+    def _derY(self,x,y):
+        '''
+        Derivative of the composite function with respect to y at given x and y
+        values.  Only called internally by HARKinterpolator2D.derivativeY.
+        '''
+        crit = self.BoundFunc(y)
+        below = x <= crit
+        above = np.logical_not(below)
+        out = np.zeros_like(x)
+        out[below] = self.LowerFunc._derY(x[below],y[below])
+        out[above] = self.UpperFunc._derY(x[above],y[above])
+        return out
         
         
 class VariableLowerBoundFunc3D(HARKobject):

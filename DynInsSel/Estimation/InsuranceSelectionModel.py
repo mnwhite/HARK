@@ -13,7 +13,7 @@ from HARKutilities import CRRAutility, CRRAutilityP, CRRAutilityPP, CRRAutilityP
                           CRRAutility_invP, CRRAutility_inv, CRRAutilityP_invP, NullFunc,\
                           approxLognormal, addDiscreteOutcome, makeGridExpMult
 from HARKinterpolation import LinearInterp, CubicInterp, BilinearInterpOnInterp1D, LinearInterpOnInterp1D, \
-                              LowerEnvelope3D, UpperEnvelope, TrilinearInterp, ConstantFunction, \
+                              LowerEnvelope3D, UpperEnvelope, TrilinearInterp, ConstantFunction, CompositeFunc2D, \
                               VariableLowerBoundFunc2D, VariableLowerBoundFunc3D, IdentityFunction, BilinearInterp
 from HARKsimulation import drawUniform, drawLognormal, drawMeanOneLognormal, drawDiscrete, drawBernoulli
 from ConsMedModel import MedShockPolicyFunc, MedShockConsumerType
@@ -1315,9 +1315,10 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         
     def distributeConstructedFuncs(self):
         '''
-        Constructs the attributes bFromxFuncList, CopayList, DfuncList, DpFuncList, cEffFuncList, and
-        GfuncList for each period in the agent's cycle. Should only be run after makeMasterbFromxFuncs()
-        and makeMasterDfuncs(), which constructs the functions that will be reorganized here.
+        Constructs the attributes bFromxFuncList, CopayList, DfuncList, DpFuncList, cEffFuncList,
+        GfuncList, and CritShkFuncList for each period in the agent's cycle. Should only be run
+        after makeMasterbFromxFuncs() and makeMasterDfuncs(), which constructs the functions that
+        will be reorganized here.
         
         Parameters
         ----------
@@ -1337,6 +1338,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         DpFuncList = [] # Marginal cost as a function of effective consumption and medical shock for each period
         cEffFuncList = [] # Effective consumption as a function of total spending and medical shock for each period
         GfuncList = [] # Solution to first order condition as a function of pseudo inverse end-of-period marginal value and medical shock for each period
+        CritShkFuncList = [] # Medical need shock above which consumption floor binds, as function of total expenditure
 
         # Loop through time and construct the lists above
         for t in range(self.T_cycle):
@@ -1351,6 +1353,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
             DpFuncList_temp = []
             cEffFuncList_temp = []
             GfuncList_temp = []
+            CritShkFuncList_temp = []
             for Copay in CopayList[-1]:
                 # For each copay, add the appropriate function to each list
                 idx = np.argwhere(np.array(self.CopayListAll)==Copay)[0][0]
@@ -1359,6 +1362,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
                 DpFuncList_temp.append(self.DpFuncListAll[idx])
                 cEffFuncList_temp.append(self.cEffFuncListAll[idx])
                 GfuncList_temp.append(self.GfuncListAll[idx])
+                CritShkFuncList_temp.append(self.CritShkFuncListAll[idx])
                 
             # Add the one-period lists to the full list
             bFromxFuncList.append(copy(bFromxFuncList_temp))
@@ -1366,6 +1370,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
             DpFuncList.append(copy(DpFuncList_temp))
             cEffFuncList.append(copy(cEffFuncList_temp))
             GfuncList.append(copy(GfuncList_temp))
+            CritShkFuncList.append(copy(CritShkFuncList_temp))
             
         # Store the results in self, add to time_vary, and restore time to its original direction
         self.CopayList = CopayList
@@ -1374,7 +1379,8 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         self.DpFuncList = DpFuncList
         self.cEffFuncList = cEffFuncList
         self.GfuncList = GfuncList
-        self.addToTimeVary('CopayList','bFromxFuncList','DfuncList','DpFuncList','cEffFuncList','GfuncList')
+        self.CritShkFuncList = CritShkFuncList
+        self.addToTimeVary('CopayList','bFromxFuncList','DfuncList','DpFuncList','cEffFuncList','GfuncList','CritShkFuncList')
         if not orig_time:
             self.timeRev()
             
@@ -1500,7 +1506,6 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         uinvP = lambda x : utility_invP(x,gam=CRRA)
         uinv = lambda x : utility_inv(x,gam=CRRA)
         uPinvP = lambda x : utilityP_invP(x,gam=CRRA)
-        cEff = lambda c,m,Shk : (1.-np.exp(-m/Shk))**self.CRRAmed*c
         
         # Take last period data, whichever way time is flowing
         if self.time_flow:
@@ -1513,7 +1518,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         bFromxFuncList = self.bFromxFuncList[t]
         pLvlGrid = self.pLvlGrid[t]
         ChoiceShkMag = self.ChoiceShkMag[t]
-        #DfuncList = self.DfuncList[t] # unneeded
+        CritShkFuncList = self.CritShkFuncList[t]
         DpFuncList = self.DpFuncList[t]
         cEffFuncList = self.cEffFuncList[t]
         MedShkAvg = self.MedShkAvg[t]
@@ -1603,17 +1608,12 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
                 DpFuncFullPrice = DpFuncList[FullPrice_idx]
                 DpFuncCopay = DpFuncList[Copay_idx]
             
-                # Make the policy function for this contract, and a temporary cEff function
+                # Make the policy function for this contract and find critical medical need shocks
                 policyFuncsThisHealth.append(InsSelPolicyFunc(vFuncFullPrice,vFuncCopay,policyFuncFullPrice,policyFuncCopay,DpFuncFullPrice,DpFuncCopay,Contract,CRRAmed))
-                def cEffFuncThisContract(mLvl,pLvl,MedShk):
-                    cLvl, MedLvl = policyFuncsThisHealth[-1](mLvl,pLvl,MedShk)
-                    C = cEff(cLvl,MedLvl+1e-12,MedShk)
-                    return C
-                
-                MedShkCritArray = self.CritShkFuncListAll[0](mLvlArray[:,:,0])
+                MedShkCritArray = CritShkFuncList[Copay_idx](mLvlArray[:,:,0]) # Assume zero deductible
                 these = MedShkCritArray > 0.
-                
                 MedShkCritArrayList.append(MedShkCritArray)
+                
                 # Translate critical MedShk into array of shocks and probabilities to use in integration
                 AlwaysCfloor = np.logical_not(these)
                 ZcritArray = (np.log(MedShkCritArray) - MedShkAvg[h])/MedShkStd[h]
@@ -1636,35 +1636,45 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
                 vParray  = np.sum(vParrayBig*ShkPrbsArray,axis=2)
                 if self.CubicBool:
                     vPParray = np.sum(vPParrayBig*ShkPrbsArray,axis=2)
-                
-                # Add vPnvrs=0 at m=mLvlMin to close it off at the bottom (and vNvrs=0)
+                    
+                # Make pseudo-inverse versions of value and marginal value arrays
                 vNvrsFloor = self.Cfloor
-                mGrid_small   = np.concatenate((np.reshape(np.zeros(pLvlCount),(1,pLvlCount)),mLvlArray[:,:,0]),axis=0)
-                vPnvrsArray   = np.concatenate((np.zeros((1,pLvlCount)),uPinv(vParray)),axis=0)
+                mLvlBound = mLvlArray[0,:,0] # Lowest mLvl for each pLvl; will be used to make "seam"
+                mGrid_small_A = np.concatenate((np.reshape(np.zeros(pLvlCount),(1,pLvlCount)),mLvlArray[:,:,0]),axis=0)
+                mGrid_small_B = mLvlArray[:,:,0] - np.tile(np.reshape(mLvlBound,(1,pLvlCount)),(aLvlCount,1))
+                vPnvrsArray   = uPinv(vParray)
+                vNvrsArray    = np.concatenate((vNvrsFloor*np.ones((1,pLvlCount)),uinv(vArray)),axis=0)
                 if self.CubicBool:
                     vPnvrsParray  = np.concatenate((np.zeros((1,pLvlCount)),vPParray*uPinvP(vParray)),axis=0)
-                vNvrsArray    = np.concatenate((vNvrsFloor*np.ones((1,pLvlCount)),uinv(vArray)),axis=0)
-                #vNvrsParray   = np.concatenate((np.zeros((1,pLvlCount)),vParray*uinvP(vArray)),axis=0)
                 
                 # Construct the pseudo-inverse value and marginal value functions over mLvl,pLvl
-                vPnvrsFunc_by_pLvl = []
+                vPnvrsFuncUpper_by_pLvl = []
                 vNvrsFunc_by_pLvl = []
+                vPfuncLower_by_pLvl = []
                 for j in range(pLvlCount): # Make a pseudo inverse marginal value function for each pLvl
-                    m_temp = mGrid_small[:,j]
+                    vPfuncLower_by_pLvl.append(LinearInterp(np.array([0.,self.Cfloor,mLvlBound[j]]),np.array([0.,0.,vParray[0,j]])))
+                    m_temp_A = mGrid_small_A[:,j]
+                    m_temp_B = mGrid_small_B[:,j]
                     vPnvrs_temp = vPnvrsArray[:,j]
                     if self.CubicBool:
                         vPnvrsP_temp = vPnvrsParray[:,j]
-                        vPnvrsFunc_by_pLvl.append(CubicInterp(m_temp,vPnvrs_temp,vPnvrsP_temp))
+                        vPnvrsFuncUpper_by_pLvl.append(CubicInterp(m_temp,vPnvrs_temp,vPnvrsP_temp))
                     else:
-                        vPnvrsFunc_by_pLvl.append(LinearInterp(m_temp,vPnvrs_temp))
+                        vPnvrsFuncUpper_by_pLvl.append(LinearInterp(m_temp_B,vPnvrs_temp))
                     vNvrs_temp  = vNvrsArray[:,j]
                     #vNvrsP_temp = vNvrsParray[:,j]
                     #vNvrsFunc_by_pLvl.append(CubicInterp(m_temp,vNvrs_temp,vNvrsP_temp))
-                    vNvrsFunc_by_pLvl.append(LinearInterp(m_temp,vNvrs_temp))
-                vPnvrsFunc = LinearInterpOnInterp1D(vPnvrsFunc_by_pLvl,pLvlGrid)
+                    vNvrsFunc_by_pLvl.append(LinearInterp(m_temp_A,vNvrs_temp))
                 vNvrsFunc  = LinearInterpOnInterp1D(vNvrsFunc_by_pLvl,pLvlGrid)
-                vPfuncThisContract = MargValueFunc2D(vPnvrsFunc,CRRA) # "Re-curve" the (marginal) value function
-                vFuncThisContract = ValueFunc2D(vNvrsFunc,CRRA)
+                vFuncThisContract = ValueFunc2D(vNvrsFunc,CRRA) # Recurve the value function
+                  
+                # Construct the marginal value function as a composite function
+                vPfuncSeam = LinearInterp(pLvlGrid,mLvlBound)
+                vPnvrsFuncUpperBase = LinearInterpOnInterp1D(vPnvrsFuncUpper_by_pLvl,pLvlGrid)
+                vPnvrsFuncUpper = VariableLowerBoundFunc2D(vPnvrsFuncUpperBase,vPfuncSeam)
+                vPfuncUpper = MargValueFunc2D(vPnvrsFuncUpper,CRRA) # "Re-curve" the upper marginal value function
+                vPfuncLower = LinearInterpOnInterp1D(vPfuncLower_by_pLvl,pLvlGrid)
+                vPfuncThisContract = CompositeFunc2D(vPfuncLower,vPfuncUpper,vPfuncSeam)
                 
                 # Store the policy and (marginal) value function
                 vFuncsThisHealth.append(vFuncThisContract)
@@ -2134,7 +2144,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
             H = range(len(self.LivPrb[0]))
         for h in H:
             if decurve:
-                f = lambda x : self.solution[t].vPfunc[h].cFunc(x,p*np.ones_like(x))
+                f = lambda x : self.solution[t].vPfunc[h].UpperFunc.cFunc(x,p*np.ones_like(x))
             else:
                 f = lambda x : self.solution[t].vPfunc[h](x,p*np.ones_like(x))
             plt.plot(mLvl,f(mLvl))

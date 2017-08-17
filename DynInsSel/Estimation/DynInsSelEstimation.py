@@ -668,8 +668,8 @@ if __name__ == '__main__':
     MedShk = 1.0e-2
     z = 0
     
-    MyType.plotvFunc(t,p)
-    MyType.plotvPfunc(t,p)
+    MyType.plotvFunc(t,p,decurve=False)
+    MyType.plotvPfunc(t,p,decurve=False)
     #MyType.plotvFuncByContract(t,h,p)
     #MyType.plotcFuncByContract(t,h,p,MedShk)
     #MyType.plotcFuncByMedShk(t,h,z,p)
