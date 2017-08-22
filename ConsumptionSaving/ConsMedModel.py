@@ -15,7 +15,7 @@ from ConsIndShockModel import ConsumerSolution
 from HARKinterpolation import BilinearInterpOnInterp1D, TrilinearInterp, BilinearInterp, CubicInterp,\
                               LinearInterp, LowerEnvelope3D, UpperEnvelope, LinearInterpOnInterp1D,\
                               VariableLowerBoundFunc3D
-from ConsPersistentShockModel import ConsPersistentShockSolver, PersistentShockConsumerType,\
+from ConsGenIncProcessModel import ConsGenIncProcessSolver, PersistentShockConsumerType,\
                                      ValueFunc2D, MargValueFunc2D, MargMargValueFunc2D, \
                                      VariableLowerBoundFunc2D
 from copy import copy, deepcopy
@@ -545,6 +545,7 @@ class MedShockConsumerType(PersistentShockConsumerType):
         '''
         self.updateIncomeProcess()
         self.updateAssetsGrid()
+        self.updatepLvlNextFunc()
         self.updatePermIncGrid()
         self.updateMedShockProcess()
         self.updateSolutionTerminal()
@@ -752,7 +753,7 @@ class MedShockConsumerType(PersistentShockConsumerType):
         
 ###############################################################################
         
-class ConsMedShockSolver(ConsPersistentShockSolver):
+class ConsMedShockSolver(ConsGenIncProcessSolver):
     '''
     Class for solving the one period problem for the "medical shocks" model, in
     which consumers receive shocks to permanent and transitory income as well as
@@ -812,7 +813,7 @@ class ConsMedShockSolver(ConsPersistentShockSolver):
         -------
         None
         '''
-        ConsPersistentShockSolver.__init__(self,solution_next,IncomeDstn,LivPrb,DiscFac,CRRA,Rfree,
+        ConsGenIncProcessSolver.__init__(self,solution_next,IncomeDstn,LivPrb,DiscFac,CRRA,Rfree,
                  PermGroFac,PermIncCorr,BoroCnstArt,aXtraGrid,pLvlGrid,vFuncBool,CubicBool)
         self.MedShkDstn = MedShkDstn
         self.MedPrice   = MedPrice
@@ -847,7 +848,7 @@ class ConsMedShockSolver(ConsPersistentShockSolver):
         None
         '''
         # Run basic version of this method
-        ConsPersistentShockSolver.setAndUpdateValues(self,self.solution_next,self.IncomeDstn,
+        ConsGenIncProcessSolver.setAndUpdateValues(self,self.solution_next,self.IncomeDstn,
                                                      self.LivPrb,self.DiscFac)
         
         # Also unpack the medical shock distribution
@@ -869,7 +870,7 @@ class ConsMedShockSolver(ConsPersistentShockSolver):
         -------
         none
         '''
-        ConsPersistentShockSolver.defUtilityFuncs(self) # Do basic version
+        ConsGenIncProcessSolver.defUtilityFuncs(self) # Do basic version
         self.uMedPinv = lambda Med : utilityP_inv(Med,gam=self.CRRAmed)
         self.uMed     = lambda Med : utility(Med,gam=self.CRRAmed)
         self.uMedPP   = lambda Med : utilityPP(Med,gam=self.CRRAmed)

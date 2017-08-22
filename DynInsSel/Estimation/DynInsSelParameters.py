@@ -9,6 +9,7 @@ from scipy.optimize import newton
 import matplotlib.pyplot as plt
 import os
 import csv
+from HARKinterpolation import LinearInterp
 
 # Set parameters for estimation
 AgentCountTotal = 100000
@@ -32,11 +33,10 @@ IncUnempRet = 0.0                   # "Unemployment" benefits when retired
 BoroCnstArt = 0.0                   # Artificial borrowing constraint; imposed minimum level of end-of period assets
 CubicBool = False                   # Use cubic spline interpolation when True, linear interpolation when False
 DecurveBool = True                  # "Decurve" value through the inverse utility function when applying preference shocks when True
-PermIncCount = 12                   # Number of permanent income gridpoints in "body"
-PermInc_tail_N = 3                  # Number of permanent income gridpoints in each "tail"
-PermIncStdInit = 0.4                # Initial standard deviation of (log) permanent income (not used in example)
-PermIncAvgInit = 1.0                # Initial average of permanent income (not used in example)
-PermIncCorr = 1.0                   # Serial correlation coefficient for permanent income
+pLvlPctiles = np.concatenate(([0.001, 0.005, 0.01, 0.03], np.linspace(0.05, 0.95, num=12),[0.97, 0.99, 0.995, 0.999]))
+pLvlInitStd = 0.4                   # Initial standard deviation of (log) permanent income
+pLvlInitMean = 0.0                  # Initial average of log permanent income
+PermIncCorr = 0.99                  # Serial correlation coefficient for permanent income
 MedShkCount = 5                     # Number of medical shock points in "body"
 MedShkCountTail = [2,8]             # Number of medical shock points in "upper tail"
 MedShkTailBound = [0.05,0.98]       # Boundaries of body (in CDF terms)
@@ -294,9 +294,9 @@ MrkvArray_h = MrkvArray_h[7:]
 MrkvArray_c = MrkvArray_c[7:]
 
 # Semi-arbitrary initial income levels (grab from data later)
-PermIncAvgInit_d = 2.0
-PermIncAvgInit_h = 3.0
-PermIncAvgInit_c = 4.2
+pLvlInitMean_d = np.log(2.0)
+pLvlInitMean_h = np.log(3.0)
+pLvlInitMean_c = np.log(4.2)
 
 # Permanent income growth rates from Cagetti (2003)
 PermGroFac_d_base = [5.2522391e-002,  5.0039782e-002,  4.7586132e-002,  4.5162424e-002,  4.2769638e-002,  4.0408757e-002,  3.8080763e-002,  3.5786635e-002,  3.3527358e-002,  3.1303911e-002,  2.9117277e-002,  2.6968437e-002,  2.4858374e-002, 2.2788068e-002,  2.0758501e-002,  1.8770655e-002,  1.6825511e-002,  1.4924052e-002,  1.3067258e-002,  1.1256112e-002, 9.4915947e-003,  7.7746883e-003,  6.1063742e-003,  4.4876340e-003,  2.9194495e-003,  1.4028022e-003, -6.1326258e-005, -1.4719542e-003, -2.8280999e-003, -4.1287819e-003, -5.3730185e-003, -6.5598280e-003, -7.6882288e-003, -8.7572392e-003, -9.7658777e-003, -1.0713163e-002, -1.1598112e-002, -1.2419745e-002, -1.3177079e-002, -1.3869133e-002, -4.3985368e-001, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003]
@@ -312,7 +312,45 @@ for t in range(95):
     PermGroFac_dx.append(5*[PermGroFac_d[t]+1.0])
     PermGroFac_hx.append(5*[PermGroFac_h[t]+1.0])
     PermGroFac_cx.append(5*[PermGroFac_c[t]+1.0])
+
+# Make retirement functions for each education level
+SSbenefitFunc = LinearInterp([0.,1.062,6.4032,7.4032],[0.,0.9558,2.6650,2.8150])
+LogAIMEfunc = lambda x : 0.6322 + 0.6403*x + 0.0233*x**2 - 0.0189*x**3
+LogAIMEfuncDer = lambda x : 0.6403 + 0.0466*x - 0.0567*x**2
+AIMEfunc = lambda x : np.exp(np.log(x))
+
+class RetirementFunc(object):
+    '''
+    Function for representing pLvlNextFunc at retirement.
+    '''
+    low_point = 0.1  # Dollar value where we switch to lower extrap
+    high_point = 25. # Dollar value where we switch to upper extrap
     
+    def __init__(self, EducAdj, AIMEmax):
+        log_high_point = np.log(self.high_point)
+        log_low_point = np.log(self.low_point)
+        self.AIMEmax = AIMEmax
+        self.LogAIMEfunc = lambda x : LogAIMEfunc(x) + EducAdj
+        self.high_gap = np.log(AIMEmax) - self.LogAIMEfunc(log_high_point)
+        self.high_slope = -LogAIMEfuncDer(log_high_point)
+        self.low_slope = np.exp(self.LogAIMEfunc(log_low_point))/self.low_point
+        
+    def __call__(self, pLvlNow):
+        if type(pLvlNow) is float:
+            pLvlNow = np.array([pLvlNow])
+        AIME = np.exp(self.LogAIMEfunc(np.log(pLvlNow)))
+        low = pLvlNow < self.low_point
+        AIME[low] = pLvlNow[low]*self.low_slope
+        high = pLvlNow > self.high_point
+        Diff = np.log(pLvlNow[high]) - np.log(self.high_point)
+        LogAIMEhigh = np.log(self.AIMEmax) - self.high_gap*np.exp(self.high_slope/self.high_gap*Diff)
+        AIME[high] = np.exp(LogAIMEhigh)
+        pLvlNext = SSbenefitFunc(AIME)
+        return pLvlNext
+    
+RetirementFunc_d = RetirementFunc(-0.0898, 10.68)
+RetirementFunc_h = RetirementFunc(0.0000, 10.68)
+RetirementFunc_c = RetirementFunc(0.0470, 10.68)
     
 # Construct the probability of getting zero medical need shock by age-health
 ZeroMedExFunc = lambda a : -0.2082171 - 0.0248579*a
@@ -345,10 +383,9 @@ BasicDictionary = { 'Rfree': Rfree,
                     'BoroCnstArt': BoroCnstArt,
                     'CubicBool': CubicBool,
                     'DecurveBool': DecurveBool,
-                    'PermIncCount': PermIncCount,
-                    'PermInc_tail_N': PermInc_tail_N,
-                    'PermIncStdInit': PermIncStdInit,
-                    'PermIncAvgInit': PermIncAvgInit,
+                    'pLvlPctiles': pLvlPctiles,
+                    'pLvlInitStd': pLvlInitStd,
+                    'pLvlInitMean': pLvlInitMean,
                     'PermIncCorr': PermIncCorr,
                     'MedShkCount': MedShkCount,
                     'MedShkCountTail': MedShkCountTail,
@@ -368,17 +405,20 @@ DropoutDictionary = copy(BasicDictionary)
 DropoutDictionary['PermGroFac'] = PermGroFac_dx
 DropoutDictionary['MrkvPrbsInit'] = HealthPrbsInit_d
 DropoutDictionary['MrkvArray'] = MrkvArray_d
-DropoutDictionary['PermIncAvgInit'] = PermIncAvgInit_d
+DropoutDictionary['pLvlInitMean'] = pLvlInitMean_d
+DropoutDictionary['pLvlNextFuncRet'] = RetirementFunc_d
 HighschoolDictionary = copy(BasicDictionary)
 HighschoolDictionary['PermGroFac'] = PermGroFac_hx
 HighschoolDictionary['MrkvPrbsInit'] = HealthPrbsInit_h
 HighschoolDictionary['MrkvArray'] = MrkvArray_h
-HighschoolDictionary['PermIncAvgInit'] = PermIncAvgInit_h
+HighschoolDictionary['pLvlInitMean'] = pLvlInitMean_h
+HighschoolDictionary['pLvlNextFuncRet'] = RetirementFunc_h
 CollegeDictionary = copy(BasicDictionary)
 CollegeDictionary['PermGroFac'] = PermGroFac_cx
 CollegeDictionary['MrkvPrbsInit'] = HealthPrbsInit_c
 CollegeDictionary['MrkvArray'] = MrkvArray_c
-CollegeDictionary['PermIncAvgInit'] = PermIncAvgInit_c
+CollegeDictionary['pLvlInitMean'] = pLvlInitMean_c
+CollegeDictionary['pLvlNextFuncRet'] = RetirementFunc_c
 
 # Make a test parameter vector for estimation
 test_param_vec = np.array([0.955, # DiscFac

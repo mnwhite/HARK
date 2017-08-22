@@ -11,7 +11,7 @@ from time import clock
 from HARKcore import HARKobject, AgentType
 from HARKutilities import CRRAutility, CRRAutilityP, CRRAutilityPP, CRRAutilityP_inv,\
                           CRRAutility_invP, CRRAutility_inv, CRRAutilityP_invP, NullFunc,\
-                          approxLognormal, addDiscreteOutcome, makeGridExpMult
+                          approxLognormal, addDiscreteOutcome
 from HARKinterpolation import LinearInterp, CubicInterp, BilinearInterpOnInterp1D, LinearInterpOnInterp1D, \
                               LowerEnvelope3D, UpperEnvelope, TrilinearInterp, ConstantFunction, CompositeFunc2D, \
                               VariableLowerBoundFunc2D, VariableLowerBoundFunc3D, IdentityFunction, BilinearInterp
@@ -22,7 +22,6 @@ from ConsPersistentShockModel import ValueFunc2D, MargValueFunc2D, MargMargValue
 from ConsMarkovModel import MarkovConsumerType
 from ConsIndShockModel import constructLognormalIncomeProcessUnemployment
 import matplotlib.pyplot as plt
-from scipy.optimize import brentq
 from scipy.stats import norm
                                      
 utility       = CRRAutility
@@ -664,7 +663,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,LivPrb,DiscFac,C
     # Define utility function derivatives and inverses
     u = lambda x : utility(x,CRRA)
     #uP = lambda x : utilityP(x,CRRA)
-    uPP = lambda x : utilityPP(x,CRRA)
+    #uPP = lambda x : utilityPP(x,CRRA)
     uPinv = lambda x : utilityP_inv(x,CRRA)
     uinvP = lambda x : utility_invP(x,CRRA)
     uinv = lambda x : utility_inv(x,CRRA)
@@ -1086,8 +1085,8 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
     insurance contract, they learn their medical need shock and choose levels of consumption and
     medical care.
     '''
-    _time_vary = ['LivPrb','MedPrice','PermGroFac','ContractList','MrkvArray','ChoiceShkMag']
-    _time_inv = ['DiscFac','CRRA','CRRAmed','Rfree','PermIncCorr','BoroCnstArt','CubicBool']
+    _time_vary = ['LivPrb','MedPrice','pLvlNextFunc','ContractList','MrkvArray','ChoiceShkMag']
+    _time_inv = ['DiscFac','CRRA','CRRAmed','Rfree','BoroCnstArt','CubicBool']
     
     def __init__(self,cycles=1,time_flow=True,**kwds):
         '''
@@ -1197,12 +1196,22 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
             IncomeDstn_temp, PermShkDstn_temp, TranShkDstn_temp = constructLognormalIncomeProcessUnemployment(parameter_object)
             for t in range(T_cycle):
                 IncomeDstn[t].append(IncomeDstn_temp[t])
+                PermShkDstn[t].append(PermShkDstn_temp[t])
+                TranShkDstn[t].append(TranShkDstn_temp[t])
+                
+        # Strip out just the first Markov state's distributions, for use by updatePermIncGrid
+        IncomeDstn_temp = [IncomeDstn[t][0] for t in range(T_cycle)]
+        PermShkDstn_temp = [PermShkDstn[t][0] for t in range(T_cycle)]
+        TranShkDstn_temp = [TranShkDstn[t][0] for t in range(T_cycle)]
             
-         # Store the results as attributes of self
-        self.IncomeDstn = IncomeDstn
-        self.PermShkDstn = PermShkDstn
-        self.TranShkDstn = TranShkDstn
-        self.addToTimeVary('IncomeDstn')
+        # Store the results as attributes of self
+        self.IncomeDstn = IncomeDstn_temp
+        self.PermShkDstn = PermShkDstn_temp
+        self.TranShkDstn = TranShkDstn_temp
+        self.IncomeDstn_all = IncomeDstn # These will be restored after updatePermIncGrid
+        self.PermShkDstn_all = PermShkDstn
+        self.TranShkDstn_all = TranShkDstn
+        self.addToTimeVary('IncomeDstn','PermShkDstn','TranShkDstn')
         if not original_time:
             self.timeRev()
             
@@ -1802,9 +1811,19 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         None
         '''
         self.updateAssetsGrid()
-        self.updatePermIncGrid()
-        self.updateMedShockProcess()
+        
+        self.PermGroFac_all = self.PermGroFac
+        self.PermGroFac = [self.PermGroFac[t][0] for t in range(self.T_cycle)]
+        self.updatepLvlNextFunc() # Use only one Markov state's data temporarily
+        self.PermGroFac = self.PermGroFac_all
+        
         self.updateIncomeProcess()
+        self.updatePermIncGrid()
+        self.IncomeDstn = self.IncomeDstn_all # these attributes temporarily only had one Markov state's data
+        self.PermShkDstn = self.PermShkDstn_all
+        self.TranShkDstn = self.TranShkDstn_all
+        
+        self.updateMedShockProcess()
         self.makeMasterbFromxFuncs()
         self.makeMasterDfuncs()
         self.distributeConstructedFuncs()
@@ -1833,7 +1852,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         MrkvNow = np.searchsorted(Cutoffs,base_draws).astype(int)
         
         # Make initial permanent income and asset levels, etc
-        pLvlInit = self.PermIncAvgInit*drawMeanOneLognormal(N=self.AgentCount,sigma=self.PermIncStdInit,seed=self.RNG.randint(0,2**31-1))
+        pLvlInit = np.exp(self.pLvlInitMean)*drawMeanOneLognormal(N=self.AgentCount,sigma=self.pLvlInitStd,seed=self.RNG.randint(0,2**31-1))
         self.aLvlInit = 0.0*pLvlInit
         pLvlNow = pLvlInit
         Live = np.ones(self.AgentCount,dtype=bool)
@@ -1872,7 +1891,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
                 probs = IncDstn_temp[0]
                 events = np.arange(probs.size)
                 idx = drawDiscrete(N=N,P=probs,X=events,seed=self.RNG.randint(0,2**31-1)).astype(int)
-                PermShkNow[these] = IncDstn_temp[1][idx]*self.PermGroFac[t_cycle][h]
+                PermShkNow[these] = IncDstn_temp[1][idx]
                 TranShkNow[these] = IncDstn_temp[2][idx]
 
                 # Then medical needs shocks for this period...
@@ -1886,7 +1905,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
                 
             # Store the medical shocks and update permanent income for next period
             MedShkHist[t,:] = MedShkNow
-            pLvlNow = pLvlNow*PermShkNow
+            pLvlNow = self.pLvlNextFunc[t](pLvlNow)*PermShkNow
             
             # Determine which agents die based on their mortality probability
             LivPrb_temp = self.LivPrb[t_cycle][MrkvNow[Live]]

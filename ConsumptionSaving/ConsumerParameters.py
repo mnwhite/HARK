@@ -211,6 +211,7 @@ init_cobb_douglas = {'PermShkAggCount': PermShkAggCount,
 # ----- Define additional parameters for the persistent shocks model ----------
 # -----------------------------------------------------------------------------
 
+pLvlPctiles = np.concatenate(([0.001, 0.005, 0.01, 0.03], np.linspace(0.05, 0.95, num=19),[0.97, 0.99, 0.995, 0.999]))
 PermIncCount = 12        # Number of permanent income gridpoints in "body"
 PermInc_tail_N = 4       # Number of permanent income gridpoints in each "tail"
 PermIncStdInit = 0.4     # Initial standard deviation of (log) permanent income (not used in example)
@@ -221,6 +222,7 @@ cycles = 0
 # Make a dictionary for the "explicit permanent income" idiosyncratic shocks model
 init_explicit_perm_inc = copy(init_idiosyncratic_shocks)
 init_explicit_perm_inc['PermIncCount'] = PermIncCount
+init_explicit_perm_inc['pLvlPctiles'] = pLvlPctiles
 init_explicit_perm_inc['PermInc_tail_N'] = PermInc_tail_N
 init_explicit_perm_inc['PermIncAvgInit'] = PermIncAvgInit
 init_explicit_perm_inc['PermIncStdInit'] = PermIncStdInit

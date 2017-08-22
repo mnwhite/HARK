@@ -662,7 +662,7 @@ if __name__ == '__main__':
     MyType.solution = [MyType.solution_terminal]
     #MyType.solve()
        
-    t = -1
+    t = 0
     p = 1.0    
     h = 4        
     MedShk = 1.0e-2
@@ -670,11 +670,11 @@ if __name__ == '__main__':
     
     MyType.plotvFunc(t,p,decurve=False)
     MyType.plotvPfunc(t,p,decurve=False)
-    #MyType.plotvFuncByContract(t,h,p)
-    #MyType.plotcFuncByContract(t,h,p,MedShk)
-    #MyType.plotcFuncByMedShk(t,h,z,p)
-    #MyType.plotMedFuncByMedShk(t,h,z,p)
-    #MyType.plotcEffFuncByMedShk(t,h,z,p)
+    MyType.plotvFuncByContract(t,h,p)
+    MyType.plotcFuncByContract(t,h,p,MedShk)
+    MyType.plotcFuncByMedShk(t,h,z,p)
+    MyType.plotMedFuncByMedShk(t,h,z,p)
+    MyType.plotcEffFuncByMedShk(t,h,z,p)
   
 ## This block of code is for displaying moment fits after running objectiveFunc  
 #    Age = np.arange(25,85)
