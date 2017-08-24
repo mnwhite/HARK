@@ -658,11 +658,9 @@ if __name__ == '__main__':
     print('Making the agents took ' + mystr(t_end-t_start) + ' seconds.')
     
     MyType = MyMarket.agents[0] 
-    MyType.preSolve()
-    MyType.solution = [MyType.solution_terminal]
-    #MyType.solve()
+    MyType.solve()
        
-    t = -1
+    t = -2
     p = 1.0    
     h = 4        
     MedShk = 1.0e-2

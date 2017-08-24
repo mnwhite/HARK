@@ -662,6 +662,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
     -------
     solution : InsuranceSelectionSolution
     '''
+    t_start = clock()
     pLvlCount = pLvlGrid.size
     aLvlCount   = aXtraGrid.size
     HealthCount = len(LivPrb) # number of discrete health states
@@ -890,7 +891,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
         tempArray    = np.tile(np.reshape(aXtraGrid,(aLvlCount,1,1)),(1,pLvlCount,MedCount))
         mMinArray    = np.tile(np.reshape(mLvlMinNow(pLvlGrid),(1,pLvlCount,1)),(aLvlCount,1,MedCount))
         pLvlArray    = np.tile(np.reshape(pLvlGrid,(1,pLvlCount,1)),(aLvlCount,1,MedCount))
-        mLvlArray    = mMinArray + tempArray*pLvlArray
+        mLvlArray    = mMinArray + tempArray*pLvlArray + Cfloor
         if pLvlGrid[0] == 0.0: # Fix the problem of all mLvls = 0 when pLvl = 0
             mLvlArray[:,0,:] = np.tile(np.reshape(aXtraGrid,(aLvlCount,1)),(1,MedCount))
         
@@ -921,11 +922,11 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
             
             # Find the critical med shock where Cfloor binds for each (mLvl,pLvl) value
             xFunc_temp = policyFuncCopay.xFunc # Assume zero deductible for now, will fix later
-            mLvlArray_temp = mLvlArray[:,:,0] + Cfloor
+            mLvlArray_temp = mLvlArray[:,:,0]
             pLvlArray_temp = pLvlArray[:,:,0]
-            CritShkArray = 1e-4*np.ones_like(mLvlArray) # Current guess of critical shock for each (mLvl,pLvl)
-            DiffArray = np.ones_like(mLvlArray) # Relative change in crit shock guess this iteration
-            Unresolved = np.ones_like(mLvlArray,dtype=bool) # Indicator for which points are still unresolved
+            CritShkArray = 1e-4*np.ones_like(mLvlArray_temp) # Current guess of critical shock for each (mLvl,pLvl)
+            DiffArray = np.ones_like(mLvlArray_temp) # Relative change in crit shock guess this iteration
+            Unresolved = np.ones_like(mLvlArray_temp,dtype=bool) # Indicator for which points are still unresolved
             UnresolvedCount = Unresolved.size # Number of points whose CritShk has not been found
             DiffTol = 1e-6 # Convergence tolerance for the search
             LoopCount = 0
@@ -939,6 +940,8 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
                 Unresolved[Unresolved] = DiffNew > DiffTol
                 UnresolvedCount = np.sum(Unresolved)
                 LoopCount += 1
+            if LoopCount == 10:
+                print(str(UnresolvedCount) + ' points still unresolved!')
                 
             # Make arrays of medical shocks and probabilities, along with Cfloor probs and vFloor values
             AlwaysCfloor = np.logical_not(CritShkArray > 0.)
@@ -962,6 +965,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
             # Integrate (marginal) value across medical shocks
             vArray   = np.sum(vArrayBig*ShkPrbsArray,axis=2) + CfloorPrbArray*np.tile(np.reshape(vFloorBypLvl,(1,pLvlCount)),(aLvlCount,1))
             vParray  = np.sum(vParrayBig*ShkPrbsArray,axis=2)
+            print(np.sum(np.isnan(vArray)),np.sum(np.isnan(vParray)))
                 
             # Make a second array of shocks and probabilities *beyond* the critical shock (only relevant for AV)
             ZadjAltArray = np.maximum(ZcritArray - ZgridBase[1],0.) # Should always be non-negative
@@ -1014,11 +1018,11 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
             AVfunc = VariableLowerBoundFunc2D(AVfuncBase,mLvlMinNow) # adjust for the lower bound of mLvl
                 
             # Build the marginal value function by putting together the lower and upper portions
+            vPfuncSeam  = LinearInterp(pLvlGrid,mLvlBound)
             vPnvrsFuncUpperBase = LinearInterpOnInterp1D(vPnvrsFuncUpper_by_pLvl,pLvlGrid)
-            vPnvrsFuncUpper = VariableLowerBoundFunc2D(vPnvrsFuncUpperBase,mLvlMinNow) # adjust for the lower bound of mLvl
+            vPnvrsFuncUpper = VariableLowerBoundFunc2D(vPnvrsFuncUpperBase,vPfuncSeam) # adjust for the lower bound of mLvl
             vPfuncUpper = MargValueFunc2D(vPnvrsFuncUpper,CRRA)
             vPfuncLower = LinearInterpOnInterp1D(vPfuncLower_by_pLvl,pLvlGrid)
-            vPfuncSeam  = LinearInterp(pLvlGrid,mLvlBound)
             
             # Store the policy and (marginal) value function 
             vFuncsThisHealth.append(ValueFunc2D(vNvrsFunc,CRRA))
@@ -1131,7 +1135,8 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
                                         policyFunc=policyFuncsThisHealth,vFuncByContract=vFuncsThisHealth)
     
     # Return the solution for this period
-    #print('Solved a period of the problem!')
+    t_end = clock()
+    print('Solving a period of the problem took ' + str(t_end-t_start) + ' seconds.')
     return solution_now
     
 ####################################################################################################
@@ -1143,7 +1148,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
     insurance contract, they learn their medical need shock and choose levels of consumption and
     medical care.
     '''
-    _time_vary = ['LivPrb','MedPrice','ContractList','MrkvArray','ChoiceShkMag']
+    _time_vary = ['LivPrb','MedPrice','ContractList','MrkvArray','ChoiceShkMag','MedShkAvg','MedShkStd']
     _time_inv = ['DiscFac','CRRA','CRRAmed','Cfloor','Rfree','BoroCnstArt','CubicBool']
     
     def __init__(self,cycles=1,time_flow=True,**kwds):
