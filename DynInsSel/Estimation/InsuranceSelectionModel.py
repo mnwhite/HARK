@@ -570,10 +570,10 @@ def solveInsuranceSelectionStatic(solution_next,MedShkDstn,CRRA,MedPrice,xLvlGri
     return solution_now
 
 
-def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,LivPrb,DiscFac,CRRA,CRRAmed,Rfree,
-                            MedPrice,pLvlNextFunc,BoroCnstArt,aXtraGrid,pLvlGrid,ContractList,
-                            MrkvArray,ChoiceShkMag,CopayList,bFromxFuncList,DfuncList,DpFuncList,
-                            cEffFuncList,GfuncList,CubicBool):
+def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShkStd,LivPrb,DiscFac,
+                            CRRA,CRRAmed,Cfloor,Rfree,MedPrice,pLvlNextFunc,BoroCnstArt,aXtraGrid,
+                            pLvlGrid,ContractList,MrkvArray,ChoiceShkMag,CopayList,bFromxFuncList,
+                            DfuncList,DpFuncList,cEffFuncList,GfuncList,CritShkFuncList,CubicBool):
     '''
     Solves one period of the insurance selection model.
     
@@ -591,6 +591,10 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,LivPrb,DiscFac,C
         Discrete distribution of the multiplicative utility shifter for med-
         ical care. Order: probabilities, preference shocks.  Distribution
         depends on discrete health state.
+    MedShkAvg : [float]
+        Mean value of log medical need shocks by health state.
+    MedShkStd : [float]
+        Standard deviation of log medical need shocks by health state.
     LivPrb : np.array
         Survival probability; likelihood of being alive at the beginning of
         the succeeding period conditional on current health state.   
@@ -599,7 +603,9 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,LivPrb,DiscFac,C
     CRRA : float
         Coefficient of relative risk aversion for composite consumption.
     CRRAmed : float
-        Coefficient of relative risk aversion for medical care.
+        Effective consumption curvature parameter for medical care.
+    Cfloor : float
+        Floor on effective consumption, set by policy.
     Rfree : np.array
         Risk free interest factor on end-of-period assets conditional on
         next period's health state.  Actually constant across states.
@@ -646,6 +652,9 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,LivPrb,DiscFac,C
         consumption.  Each function takes in a pseudo-inverse end-of-period marginal value
         and a medical shock and return the level of effective consumption that solves the
         first order condition for optimality.
+    CritShkFuncList : [function]
+        List of functions for each copay that map levels of expenditure xLvl to the critical
+        medical shock at which effective consumption equals Cfloor when xLvl is spent.
     CubicBool: boolean
         An indicator for whether the solver should use cubic or linear interpolation.
                     
@@ -766,6 +775,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,LivPrb,DiscFac,C
         MedCount         = MedShkVals.size
         mCount           = EndOfPrdvP.shape[1]
         pCount           = EndOfPrdvP.shape[0]
+        ZgridBase = (np.log(MedShkVals) - MedShkAvg[h])/MedShkStd[h] # Find baseline Z-grids for the medical shock distribution
         policyFuncsThisHealthCopay = []
         vFuncsThisHealthCopay = []
         
@@ -784,6 +794,10 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,LivPrb,DiscFac,C
         EndOfPrdvNvrsFuncBase = LinearInterpOnInterp1D(EndOfPrdvNvrsFunc_by_pLvl,pLvlGrid)
         EndOfPrdvNvrsFunc = VariableLowerBoundFunc2D(EndOfPrdvNvrsFuncBase,BoroCnstNat)
         EndOfPrdvFunc = ValueFunc2D(EndOfPrdvNvrsFunc,CRRA)
+        
+        # Calculate end-of-period value from ending with a=0, and calculate vFloor by pLvl
+        EndOfPrdv_if_aLvl_zero = EndOfPrdvFunc(np.zeros_like(pLvlGrid),pLvlGrid)
+        vFloorBypLvl = u(Cfloor) + EndOfPrdv_if_aLvl_zero
         
         # For each coinsurance rate, make policy and value functions (for this health state)
         EndOfPrdvPnvrs_tiled = np.tile(np.reshape(uPinv(EndOfPrdvP[:,:,h]),(1,pCount,mCount)),(MedCount,1,1))
@@ -872,17 +886,13 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,LivPrb,DiscFac,C
             vNvrsFunc = VariableLowerBoundFunc3D(vNvrsFuncBase,mLvlMinNow)
             vFuncsThisHealthCopay.append(ValueFunc3D(vNvrsFunc,CRRA))
             
-        ######## THIS BLOCK OF CODE NEEDS TO BE CHANGED TO HANDLE Cfloor ##########
-            
-        # Set up state grids to prepare for the "integration" step
+        # Set up state grids to prepare for the medical shock integration step
         tempArray    = np.tile(np.reshape(aXtraGrid,(aLvlCount,1,1)),(1,pLvlCount,MedCount))
         mMinArray    = np.tile(np.reshape(mLvlMinNow(pLvlGrid),(1,pLvlCount,1)),(aLvlCount,1,MedCount))
         pLvlArray    = np.tile(np.reshape(pLvlGrid,(1,pLvlCount,1)),(aLvlCount,1,MedCount))
         mLvlArray    = mMinArray + tempArray*pLvlArray
         if pLvlGrid[0] == 0.0: # Fix the problem of all mLvls = 0 when pLvl = 0
             mLvlArray[:,0,:] = np.tile(np.reshape(aXtraGrid,(aLvlCount,1)),(1,MedCount))
-        MedShkArray  = np.tile(np.reshape(MedShkVals,(1,1,MedCount)),(aLvlCount,pLvlCount,1))
-        ShkPrbsArray = np.tile(np.reshape(MedShkPrbs,(1,1,MedCount)),(aLvlCount,pLvlCount,1))
         
         # For each insurance contract available in this health state, "integrate" across medical need
         # shocks to get policy and (marginal) value functions for each contract
@@ -904,62 +914,115 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,LivPrb,DiscFac,C
             policyFuncCopay = policyFuncsThisHealthCopay[Copay_idx]
             DpFuncFullPrice = DpFuncList[FullPrice_idx]
             DpFuncCopay = DpFuncList[Copay_idx]
+            CritShkFunc = CritShkFuncList[Copay_idx]
             
             # Make the policy function for this contract
             policyFuncsThisHealth.append(InsSelPolicyFunc(vFuncFullPrice,vFuncCopay,policyFuncFullPrice,policyFuncCopay,DpFuncFullPrice,DpFuncCopay,Contract,CRRAmed))
             
-            # Get value and marginal value at an array of states and integrate across medical shocks
+            # Find the critical med shock where Cfloor binds for each (mLvl,pLvl) value
+            xFunc_temp = policyFuncCopay.xFunc # Assume zero deductible for now, will fix later
+            mLvlArray_temp = mLvlArray[:,:,0] + Cfloor
+            pLvlArray_temp = pLvlArray[:,:,0]
+            CritShkArray = 1e-4*np.ones_like(mLvlArray) # Current guess of critical shock for each (mLvl,pLvl)
+            DiffArray = np.ones_like(mLvlArray) # Relative change in crit shock guess this iteration
+            Unresolved = np.ones_like(mLvlArray,dtype=bool) # Indicator for which points are still unresolved
+            UnresolvedCount = Unresolved.size # Number of points whose CritShk has not been found
+            DiffTol = 1e-6 # Convergence tolerance for the search
+            LoopCount = 0
+            while (UnresolvedCount > 0) and (LoopCount < 10): # Loop until all points have converged on CritShk
+                CritShkPrev = CritShkArray[Unresolved]
+                xLvl_temp = xFunc_temp(mLvlArray_temp[Unresolved],pLvlArray_temp[Unresolved],CritShkPrev)
+                CritShkNew = CritShkFunc(xLvl_temp)
+                DiffNew = np.abs(CritShkNew/CritShkPrev - 1.)
+                DiffArray[Unresolved] = DiffNew
+                CritShkArray[Unresolved] = CritShkNew
+                Unresolved[Unresolved] = DiffNew > DiffTol
+                UnresolvedCount = np.sum(Unresolved)
+                LoopCount += 1
+                
+            # Make arrays of medical shocks and probabilities, along with Cfloor probs and vFloor values
+            AlwaysCfloor = np.logical_not(CritShkArray > 0.)
+            ZcritArray = (np.log(CritShkArray) - MedShkAvg[h])/MedShkStd[h]
+            CfloorPrbArray = norm.sf(ZcritArray)*(1.-MedShkPrbs[0])
+            CfloorPrbArray[AlwaysCfloor] = 1.0 # These were shifted down by line above, but that's wrong
+            ZadjArray = np.minimum(ZcritArray - ZgridBase[-1],0.) # Should always be non-positive
+            ZshkArray = np.tile(np.reshape(ZgridBase,(1,1,MedCount)),(aLvlCount,pLvlCount,1)) + np.tile(np.reshape(ZadjArray,(aLvlCount,pLvlCount,1)),(1,1,MedCount))
+            MedShkArray = np.exp(ZshkArray*MedShkStd[h] + MedShkAvg[h])
+            TempPrbArray = norm.pdf(ZshkArray)
+            ReweightArray = (1.-MedShkPrbs[0]-CfloorPrbArray)/np.sum(TempPrbArray,axis=2)
+            ShkPrbsArray = TempPrbArray*np.tile(np.reshape(ReweightArray,(aLvlCount,pLvlCount,1)),(1,1,MedCount))
+            ShkPrbsArray[:,:,0] = MedShkPrbs[0]
+            AlwaysCfloor_tiled = np.tile(np.reshape(AlwaysCfloor,(aLvlCount,pLvlCount,1)),(1,1,MedCount))
+            ShkPrbsArray[AlwaysCfloor_tiled] = 0.0
+                           
+            # Get value and marginal value at an array of states
             vArrayBig, vParrayBig, vPParrayBig = policyFuncsThisHealth[-1].evalvAndvPandvPP(mLvlArray,pLvlArray,MedShkArray)
             ConArrayBig, MedArrayBig = policyFuncsThisHealth[-1](mLvlArray,pLvlArray,MedShkArray)
-            AVarrayBig = MedArrayBig*MedPrice - Contract.OOPfunc(MedArrayBig) # realized "actuarial value"
-            vArray   = np.sum(vArrayBig*ShkPrbsArray,axis=2)
+                        
+            # Integrate (marginal) value across medical shocks
+            vArray   = np.sum(vArrayBig*ShkPrbsArray,axis=2) + CfloorPrbArray*np.tile(np.reshape(vFloorBypLvl,(1,pLvlCount)),(aLvlCount,1))
             vParray  = np.sum(vParrayBig*ShkPrbsArray,axis=2)
-            AVarray  = np.sum(AVarrayBig*ShkPrbsArray,axis=2)
-            if CubicBool:
-                vPParray = np.sum(vPParrayBig*ShkPrbsArray,axis=2)
+                
+            # Make a second array of shocks and probabilities *beyond* the critical shock (only relevant for AV)
+            ZadjAltArray = np.maximum(ZcritArray - ZgridBase[1],0.) # Should always be non-negative
+            ZshkAltArray = np.tile(np.reshape(ZgridBase[1:],(1,1,MedCount-1)),(aLvlCount,pLvlCount,1)) + np.tile(np.reshape(ZadjAltArray,(aLvlCount,pLvlCount,1)),(1,1,MedCount-1))
+            MedShkAltArray = np.exp(ZshkAltArray*MedShkStd[h] + MedShkAvg[h])
+            TempPrbAltArray = norm.pdf(ZshkAltArray)
+            ReweightAltArray = np.sum(TempPrbAltArray,axis=2)
+            ShkPrbsAltArray = TempPrbAltArray*np.tile(np.reshape(ReweightAltArray,(aLvlCount,pLvlCount,1)),(1,1,MedCount-1))
             
-            # Add vPnvrs=0 at m=mLvlMin to close it off at the bottom (and vNvrs=0)
-            mGrid_small   = np.concatenate((np.reshape(mLvlMinNow(pLvlGrid),(1,pLvlCount)),mLvlArray[:,:,0]))
-            vPnvrsArray   = np.concatenate((np.zeros((1,pLvlCount)),uPinv(vParray)),axis=0)
-            if CubicBool:
-                vPnvrsParray  = np.concatenate((np.zeros((1,pLvlCount)),vPParray*uPinvP(vParray)),axis=0)
-            vNvrsArray    = np.concatenate((np.zeros((1,pLvlCount)),uinv(vArray)),axis=0)
-            AVarray       = np.concatenate((np.zeros((1,pLvlCount)),AVarray),axis=0)
-            #vNvrsParray   = np.concatenate((np.zeros((1,pLvlCount)),vParray*uinvP(vArray)),axis=0)
+            # Find medical care at each "alternative shock" beyond the critical shock
+            xLvlAlt = DfuncList[Copay_idx](Cfloor*np.ones_like(MedShkAltArray),MedShkAltArray)
+            b_temp  = bFromxFuncList[Copay_idx](xLvlAlt,MedShkAltArray) # transformed consumption ratio
+            q_temp  = np.exp(-b_temp)
+            MedArrayAlt = xLvlAlt*q_temp/(1.+q_temp)
             
-            ########## END OF BLOCK TO EDIT ###################################
+            # Calculate actuarial value at each (mLvl,pLvl), combining shocks above and below the critical value
+            AVarrayBig = MedArrayBig*MedPrice - Contract.OOPfunc(MedArrayBig) # realized "actuarial value" below critical shock
+            AVarrayAlt = MedArrayAlt*MedPrice - Contract.OOPfunc(MedArrayAlt) # realized "actuarial value" above critical shock
+            AVarray  = np.sum(AVarrayBig*ShkPrbsArray,axis=2) + CfloorPrbArray*np.sum(AVarrayAlt*ShkPrbsAltArray,axis=2)
+            
+            # Construct pseudo-inverse arrays of vNvrs and vPnvrs, adding some data at the bottom
+            vNvrsFloorBypLvl = uinv(vFloorBypLvl)
+            mLvlBound = mLvlArray_temp[0,:] # Lowest mLvl for each pLvl; will be used to make "seam"
+            mGrid_small_A = np.concatenate((np.zeros((1,pLvlCount)),Cfloor*np.ones((1,pLvlCount)),mLvlArray_temp),axis=0) # for value
+            mGrid_small_B = mLvlArray_temp - np.tile(np.reshape(mLvlBound,(1,pLvlCount)),(aLvlCount,1)) # for marginal value
+            mGrid_small_C = np.concatenate((np.zeros((1,pLvlCount)),mLvlArray_temp),axis=0) # for AV
+            vPnvrsArray   = uPinv(vParray)
+            vNvrsArray    = np.concatenate((np.tile(np.reshape(vNvrsFloorBypLvl,(1,pLvlCount)),(2,1)),uinv(vArray)),axis=0)
             
             # Construct the pseudo-inverse value and marginal value functions over mLvl,pLvl
-            vPnvrsFunc_by_pLvl = []
             vNvrsFunc_by_pLvl = []
+            vPnvrsFuncUpper_by_pLvl = []
+            vPfuncLower_by_pLvl = []
             AVfunc_by_pLvl = []
             mLvlMinGrid = mLvlMinNow(pLvlGrid)
             for j in range(pLvlCount): # Make a pseudo inverse marginal value function for each pLvl
-                m_temp = mGrid_small[:,j] - mLvlMinGrid[j]
+                vPfuncLower_by_pLvl.append(LinearInterp(np.array([0.,Cfloor,mLvlBound[j]]),np.array([0.,0.,vParray[0,j]])))
+                m_temp_A = mGrid_small_A[:,j]
+                m_temp_B = mGrid_small_B[:,j]
+                m_temp_C = mGrid_small_C[:,j]
+                vNvrs_temp  = vNvrsArray[:,j]
                 vPnvrs_temp = vPnvrsArray[:,j]
                 AV_temp = AVarray[:,j]
-                if CubicBool:
-                    vPnvrsP_temp = vPnvrsParray[:,j]
-                    vPnvrsFunc_by_pLvl.append(CubicInterp(m_temp,vPnvrs_temp,vPnvrsP_temp))
-                else:
-                    vPnvrsFunc_by_pLvl.append(LinearInterp(m_temp,vPnvrs_temp))
-                vNvrs_temp  = vNvrsArray[:,j]
-                #vNvrsP_temp = vNvrsParray[:,j]
-#                if np.sum(np.isnan(vNvrs_temp)) > 0:
-#                    print(h,z,j,np.sum(np.isnan(vNvrs_temp)))
-                #vNvrsFunc_by_pLvl.append(CubicInterp(m_temp,vNvrs_temp,vNvrsP_temp))
-                vNvrsFunc_by_pLvl.append(LinearInterp(m_temp,vNvrs_temp))
-                AVfunc_by_pLvl.append(LinearInterp(m_temp,AV_temp))
-            vPnvrsFuncBase = LinearInterpOnInterp1D(vPnvrsFunc_by_pLvl,pLvlGrid)
-            vPnvrsFunc = VariableLowerBoundFunc2D(vPnvrsFuncBase,mLvlMinNow) # adjust for the lower bound of mLvl
+                vNvrsFunc_by_pLvl.append(LinearInterp(m_temp_A,vNvrs_temp))
+                vPnvrsFuncUpper_by_pLvl.append(LinearInterp(m_temp_B,vPnvrs_temp))
+                AVfunc_by_pLvl.append(LinearInterp(m_temp_C,AV_temp))
             vNvrsFuncBase  = LinearInterpOnInterp1D(vNvrsFunc_by_pLvl,pLvlGrid)
             vNvrsFunc = VariableLowerBoundFunc2D(vNvrsFuncBase,mLvlMinNow) # adjust for the lower bound of mLvl
             AVfuncBase = LinearInterpOnInterp1D(AVfunc_by_pLvl,pLvlGrid)
-            AVfunc = VariableLowerBoundFunc2D(AVfuncBase,mLvlMinNow)
+            AVfunc = VariableLowerBoundFunc2D(AVfuncBase,mLvlMinNow) # adjust for the lower bound of mLvl
+                
+            # Build the marginal value function by putting together the lower and upper portions
+            vPnvrsFuncUpperBase = LinearInterpOnInterp1D(vPnvrsFuncUpper_by_pLvl,pLvlGrid)
+            vPnvrsFuncUpper = VariableLowerBoundFunc2D(vPnvrsFuncUpperBase,mLvlMinNow) # adjust for the lower bound of mLvl
+            vPfuncUpper = MargValueFunc2D(vPnvrsFuncUpper,CRRA)
+            vPfuncLower = LinearInterpOnInterp1D(vPfuncLower_by_pLvl,pLvlGrid)
+            vPfuncSeam  = LinearInterp(pLvlGrid,mLvlBound)
             
             # Store the policy and (marginal) value function 
             vFuncsThisHealth.append(ValueFunc2D(vNvrsFunc,CRRA))
-            vPfuncsThisHealth.append(MargValueFunc2D(vPnvrsFunc,CRRA))
+            vPfuncsThisHealth.append(CompositeFunc2D(vPfuncLower,vPfuncUpper,vPfuncSeam))
             AVfuncsThisHealth.append(AVfunc)
         
         # If there is only one contract, then value and marginal value functions are trivial.
@@ -1080,8 +1143,8 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
     insurance contract, they learn their medical need shock and choose levels of consumption and
     medical care.
     '''
-    _time_vary = ['LivPrb','MedPrice','pLvlNextFunc','ContractList','MrkvArray','ChoiceShkMag']
-    _time_inv = ['DiscFac','CRRA','CRRAmed','Rfree','BoroCnstArt','CubicBool']
+    _time_vary = ['LivPrb','MedPrice','ContractList','MrkvArray','ChoiceShkMag']
+    _time_inv = ['DiscFac','CRRA','CRRAmed','Cfloor','Rfree','BoroCnstArt','CubicBool']
     
     def __init__(self,cycles=1,time_flow=True,**kwds):
         '''
@@ -1590,7 +1653,6 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
             if pLvlGrid[0] == 0.0: # Fix the problem of all mLvls = 0 when pLvl = 0
                 mLvlArray[:,0,:] = np.tile(np.reshape(self.aXtraGrid*pLvlGrid[1],(aLvlCount,1)),(1,MedCount)) + self.Cfloor         
             MedShkArray  = np.tile(np.reshape(MedShkVals,(1,1,MedCount)),(aLvlCount,pLvlCount,1))
-            #ShkPrbsArray = np.tile(np.reshape(MedShkPrbs,(1,1,MedCount)),(aLvlCount,pLvlCount,1))
             
             # For each insurance contract available in this health state, "integrate" across medical need
             # shocks to get policy and (marginal) value functions for each contract
@@ -1644,10 +1706,10 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
                 # Make pseudo-inverse versions of value and marginal value arrays
                 vNvrsFloor = self.Cfloor
                 mLvlBound = mLvlArray[0,:,0] # Lowest mLvl for each pLvl; will be used to make "seam"
-                mGrid_small_A = np.concatenate((np.reshape(np.zeros(pLvlCount),(1,pLvlCount)),mLvlArray[:,:,0]),axis=0)
+                mGrid_small_A = np.concatenate((np.zeros((1,pLvlCount)),self.Cfloor*np.ones((1,pLvlCount)),mLvlArray[:,:,0]),axis=0)
                 mGrid_small_B = mLvlArray[:,:,0] - np.tile(np.reshape(mLvlBound,(1,pLvlCount)),(aLvlCount,1))
                 vPnvrsArray   = uPinv(vParray)
-                vNvrsArray    = np.concatenate((vNvrsFloor*np.ones((1,pLvlCount)),uinv(vArray)),axis=0)
+                vNvrsArray    = np.concatenate((vNvrsFloor*np.ones((2,pLvlCount)),uinv(vArray)),axis=0)
                 if self.CubicBool:
                     vPnvrsParray  = np.concatenate((np.zeros((1,pLvlCount)),vPParray*uPinvP(vParray)),axis=0)
                 
@@ -1662,7 +1724,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
                     vPnvrs_temp = vPnvrsArray[:,j]
                     if self.CubicBool:
                         vPnvrsP_temp = vPnvrsParray[:,j]
-                        vPnvrsFuncUpper_by_pLvl.append(CubicInterp(m_temp,vPnvrs_temp,vPnvrsP_temp))
+                        vPnvrsFuncUpper_by_pLvl.append(CubicInterp(m_temp_B,vPnvrs_temp,vPnvrsP_temp))
                     else:
                         vPnvrsFuncUpper_by_pLvl.append(LinearInterp(m_temp_B,vPnvrs_temp))
                     vNvrs_temp  = vNvrsArray[:,j]
@@ -1683,7 +1745,8 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
                 # Store the policy and (marginal) value function
                 vFuncsThisHealth.append(vFuncThisContract)
                 vPfuncsThisHealth.append(vPfuncThisContract)
-                
+            
+            # Do choice shock step iff there is more than one contract to choose from
             if len(ContractList[h]) == 1: # Skip choice shock step if only one contract
                 vFunc = vFuncsThisHealth[0]
                 vPfunc = vPfuncsThisHealth[0]
@@ -2654,7 +2717,6 @@ class InsSelStaticConsumerType(InsSelConsumerType):
         
 if __name__ == '__main__':
     import InsuranceSelectionParameters as Params
-    from time import clock
     mystr = lambda number : "{:.4f}".format(number)
             
     # Make an example type
