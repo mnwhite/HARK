@@ -12,7 +12,7 @@ from HARKcore import HARKobject, AgentType
 from HARKutilities import CRRAutility, CRRAutilityP, CRRAutilityPP, CRRAutilityP_inv,\
                           CRRAutility_invP, CRRAutility_inv, CRRAutilityP_invP, NullFunc,\
                           approxLognormal, addDiscreteOutcome
-from HARKinterpolation import LinearInterp, CubicInterp, BilinearInterpOnInterp1D, LinearInterpOnInterp1D, \
+from HARKinterpolation import LinearInterp, CubicInterp, BilinearInterpOnInterp1D, LinearInterpOnInterp1D, LinearInterpOnInterp2D,\
                               LowerEnvelope3D, UpperEnvelope, TrilinearInterp, ConstantFunction, CompositeFunc2D, \
                               VariableLowerBoundFunc2D, VariableLowerBoundFunc3D, IdentityFunction, BilinearInterp
 from HARKsimulation import drawUniform, drawLognormal, drawMeanOneLognormal, drawDiscrete, drawBernoulli
@@ -31,6 +31,48 @@ utilityP_inv  = CRRAutilityP_inv
 utility_invP  = CRRAutility_invP
 utility_inv   = CRRAutility_inv
 utilityP_invP = CRRAutilityP_invP
+
+class LogFunc1D(HARKobject):
+    '''
+    A trivial class for representing R --> R functions whose output has been
+    transformed through the log function (must be exp'ed to get true level).
+    '''
+    distiance_criteria = ['func']
+    
+    def __init__(self,func):
+        self.func = func
+        
+    def __call__(self,x):
+        return np.exp(self.func(x))
+    
+
+class TwistFuncA(HARKobject):
+    '''
+    A trivial class for representing R^3 --> R functions whose inputs must be
+    permuted from (A,B,C) to (C,A,B).
+    '''
+    distiance_criteria = ['func']
+    
+    def __init__(self,func):
+        self.func = func
+        
+    def __call__(self,x,y,z):
+        return self.func(z,x,y)
+    
+    
+class TwistFuncB(HARKobject):
+    '''
+    A trivial class for representing R^3 --> R functions whose inputs must be
+    permuted from (A,B,C) to (C,A,B).
+    '''
+    distiance_criteria = ['func']
+    
+    def __init__(self,func):
+        self.func = func
+        
+    def __call__(self,x,y,z):
+        return self.func(x,z,y)
+    
 
 class MargCostFunc(HARKobject):
     '''
@@ -748,6 +790,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
         EndOfPrdvCond[:,:,h]   = np.sum(tempv*ShkPrbs_tiled,axis=0)
         if CubicBool:
             EndOfPrdvPPcond[:,:,h] = Rfree[h]*Rfree[h]*np.sum(vPPfuncNext(mLvlNext,pLvlNext)*ShkPrbs_tiled,axis=0)
+        #print(np.argwhere(tempvP == 0.))
         
     # Calculate end of period value and marginal value conditional on each current health state
     EndOfPrdv = np.zeros((pLvlCount,aLvlCount,HealthCount))
@@ -764,6 +807,9 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
         EndOfPrdvP[:,:,h] = DiscFacEff*np.sum(EndOfPrdvPcond*HealthTran_temp,axis=2)
         if CubicBool:
             EndOfPrdvPP[:,:,h] = DiscFacEff*np.sum(EndOfPrdvPPcond*HealthTran_temp,axis=2)
+#    print(np.sum(np.isnan(EndOfPrdv)),np.sum(np.isnan(EndOfPrdvP)))
+#    print(np.sum(np.isinf(EndOfPrdv)),np.sum(np.isinf(EndOfPrdvP)))
+#    print(np.sum(EndOfPrdvP <= 0.))
             
     # Calculate human wealth conditional on each current health state 
     hLvlGrid = (np.dot(MrkvArray,hLvlCond.transpose())).transpose()
@@ -783,14 +829,11 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
         # Make the end of period value function for this health
         EndOfPrdvNvrsFunc_by_pLvl = []
         EndOfPrdvNvrs = np.concatenate((np.zeros((pCount,1)),uinv(EndOfPrdv[:,:,h])),axis=1)
-        #EndOfPrdvNvrsP = EndOfPrdvP[:,:,h]*uinvP(EndOfPrdv[:,:,h])
         for j in range(pLvlCount):
             pLvl = pLvlGrid[j]
             aMin = BoroCnstNat(pLvl)
             a_temp = np.insert(aLvlNow[j,:]-aMin,0,0.0)
             EndOfPrdvNvrs_temp = EndOfPrdvNvrs[j,:]
-            #EndOfPrdvNvrsP_temp = np.insert(EndOfPrdvNvrsP[j,:],0,0.0)
-            #EndOfPrdvNvrsFunc_by_pLvl.append(CubicInterp(a_temp,EndOfPrdvNvrs_temp,EndOfPrdvNvrsP_temp))
             EndOfPrdvNvrsFunc_by_pLvl.append(LinearInterp(a_temp,EndOfPrdvNvrs_temp))
         EndOfPrdvNvrsFuncBase = LinearInterpOnInterp1D(EndOfPrdvNvrsFunc_by_pLvl,pLvlGrid)
         EndOfPrdvNvrsFunc = VariableLowerBoundFunc2D(EndOfPrdvNvrsFuncBase,BoroCnstNat)
@@ -813,13 +856,18 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
             cEffNow = Gfunc(EndOfPrdvPnvrs_tiled,MedShkVals_tiled)
             xLvlNow = Dfunc(cEffNow,MedShkVals_tiled)
             aLvlNow_tiled = np.tile(np.reshape(aLvlNow,(1,pCount,mCount)),(MedCount,1,1))
-            #if pLvlGrid[0] == 0.0:  # aLvl turns out badly if pLvl is 0 at bottom
-            #    aLvlNow_tiled[:,0,:] = np.tile(aXtraGrid,(MedCount,1))
             mLvlNow = xLvlNow + aLvlNow_tiled
             
             # Add bottom entry for zero expenditure at the lower bound of market resources
             xLvlNow = np.concatenate((np.zeros((MedCount,pCount,1)),xLvlNow),axis=-1)
             mLvlNow = np.concatenate((np.tile(np.reshape(aLvlMin,(1,pCount,1)),(MedCount,1,1)),mLvlNow),axis=-1)
+#            print(h,k,np.sum(np.isnan(cEffNow)),np.sum(np.isnan(xLvlNow)),np.sum(np.isnan(mLvlNow)))
+#            print(h,k,np.sum(np.isinf(cEffNow)),np.sum(np.isinf(xLvlNow)),np.sum(np.isinf(mLvlNow)))
+#            print(cEffNow.shape)
+#            these = np.isnan(cEffNow)
+#            plt.plot(np.sort(EndOfPrdvPnvrs_tiled[these]))
+#            plt.show()
+
             
             # Calculate marginal propensity to spend
             if CubicBool:
@@ -836,12 +884,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
                 for j in range(MedCount):
                     m_temp = mLvlNow[j,i,:] - mLvlMin_i
                     x_temp = xLvlNow[j,i,:]
-                    if CubicBool:
-                        pass
-#                        MPX_temp = MPX[j,i,:]
-#                        temp_list.append(CubicInterp(m_temp,x_temp,MPX_temp))
-                    else:
-                        temp_list.append(LinearInterp(m_temp,x_temp))
+                    temp_list.append(LinearInterp(m_temp,x_temp))
                 xFunc_by_pLvl_and_MedShk.append(temp_list)
             
             # Combine the many expenditure functions into a single one and adjust for the natural borrowing constraint
@@ -865,27 +908,37 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
             cEffLvlArray = cEffFunc(xLvlArray,MedShkArray)
             aLvlArray = np.abs(mLvlArray - xLvlArray) # OCCASIONAL VIOLATIONS BY 1E-18 !!!
             vNow = u(cEffLvlArray) + EndOfPrdvFunc(aLvlArray,pLvlArray)
-            #vPnow = uP(cLvlArray)
             vNvrsNow  = np.concatenate((np.zeros((MedCount,pCount,1)),uinv(vNow)),axis=2)
-            #vNvrsPnow = np.concatenate((np.zeros((MedCount,pCount,1)),vPnow*uinvP(vNow)),axis=2)
             
-            # Loop over each permanent income level and medical shock and make a vNvrsFunc
-            vNvrsFunc_by_pLvl_and_MedShk = [] # Initialize the empty list of lists of 1D vNvrsFuncs
-            mLvlMinGrid = mLvlMinNow(pLvlGrid)
-            for i in range(pCount):
-                temp_list = []
-                for j in range(MedCount):
-                    m_temp = np.insert(mLvlArray[j,i,:] - mLvlMinGrid[i],0,0.0)
-                    vNvrs_temp = vNvrsNow[j,i,:]
-                    #vNvrsP_temp = vNvrsPnow[j,i,:]
-                    #temp_list.append(CubicInterp(m_temp,vNvrs_temp,vNvrsP_temp))
-                    temp_list.append(LinearInterp(m_temp,vNvrs_temp))
-                vNvrsFunc_by_pLvl_and_MedShk.append(temp_list)
+#            # Loop over each permanent income level and medical shock and make a vNvrsFunc for each
+#            vNvrsFunc_by_pLvl_and_MedShk = [] # Initialize the empty list of lists of 1D vNvrsFuncs
+#            mLvlMinGrid = mLvlMinNow(pLvlGrid)
+#            for i in range(pCount):
+#                temp_list = []
+#                for j in range(MedCount):
+#                    m_temp = np.insert(mLvlArray[j,i,:] - mLvlMinGrid[i],0,0.0)
+#                    vNvrs_temp = vNvrsNow[j,i,:]
+#                    temp_list.append(LinearInterp(m_temp,vNvrs_temp))
+#                vNvrsFunc_by_pLvl_and_MedShk.append(temp_list)
+#                
+#            # Combine the many vNvrs functions into a single one and adjust for the natural borrowing constraint
+#            vNvrsFuncBase = BilinearInterpOnInterp1D(vNvrsFunc_by_pLvl_and_MedShk,pLvlGrid,MedShkVals)
+#            vNvrsFunc = VariableLowerBoundFunc3D(vNvrsFuncBase,mLvlMinNow)
                 
-            # Combine the many vNvrs functions into a single one and adjust for the natural borrowing constraint
-            vNvrsFuncBase = BilinearInterpOnInterp1D(vNvrsFunc_by_pLvl_and_MedShk,pLvlGrid,MedShkVals)
-            vNvrsFunc = VariableLowerBoundFunc3D(vNvrsFuncBase,mLvlMinNow)
-            vFuncsThisHealthCopay.append(ValueFunc3D(vNvrsFunc,CRRA))
+            # Now make an alternate nested list of vNvrsFuncs
+            vNvrsFunc_by_pLvl = [] # Initialize the empty list of lists of 1D vNvrsFuncs
+            for i in range(pCount):
+                temp_list = [ConstantFunction(0.0)] # Initialize for mLvl=0 --> vNvrs=0
+                for j in range(1,mCount+1):
+                    vNvrsLog_temp = np.log(vNvrsNow[:,i,j])
+                    temp_list.append(LogFunc1D(LinearInterp(MedShkVals,vNvrsLog_temp)))
+                m_temp = mLvlArray[0,i,:] # Combine across mLvl within this pLvl
+                vNvrsFunc_by_pLvl.append(LinearInterpOnInterp1D(temp_list,m_temp))
+            vNvrsFuncBase = LinearInterpOnInterp2D(vNvrsFunc_by_pLvl,pLvlGrid) # Combine across all pLvls
+            vNvrsFunc = TwistFuncA(vNvrsFuncBase) # Change input order from (MedShk,mLvl,pLvl) to (mLvl,pLvl,MedShk)
+            
+            # Add the value function to the list for this health
+            vFuncsThisHealthCopay.append(ValueFunc3D(vNvrsFunc,CRRA)) # Recurve value function
             
         # Set up state grids to prepare for the medical shock integration step
         tempArray    = np.tile(np.reshape(aXtraGrid,(aLvlCount,1,1)),(1,pLvlCount,MedCount))
@@ -930,7 +983,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
             UnresolvedCount = Unresolved.size # Number of points whose CritShk has not been found
             DiffTol = 1e-6 # Convergence tolerance for the search
             LoopCount = 0
-            while (UnresolvedCount > 0) and (LoopCount < 10): # Loop until all points have converged on CritShk
+            while (UnresolvedCount > 0) and (LoopCount < 20): # Loop until all points have converged on CritShk
                 CritShkPrev = CritShkArray[Unresolved]
                 xLvl_temp = xFunc_temp(mLvlArray_temp[Unresolved],pLvlArray_temp[Unresolved],CritShkPrev)
                 CritShkNew = CritShkFunc(xLvl_temp)
@@ -940,7 +993,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
                 Unresolved[Unresolved] = DiffNew > DiffTol
                 UnresolvedCount = np.sum(Unresolved)
                 LoopCount += 1
-            if LoopCount == 10:
+            if LoopCount == 20:
                 print(str(UnresolvedCount) + ' points still unresolved!')
                 
             # Make arrays of medical shocks and probabilities, along with Cfloor probs and vFloor values
@@ -961,11 +1014,12 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
             # Get value and marginal value at an array of states
             vArrayBig, vParrayBig, vPParrayBig = policyFuncsThisHealth[-1].evalvAndvPandvPP(mLvlArray,pLvlArray,MedShkArray)
             ConArrayBig, MedArrayBig = policyFuncsThisHealth[-1](mLvlArray,pLvlArray,MedShkArray)
+#            print(np.min(vArrayBig,axis=2)[0:2,:])
                         
             # Integrate (marginal) value across medical shocks
             vArray   = np.sum(vArrayBig*ShkPrbsArray,axis=2) + CfloorPrbArray*np.tile(np.reshape(vFloorBypLvl,(1,pLvlCount)),(aLvlCount,1))
             vParray  = np.sum(vParrayBig*ShkPrbsArray,axis=2)
-            print(np.sum(np.isnan(vArray)),np.sum(np.isnan(vParray)))
+#            print(np.sum(np.isnan(vArray)),np.sum(np.isnan(vParray)))
                 
             # Make a second array of shocks and probabilities *beyond* the critical shock (only relevant for AV)
             ZadjAltArray = np.maximum(ZcritArray - ZgridBase[1],0.) # Should always be non-negative
