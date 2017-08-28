@@ -12,16 +12,17 @@ from HARKcore import HARKobject, AgentType
 from HARKutilities import CRRAutility, CRRAutilityP, CRRAutilityPP, CRRAutilityP_inv,\
                           CRRAutility_invP, CRRAutility_inv, CRRAutilityP_invP, NullFunc,\
                           approxLognormal, addDiscreteOutcome
-from HARKinterpolation import LinearInterp, CubicInterp, BilinearInterpOnInterp1D, LinearInterpOnInterp1D, LinearInterpOnInterp2D,\
-                              LowerEnvelope3D, UpperEnvelope, TrilinearInterp, ConstantFunction, CompositeFunc2D, \
-                              VariableLowerBoundFunc2D, VariableLowerBoundFunc3D, VariableLowerBoundFunc3Dalt, IdentityFunction,\
-                              BilinearInterp, CompositeFunc3D
+from HARKinterpolation import LinearInterp, CubicInterp, BilinearInterpOnInterp1D, LinearInterpOnInterp1D, \
+                              LinearInterpOnInterp2D,UpperEnvelope, TrilinearInterp, ConstantFunction, CompositeFunc2D, \
+                              VariableLowerBoundFunc2D, VariableLowerBoundFunc3D, VariableLowerBoundFunc3Dalt, \
+                              BilinearInterp, CompositeFunc3D, IdentityFunction
 from HARKsimulation import drawUniform, drawLognormal, drawMeanOneLognormal, drawDiscrete, drawBernoulli
 from ConsMedModel import MedShockPolicyFunc, MedShockConsumerType
 from ConsIndShockModel import ValueFunc
 from ConsPersistentShockModel import ValueFunc2D, MargValueFunc2D, MargMargValueFunc2D
 from ConsMarkovModel import MarkovConsumerType
 from ConsIndShockModel import constructLognormalIncomeProcessUnemployment
+from JorgensenDruedahl import makeJDxLvlLayer, makeGridDenser
 import matplotlib.pyplot as plt
 from scipy.stats import norm
                                      
@@ -709,9 +710,14 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
     solution : InsuranceSelectionSolution
     '''
     t_start = clock()
+    
+    # Get sizes of arrays
+    mLvl_aug_factor = 4
+    MedShk_aug_factor = 4
     pLvlCount = pLvlGrid.size
     aLvlCount   = aXtraGrid.size
     HealthCount = len(LivPrb) # number of discrete health states
+    mGridDenseBase = makeGridDenser(aXtraGrid,mLvl_aug_factor)
     
     # Define utility function derivatives and inverses
     u = lambda x : utility(x,CRRA)
@@ -828,6 +834,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
         mCount           = EndOfPrdvP.shape[1]
         pCount           = EndOfPrdvP.shape[0]
         ZgridBase = (np.log(MedShkVals) - MedShkAvg[h])/MedShkStd[h] # Find baseline Z-grids for the medical shock distribution
+        ShkGridDense = makeGridDenser(MedShkVals,MedShk_aug_factor)
         policyFuncsThisHealthCopay = []
         vFuncsThisHealthCopay = []
         
@@ -865,39 +872,38 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
             xLvlNow = Dfunc(cEffNow,MedShkVals_tiled)
             aLvlNow_tiled = np.tile(np.reshape(aLvlNow,(1,pCount,mCount)),(MedCount,1,1))
             mLvlNow = xLvlNow + aLvlNow_tiled
-            #print(h,k,np.sum(np.any((xLvlNow[:,:,1:]-xLvlNow[:,:,:-1]) < 0.,axis=(0,2))))
-            
-            # Add bottom entry for zero expenditure at the lower bound of market resources
-#            xLvlNow = np.concatenate((np.zeros((MedCount,pCount,1)),xLvlNow),axis=-1)
-#            mLvlNow = np.concatenate((np.tile(np.reshape(aLvlMin,(1,pCount,1)),(MedCount,1,1)),mLvlNow),axis=-1)
-#            print(h,k,np.sum(np.isnan(cEffNow)),np.sum(np.isnan(xLvlNow)),np.sum(np.isnan(mLvlNow)))
-#            print(h,k,np.sum(np.isinf(cEffNow)),np.sum(np.isinf(xLvlNow)),np.sum(np.isinf(mLvlNow)))
             
             # Calculate marginal propensity to spend
             if CubicBool:
                 print("CubicBool=True doesn't work at this time")
                 
-            ###### THIS BLOCK OF CODE NEEDS TO BE REVISED TO USE JORGENSEN-DRUEDAHL #########
-                
             # Loop over each permanent income level and medical shock and make an xFunc
-            xFunc_by_pLvl_and_MedShk = [] # Initialize the empty list of lists of 1D xFuncs
+            NeedsJDfix = np.any((xLvlNow[:,:,1:]-xLvlNow[:,:,:-1]) < 0.,axis=(0,2)) # whether each pLvl needs the Jorgensen-Druedahl fix
+            xFunc_by_pLvl = [] # Initialize the empty list of lists of 1D xFuncs
             for i in range(pCount):
-                temp_list = []
-                #pLvl_i = pLvlGrid[i]
-                #mLvlMin_i = BoroCnstNat(pLvl_i)
-                for j in range(MedCount):
-                    m_temp = mLvlNow[j,i,:] - mLvlNow[j,i,0]
-                    x_temp = xLvlNow[j,i,:]
-                    temp_list.append(LinearInterp(m_temp,x_temp))
-                xFunc_by_pLvl_and_MedShk.append(temp_list)
+                if NeedsJDfix[i]:
+                    aLvl_temp = aLvlNow_tiled[:,i,:]
+                    pLvl_temp = pLvlGrid[i]*np.ones_like(aLvl_temp)
+                    vNvrs_data = (uinv(u(cEffNow[:,i,:]) + EndOfPrdvFunc(aLvl_temp,pLvl_temp))).transpose()
+                    mLvl_data = mLvlNow[:,i,:].transpose()
+                    xLvl_data = xLvlNow[:,i,:].transpose()
+                    MedShk_data = MedShkVals_tiled[:,i,:].transpose()
+                    mGridDense = mGridDenseBase*pLvlGrid[i]
+                    xFunc_by_pLvl.append(makeJDxLvlLayer(mLvl_data,MedShk_data,vNvrs_data,xLvl_data,mGridDense,ShkGridDense))
+                    mLvlNow[:,i,0] = 0.0 # This fixes the "seam" problem so there are no NaNs
+                else:
+                    temp_list = []
+                    for j in range(MedCount):
+                        m_temp = mLvlNow[j,i,:] - mLvlNow[j,i,0]
+                        x_temp = xLvlNow[j,i,:]
+                        temp_list.append(LinearInterp(m_temp,x_temp))
+                    xFunc_by_pLvl.append(LinearInterpOnInterp1D(temp_list,MedShkVals))
             
             # Combine the many expenditure functions into a single one and adjust for the natural borrowing constraint
             ConstraintSeam = BilinearInterp((mLvlNow[:,:,0]).transpose(),pLvlGrid,MedShkVals)
-            xFuncNowUncBase = BilinearInterpOnInterp1D(xFunc_by_pLvl_and_MedShk,pLvlGrid,MedShkVals)
+            xFuncNowUncBase = TwistFuncB(LinearInterpOnInterp2D(xFunc_by_pLvl,pLvlGrid))
             xFuncNowUnc = VariableLowerBoundFunc3Dalt(xFuncNowUncBase,ConstraintSeam)
             xFuncNow = CompositeFunc3D(xFuncNowCnst,xFuncNowUnc,ConstraintSeam)
-            
-            ####### END OF BLOCK TO REVISE ####################################
             
             # Make a policy function for this coinsurance rate and health state
             policyFuncsThisHealthCopay.append(MedShockPolicyFuncPrecalc(xFuncNow,bFromxFuncList[k],MedPriceEff))

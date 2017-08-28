@@ -11,12 +11,12 @@ inline double3 calcBarycentricWeights(
     ,double X
     ,double Y
     ) {
-    double denom = (By-Cy)*(Ax-Cx) + (Cx-Bx)*(Ay-Cy)
-    double Aweight = ((By-Cy)*(X-Cx) + (Cx-Bx)*(Y-Cy))/denom
-    double Bweight = ((Cy-Ay)*(X-Cx) + (Ax-Cx)*(Y-Cy))/denom
-    double Cweight = 1.0 - Aweight - Bweight
-    double3 weights = (Aweight,Bweight,Cweight)
-    return weights
+    double denom = (By-Cy)*(Ax-Cx) + (Cx-Bx)*(Ay-Cy);
+    double Aweight = ((By-Cy)*(X-Cx) + (Cx-Bx)*(Y-Cy))/denom;
+    double Bweight = ((Cy-Ay)*(X-Cx) + (Ax-Cx)*(Y-Cy))/denom;
+    double Cweight = 1.0 - Aweight - Bweight;
+    double3 weights = (double3)(Aweight,Bweight,Cweight);
+    return weights;
 }
 
 
@@ -62,13 +62,13 @@ __kernel void doJorgensenDruedahlFix(
     int MedShkDataDim = IntegerInputs[1];
     int mGridDenseSize = IntegerInputs[2];
     int ShkGridDenseSize = IntegerInputs[3];
-    int ThreadCount = IntegerInputs[5];
+    int ThreadCount = IntegerInputs[4];
 
     
     /* Initialize this thread's id and get this thread's constant (mLvl,MedShk) identity */
     int Gid = get_global_id(0);     /* global thread id */
     if (Gid >= ThreadCount) {
-        return
+        return;
     }
     int mGridIdx = Gid/mGridDenseSize;
     int ShkGridIdx = Gid - mGridIdx*mGridDenseSize;
@@ -76,8 +76,8 @@ __kernel void doJorgensenDruedahlFix(
     double MedShk = ShkGridDense[ShkGridIdx];
 
     /* Initialize xLvl and value for output */
-    xLvl = xLvlOut[Gid];
-    Value = ValueOut[Gid];
+    double xLvl = xLvlOut[Gid];
+    double Value = ValueOut[Gid];
 
     /* Loop over each triangular sector of (mLvl,MedShk) from the data */
     int i = 0;
@@ -106,7 +106,7 @@ __kernel void doJorgensenDruedahlFix(
             if ((mLvl >= mMin) & (mLvl <= mMax) & (MedShk >= ShkMin) & (MedShk <= ShkMax)) {
                 SectorWeights = calcBarycentricWeights(mA,ShkA,mB,ShkB,mC,ShkC,mLvl,MedShk);
 
-                /* If barycentric weights all between 0 and 1, evaluate vNew /*
+                /* If barycentric weights all between 0 and 1, evaluate vNew */
                 if ((SectorWeights.x >= 0.0) & (SectorWeights.y >= 0.0) & (SectorWeights.z >= 0.0) & (SectorWeights.x <= 1.0) & (SectorWeights.y <= 1.0) & (SectorWeights.z <= 1.0)) {
                     vA = ValueData[IdxA];
                     vB = ValueData[IdxB];
@@ -115,9 +115,9 @@ __kernel void doJorgensenDruedahlFix(
 
                     /* If vNew is better than current v, replace v and xLvl in Out */
                     if (vNew > Value) {
-                        xA = xLvlData[A];
-                        xB = xLvlData[B];
-                        xC = xLvlData[C];
+                        xA = xLvlData[IdxA];
+                        xB = xLvlData[IdxB];
+                        xC = xLvlData[IdxC];
                         xNew = SectorWeights.x*xA + SectorWeights.y*xB + SectorWeights.z*xC;
                         xLvl = xNew;
                         Value = vNew;
@@ -138,7 +138,7 @@ __kernel void doJorgensenDruedahlFix(
             if ((mLvl >= mMin) & (mLvl <= mMax) & (MedShk >= ShkMin) & (MedShk <= ShkMax)) {
                 SectorWeights = calcBarycentricWeights(mA,ShkA,mB,ShkB,mC,ShkC,mLvl,MedShk);
 
-                /* If barycentric weights all between 0 and 1, evaluate vNew /*
+                /* If barycentric weights all between 0 and 1, evaluate vNew */
                 if ((SectorWeights.x >= 0.0) & (SectorWeights.y >= 0.0) & (SectorWeights.z >= 0.0) & (SectorWeights.x <= 1.0) & (SectorWeights.y <= 1.0) & (SectorWeights.z <= 1.0)) {
                     vA = ValueData[IdxA];
                     vB = ValueData[IdxB];
@@ -147,9 +147,9 @@ __kernel void doJorgensenDruedahlFix(
 
                     /* If vNew is better than current v, replace v and xLvl in Out */
                     if (vNew > Value) {
-                        xA = xLvlData[A];
-                        xB = xLvlData[B];
-                        xC = xLvlData[C];
+                        xA = xLvlData[IdxA];
+                        xB = xLvlData[IdxB];
+                        xC = xLvlData[IdxC];
                         xNew = SectorWeights.x*xA + SectorWeights.y*xB + SectorWeights.z*xC;
                         xLvl = xNew;
                         Value = vNew;
