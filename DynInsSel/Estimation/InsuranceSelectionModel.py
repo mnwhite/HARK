@@ -840,17 +840,12 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
         
         # Make the end of period value function for this health
         EndOfPrdvNvrsFunc_by_pLvl = []
-        #EndOfPrdvNvrs = np.concatenate((np.zeros((pCount,1)),uinv(EndOfPrdv[:,:,h])),axis=1)
         EndOfPrdvNvrs = uinv(EndOfPrdv[:,:,h])
         for j in range(pLvlCount):
-            #pLvl = pLvlGrid[j]
-            #aMin = BoroCnstNat(pLvl)
-            #a_temp = np.insert(aLvlNow[j,:]-aMin,0,0.0)
             a_temp = aLvlNow[j,:]
             EndOfPrdvNvrs_temp = EndOfPrdvNvrs[j,:]
             EndOfPrdvNvrsFunc_by_pLvl.append(LinearInterp(a_temp,EndOfPrdvNvrs_temp))
         EndOfPrdvNvrsFuncBase = LinearInterpOnInterp1D(EndOfPrdvNvrsFunc_by_pLvl,pLvlGrid)
-        #EndOfPrdvNvrsFunc = VariableLowerBoundFunc2D(EndOfPrdvNvrsFuncBase,BoroCnstNat)
         EndOfPrdvNvrsFunc = EndOfPrdvNvrsFuncBase
         EndOfPrdvFunc = ValueFunc2D(EndOfPrdvNvrsFunc,CRRA)
         
@@ -869,6 +864,8 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
             
             # Calculate endogenous gridpoints and controls
             cEffNow = Gfunc(EndOfPrdvPnvrs_tiled,MedShkVals_tiled)
+            ShkZero = MedShkVals_tiled == 0.
+            cEffNow[ShkZero] = EndOfPrdvPnvrs_tiled[ShkZero]
             xLvlNow = Dfunc(cEffNow,MedShkVals_tiled)
             aLvlNow_tiled = np.tile(np.reshape(aLvlNow,(1,pCount,mCount)),(MedCount,1,1))
             mLvlNow = xLvlNow + aLvlNow_tiled
@@ -882,15 +879,21 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
             xFunc_by_pLvl = [] # Initialize the empty list of lists of 1D xFuncs
             for i in range(pCount):
                 if NeedsJDfix[i]:
+                    t0 = clock()
                     aLvl_temp = aLvlNow_tiled[:,i,:]
                     pLvl_temp = pLvlGrid[i]*np.ones_like(aLvl_temp)
                     vNvrs_data = (uinv(u(cEffNow[:,i,:]) + EndOfPrdvFunc(aLvl_temp,pLvl_temp))).transpose()
                     mLvl_data = mLvlNow[:,i,:].transpose()
                     xLvl_data = xLvlNow[:,i,:].transpose()
                     MedShk_data = MedShkVals_tiled[:,i,:].transpose()
-                    mGridDense = mGridDenseBase*pLvlGrid[i]
+                    pLvl_i = pLvlGrid[i]
+                    if pLvl_i == 0.0:
+                        pLvl_i = pLvlGrid[i+1]
+                    mGridDense = mGridDenseBase*pLvl_i
                     xFunc_by_pLvl.append(makeJDxLvlLayer(mLvl_data,MedShk_data,vNvrs_data,xLvl_data,mGridDense,ShkGridDense))
                     mLvlNow[:,i,0] = 0.0 # This fixes the "seam" problem so there are no NaNs
+                    t1 = clock()
+                    #print('JD fix took ' + str(t1-t0) + ' seconds.')
                 else:
                     temp_list = []
                     for j in range(MedCount):
@@ -920,23 +923,8 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
             aLvlArray = np.abs(mLvlArray - xLvlArray) # OCCASIONAL VIOLATIONS BY 1E-18 !!!
             vNow = u(cEffLvlArray) + EndOfPrdvFunc(aLvlArray,pLvlArray)
             vNvrsNow  = np.concatenate((np.zeros((MedCount,pCount,1)),uinv(vNow)),axis=2)
-            
-#            # Loop over each permanent income level and medical shock and make a vNvrsFunc for each
-#            vNvrsFunc_by_pLvl_and_MedShk = [] # Initialize the empty list of lists of 1D vNvrsFuncs
-#            mLvlMinGrid = mLvlMinNow(pLvlGrid)
-#            for i in range(pCount):
-#                temp_list = []
-#                for j in range(MedCount):
-#                    m_temp = np.insert(mLvlArray[j,i,:] - mLvlMinGrid[i],0,0.0)
-#                    vNvrs_temp = vNvrsNow[j,i,:]
-#                    temp_list.append(LinearInterp(m_temp,vNvrs_temp))
-#                vNvrsFunc_by_pLvl_and_MedShk.append(temp_list)
-#                
-#            # Combine the many vNvrs functions into a single one and adjust for the natural borrowing constraint
-#            vNvrsFuncBase = BilinearInterpOnInterp1D(vNvrsFunc_by_pLvl_and_MedShk,pLvlGrid,MedShkVals)
-#            vNvrsFunc = VariableLowerBoundFunc3D(vNvrsFuncBase,mLvlMinNow)
                 
-            # Now make an alternate nested list of vNvrsFuncs
+            # Loop over each permanent income level and mLvl and make a vNvrsFunc over MedShk for each
             vNvrsFunc_by_pLvl = [] # Initialize the empty list of lists of @D vNvrsFuncs
             for i in range(pCount):
                 temp_list = [ConstantFunction(0.0)] # Initialize for mLvl=0 --> vNvrs=0
@@ -958,7 +946,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
         pLvlArray    = np.tile(np.reshape(pLvlGrid,(1,pLvlCount,1)),(aLvlCount,1,MedCount))
         mLvlArray    = mMinArray + tempArray*pLvlArray + Cfloor
         if pLvlGrid[0] == 0.0: # Fix the problem of all mLvls = 0 when pLvl = 0
-            mLvlArray[:,0,:] = np.tile(np.reshape(aXtraGrid,(aLvlCount,1)),(1,MedCount))
+            mLvlArray[:,0,:] = mLvlArray[:,1,:]
         
         # For each insurance contract available in this health state, "integrate" across medical need
         # shocks to get policy and (marginal) value functions for each contract
@@ -995,7 +983,8 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
             UnresolvedCount = Unresolved.size # Number of points whose CritShk has not been found
             DiffTol = 1e-6 # Convergence tolerance for the search
             LoopCount = 0
-            while (UnresolvedCount > 0) and (LoopCount < 20): # Loop until all points have converged on CritShk
+            LoopMax = 50
+            while (UnresolvedCount > 0) and (LoopCount < LoopMax): # Loop until all points have converged on CritShk
                 CritShkPrev = CritShkArray[Unresolved]
                 xLvl_temp = xFunc_temp(mLvlArray_temp[Unresolved],pLvlArray_temp[Unresolved],CritShkPrev)
                 CritShkNew = CritShkFunc(xLvl_temp)
@@ -1005,7 +994,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
                 Unresolved[Unresolved] = DiffNew > DiffTol
                 UnresolvedCount = np.sum(Unresolved)
                 LoopCount += 1
-            if LoopCount == 20:
+            if LoopCount == LoopMax:
                 print(str(UnresolvedCount) + ' points still unresolved!')
                 
             # Make arrays of medical shocks and probabilities, along with Cfloor probs and vFloor values
@@ -2375,7 +2364,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
             MedShkSet = self.MedShkDstn[t][h][1]
         for MedShk in MedShkSet:            
             cLvl,MedLvl = self.solution[t].policyFunc[h][z](mLvl,p*np.ones_like(mLvl),MedShk*np.ones_like(mLvl))
-            cEffLvl = (1. - np.exp(-MedLvl/MedShk))**self.CRRAmed*cLvl
+            cEffLvl = (1. - np.exp(-(MedLvl+1e-10)/MedShk))**self.CRRAmed*cLvl
             plt.plot(mLvl,cEffLvl)
         plt.xlabel('Market resources mLvl')
         plt.ylabel('Effective consumption C(mLvl)')

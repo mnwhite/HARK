@@ -660,7 +660,7 @@ if __name__ == '__main__':
     MyType = MyMarket.agents[0] 
     MyType.solve()
        
-    t = -2
+    t = -10
     p = 1.0    
     h = 4        
     MedShk = 1.0e-2

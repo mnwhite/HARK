@@ -70,8 +70,8 @@ __kernel void doJorgensenDruedahlFix(
     if (Gid >= ThreadCount) {
         return;
     }
-    int mGridIdx = Gid/mGridDenseSize;
-    int ShkGridIdx = Gid - mGridIdx*mGridDenseSize;
+    int mGridIdx = Gid/ShkGridDenseSize;
+    int ShkGridIdx = Gid - mGridIdx*ShkGridDenseSize;
     double mLvl = mGridDense[mGridIdx];
     double MedShk = ShkGridDense[ShkGridIdx];
 
@@ -79,27 +79,27 @@ __kernel void doJorgensenDruedahlFix(
     double xLvl = xLvlOut[Gid];
     double Value = ValueOut[Gid];
 
-    /* Loop over each triangular sector of (mLvl,MedShk) from the data */
+/* Loop over each triangular sector of (mLvl,MedShk) from the data */
     int i = 0;
     int j = 0;
     while (i < (mLvlDataDim-1)) {
         j = 0;
         while (j < (MedShkDataDim-1)) {
             /* Get location data for lower triangle */
-            IdxA = i*mLvlDataDim + j;
-            IdxB = IdxA + mLvlDataDim;
+            IdxA = i*MedShkDataDim + j;
+            IdxB = IdxA + MedShkDataDim;
             IdxC = IdxB + 1;
             mA = mLvlData[IdxA];
             mB = mLvlData[IdxB];
             mC = mLvlData[IdxC];
-            ShkA = mLvlData[IdxA];
-            ShkB = mLvlData[IdxB];
-            ShkC = mLvlData[IdxC];
+            ShkA = MedShkData[IdxA];
+            ShkB = MedShkData[IdxB];
+            ShkC = MedShkData[IdxC];
 
             /* Find bounding box for lower triangle */
             mMin = fmin(fmin(mA,mB),mC);
             mMax = fmax(fmax(mA,mB),mC);
-            ShkMin = fmax(fmax(ShkA,ShkB),ShkC);
+            ShkMin = fmin(fmin(ShkA,ShkB),ShkC);
             ShkMax = fmax(fmax(ShkA,ShkB),ShkC);
 
             /* If self is inside bounding box, calc barycentric weights */
@@ -158,11 +158,11 @@ __kernel void doJorgensenDruedahlFix(
             } /* End of checking upper triangle */
 
             j++; /* Move to next MedShk for this mLvl in the data */
-        }
-        i++; /* Move to next mLvl in the data, resetting MedShk */
-     }
+         }
+         i++; /* Move to next mLvl in the data, resetting MedShk */
+    }
 
-     /* Store the final xLvl and value in the Out buffers */
-     xLvlOut[Gid] = xLvl;
-     ValueOut[Gid] = Value;
+    /* Store the final xLvl and value in the Out buffers */
+    xLvlOut[Gid] = xLvl;
+    ValueOut[Gid] = Value;
 }
