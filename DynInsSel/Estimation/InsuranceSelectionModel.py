@@ -818,15 +818,13 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
         EndOfPrdvP[:,:,h] = DiscFacEff*np.sum(EndOfPrdvPcond*HealthTran_temp,axis=2)
         if CubicBool:
             EndOfPrdvPP[:,:,h] = DiscFacEff*np.sum(EndOfPrdvPPcond*HealthTran_temp,axis=2)
-#    print(np.sum(np.isnan(EndOfPrdv)),np.sum(np.isnan(EndOfPrdvP)))
-#    print(np.sum(np.isinf(EndOfPrdv)),np.sum(np.isinf(EndOfPrdvP)))
-#    print(np.sum(EndOfPrdvP <= 0.))
             
     # Calculate human wealth conditional on each current health state 
     hLvlGrid = (np.dot(MrkvArray,hLvlCond.transpose())).transpose()
     
     # Loop through current health states to solve the period at each one
     solution_now = InsuranceSelectionSolution(mLvlMin=mLvlMinNow)
+    JDfixCount = 0
     for h in range(HealthCount):
         MedShkPrbs       = MedShkDstn[h][0]
         MedShkVals       = MedShkDstn[h][1]
@@ -876,10 +874,11 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
                 
             # Loop over each permanent income level and medical shock and make an xFunc
             NeedsJDfix = np.any((xLvlNow[:,:,1:]-xLvlNow[:,:,:-1]) < 0.,axis=(0,2)) # whether each pLvl needs the Jorgensen-Druedahl fix
+            JDfixCount += np.sum(NeedsJDfix)
             xFunc_by_pLvl = [] # Initialize the empty list of lists of 1D xFuncs
             for i in range(pCount):
                 if NeedsJDfix[i]:
-                    t0 = clock()
+                    #t0 = clock()
                     aLvl_temp = aLvlNow_tiled[:,i,:]
                     pLvl_temp = pLvlGrid[i]*np.ones_like(aLvl_temp)
                     vNvrs_data = (uinv(u(cEffNow[:,i,:]) + EndOfPrdvFunc(aLvl_temp,pLvl_temp))).transpose()
@@ -892,7 +891,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
                     mGridDense = mGridDenseBase*pLvl_i
                     xFunc_by_pLvl.append(makeJDxLvlLayer(mLvl_data,MedShk_data,vNvrs_data,xLvl_data,mGridDense,ShkGridDense))
                     mLvlNow[:,i,0] = 0.0 # This fixes the "seam" problem so there are no NaNs
-                    t1 = clock()
+                    #t1 = clock()
                     #print('JD fix took ' + str(t1-t0) + ' seconds.')
                 else:
                     temp_list = []
@@ -977,16 +976,17 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
             xFunc_temp = policyFuncCopay.xFunc # Assume zero deductible for now, will fix later
             mLvlArray_temp = mLvlArray[:,:,0]
             pLvlArray_temp = pLvlArray[:,:,0]
-            CritShkArray = 1e-4*np.ones_like(mLvlArray_temp) # Current guess of critical shock for each (mLvl,pLvl)
+            CritShkArray = 1e-8*np.ones_like(mLvlArray_temp) # Current guess of critical shock for each (mLvl,pLvl)
             DiffArray = np.ones_like(mLvlArray_temp) # Relative change in crit shock guess this iteration
             Unresolved = np.ones_like(mLvlArray_temp,dtype=bool) # Indicator for which points are still unresolved
             UnresolvedCount = Unresolved.size # Number of points whose CritShk has not been found
-            DiffTol = 1e-6 # Convergence tolerance for the search
+            DiffTol = 1e-5 # Convergence tolerance for the search
             LoopCount = 0
-            LoopMax = 50
+            LoopMax = 30
             while (UnresolvedCount > 0) and (LoopCount < LoopMax): # Loop until all points have converged on CritShk
                 CritShkPrev = CritShkArray[Unresolved]
-                xLvl_temp = xFunc_temp(mLvlArray_temp[Unresolved],pLvlArray_temp[Unresolved],CritShkPrev)
+                mLvl_temp = mLvlArray_temp[Unresolved]
+                xLvl_temp = np.minimum(xFunc_temp(mLvl_temp,pLvlArray_temp[Unresolved],CritShkPrev),mLvl_temp)
                 CritShkNew = CritShkFunc(xLvl_temp)
                 DiffNew = np.abs(CritShkNew/CritShkPrev - 1.)
                 DiffArray[Unresolved] = DiffNew
@@ -994,8 +994,13 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
                 Unresolved[Unresolved] = DiffNew > DiffTol
                 UnresolvedCount = np.sum(Unresolved)
                 LoopCount += 1
+#                if LoopCount > 15:
+#                    print(h,z,LoopCount,mLvlArray_temp[Unresolved],xLvl_temp)
             if LoopCount == LoopMax:
-                print(str(UnresolvedCount) + ' points still unresolved!')
+                print(str(UnresolvedCount) + ' points still unresolved for h=' + str(h) + ', z=' + str(z) + '!')
+#                ZcritBad = (np.log(CritShkArray[Unresolved]) - MedShkAvg[h])/MedShkStd[h]
+#                CfloorPrbBad = norm.sf(ZcritBad)*(1.-MedShkPrbs[0])
+                print(DiffNew)
                 
             # Make arrays of medical shocks and probabilities, along with Cfloor probs and vFloor values
             AlwaysCfloor = np.logical_not(CritShkArray > 0.)
@@ -1015,7 +1020,6 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
             # Get value and marginal value at an array of states
             vArrayBig, vParrayBig, vPParrayBig = policyFuncsThisHealth[-1].evalvAndvPandvPP(mLvlArray,pLvlArray,MedShkArray)
             ConArrayBig, MedArrayBig = policyFuncsThisHealth[-1](mLvlArray,pLvlArray,MedShkArray)
-#            print(np.min(vArrayBig,axis=2)[0:2,:])
                         
             # Integrate (marginal) value across medical shocks
             vArray   = np.sum(vArrayBig*ShkPrbsArray,axis=2) + CfloorPrbArray*np.tile(np.reshape(vFloorBypLvl,(1,pLvlCount)),(aLvlCount,1))
@@ -1191,7 +1195,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
     
     # Return the solution for this period
     t_end = clock()
-    print('Solving a period of the problem took ' + str(t_end-t_start) + ' seconds.')
+    print('Solving a period of the problem took ' + str(t_end-t_start) + ' seconds, fix count = ' + str(JDfixCount))
     return solution_now
     
 ####################################################################################################

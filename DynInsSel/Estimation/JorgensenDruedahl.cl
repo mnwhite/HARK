@@ -79,9 +79,11 @@ __kernel void doJorgensenDruedahlFix(
     double xLvl = xLvlOut[Gid];
     double Value = ValueOut[Gid];
 
-/* Loop over each triangular sector of (mLvl,MedShk) from the data */
+    /* Loop over each triangular sector of (mLvl,MedShk) from the data */
     int i = 0;
     int j = 0;
+    double Low = -0.01;
+    double High = 1.01;
     while (i < (mLvlDataDim-1)) {
         j = 0;
         while (j < (MedShkDataDim-1)) {
@@ -107,7 +109,7 @@ __kernel void doJorgensenDruedahlFix(
                 SectorWeights = calcBarycentricWeights(mA,ShkA,mB,ShkB,mC,ShkC,mLvl,MedShk);
 
                 /* If barycentric weights all between 0 and 1, evaluate vNew */
-                if ((SectorWeights.x >= 0.0) & (SectorWeights.y >= 0.0) & (SectorWeights.z >= 0.0) & (SectorWeights.x <= 1.0) & (SectorWeights.y <= 1.0) & (SectorWeights.z <= 1.0)) {
+                if ((SectorWeights.x >= Low) & (SectorWeights.y >= Low) & (SectorWeights.z >= Low) & (SectorWeights.x <= High) & (SectorWeights.y <= High) & (SectorWeights.z <= High)) {
                     vA = ValueData[IdxA];
                     vB = ValueData[IdxB];
                     vC = ValueData[IdxC];
@@ -128,7 +130,7 @@ __kernel void doJorgensenDruedahlFix(
             /* Get location data for upper triangle (only need to change B) */
             IdxB = IdxA + 1;
             mB = mLvlData[IdxB];
-            ShkB = mLvlData[IdxB];
+            ShkB = MedShkData[IdxB];
             
             /* Find bounding box for upper triangle (Shk bounds don't change) */
             mMin = fmin(fmin(mA,mB),mC);
@@ -139,7 +141,7 @@ __kernel void doJorgensenDruedahlFix(
                 SectorWeights = calcBarycentricWeights(mA,ShkA,mB,ShkB,mC,ShkC,mLvl,MedShk);
 
                 /* If barycentric weights all between 0 and 1, evaluate vNew */
-                if ((SectorWeights.x >= 0.0) & (SectorWeights.y >= 0.0) & (SectorWeights.z >= 0.0) & (SectorWeights.x <= 1.0) & (SectorWeights.y <= 1.0) & (SectorWeights.z <= 1.0)) {
+                if ((SectorWeights.x >= Low) & (SectorWeights.y >= Low) & (SectorWeights.z >= Low) & (SectorWeights.x <= High) & (SectorWeights.y <= High) & (SectorWeights.z <= High)) {
                     vA = ValueData[IdxA];
                     vB = ValueData[IdxB];
                     vC = ValueData[IdxC];
