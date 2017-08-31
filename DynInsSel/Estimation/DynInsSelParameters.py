@@ -177,9 +177,10 @@ retired_T = 55
 working_T = 40
 AgeCount = retired_T + working_T
 T_cycle = retired_T + working_T
-TranShkStd = (np.concatenate((np.linspace(0.1,0.12,4), 0.12*np.ones(4), np.linspace(0.12,0.075,15), np.linspace(0.074,0.007,17), np.zeros(retired_T))))**0.5
+TranShkStd = (np.concatenate((np.linspace(0.1,0.12,4), 0.12*np.ones(4), np.linspace(0.12,0.075,15), np.linspace(0.074,0.007,16), np.zeros(retired_T+1))))**0.5
 TranShkStd = np.ndarray.tolist(TranShkStd)
 PermShkStd = np.concatenate((((0.00011342*(np.linspace(24,64.75,working_T-1)-47)**2 + 0.01))**0.5,np.zeros(retired_T+1)))
+PermShkStd[31:39] = PermShkStd[30] # Don't extrapolate permanent shock stdev
 PermShkStd = np.ndarray.tolist(PermShkStd)
 TranShkStdAllHealth = []
 PermShkStdAllHealth = []
@@ -309,14 +310,19 @@ PermGroFac_dx = []
 PermGroFac_hx = []
 PermGroFac_cx = []
 for t in range(95):
-    PermGroFac_dx.append(5*[PermGroFac_d[t]+1.0])
-    PermGroFac_hx.append(5*[PermGroFac_h[t]+1.0])
-    PermGroFac_cx.append(5*[PermGroFac_c[t]+1.0])
+    if t < working_T:
+        PermGroFac_dx.append(5*[PermGroFac_d[t]+1.0])
+        PermGroFac_hx.append(5*[PermGroFac_h[t]+1.0])
+        PermGroFac_cx.append(5*[PermGroFac_c[t]+1.0])
+    else:
+        PermGroFac_dx.append(5*[1.0])
+        PermGroFac_hx.append(5*[1.0])
+        PermGroFac_cx.append(5*[1.0])
 
 # Make retirement functions for each education level
 SSbenefitFunc = LinearInterp([0.,1.062,6.4032,7.4032],[0.,0.9558,2.6650,2.8150])
-LogAIMEfunc = lambda x : 0.6322 + 0.6403*x + 0.0233*x**2 - 0.0189*x**3
-LogAIMEfuncDer = lambda x : 0.6403 + 0.0466*x - 0.0567*x**2
+LogAIMEfunc = lambda x : 0.5306 + 0.6932*x + 0.0368*x**2 - 0.0239*x**3
+LogAIMEfuncDer = lambda x : 0.6932 + 0.0736*x - 0.0717*x**2
 AIMEfunc = lambda x : np.exp(np.log(x))
 
 class RetirementFunc(object):
@@ -324,16 +330,20 @@ class RetirementFunc(object):
     Function for representing pLvlNextFunc at retirement.
     '''
     low_point = 0.1  # Dollar value where we switch to lower extrap
-    high_point = 25. # Dollar value where we switch to upper extrap
+    high_point = 20. # Dollar value where we switch to upper extrap
     
     def __init__(self, EducAdj, AIMEmax):
         log_high_point = np.log(self.high_point)
         log_low_point = np.log(self.low_point)
         self.AIMEmax = AIMEmax
         self.LogAIMEfunc = lambda x : LogAIMEfunc(x) + EducAdj
-        self.high_gap = np.log(AIMEmax) - self.LogAIMEfunc(log_high_point)
-        self.high_slope = -LogAIMEfuncDer(log_high_point)
         self.low_slope = np.exp(self.LogAIMEfunc(log_low_point))/self.low_point
+        self.high_slope = -LogAIMEfuncDer(log_high_point)
+        if AIMEmax is not None:
+            self.high_gap = np.log(AIMEmax) - self.LogAIMEfunc(log_high_point)
+        else:
+            self.high_intercept = self.LogAIMEfunc(log_high_point)
+        
         
     def __call__(self, pLvlNow):
         if type(pLvlNow) is float:
@@ -343,14 +353,18 @@ class RetirementFunc(object):
         AIME[low] = pLvlNow[low]*self.low_slope
         high = pLvlNow > self.high_point
         Diff = np.log(pLvlNow[high]) - np.log(self.high_point)
-        LogAIMEhigh = np.log(self.AIMEmax) - self.high_gap*np.exp(self.high_slope/self.high_gap*Diff)
+        if self.AIMEmax is not None:
+            LogAIMEhigh = np.log(self.AIMEmax) - self.high_gap*np.exp(self.high_slope/self.high_gap*Diff)
+        else:
+            LogAIMEhigh = -self.high_slope*Diff + self.high_intercept
         AIME[high] = np.exp(LogAIMEhigh)
         pLvlNext = SSbenefitFunc(AIME)
         return pLvlNext
-    
-RetirementFunc_d = RetirementFunc(-0.0898, 10.68)
-RetirementFunc_h = RetirementFunc(0.0000, 10.68)
-RetirementFunc_c = RetirementFunc(0.0470, 10.68)
+
+AIMEmax = None # Regular: 10.68
+RetirementFunc_d = RetirementFunc(-0.0690, AIMEmax)
+RetirementFunc_h = RetirementFunc(0.0000, AIMEmax)
+RetirementFunc_c = RetirementFunc(0.0316, AIMEmax)
     
 # Construct the probability of getting zero medical need shock by age-health
 ZeroMedExFunc = lambda a : -0.2082171 - 0.0248579*a

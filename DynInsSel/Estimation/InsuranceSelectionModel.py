@@ -828,6 +828,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
     for h in range(HealthCount):
         MedShkPrbs       = MedShkDstn[h][0]
         MedShkVals       = MedShkDstn[h][1]
+        MedShkMax        = np.exp(MedShkAvg[h] + MedShkStd[h]*6.0) # In search for CritShk, never go above this
         MedCount         = MedShkVals.size
         mCount           = EndOfPrdvP.shape[1]
         pCount           = EndOfPrdvP.shape[0]
@@ -987,7 +988,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
                 CritShkPrev = CritShkArray[Unresolved]
                 mLvl_temp = mLvlArray_temp[Unresolved]
                 xLvl_temp = np.minimum(xFunc_temp(mLvl_temp,pLvlArray_temp[Unresolved],CritShkPrev),mLvl_temp)
-                CritShkNew = CritShkFunc(xLvl_temp)
+                CritShkNew = np.minimum(CritShkFunc(xLvl_temp),MedShkMax)
                 DiffNew = np.abs(CritShkNew/CritShkPrev - 1.)
                 DiffArray[Unresolved] = DiffNew
                 CritShkArray[Unresolved] = CritShkNew
@@ -996,14 +997,15 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
                 LoopCount += 1
 #                if LoopCount > 15:
 #                    print(h,z,LoopCount,mLvlArray_temp[Unresolved],xLvl_temp)
-            if LoopCount == LoopMax:
-                print(str(UnresolvedCount) + ' points still unresolved for h=' + str(h) + ', z=' + str(z) + '!')
+#            if LoopCount == LoopMax:
+#               print(str(UnresolvedCount) + ' points still unresolved for h=' + str(h) + ', z=' + str(z) + '!')
 #                ZcritBad = (np.log(CritShkArray[Unresolved]) - MedShkAvg[h])/MedShkStd[h]
 #                CfloorPrbBad = norm.sf(ZcritBad)*(1.-MedShkPrbs[0])
-                print(DiffNew)
+#                print(DiffNew)
                 
             # Make arrays of medical shocks and probabilities, along with Cfloor probs and vFloor values
             AlwaysCfloor = np.logical_not(CritShkArray > 0.)
+#            NeverCfloor = CritShkArray == MedShkMax # If Cfloor is hit less than a billionth of the time, call it "never"
             ZcritArray = (np.log(CritShkArray) - MedShkAvg[h])/MedShkStd[h]
             CfloorPrbArray = norm.sf(ZcritArray)*(1.-MedShkPrbs[0])
             CfloorPrbArray[AlwaysCfloor] = 1.0 # These were shifted down by line above, but that's wrong
@@ -1028,7 +1030,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
                 
             # Make a second array of shocks and probabilities *beyond* the critical shock (only relevant for AV)
             ZadjAltArray = np.maximum(ZcritArray - ZgridBase[1],0.) # Should always be non-negative
-            ZshkAltArray = np.tile(np.reshape(ZgridBase[1:],(1,1,MedCount-1)),(aLvlCount,pLvlCount,1)) + np.tile(np.reshape(ZadjAltArray,(aLvlCount,pLvlCount,1)),(1,1,MedCount-1))
+            ZshkAltArray = np.minimum(np.tile(np.reshape(ZgridBase[1:],(1,1,MedCount-1)),(aLvlCount,pLvlCount,1)) + np.tile(np.reshape(ZadjAltArray,(aLvlCount,pLvlCount,1)),(1,1,MedCount-1)),6.)
             MedShkAltArray = np.exp(ZshkAltArray*MedShkStd[h] + MedShkAvg[h])
             TempPrbAltArray = norm.pdf(ZshkAltArray)
             ReweightAltArray = np.sum(TempPrbAltArray,axis=2)
@@ -1044,6 +1046,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
             AVarrayBig = MedArrayBig*MedPrice - Contract.OOPfunc(MedArrayBig) # realized "actuarial value" below critical shock
             AVarrayAlt = MedArrayAlt*MedPrice - Contract.OOPfunc(MedArrayAlt) # realized "actuarial value" above critical shock
             AVarray  = np.sum(AVarrayBig*ShkPrbsArray,axis=2) + CfloorPrbArray*np.sum(AVarrayAlt*ShkPrbsAltArray,axis=2)
+#            print(np.sum(np.isnan(AVarrayBig)),np.sum(np.isnan(AVarrayAlt)))
             
             # Construct pseudo-inverse arrays of vNvrs and vPnvrs, adding some data at the bottom
             vNvrsFloorBypLvl = uinv(vFloorBypLvl)
@@ -1077,7 +1080,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
             AVfunc = VariableLowerBoundFunc2D(AVfuncBase,mLvlMinNow) # adjust for the lower bound of mLvl
                 
             # Build the marginal value function by putting together the lower and upper portions
-            vPfuncSeam  = LinearInterp(pLvlGrid,mLvlBound)
+            vPfuncSeam  = LinearInterp(pLvlGrid,mLvlBound,lower_extrap=True)
             vPnvrsFuncUpperBase = LinearInterpOnInterp1D(vPnvrsFuncUpper_by_pLvl,pLvlGrid)
             vPnvrsFuncUpper = VariableLowerBoundFunc2D(vPnvrsFuncUpperBase,vPfuncSeam) # adjust for the lower bound of mLvl
             vPfuncUpper = MargValueFunc2D(vPnvrsFuncUpper,CRRA)
@@ -2372,6 +2375,19 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
             plt.plot(mLvl,cEffLvl)
         plt.xlabel('Market resources mLvl')
         plt.ylabel('Effective consumption C(mLvl)')
+        plt.ylim(ymin=0.0)
+        plt.show()
+        
+    def plotAVfuncByContract(self,t,h,p,mMin=0.0,mMax=10.0,Z=None):
+        print('Actuarial value function by contract:')
+        mLvl = np.linspace(mMin,mMax,200)
+        if Z is None:
+            Z = range(len(self.solution[t].AVfunc[h]))
+        for z in Z:
+            f = lambda x : self.solution[t].AVfunc[h][z].func(x,p*np.ones_like(x))
+            plt.plot(mLvl,f(mLvl))
+        plt.xlabel('Market resources mLvl')
+        plt.ylabel('Contract actuarial value')
         plt.ylim(ymin=0.0)
         plt.show()
         

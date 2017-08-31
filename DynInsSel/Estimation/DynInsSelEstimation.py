@@ -416,6 +416,7 @@ def makeDynInsSelType(CRRAcon,CRRAmed,DiscFac,ChoiceShkMag,MedShkMeanAgeParams,M
     TypeDict['ChoiceShkMag'] = Params.AgeCount*[ChoiceShkMag]
                           
     # Make arrays of medical shock means and standard deviations
+    Taper = 1
     MedShkMeanArray = np.zeros((5,Params.AgeCount)) + np.nan
     MedShkStdArray  = np.zeros((5,Params.AgeCount)) + np.nan
     AgeArray = np.arange(Params.AgeCount,dtype=float)
@@ -441,8 +442,41 @@ def makeDynInsSelType(CRRAcon,CRRAmed,DiscFac,ChoiceShkMag,MedShkMeanAgeParams,M
     MedShkStdArray[2,:] = np.exp(MedShkStdGDfunc(AgeArray))
     MedShkStdArray[1,:] = np.exp(MedShkStdFRfunc(AgeArray))
     MedShkStdArray[0,:] = np.exp(MedShkStdPRfunc(AgeArray))
-    MedShkMeanArray[:,60:] = np.tile(np.reshape(MedShkMeanArray[:,60],(5,1)),(1,35)) # Hold distribution constant after age 85
-    MedShkStdArray[:,60:] = np.tile(np.reshape(MedShkStdArray[:,60],(5,1)),(1,35))
+    if Taper > 0:
+        MedShkMeanEX85 = MedShkMeanEXfunc(60.)
+        MedShkMeanVG85 = MedShkMeanVGfunc(60.)
+        MedShkMeanGD85 = MedShkMeanGDfunc(60.)
+        MedShkMeanFR85 = MedShkMeanFRfunc(60.)
+        MedShkMeanPR85 = MedShkMeanPRfunc(60.)
+        MedShkSlopeEX85 = MedShkMeanAgeParams[1] + 2*MedShkMeanAgeParams[2]*60 + 3*MedShkMeanAgeParams[3]*60**2 + 3*MedShkMeanAgeParams[4]*60**3
+        MedShkSlopeVG85 = MedShkSlopeEX85 + MedShkMeanVGparams[1]
+        MedShkSlopeGD85 = MedShkSlopeVG85 + MedShkMeanGDparams[1]
+        MedShkSlopeFR85 = MedShkSlopeGD85 + MedShkMeanFRparams[1]
+        MedShkSlopePR85 = MedShkSlopeFR85 + MedShkMeanPRparams[1]
+        EX_A = -MedShkSlopeEX85/70.
+        EX_B = 19./7.*MedShkSlopeEX85
+        EX_C = MedShkMeanEX85 - 3600*EX_A - 60*EX_B        
+        VG_A = -MedShkSlopeVG85/70.
+        VG_B = 19./7.*MedShkSlopeVG85
+        VG_C = MedShkMeanVG85 - 3600*VG_A - 60*VG_B        
+        GD_A = -MedShkSlopeGD85/70.
+        GD_B = 19./7.*MedShkSlopeGD85
+        GD_C = MedShkMeanGD85 - 3600*GD_A - 60*GD_B        
+        FR_A = -MedShkSlopeFR85/70.
+        FR_B = 19./7.*MedShkSlopeFR85
+        FR_C = MedShkMeanFR85 - 3600*FR_A - 60*FR_B        
+        PR_A = -MedShkSlopePR85/70.
+        PR_B = 19./7.*MedShkSlopePR85
+        PR_C = MedShkMeanPR85 - 3600*PR_A - 60*PR_B
+        MedShkMeanArray[4,60:] = EX_A*AgeArray[60:]**2 + EX_B*AgeArray[60:] + EX_C
+        MedShkMeanArray[3,60:] = VG_A*AgeArray[60:]**2 + VG_B*AgeArray[60:] + VG_C
+        MedShkMeanArray[2,60:] = GD_A*AgeArray[60:]**2 + GD_B*AgeArray[60:] + GD_C
+        MedShkMeanArray[1,60:] = FR_A*AgeArray[60:]**2 + FR_B*AgeArray[60:] + FR_C
+        MedShkMeanArray[0,60:] = PR_A*AgeArray[60:]**2 + PR_B*AgeArray[60:] + PR_C
+                
+    if Taper > 1:
+        MedShkMeanArray[:,60:] = np.tile(np.reshape(MedShkMeanArray[:,60],(5,1)),(1,35)) # Hold distribution constant after age 85
+        MedShkStdArray[:,60:] = np.tile(np.reshape(MedShkStdArray[:,60],(5,1)),(1,35))
     TypeDict['MedShkAvg'] = MedShkMeanArray.transpose().tolist()
     TypeDict['MedShkStd'] = MedShkStdArray.transpose().tolist()
     
@@ -459,10 +493,10 @@ def makeDynInsSelType(CRRAcon,CRRAmed,DiscFac,ChoiceShkMag,MedShkMeanAgeParams,M
         WorkingContractList.append(MedInsuranceContract(ConstantFunction(0.0),0.0,1.0,Params.MedPrice))
         Premium = max([PremiumArray[0] - PremiumSubsidy,0.0])
         Copay = 0.1
-        Deductible = 0.025
+        Deductible = 0.00
         WorkingContractList.append(MedInsuranceContract(ConstantFunction(Premium),Deductible,Copay,Params.MedPrice))
     else:
-        WorkingContractList.append(MedInsuranceContract(ConstantFunction(0.0),0.05,0.05,Params.MedPrice))
+        WorkingContractList.append(MedInsuranceContract(ConstantFunction(0.0),0.00,0.1,Params.MedPrice))
         
     RetiredContractListA = [MedInsuranceContract(ConstantFunction(0.0),0.0,0.05,Params.MedPrice)]
     #RetiredContractListB = [MedInsuranceContract(ConstantFunction(0.0),0.2,0.05,Params.MedPrice)]
@@ -646,7 +680,7 @@ if __name__ == '__main__':
 
 # This block of code is for testing one type of agent
     t_start = clock()
-    InsChoice = 1
+    InsChoice = 0
     SubsidyTypeCount = 1
     CRRAtypeCount = 1
     ZeroSubsidyBool = False
@@ -660,7 +694,7 @@ if __name__ == '__main__':
     MyType = MyMarket.agents[0] 
     MyType.solve()
        
-    t = -51
+    t = -56
     p = 1.0    
     h = 4        
     MedShk = 1.0e-2
