@@ -691,10 +691,13 @@ if __name__ == '__main__':
     t_end = clock()
     print('Making the agents took ' + mystr(t_end-t_start) + ' seconds.')
     
+    t_start = clock()
     MyType = MyMarket.agents[0] 
     MyType.solve()
+    t_end = clock()
+    print('Solving one agent type took ' + str(t_end-t_start) + ' seconds.')
        
-    t = -56
+    t = 0
     p = 1.0    
     h = 4        
     MedShk = 1.0e-2
