@@ -22,7 +22,7 @@ from ConsIndShockModel import ValueFunc
 from ConsPersistentShockModel import ValueFunc2D, MargValueFunc2D, MargMargValueFunc2D
 from ConsMarkovModel import MarkovConsumerType
 from ConsIndShockModel import constructLognormalIncomeProcessUnemployment
-from JorgensenDruedahl import makeJDxLvlLayer, makeGridDenser
+from JorgensenDruedahl import makeJDxLvlLayer, makeGridDenser, JDfixer
 import matplotlib.pyplot as plt
 from scipy.stats import norm
                                      
@@ -771,7 +771,11 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
     pLvlCount = pLvlGrid.size
     aLvlCount   = aXtraGrid.size
     HealthCount = len(LivPrb) # number of discrete health states
+    
+    # Make a JDfixer instance to use when necessary
     mGridDenseBase = makeGridDenser(aXtraGrid,mLvl_aug_factor)
+    ShkGridDenseExample = makeGridDenser(MedShkDstn[0][1],MedShk_aug_factor)
+    MyJDfixer = JDfixer(aLvlCount+1,MedShkDstn[0][1].size,mGridDenseBase.size,ShkGridDenseExample.size)
     
     # Define utility function derivatives and inverses
     u = lambda x : utility(x,CRRA)
@@ -944,7 +948,8 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
                     if pLvl_i == 0.0:
                         pLvl_i = pLvlGrid[i+1]
                     mGridDense = mGridDenseBase*pLvl_i
-                    xFunc_by_pLvl.append(makeJDxLvlLayer(mLvl_data,MedShk_data,vNvrs_data,xLvl_data,mGridDense,ShkGridDense))
+                    #xFunc_by_pLvl.append(makeJDxLvlLayer(mLvl_data,MedShk_data,vNvrs_data,xLvl_data,mGridDense,ShkGridDense))
+                    xFunc_by_pLvl.append(MyJDfixer(mLvl_data,MedShk_data,vNvrs_data,xLvl_data,mGridDense,ShkGridDense))
                     mLvlNow[:,i,0] = 0.0 # This fixes the "seam" problem so there are no NaNs
                     #t1 = clock()
                     #print('JD fix took ' + str(t1-t0) + ' seconds.')

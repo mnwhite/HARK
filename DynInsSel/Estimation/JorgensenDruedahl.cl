@@ -50,9 +50,9 @@ __kernel void doJorgensenDruedahlFix(
     double mMax;
     double ShkMin;
     double ShkMax;
-    double vNew;
+    double vNew = 0.0;
     double xNew;
-    double3 SectorWeights;
+    double3 SectorWeights = (double3)(0.0,0.0,0.0);
     int IdxA;
     int IdxB;
     int IdxC;
