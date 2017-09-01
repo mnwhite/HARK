@@ -75,6 +75,15 @@ class TwistFuncB(HARKobject):
     def __call__(self,x,y,z):
         return self.func(x,z,y)
     
+    def derivativeX(self,x,y,z):
+        return self.func.derivativeX(x,z,y)
+    
+    def derivativeY(self,x,y,z):
+        return self.func.derivativeY(x,z,y)
+    
+    def derivativeZ(self,x,y,z):
+        return self.func.derivativeZ(x,z,y)
+    
 
 class MargCostFunc(HARKobject):
     '''
@@ -392,6 +401,57 @@ class InsSelPolicyFunc(HARKobject):
         else:
             return cLvl, MedLvl
         
+    def xFunc(self,mLvl,pLvl,MedShk):
+        '''
+        Evaluate the expenditure function for this contract.
+        
+        Parameters
+        ----------
+        mLvl : np.array
+             Market resource levels.
+        pLvl : np.array
+             Permanent income levels.
+        MedShk : np.array
+             Medical need shocks.
+             
+        Returns
+        -------
+        xLvl : np.array
+            Optimal expenditure at each point in the input.
+        '''
+        if mLvl.shape is ():
+            mLvl = np.array([mLvl])
+            pLvl = np.array([pLvl])
+            MedShk = np.array([MedShk])
+            float_in = True
+        else:
+            float_in = False
+        
+        # Get value of paying full price or paying "option cost" to pay coinsurance rate
+        mTemp = mLvl-self.OptionCost
+        v_Copay = self.ValueFuncCopay(mTemp,pLvl,MedShk)
+        v_Copay[mTemp < 0.] = -np.inf
+        if self.OptionCost > 0.:
+            v_FullPrice = self.ValueFuncFullPrice(mLvl,pLvl,MedShk)
+        
+        # Decide which option is better and initialize output
+        if self.OptionCost > 0.:
+            Copay_better = v_Copay > v_FullPrice
+        else:
+            Copay_better = np.ones_like(v_Copay,dtype=bool)
+        FullPrice_better = np.logical_not(Copay_better)
+        xLvl = np.zeros_like(mTemp)
+        
+        # Fill in output using better of two choices
+        xLvl[Copay_better] = self.PolicyFuncCopay.xFunc(mTemp[Copay_better],pLvl[Copay_better],MedShk[Copay_better])
+        xLvl[FullPrice_better] = self.PolicyFuncFullPrice.xFunc(mLvl[FullPrice_better],pLvl[FullPrice_better],MedShk[FullPrice_better])
+        
+        if float_in:
+            return xLvl[0]
+        else:
+            return xLvl       
+        
+
     def evalvAndvPandvPP(self,mLvl,pLvl,MedShk):
         '''
         Evaluate the value, marginal value, and marginal marginal value for this contract.
@@ -429,16 +489,11 @@ class InsSelPolicyFunc(HARKobject):
         FullPrice_better = np.logical_not(Copay_better)
         cLvl = np.zeros_like(mLvl)
         MedLvl = np.zeros_like(mLvl)
-        #MPC = np.zeros_like(mLvl)
-        #if np.sum(FullPrice_better > 0):
-        #    print(np.sum(FullPrice_better > 0))
         
         # Fill in output using better of two choices
         cLvl[Copay_better], MedLvl[Copay_better] = self.PolicyFuncCopay(mTemp[Copay_better],pLvl[Copay_better],MedShk[Copay_better])
         cLvl[FullPrice_better], MedLvl[FullPrice_better] = self.PolicyFuncFullPrice(mLvl[FullPrice_better],pLvl[FullPrice_better],MedShk[FullPrice_better])
-        #MPC[Copay_better], trash1 = self.PolicyFuncCopay.derivativeX(mLvl[Copay_better]-self.OptionCost,pLvl[Copay_better],MedShk[Copay_better])
-        #MPC[FullPrice_better], trash2 = self.PolicyFuncFullPrice.derivativeX(mLvl[FullPrice_better],pLvl[FullPrice_better],MedShk[FullPrice_better])
-        
+
         # Find the marginal cost of achieving this effective consumption level
         ShkZero = MedShk==0.
         cEffLvl = (1.-np.exp(-MedLvl/MedShk))**self.CRRAmed*cLvl
@@ -450,7 +505,6 @@ class InsSelPolicyFunc(HARKobject):
         # Calculate value and marginal value and return them
         v   = np.maximum(v_Copay,v_FullPrice)
         vP  = utilityP(cEffLvl,self.ValueFuncFullPrice.CRRA)/Dp
-        #vPP = utilityPP(cLvl,self.ValueFuncFullPrice.CRRA)*MPC
         vPP = np.zeros_like(vP) # Don't waste time calculating
         return v, vP, vPP
         
@@ -986,22 +1040,25 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
             LoopMax = 30
             while (UnresolvedCount > 0) and (LoopCount < LoopMax): # Loop until all points have converged on CritShk
                 CritShkPrev = CritShkArray[Unresolved]
-                mLvl_temp = mLvlArray_temp[Unresolved]
-                xLvl_temp = np.minimum(xFunc_temp(mLvl_temp,pLvlArray_temp[Unresolved],CritShkPrev),mLvl_temp)
-                CritShkNew = np.minimum(CritShkFunc(xLvl_temp),MedShkMax)
-                DiffNew = np.abs(CritShkNew/CritShkPrev - 1.)
+                mLvl_temp = mLvlArray_temp[Unresolved]                
+                if LoopCount > 10: # Use Newton's method after a few iterations
+                    xLvl_temp = np.minimum(xFunc_temp(mLvl_temp,pLvlArray_temp[Unresolved],CritShkPrev),mLvl_temp)
+                    CritShk_temp = np.minimum(CritShkFunc(xLvl_temp),MedShkMax)
+                    Target_diff = CritShk_temp - CritShkPrev # This is the expression we want to be zero
+                    Target_slope = xFunc_temp.derivativeZ(mLvl_temp,pLvlArray_temp[Unresolved],CritShkPrev)*CritShkFunc.derivative(xLvl_temp) - 1.
+                    CritShkNew = CritShkPrev - Target_diff/Target_slope
+                    DiffNew = np.abs(CritShkNew/CritShkPrev - 1.)
+                else: # Use fixed point iteration for first few iterations
+                    xLvl_temp = np.minimum(xFunc_temp(mLvl_temp,pLvlArray_temp[Unresolved],CritShkPrev),mLvl_temp)
+                    CritShkNew = np.minimum(CritShkFunc(xLvl_temp),MedShkMax)
+                    DiffNew = np.abs(CritShkNew/CritShkPrev - 1.)                
                 DiffArray[Unresolved] = DiffNew
                 CritShkArray[Unresolved] = CritShkNew
                 Unresolved[Unresolved] = DiffNew > DiffTol
                 UnresolvedCount = np.sum(Unresolved)
                 LoopCount += 1
-#                if LoopCount > 15:
-#                    print(h,z,LoopCount,mLvlArray_temp[Unresolved],xLvl_temp)
 #            if LoopCount == LoopMax:
-#               print(str(UnresolvedCount) + ' points still unresolved for h=' + str(h) + ', z=' + str(z) + '!')
-#                ZcritBad = (np.log(CritShkArray[Unresolved]) - MedShkAvg[h])/MedShkStd[h]
-#                CfloorPrbBad = norm.sf(ZcritBad)*(1.-MedShkPrbs[0])
-#                print(DiffNew)
+#                print(str(UnresolvedCount) + ' points still unresolved for h=' + str(h) + ', z=' + str(z) + '!')
                 
             # Make arrays of medical shocks and probabilities, along with Cfloor probs and vFloor values
             AlwaysCfloor = np.logical_not(CritShkArray > 0.)
@@ -1022,6 +1079,10 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
             # Get value and marginal value at an array of states
             vArrayBig, vParrayBig, vPParrayBig = policyFuncsThisHealth[-1].evalvAndvPandvPP(mLvlArray,pLvlArray,MedShkArray)
             ConArrayBig, MedArrayBig = policyFuncsThisHealth[-1](mLvlArray,pLvlArray,MedShkArray)
+            
+            # Fix tiny non-monotonicities in value near the Cfloor seam
+            vFloor_tiled = np.tile(np.reshape(vFloorBypLvl,(1,pLvlCount,1)),(aLvlCount,1,MedCount))
+            vArrayBig = np.maximum(vArrayBig,vFloor_tiled)
                         
             # Integrate (marginal) value across medical shocks
             vArray   = np.sum(vArrayBig*ShkPrbsArray,axis=2) + CfloorPrbArray*np.tile(np.reshape(vFloorBypLvl,(1,pLvlCount)),(aLvlCount,1))
@@ -2362,6 +2423,18 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
             plt.plot(mLvl,MedLvl)
         plt.xlabel('Market resources mLvl')
         plt.ylabel('Medical care Med(mLvl)')
+        plt.ylim(ymin=0.0)
+        plt.show()
+        
+    def plotxFuncByMedShk(self,t,h,z,p,mMin=0.0,mMax=10.0,MedShkSet=None):        
+        mLvl = np.linspace(mMin,mMax,200)
+        if MedShkSet is None:
+            MedShkSet = self.MedShkDstn[t][h][1]
+        for MedShk in MedShkSet:            
+            xLvl = self.solution[t].policyFunc[h][z].xFunc(mLvl,p*np.ones_like(mLvl),MedShk*np.ones_like(mLvl))
+            plt.plot(mLvl,xLvl)
+        plt.xlabel('Market resources mLvl')
+        plt.ylabel('Expenditure x(mLvl)')
         plt.ylim(ymin=0.0)
         plt.show()
         

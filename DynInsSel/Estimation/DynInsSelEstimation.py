@@ -709,6 +709,7 @@ if __name__ == '__main__':
 #    MyType.plotcFuncByContract(t,h,p,MedShk)
     MyType.plotcFuncByMedShk(t,h,z,p)
     MyType.plotMedFuncByMedShk(t,h,z,p)
+    MyType.plotxFuncByMedShk(t,h,z,p)
     MyType.plotcEffFuncByMedShk(t,h,z,p)
   
 ## This block of code is for displaying moment fits after running objectiveFunc  
