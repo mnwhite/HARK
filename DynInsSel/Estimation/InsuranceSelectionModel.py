@@ -779,12 +779,10 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
     
     # Define utility function derivatives and inverses
     u = lambda x : utility(x,CRRA)
-    #uP = lambda x : utilityP(x,CRRA)
-    #uPP = lambda x : utilityPP(x,CRRA)
+    uP = lambda x : utilityP(x,CRRA)
     uPinv = lambda x : utilityP_inv(x,CRRA)
     uinvP = lambda x : utility_invP(x,CRRA)
     uinv = lambda x : utility_inv(x,CRRA)
-    uPinvP = lambda x : utilityP_invP(x,CRRA)
     
     # For each future health state, find the minimum allowable end of period assets by permanent income    
     aLvlMinCond = np.zeros((pLvlCount,HealthCount))
@@ -1128,7 +1126,6 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
             vPnvrsFuncUpper_by_pLvl = []
             vPfuncLower_by_pLvl = []
             AVfunc_by_pLvl = []
-            mLvlMinGrid = mLvlMinNow(pLvlGrid)
             for j in range(pLvlCount): # Make a pseudo inverse marginal value function for each pLvl
                 vPfuncLower_by_pLvl.append(LinearInterp(np.array([0.,Cfloor,mLvlBound[j]]),np.array([0.,0.,vParray[0,j]])))
                 m_temp_A = mGrid_small_A[:,j]
@@ -1162,20 +1159,23 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
             vFunc = vFuncsThisHealth[0] # only element
             vPfunc = vPfuncsThisHealth[0] # only element
         else: # If there is more than one contract available, take expectation over choice shock.
+            mLvlGrid = mGridDenseBase
+            mLvlCount = mLvlGrid.size
+        
             # Make grids to prepare for the choice shock step
-            tempArray    = np.tile(np.reshape(aXtraGrid,(aLvlCount,1)),(1,pLvlCount))
-            mMinArray    = np.tile(np.reshape(mLvlMinNow(pLvlGrid),(1,pLvlCount)),(aLvlCount,1))
-            pLvlArray    = np.tile(np.reshape(pLvlGrid,(1,pLvlCount)),(aLvlCount,1))
-            mLvlArray    = mMinArray + tempArray*pLvlArray
+            tempArray    = np.tile(np.reshape(mLvlGrid,(mLvlCount,1)),(1,pLvlCount))
+            mMinArray    = np.tile(np.reshape(mLvlMinNow(pLvlGrid),(1,pLvlCount)),(mLvlCount,1))
+            pLvlArray    = np.tile(np.reshape(pLvlGrid,(1,pLvlCount)),(mLvlCount,1))
+            mLvlArray    = mMinArray + tempArray*pLvlArray + Cfloor
             if pLvlGrid[0] == 0.0: # Fix the problem of all mLvls = 0 when pLvl = 0
                 mLvlArray[:,0] = mLvlArray[:,1]
             
             # Get value and marginal value at each point in mLvl x pLvl at each contract, taking account of premiums paid
-            vArrayBig   = np.zeros((aLvlCount,pLvlCount,len(ContractList[h]))) # value at each gridpoint for each contract
-            vParrayBig  = np.zeros((aLvlCount,pLvlCount,len(ContractList[h]))) # marg value at each gridpoint for each contract
-            vPParrayBig = np.zeros((aLvlCount,pLvlCount,len(ContractList[h]))) # marg marg value at each gridpoint for each contract
-            AdjusterArray = np.zeros((aLvlCount,pLvlCount,len(ContractList[h]))) # (1 - dPremium/dmLvl), usually equals 1
-            UnaffordableArray = np.zeros((aLvlCount,pLvlCount,len(ContractList[h])),dtype=bool)
+            vArrayBig   = np.zeros((mLvlCount,pLvlCount,len(ContractList[h]))) # value at each gridpoint for each contract
+            vParrayBig  = np.zeros((mLvlCount,pLvlCount,len(ContractList[h]))) # marg value at each gridpoint for each contract
+            vPParrayBig = np.zeros((mLvlCount,pLvlCount,len(ContractList[h]))) # marg marg value at each gridpoint for each contract
+            AdjusterArray = np.zeros((mLvlCount,pLvlCount,len(ContractList[h]))) # (1 - dPremium/dmLvl), usually equals 1
+            UnaffordableArray = np.zeros((mLvlCount,pLvlCount,len(ContractList[h])),dtype=bool)
             for z in range(len(ContractList[h])):
                 Contract = ContractList[h][z]
                 PremiumArray = Contract.Premium(mLvlArray,pLvlArray)
@@ -1191,75 +1191,62 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
             vNvrsArrayBig  = uinv(vArrayBig)
             vNvrsParrayBig = AdjusterArray*vParrayBig*uinvP(vArrayBig)
             vPnvrsArrayBig = uPinv(AdjusterArray*vParrayBig)
-            if CubicBool:
-                Temp = np.zeros_like(AdjusterArray)
-                for z in range(len(ContractList[h])):
-                    Contract = ContractList[h][z]
-                    Temp[:,:,z] = Contract.Premium.derivativeXX(mLvlArray,pLvlArray)
-                vPnvrsParrayBig = (AdjusterArray*vPParrayBig - Temp*vParrayBig)*uPinvP(AdjusterArray*vParrayBig)
                 
             # Fix the unaffordable points so they don't generate NaNs near bottom
             vNvrsArrayBig[UnaffordableArray] = -np.inf
             vNvrsParrayBig[UnaffordableArray] = 0.0
             vPnvrsArrayBig[UnaffordableArray] = 0.0
-            if CubicBool:
-                vPnvrsParrayBig[UnaffordableArray] = 0.0
             
             # Weight each gridpoint by its contract probabilities
             if ChoiceShkMag > 0.0:
                 v_best = np.max(vNvrsArrayBig,axis=2)
-                v_best_tiled = np.tile(np.reshape(v_best,(aLvlCount,pLvlCount,1)),(1,1,len(ContractList[h])))
+                v_best_tiled = np.tile(np.reshape(v_best,(mLvlCount,pLvlCount,1)),(1,1,len(ContractList[h])))
                 vNvrsArrayBig_adjexp = np.exp((vNvrsArrayBig - v_best_tiled)/ChoiceShkMag)
                 vNvrsArrayBig_adjexpsum = np.sum(vNvrsArrayBig_adjexp,axis=2)
                 vNvrsArray = ChoiceShkMag*np.log(vNvrsArrayBig_adjexpsum) + v_best
-                ContractPrbs = vNvrsArrayBig_adjexp/np.tile(np.reshape(vNvrsArrayBig_adjexpsum,(aLvlCount,pLvlCount,1)),(1,1,len(ContractList[h])))
+                ContractPrbs = vNvrsArrayBig_adjexp/np.tile(np.reshape(vNvrsArrayBig_adjexpsum,(mLvlCount,pLvlCount,1)),(1,1,len(ContractList[h])))
                 vNvrsParray = np.sum(ContractPrbs*vNvrsParrayBig,axis=2)
                 vPnvrsArray = uPinv(vNvrsParray)*vNvrsArray
-                if CubicBool:
-                    vPnvrsParray = np.sum(ContractPrbs*vPnvrsParrayBig,axis=2)
             else:
                 z_choice = np.argmax(vNvrsArrayBig,axis=2)
-                vNvrsArray = np.zeros((aLvlCount,pLvlCount))
-                vPnvrsArray = np.zeros((aLvlCount,pLvlCount))
+                vNvrsArray = np.zeros((mLvlCount,pLvlCount))
+                vPnvrsArray = np.zeros((mLvlCount,pLvlCount))
                 for z in range(len(ContractList[h])): ### THIS CAN BE ACCELERATED WITHOUT THE LOOP #####
                     these = z_choice == z
                     vNvrsArray[these] = vNvrsArrayBig[:,:,z][these]
                     vPnvrsArray[these] = vPnvrsArrayBig[:,:,z][these]
                         
             # Make value and marginal value functions for the very beginning of the period, before choice shocks are drawn
+            vNvrsArray_plus = np.concatenate((np.tile(np.reshape(vNvrsFloorBypLvl,(1,pLvlCount)),(2,1)),vNvrsArray),axis=0)
             vNvrsFuncs_by_pLvl = []
-            vPnvrsFuncs_by_pLvl = []
-            mLvlMinGrid = mLvlMinNow(pLvlGrid)
+            vPfuncs_Lower_by_pLvl = []
+            vPnvrsFuncs_Upper_by_pLvl = []
+            m_extra = np.array([0.,Cfloor]) # Add this onto m_temp when making vNvrsFunc
             for j in range(pLvlCount): # Make 1D functions by pLvl
-                m_temp = np.insert(mLvlArray[:,j] - mLvlMinGrid[j],0,0.0)
-                vNvrs_temp   = np.insert(vNvrsArray[:,j],0,0.0)
-                #vNvrsP_temp  = np.insert(vNvrsParray[:,j],0,vNvrsParray[0,j])
-                #vNvrsFuncs_by_pLvl.append(CubicInterp(m_temp,vNvrs_temp,vNvrsP_temp))
-                vNvrsFuncs_by_pLvl.append(LinearInterp(m_temp,vNvrs_temp))
-                vPnvrs_temp  = np.insert(vPnvrsArray[:,j],0,0.0)
-                if CubicBool:
-                    vPnvrsP_temp = np.insert(vPnvrsParray[:,j],0,vPnvrsParray[0,j])
-                    vPnvrsFuncs_by_pLvl.append(CubicInterp(m_temp,vPnvrs_temp,vPnvrsP_temp))
-                else:
-                    vPnvrsFuncs_by_pLvl.append(LinearInterp(m_temp,vPnvrs_temp))
+                m_temp_A = np.concatenate((m_extra,mLvlArray[:,j])) # For vNvrs
+                m_temp_B = mLvlArray[:,j] - mLvlArray[0,j] # For vPnvrsUpper
+                vNvrs_temp = vNvrsArray_plus[:,j]
+                vNvrsFuncs_by_pLvl.append(LinearInterp(m_temp_A,vNvrs_temp))
+                vPnvrs_temp = vPnvrsArray[:,j]
+                vPnvrsFuncs_Upper_by_pLvl.append(LinearInterp(m_temp_B,vPnvrs_temp))
+                vPfuncs_Lower_by_pLvl.append(LinearInterp(np.array([0.,Cfloor,mLvlArray[0,j]]),np.array([0.,0.,uP(vPnvrs_temp[0])])))
             
-            # Combine across pLvls and re-curve the functions
-            vPnvrsFuncBase = LinearInterpOnInterp1D(vPnvrsFuncs_by_pLvl,pLvlGrid)
-            vPnvrsFunc     = VariableLowerBoundFunc2D(vPnvrsFuncBase,mLvlMinNow)
-            vPfunc         = MargValueFunc2D(vPnvrsFunc,CRRA)
+            # Combine across pLvls and re-curve the value function
             vNvrsFuncBase  = LinearInterpOnInterp1D(vNvrsFuncs_by_pLvl,pLvlGrid)
             vNvrsFunc      = VariableLowerBoundFunc2D(vNvrsFuncBase,mLvlMinNow)
             vFunc          = ValueFunc2D(vNvrsFunc,CRRA)
-            if CubicBool:
-                vPPfunc    = MargMargValueFunc2D(vPnvrsFunc,CRRA)
+            
+            # Construct the marginal value function by combining the upper and lower portions
+            vPfuncSeam = LinearInterp(pLvlGrid,mLvlArray[0,:],lower_extrap=True)
+            vPnvrsFuncUpperBase = LinearInterpOnInterp1D(vPnvrsFuncs_Upper_by_pLvl,pLvlGrid)
+            vPnvrsFuncUpper     = VariableLowerBoundFunc2D(vPnvrsFuncUpperBase,vPfuncSeam)
+            vPfuncUpper         = MargValueFunc2D(vPnvrsFuncUpper,CRRA)
+            vPfuncLower         = LinearInterpOnInterp1D(vPfuncs_Lower_by_pLvl,pLvlGrid)
+            vPfunc              = CompositeFunc2D(vPfuncLower,vPfuncUpper,vPfuncSeam)
             
         # Make the human wealth function for this health state and add solution to output
         hLvl_h = LinearInterp(np.insert(pLvlGrid,0,0.0),np.insert(hLvlGrid[:,h],0,0.0))
-        if CubicBool:
-            solution_now.appendSolution(vFunc=vFunc,vPfunc=vPfunc,vPPfunc=vPPfunc,hLvl=hLvl_h,AVfunc=AVfuncsThisHealth,
-                                        policyFunc=policyFuncsThisHealth,vFuncByContract=vFuncsThisHealth)
-        else:
-            solution_now.appendSolution(vFunc=vFunc,vPfunc=vPfunc,hLvl=hLvl_h,AVfunc=AVfuncsThisHealth,
+        solution_now.appendSolution(vFunc=vFunc,vPfunc=vPfunc,hLvl=hLvl_h,AVfunc=AVfuncsThisHealth,
                                         policyFunc=policyFuncsThisHealth,vFuncByContract=vFuncsThisHealth)
     
     # Return the solution for this period
@@ -1855,14 +1842,8 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
                     m_temp_A = mGrid_small_A[:,j]
                     m_temp_B = mGrid_small_B[:,j]
                     vPnvrs_temp = vPnvrsArray[:,j]
-                    if self.CubicBool:
-                        vPnvrsP_temp = vPnvrsParray[:,j]
-                        vPnvrsFuncUpper_by_pLvl.append(CubicInterp(m_temp_B,vPnvrs_temp,vPnvrsP_temp))
-                    else:
-                        vPnvrsFuncUpper_by_pLvl.append(LinearInterp(m_temp_B,vPnvrs_temp))
+                    vPnvrsFuncUpper_by_pLvl.append(LinearInterp(m_temp_B,vPnvrs_temp))
                     vNvrs_temp  = vNvrsArray[:,j]
-                    #vNvrsP_temp = vNvrsParray[:,j]
-                    #vNvrsFunc_by_pLvl.append(CubicInterp(m_temp,vNvrs_temp,vNvrsP_temp))
                     vNvrsFunc_by_pLvl.append(LinearInterp(m_temp_A,vNvrs_temp))
                 vNvrsFunc  = LinearInterpOnInterp1D(vNvrsFunc_by_pLvl,pLvlGrid)
                 vFuncThisContract = ValueFunc2D(vNvrsFunc,CRRA) # Recurve the value function

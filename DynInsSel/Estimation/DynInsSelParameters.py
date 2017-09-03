@@ -438,7 +438,7 @@ CollegeDictionary['pLvlNextFuncRet'] = RetirementFunc_c
 test_param_vec = np.array([0.955, # DiscFac
                           2.35,  # CRRAcon
                            8.0,  # CRRAmed 
-                          -2.5,  # ChoiceShkMag in log
+                       -np.inf,  # ChoiceShkMag in log
                            2.6,  # SubsidyZeroRate scaler
                           -1.6,  # SubsidyAvg
                           -3.0,  # SubsidyWidth scaler

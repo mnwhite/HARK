@@ -684,7 +684,7 @@ if __name__ == '__main__':
     SubsidyTypeCount = 1
     CRRAtypeCount = 1
     ZeroSubsidyBool = False
-    MyMarket = makeMarketFromParams(Params.test_param_vec,np.array([0.0, 0.0, 0.0, 0.0, 0.0]),InsChoice,SubsidyTypeCount,CRRAtypeCount,ZeroSubsidyBool)
+    MyMarket = makeMarketFromParams(Params.test_param_vec,np.array([0.5, 0.0, 0.0, 0.0, 0.0]),InsChoice,SubsidyTypeCount,CRRAtypeCount,ZeroSubsidyBool)
     multiThreadCommandsFake(MyMarket.agents,['update()','makeShockHistory()'])
     MyMarket.getIncomeQuintiles()
     multiThreadCommandsFake(MyMarket.agents,['makeIncBoolArray()'])
@@ -705,7 +705,7 @@ if __name__ == '__main__':
     
     MyType.plotvFunc(t,p,decurve=False)
     MyType.plotvPfunc(t,p,decurve=False)
-#    MyType.plotvFuncByContract(t,h,p)
+    MyType.plotvFuncByContract(t,h,p)
 #    MyType.plotcFuncByContract(t,h,p,MedShk)
     MyType.plotcFuncByMedShk(t,h,z,p)
     MyType.plotMedFuncByMedShk(t,h,z,p)
