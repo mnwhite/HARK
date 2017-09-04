@@ -435,28 +435,28 @@ CollegeDictionary['pLvlInitMean'] = pLvlInitMean_c
 CollegeDictionary['pLvlNextFuncRet'] = RetirementFunc_c
 
 # Make a test parameter vector for estimation
-test_param_vec = np.array([0.955, # DiscFac
+test_param_vec = np.array([0.972, # DiscFac
                           2.35,  # CRRAcon
                            8.0,  # CRRAmed 
                        -np.inf,  # ChoiceShkMag in log
                            2.6,  # SubsidyZeroRate scaler
                           -1.6,  # SubsidyAvg
                           -3.0,  # SubsidyWidth scaler
-                          -5.4,  # MedShkMean constant coefficient
+                         -5.55,  # MedShkMean constant coefficient
                          0.017,  # MedShkMean linear age coefficient
                        0.00045,  # MedShkMean quadratic age coefficient
                      -0.000000,  # MedShkMean cubic age coefficient
                    -0.00000000,  # MedShkMean quartic age coefficient
-                          0.25,  # MedShkMean "very good" constant coefficient
+                          0.40,  # MedShkMean "very good" constant coefficient
                            0.0,  # MedShkMean "very good" linear coefficient
-                          0.25,  # MedShkMean "good" constant coefficient
+                          0.30,  # MedShkMean "good" constant coefficient
                          0.003,  # MedShkMean "good" linear coefficient
-                          0.40,  # MedShkMean "fair" constant coefficient
+                          0.45,  # MedShkMean "fair" constant coefficient
                          0.005,  # MedShkMean "fair" linear coefficient
                            1.5,  # MedShkMean "poor" constant coefficient
                         -0.016,  # MedShkMean "poor" linear coefficient
-                           0.4,  # MedShkStd constant coefficient
-                         0.001,  # MedShkStd linear age coefficient
+                          0.47,  # MedShkStd constant coefficient
+                         0.000,  # MedShkStd linear age coefficient
                            0.0,  # MedShkStd quadratic age coefficient
                            0.0,  # MedShkStd cubic age coefficient
                            0.0,  # MedShkStd quartic age coefficient

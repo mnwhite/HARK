@@ -624,10 +624,10 @@ def objectiveFunction(Parameters):
     The objective function for the estimation.  Makes and solves a market, then
     returns the weighted sum of moment differences between simulation and data.
     '''
-    InsChoice = 1
+    InsChoice = 0
     SubsidyTypeCount = 1
     CRRAtypeCount = 1
-    ZeroSubsidyBool = True
+    ZeroSubsidyBool = False
     MyMarket = makeMarketFromParams(Parameters,np.array([0.0, 0.0, 0.0, 0.0, 0.0]),InsChoice,SubsidyTypeCount,CRRAtypeCount,ZeroSubsidyBool)
     multiThreadCommands(MyMarket.agents,['update()','makeShockHistory()'])
     MyMarket.getIncomeQuintiles()
@@ -637,9 +637,12 @@ def objectiveFunction(Parameters):
     sim_commands = ['initializeSim()','simulate()','postSim()']
     all_commands = solve_commands + sim_commands
     
-    MyMarket.solve()
-    if Params.StaticBool:
-        multiThreadCommands(MyMarket.agents,sim_commands)
+    multiThreadCommandsFake(MyMarket.agents,all_commands)
+
+# Reactivate this block when actually solving the model to get eqbm premiums    
+#    MyMarket.solve()
+#    if Params.StaticBool:
+#        multiThreadCommands(MyMarket.agents,sim_commands)
         
     MyMarket.calcSimulatedMoments()
     MyMarket.combineSimulatedMoments()
@@ -652,115 +655,57 @@ if __name__ == '__main__':
     from time import clock
     mystr = lambda number : "{:.4f}".format(number)
     
-## This short block is for actually testing the objective function
-#    t_start = clock()
-#    MyMarket = objectiveFunction(Params.test_param_vec)
-#    t_end = clock()
-#    print('Objective function evaluation took ' + mystr(t_end-t_start) + ' seconds.')
+    # This short block is for actually testing the objective function
+    t_start = clock()
+    MyMarket = objectiveFunction(Params.test_param_vec)
+    t_end = clock()
+    print('Objective function evaluation took ' + mystr(t_end-t_start) + ' seconds.')
+    
+    # This block of code is for displaying moment fits after running objectiveFunc  
+    Age = np.arange(25,85)
+    Age5year = 27.5 + 5*np.arange(12)
+    
+    if not Params.StaticBool:
+        plt.plot(Age[0:40],MyMarket.WealthMedianByAge)
+        plt.plot(Age[0:40],MyMarket.data_moments[0:40],'.k')
+        plt.xlabel('Age')
+        plt.ylabel('Median wealth/income ratio')
+        #plt.savefig('../Figures/WealthFitByAge.pdf')
+        plt.show()
+    
+    plt.plot(Age,MyMarket.LogTotalMedMeanByAge)
+    plt.plot(Age,MyMarket.data_moments[40:100],'.k')
+    plt.xlabel('Age')
+    plt.ylabel('Mean log total (nonzero) medical expenses')
+    plt.xlim((25,85))
+    #plt.savefig('../Figures/MeanTotalMedFitByAge.pdf')
+    plt.show()
 
-#    t_start = clock()
-#    InsChoice = False
-#    MyMarket = makeMarketFromParams(Params.test_param_vec,np.array([1,2,3,4,5]),InsChoice)
-#    StaticType = MyMarket.agents[1]
-#    StaticType.update()
-#    StaticType.makeShockHistory()
-#    t_end = clock()
-#    print('Making a static agent type took ' + mystr(t_end-t_start) + ' seconds.')
-#    t_start = clock()
-#    StaticType.solve()
-#    t_end = clock()
-#    print('Solving a static agent type took ' + mystr(t_end-t_start) + ' seconds.')
-#    t_start = clock()
-#    StaticType.initializeSim()
-#    StaticType.simulate()
-#    t_end = clock()
-#    print('Simulating a static agent type took ' + mystr(t_end-t_start) + ' seconds.')
-
-    # This block of code is for testing one type of agent
-    t_start = clock()
-    InsChoice = 0
-    SubsidyTypeCount = 1
-    CRRAtypeCount = 1
-    ZeroSubsidyBool = False
-    MyMarket = makeMarketFromParams(Params.test_param_vec,np.array([0.5, 0.0, 0.0, 0.0, 0.0]),InsChoice,SubsidyTypeCount,CRRAtypeCount,ZeroSubsidyBool)
-    multiThreadCommands(MyMarket.agents,['update()','makeShockHistory()'])
-    MyMarket.getIncomeQuintiles()
-    multiThreadCommandsFake(MyMarket.agents,['makeIncBoolArray()'])
-    t_end = clock()
-    print('Making the agents took ' + mystr(t_end-t_start) + ' seconds.')
+    plt.plot(Age,MyMarket.LogTotalMedStdByAge)
+    plt.plot(Age,MyMarket.data_moments[100:160],'.k')
+    plt.xlabel('Age')
+    plt.ylabel('Stdev log total (nonzero) medical expenses')
+    plt.xlim((25,85))
+    #plt.savefig('../Figures/StdevTotalMedFitByAge.pdf')
+    plt.show()
     
-    t_start = clock()
-    MyType = MyMarket.agents[1] 
-    MyType.solve()
-    t_end = clock()
-    print('Solving one agent type took ' + str(t_end-t_start) + ' seconds.')
-    
-    t_start = clock()
-    MyType.initializeSim()
-    MyType.simulate()
-    t_end = clock()
-    print('Simulating one agent type took ' + str(t_end-t_start) + ' seconds.')
-       
-    t = 0
-    p = 3.0    
-    h = 4        
-    MedShk = 1.0e-2
-    z = 0
-    
-    MyType.plotvFunc(t,p,decurve=False)
-    MyType.plotvPfunc(t,p,decurve=False)
-    MyType.plotvFuncByContract(t,h,p)
-#    MyType.plotcFuncByContract(t,h,p,MedShk)
-    MyType.plotcFuncByMedShk(t,h,z,p)
-    MyType.plotMedFuncByMedShk(t,h,z,p)
-    MyType.plotxFuncByMedShk(t,h,z,p)
-    MyType.plotcEffFuncByMedShk(t,h,z,p)
-  
-## This block of code is for displaying moment fits after running objectiveFunc  
-#    Age = np.arange(25,85)
-#    Age5year = 27.5 + 5*np.arange(12)
-#    
-#    if not Params.StaticBool:
-#        plt.plot(Age[0:40],MyMarket.WealthMedianByAge)
-#        plt.plot(Age[0:40],MyMarket.data_moments[0:40],'.k')
-#        plt.xlabel('Age')
-#        plt.ylabel('Median wealth/income ratio')
-#        #plt.savefig('../Figures/WealthFitByAge.pdf')
-#        plt.show()
-#    
-#    plt.plot(Age,MyMarket.LogTotalMedMeanByAge)
-#    plt.plot(Age,MyMarket.data_moments[40:100],'.k')
-#    plt.xlabel('Age')
-#    plt.ylabel('Mean log total (nonzero) medical expenses')
-#    plt.xlim((25,85))
-#    #plt.savefig('../Figures/MeanTotalMedFitByAge.pdf')
-#    plt.show()
-#
-#    plt.plot(Age,MyMarket.LogTotalMedStdByAge)
-#    plt.plot(Age,MyMarket.data_moments[100:160],'.k')
-#    plt.xlabel('Age')
-#    plt.ylabel('Stdev log total (nonzero) medical expenses')
-#    plt.xlim((25,85))
-#    #plt.savefig('../Figures/StdevTotalMedFitByAge.pdf')
-#    plt.show()
-#    
-#    # Make a "detrender" based on quadratic fit of data moments
-#    f = lambda x : 5.14607229 + 0.04242741*x
-#    LogMedMeanAdj = np.mean(np.reshape(f(Age),(12,5)),axis=1)
-#        
-#    plt.plot(Age5year,MyMarket.LogTotalMedMeanByAgeHealth - np.tile(np.reshape(LogMedMeanAdj,(12,1)),(1,5)))
-#    temp = np.reshape(MyMarket.data_moments[320:380],(12,5))
-#    plt.plot(Age5year,temp[:,0] - LogMedMeanAdj,'.b')
-#    plt.plot(Age5year,temp[:,1] - LogMedMeanAdj,'.g')
-#    plt.plot(Age5year,temp[:,2] - LogMedMeanAdj,'.r')
-#    plt.plot(Age5year,temp[:,3] - LogMedMeanAdj,'.c')
-#    plt.plot(Age5year,temp[:,4] - LogMedMeanAdj,'.m')
-#    plt.xlabel('Age')
-#    plt.ylabel('Detrended mean log total (nonzero) medical expenses')
-#    plt.title('Medical expenses by age group and health status')
-#    plt.xlim((25,85))
-#    #plt.savefig('../Figures/MeanTotalMedFitByAgeHealth.pdf')
-#    plt.show()
+    # Make a "detrender" based on quadratic fit of data moments
+    f = lambda x : 5.14607229 + 0.04242741*x
+    LogMedMeanAdj = np.mean(np.reshape(f(Age),(12,5)),axis=1)
+        
+    plt.plot(Age5year,MyMarket.LogTotalMedMeanByAgeHealth - np.tile(np.reshape(LogMedMeanAdj,(12,1)),(1,5)))
+    temp = np.reshape(MyMarket.data_moments[320:380],(12,5))
+    plt.plot(Age5year,temp[:,0] - LogMedMeanAdj,'.b')
+    plt.plot(Age5year,temp[:,1] - LogMedMeanAdj,'.g')
+    plt.plot(Age5year,temp[:,2] - LogMedMeanAdj,'.r')
+    plt.plot(Age5year,temp[:,3] - LogMedMeanAdj,'.c')
+    plt.plot(Age5year,temp[:,4] - LogMedMeanAdj,'.m')
+    plt.xlabel('Age')
+    plt.ylabel('Detrended mean log total (nonzero) medical expenses')
+    plt.title('Medical expenses by age group and health status')
+    plt.xlim((25,85))
+    #plt.savefig('../Figures/MeanTotalMedFitByAgeHealth.pdf')
+    plt.show()
 #    
 #    plt.plot(Age5year,MyMarket.LogTotalMedStdByAgeHealth)
 #    temp = np.reshape(MyMarket.data_moments[380:440],(12,5))
@@ -776,19 +721,19 @@ if __name__ == '__main__':
 #    #plt.savefig('../Figures/StdevTotalMedFitByAgeHealth.pdf')
 #    plt.show()
 #        
-#    plt.plot(Age5year[:8],MyMarket.LogTotalMedMeanByAgeIncome - np.tile(np.reshape(LogMedMeanAdj[:8],(8,1)),(1,5)))
-#    temp = np.reshape(MyMarket.data_moments[480:520],(8,5))
-#    plt.plot(Age5year[:8],temp[:,0] - LogMedMeanAdj[:8],'.b')
-#    plt.plot(Age5year[:8],temp[:,1] - LogMedMeanAdj[:8],'.g')
-#    plt.plot(Age5year[:8],temp[:,2] - LogMedMeanAdj[:8],'.r')
-#    plt.plot(Age5year[:8],temp[:,3] - LogMedMeanAdj[:8],'.c')
-#    plt.plot(Age5year[:8],temp[:,4] - LogMedMeanAdj[:8],'.m')
-#    plt.xlabel('Age')
-#    plt.ylabel('Detrended mean log total (nonzero) medical expenses')
-#    plt.title('Medical expenses by age group and income quintile')
-#    plt.xlim((25,65))
-#    #plt.savefig('../Figures/MeanTotalMedFitByAgeIncome.pdf')
-#    plt.show()
+    plt.plot(Age5year[:8],MyMarket.LogTotalMedMeanByAgeIncome - np.tile(np.reshape(LogMedMeanAdj[:8],(8,1)),(1,5)))
+    temp = np.reshape(MyMarket.data_moments[480:520],(8,5))
+    plt.plot(Age5year[:8],temp[:,0] - LogMedMeanAdj[:8],'.b')
+    plt.plot(Age5year[:8],temp[:,1] - LogMedMeanAdj[:8],'.g')
+    plt.plot(Age5year[:8],temp[:,2] - LogMedMeanAdj[:8],'.r')
+    plt.plot(Age5year[:8],temp[:,3] - LogMedMeanAdj[:8],'.c')
+    plt.plot(Age5year[:8],temp[:,4] - LogMedMeanAdj[:8],'.m')
+    plt.xlabel('Age')
+    plt.ylabel('Detrended mean log total (nonzero) medical expenses')
+    plt.title('Medical expenses by age group and income quintile')
+    plt.xlim((25,65))
+    #plt.savefig('../Figures/MeanTotalMedFitByAgeIncome.pdf')
+    plt.show()
 #    
 #    plt.plot(Age5year[:8],MyMarket.LogTotalMedStdByAgeIncome)
 #    temp = np.reshape(MyMarket.data_moments[520:560],(8,5))
@@ -852,3 +797,63 @@ if __name__ == '__main__':
 #    plt.show()
 #    
 #     
+
+# This block of code is for testing the static model
+#    t_start = clock()
+#    InsChoice = False
+#    MyMarket = makeMarketFromParams(Params.test_param_vec,np.array([1,2,3,4,5]),InsChoice)
+#    StaticType = MyMarket.agents[1]
+#    StaticType.update()
+#    StaticType.makeShockHistory()
+#    t_end = clock()
+#    print('Making a static agent type took ' + mystr(t_end-t_start) + ' seconds.')
+#    t_start = clock()
+#    StaticType.solve()
+#    t_end = clock()
+#    print('Solving a static agent type took ' + mystr(t_end-t_start) + ' seconds.')
+#    t_start = clock()
+#    StaticType.initializeSim()
+#    StaticType.simulate()
+#    t_end = clock()
+#    print('Simulating a static agent type took ' + mystr(t_end-t_start) + ' seconds.')
+
+    # This block of code is for testing one type of agent
+#    t_start = clock()
+#    InsChoice = 0
+#    SubsidyTypeCount = 1
+#    CRRAtypeCount = 1
+#    ZeroSubsidyBool = False
+#    MyMarket = makeMarketFromParams(Params.test_param_vec,np.array([0.5, 0.0, 0.0, 0.0, 0.0]),InsChoice,SubsidyTypeCount,CRRAtypeCount,ZeroSubsidyBool)
+#    multiThreadCommands(MyMarket.agents,['update()','makeShockHistory()'])
+#    MyMarket.getIncomeQuintiles()
+#    multiThreadCommandsFake(MyMarket.agents,['makeIncBoolArray()'])
+#    t_end = clock()
+#    print('Making the agents took ' + mystr(t_end-t_start) + ' seconds.')
+#    
+#    t_start = clock()
+#    MyType = MyMarket.agents[1] 
+#    MyType.solve()
+#    t_end = clock()
+#    print('Solving one agent type took ' + str(t_end-t_start) + ' seconds.')
+#    
+#    t_start = clock()
+#    MyType.initializeSim()
+#    MyType.simulate()
+#    t_end = clock()
+#    print('Simulating one agent type took ' + str(t_end-t_start) + ' seconds.')
+#       
+#    t = 0
+#    p = 3.0    
+#    h = 4        
+#    MedShk = 1.0e-2
+#    z = 0
+#    
+#    MyType.plotvFunc(t,p,decurve=False)
+#    MyType.plotvPfunc(t,p,decurve=False)
+#    MyType.plotvFuncByContract(t,h,p)
+#    MyType.plotcFuncByContract(t,h,p,MedShk)
+#    MyType.plotcFuncByMedShk(t,h,z,p)
+#    MyType.plotMedFuncByMedShk(t,h,z,p)
+#    MyType.plotxFuncByMedShk(t,h,z,p)
+#    MyType.plotcEffFuncByMedShk(t,h,z,p)
+  
