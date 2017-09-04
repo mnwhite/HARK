@@ -504,7 +504,7 @@ def makeDynInsSelType(CRRAcon,CRRAmed,DiscFac,ChoiceShkMag,MedShkMeanAgeParams,M
     
     # Make and return a DynInsSelType
     ThisType = DynInsSelType(**TypeDict)
-    ThisType.track_vars = ['aLvlNow','mLvlNow','cLvlNow','MedLvlNow','PremNow','ContractNow','OOPnow']
+    ThisType.track_vars = ['aLvlNow','mLvlNow','cLvlNow','MedLvlNow','PremNow','ContractNow','OOPnow','WelfareNow']
     ThisType.PremiumSubsidy = PremiumSubsidy
     if PremiumSubsidy == 0.0:
         ThisType.ZeroSubsidyBool = True
@@ -641,8 +641,6 @@ def objectiveFunction(Parameters):
     if Params.StaticBool:
         multiThreadCommands(MyMarket.agents,sim_commands)
         
-    #MyMarket.agents[0].makeStynamicValueFunc()
-        
     MyMarket.calcSimulatedMoments()
     MyMarket.combineSimulatedMoments()
     moment_sum = MyMarket.aggregateMomentConditions()    
@@ -678,27 +676,33 @@ if __name__ == '__main__':
 #    t_end = clock()
 #    print('Simulating a static agent type took ' + mystr(t_end-t_start) + ' seconds.')
 
-# This block of code is for testing one type of agent
+    # This block of code is for testing one type of agent
     t_start = clock()
     InsChoice = 0
     SubsidyTypeCount = 1
     CRRAtypeCount = 1
     ZeroSubsidyBool = False
     MyMarket = makeMarketFromParams(Params.test_param_vec,np.array([0.5, 0.0, 0.0, 0.0, 0.0]),InsChoice,SubsidyTypeCount,CRRAtypeCount,ZeroSubsidyBool)
-    multiThreadCommandsFake(MyMarket.agents,['update()','makeShockHistory()'])
+    multiThreadCommands(MyMarket.agents,['update()','makeShockHistory()'])
     MyMarket.getIncomeQuintiles()
     multiThreadCommandsFake(MyMarket.agents,['makeIncBoolArray()'])
     t_end = clock()
     print('Making the agents took ' + mystr(t_end-t_start) + ' seconds.')
     
     t_start = clock()
-    MyType = MyMarket.agents[0] 
+    MyType = MyMarket.agents[1] 
     MyType.solve()
     t_end = clock()
     print('Solving one agent type took ' + str(t_end-t_start) + ' seconds.')
+    
+    t_start = clock()
+    MyType.initializeSim()
+    MyType.simulate()
+    t_end = clock()
+    print('Simulating one agent type took ' + str(t_end-t_start) + ' seconds.')
        
     t = 0
-    p = 1.0    
+    p = 3.0    
     h = 4        
     MedShk = 1.0e-2
     z = 0

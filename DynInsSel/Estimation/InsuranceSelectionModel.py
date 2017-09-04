@@ -1044,7 +1044,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
             while (UnresolvedCount > 0) and (LoopCount < LoopMax): # Loop until all points have converged on CritShk
                 CritShkPrev = CritShkArray[Unresolved]
                 mLvl_temp = mLvlArray_temp[Unresolved]                
-                if LoopCount > 10: # Use Newton's method after a few iterations
+                if LoopCount > 30: # Use Newton's method after a few iterations
                     xLvl_temp = np.minimum(xFunc_temp(mLvl_temp,pLvlArray_temp[Unresolved],CritShkPrev),mLvl_temp)
                     CritShk_temp = np.minimum(CritShkFunc(xLvl_temp),MedShkMax)
                     Target_diff = CritShk_temp - CritShkPrev # This is the expression we want to be zero
@@ -2147,6 +2147,12 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         None
         '''
         t = self.t_sim
+        MedPriceNow = self.MedPrice[t]
+        CeffFunc = lambda c,Med,Shk : (1.-np.exp(-Med/Shk))**self.CRRAmed*c
+        FullPrice_idx = np.argwhere(self.CopayList[t]==MedPriceNow)[0][0]
+        CfloorCostFunc = lambda Shk : self.DfuncList[t][FullPrice_idx](self.Cfloor*np.ones_like(Shk),Shk)
+        FullPricebFunc = self.bFromxFuncList[t][FullPrice_idx]
+        
         
         # Get state and shock vectors for (living) agents
         mLvlNow = self.aLvlNow + self.IncomeHist[t,:]
@@ -2175,18 +2181,21 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
                 Premium = self.solution[t].policyFunc[h][z].Contract.Premium(m_temp,p_temp)
                 vNvrs_temp[:,z] = self.solution[t].vFuncByContract[h][z].func(m_temp-Premium,p_temp)
             
-            # Get choice probabilities for each contract
-            vNvrs_temp[np.isnan(vNvrs_temp)] = -np.inf
-            v_best = np.max(vNvrs_temp,axis=1)
-            v_best_big = np.tile(np.reshape(v_best,(N,1)),(1,Z))
-            v_adj_exp = np.exp((vNvrs_temp - v_best_big)/self.ChoiceShkMag[0]) # THIS NEEDS TO LOOK UP t_cycle TO BE CORRECT IN ALL CASES
-            v_sum_rep = np.tile(np.reshape(np.sum(v_adj_exp,axis=1),(N,1)),(1,Z))
-            ChoicePrbs = v_adj_exp/v_sum_rep
-            Cutoffs = np.cumsum(ChoicePrbs,axis=1)
-            
-            # Select a contract for each agent based on the unified preference shock
-            PrefShk_temp = np.tile(np.reshape(PrefShkNow[these],(N,1)),(1,Z))
-            z_choice = np.sum(PrefShk_temp > Cutoffs,axis=1).astype(int)
+            if self.ChoiceShkMag[t] > 0.:
+                # Get choice probabilities for each contract
+                vNvrs_temp[np.isnan(vNvrs_temp)] = -np.inf
+                v_best = np.max(vNvrs_temp,axis=1)
+                v_best_big = np.tile(np.reshape(v_best,(N,1)),(1,Z))
+                v_adj_exp = np.exp((vNvrs_temp - v_best_big)/self.ChoiceShkMag[t])
+                v_sum_rep = np.tile(np.reshape(np.sum(v_adj_exp,axis=1),(N,1)),(1,Z))
+                ChoicePrbs = v_adj_exp/v_sum_rep
+                Cutoffs = np.cumsum(ChoicePrbs,axis=1)
+                
+                # Select a contract for each agent based on the unified preference shock
+                PrefShk_temp = np.tile(np.reshape(PrefShkNow[these],(N,1)),(1,Z))
+                z_choice = np.sum(PrefShk_temp > Cutoffs,axis=1).astype(int)
+            else:
+                z_choice = np.argmax(vNvrs_temp,axis=1) # Just choose best one if there are no shocks
             
             # For each contract, get controls for agents who buy it
             c_temp = np.zeros(N) + np.nan
@@ -2208,15 +2217,34 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
             OOPnow[these] = OOP_temp
             PremNow[these] = Prem_temp
             ContractNow[these] = z_choice
+        aLvlNow = mLvlNow - PremNow - xLvlNow
+            
+        # Handle the consumption floor
+        Ceff = CeffFunc(cLvlNow,MedLvlNow,MedShkNow)
+        NeedHelp = Ceff < self.Cfloor
+        CfloorMedShk = MedShkNow[NeedHelp]
+        CfloorxLvl = CfloorCostFunc(CfloorMedShk)
+        Welfare = CfloorxLvl - mLvlNow[NeedHelp]
+        b_temp = FullPricebFunc(CfloorxLvl,CfloorMedShk)
+        q_temp = np.exp(-b_temp)
+        CfloorMedLvl = (CfloorxLvl/MedPriceNow)*q_temp/(1.+q_temp)
+        CfloorcLvl = CfloorxLvl/(1.+q_temp)
+        aLvlNow[NeedHelp] = 0.
+        cLvlNow[NeedHelp] = CfloorcLvl
+        MedLvlNow[NeedHelp] = CfloorMedLvl
+        OOPnow[NeedHelp] = 0.
+        WelfareNow = np.zeros_like(mLvlNow)
+        WelfareNow[NeedHelp] = Welfare
 
         # Calculate end of period assets and store results as attributes of self
         self.mLvlNow = mLvlNow
-        self.aLvlNow = mLvlNow - PremNow - xLvlNow
+        self.aLvlNow = aLvlNow
         self.cLvlNow = cLvlNow
         self.MedLvlNow = MedLvlNow
         self.OOPnow = OOPnow
         self.PremNow = PremNow
         self.ContractNow = ContractNow
+        self.WelfareNow = WelfareNow
         
     def calcInsurancePayments(self):
         '''
