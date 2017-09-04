@@ -271,8 +271,8 @@ def drawDiscrete(N,P=[1.0],X=[0.0],exact_match=False,seed=0):
     RNG = np.random.RandomState(seed)
     
     if exact_match:
-        events = np.arange(P.size) # just a list of integers
-        cutoffs = np.round(np.cumsum(P)*N) # cutoff points between discrete outcomes
+        events = np.arange(P.size).astype(int) # just a list of integers
+        cutoffs = np.round(np.cumsum(P)*N).astype(int) # cutoff points between discrete outcomes
         top = 0
         # Make a list of event indices that closely matches the discrete distribution
         event_list        = []

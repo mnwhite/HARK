@@ -1,7 +1,7 @@
 '''
 Specifies examples of the full set of parameters required to solve various
 consumption-saving models.  These models can be found in ConsIndShockModel,
-ConsAggShockModel, ConsPrefShockModel, and ConsMarkovModel.
+ConsAggShockModel, ConsPrefShockModel, ConsLaborModel, and ConsMarkovModel.
 '''
 from copy import copy
 import numpy as np
@@ -15,8 +15,6 @@ Rfree = 1.03                        # Interest factor on assets
 DiscFac = 0.96                      # Intertemporal discount factor
 LivPrb = [0.98]                     # Survival probability
 PermGroFac = [1.01]                 # Permanent income growth factor
-BoroCnstArt = 0.0                   # Artificial borrowing constraint; imposed minimum level of end-of period assets
-aXtraCount = 50                     # Number of points in the grid of "assets above minimum" (just a max grid count here)
 AgentCount = 10000                  # Number of agents of this type (only matters for simulation)
 aNrmInitMean = 0.0                  # Mean of log initial assets (only matters for simulation)
 aNrmInitStd  = 1.0                  # Standard deviation of log initial assets (only for simulation)
@@ -39,9 +37,7 @@ init_perfect_foresight = { 'CRRA': CRRA,
                            'pLvlInitStd' : pLvlInitStd,
                            'PermGroFacAgg' : PermGroFacAgg,
                            'T_age' : T_age,
-                           'T_cycle' : T_cycle,
-                           'BoroCnstArt' : BoroCnstArt,#added
-                           'aXtraCount' : aXtraCount#added
+                           'T_cycle' : T_cycle
                           }
                                                    
 # -----------------------------------------------------------------------------
@@ -53,6 +49,7 @@ aXtraMin = 0.001                    # Minimum end-of-period "assets above minimu
 aXtraMax = 20                       # Maximum end-of-period "assets above minimum" value               
 aXtraExtra = None                   # Some other value of "assets above minimum" to add to the grid, not used
 aXtraNestFac = 3                    # Exponential nesting factor when constructing "assets above minimum" grid
+aXtraCount = 48                     # Number of points in the grid of "assets above minimum"
 
 # Parameters describing the income process
 PermShkCount = 7                    # Number of points in discrete approximation to permanent income shocks
@@ -67,6 +64,7 @@ tax_rate = 0.0                      # Flat income tax rate
 T_retire = 0                        # Period of retirement (0 --> no retirement)
 
 # A few other parameters
+BoroCnstArt = 0.0                  # Artificial borrowing constraint; imposed minimum level of end-of period assets
 CubicBool = False                  # Use cubic spline interpolation when True, linear interpolation when False
 vFuncBool = True                   # Whether to calculate the value function during solution
 
@@ -255,3 +253,93 @@ init_medical_shocks['MedShkCount'] = MedShkCount
 init_medical_shocks['MedShkCountTail'] = MedShkCountTail
 init_medical_shocks['MedPrice'] = MedPrice
 init_medical_shocks['aXtraCount'] = 32
+
+
+# -----------------------------------------------------------------------------
+# -------- Define additional parameters for the baby labor model --------------
+# -----------------------------------------------------------------------------
+
+LbrDisutilCoeffs = [-1.5,0.1,0.05] # Constant, linear, and quadratic coefficients
+                                  # on transformed labor disutility factor
+                                  
+# Make a dictionary for "baby labor" model
+init_baby_labor = copy(init_lifecycle)
+init_baby_labor['LbrDisutilCoeffs'] = LbrDisutilCoeffs
+init_baby_labor['TranShkCount'] = 1 # No transitory shocks in baby labor model
+init_baby_labor['TranShkStd'] = [0.0]*init_lifecycle['T_cycle']
+init_baby_labor['T_retire'] = 0 # turn off retirement
+init_baby_labor['PermShkStd'] = [0.1]*init_lifecycle['T_cycle']
+init_baby_labor['UnempPrb'] = 0.0 # turn off unemployment
+init_baby_labor['UnempPrbRet'] = 0.0
+init_baby_labor['PermShkCount'] = 25 # Crank up permanent shock count
+init_baby_labor['aXtraCount'] = 200 # Might be important to have many gridpoints
+
+               
+# -----------------------------------------------------------------------------
+# ----Define additional parameters for the Endogenous Labor Supply model-------
+# -----------------------------------------------------------------------------
+
+CRRA = 2.0                          # Coefficient of relative risk aversion
+Rfree = 1.03                        # Interest factor on assets
+DiscFac = 0.95                      # Intertemporal discount factor
+LivPrb = [0.98]                     # Survival probability
+PermGroFac = [1.02]                 # Permanent income growth factor
+AgentCount = 10000                  # Number of agents of this type (only matters for simulation)
+T_retire = 0                        # Period of retirement (0 --> no retirement)
+
+StateMin = 0.001
+StateMax = 20.0
+StateCount = 16
+ExponentialGrid = True
+
+aXtraMin = 0.001                    # Minimum end-of-period "assets above minimum" value
+aXtraMax = 20                       # Maximum end-of-period "assets above minimum" value  
+aXtraCount = 48                     # Number of points in the grid of "assets above minimum"
+aXtraExtra = None                   # Some other value of "assets above minimum" to add to the grid, not used
+aXtraNestFac = 3                    # Exponential nesting factor when constructing "assets above minimum" grid
+
+TranShkVals = [1]
+TranShkPrbs = [0.2]
+
+LbrCost = 0.36                      # Labor cost: 
+WageRte = 0.7                       # Wage Rate: 
+
+init_labor_intensive = { 'CRRA': CRRA,
+                         'Rfree': Rfree,
+                         'DiscFac': DiscFac,
+                         'LivPrb': LivPrb,
+                         'PermGroFac': PermGroFac,
+                         'AgentCount': AgentCount,
+                         'PermGroFac' : PermGroFac,
+                         'AgentCount': AgentCount,    
+                         'aXtraMin': aXtraMin,
+                         'aXtraMax': aXtraMax,
+                         'aXtraNestFac':aXtraNestFac,
+                         'aXtraCount': aXtraCount,
+                         'aXtraExtra': [aXtraExtra],
+                         'PermShkStd': PermShkStd,
+                         'PermShkCount': PermShkCount,
+                         'TranShkStd': TranShkStd,
+                         'TranShkCount': TranShkCount,    
+                         'StateMin' : StateMin,
+                         'StateMax' : StateMax,
+                         'StateCount' : StateCount,                
+                         
+                         'ExponentialGrid' : True,
+                         'UnempPrb': UnempPrb,
+                         'UnempPrbRet': UnempPrbRet,
+                         'IncUnemp': IncUnemp,
+                         'IncUnempRet': IncUnempRet,
+                         'BoroCnstArt': BoroCnstArt,
+                         
+                         'TranShkVals': TranShkVals,
+                         'TranShkPrbs': TranShkPrbs,
+                         
+                         'LbrCost': LbrCost,
+                         'WageRte': WageRte,
+                           
+                           'T_retire': T_retire,
+                           'T_age' : T_age,
+                           'T_cycle' : T_cycle
+                          }
+                                                   

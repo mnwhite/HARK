@@ -15,8 +15,6 @@ Rfree = 1.03                        # Interest factor on assets
 DiscFac = 0.96                      # Intertemporal discount factor
 LivPrb = [0.98]                     # Survival probability
 PermGroFac = [1.01]                 # Permanent income growth factor
-BoroCnstArt = 0.0                   # Artificial borrowing constraint; imposed minimum level of end-of period assets
-aXtraCount = 50                     # Number of points in the grid of "assets above minimum" (just a max grid count here)
 AgentCount = 10000                  # Number of agents of this type (only matters for simulation)
 aNrmInitMean = 0.0                  # Mean of log initial assets (only matters for simulation)
 aNrmInitStd  = 1.0                  # Standard deviation of log initial assets (only for simulation)
@@ -39,9 +37,7 @@ init_perfect_foresight = { 'CRRA': CRRA,
                            'pLvlInitStd' : pLvlInitStd,
                            'PermGroFacAgg' : PermGroFacAgg,
                            'T_age' : T_age,
-                           'T_cycle' : T_cycle,
-                           'BoroCnstArt' : BoroCnstArt,#added
-                           'aXtraCount' : aXtraCount#added
+                           'T_cycle' : T_cycle
                           }
                                                    
 # -----------------------------------------------------------------------------
@@ -53,6 +49,7 @@ aXtraMin = 0.001                    # Minimum end-of-period "assets above minimu
 aXtraMax = 20                       # Maximum end-of-period "assets above minimum" value               
 aXtraExtra = None                   # Some other value of "assets above minimum" to add to the grid, not used
 aXtraNestFac = 3                    # Exponential nesting factor when constructing "assets above minimum" grid
+aXtraCount = 48                     # Number of points in the grid of "assets above minimum"
 
 # Parameters describing the income process
 PermShkCount = 7                    # Number of points in discrete approximation to permanent income shocks
@@ -66,9 +63,14 @@ IncUnempRet = 0.0                   # "Unemployment" benefits when retired
 tax_rate = 0.0                      # Flat income tax rate
 T_retire = 0                        # Period of retirement (0 --> no retirement)
 
+# Parameters describing the bequest motive
+BequestShift=0.5
+BequestScale=10.0
+
 # A few other parameters
-CubicBool = False                  # Use cubic spline interpolation when True, linear interpolation when False
-vFuncBool = True                   # Whether to calculate the value function during solution
+BoroCnstArt = 0.0                   # Artificial borrowing constraint; imposed minimum level of end-of period assets
+CubicBool = True                    # Use cubic spline interpolation when True, linear interpolation when False
+vFuncBool = True                    # Whether to calculate the value function during solution
 
 # Make a dictionary to specify an idiosyncratic income shocks consumer
 init_idiosyncratic_shocks = { 'CRRA': CRRA,
@@ -91,6 +93,8 @@ init_idiosyncratic_shocks = { 'CRRA': CRRA,
                               'IncUnemp': IncUnemp,
                               'IncUnempRet': IncUnempRet,
                               'BoroCnstArt': BoroCnstArt,
+                              'BequestShift': BequestShift,
+                              'BequestScale': BequestScale,
                               'tax_rate':0.0,
                               'vFuncBool':vFuncBool,
                               'CubicBool':CubicBool,
