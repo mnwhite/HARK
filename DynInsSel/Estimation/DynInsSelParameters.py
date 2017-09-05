@@ -435,24 +435,24 @@ CollegeDictionary['pLvlInitMean'] = pLvlInitMean_c
 CollegeDictionary['pLvlNextFuncRet'] = RetirementFunc_c
 
 # Make a test parameter vector for estimation
-test_param_vec = np.array([0.974, # DiscFac
+test_param_vec = np.array([0.978, # DiscFac
                           2.35,  # CRRAcon
                            8.0,  # CRRAmed 
                        -np.inf,  # ChoiceShkMag in log
                            2.6,  # SubsidyZeroRate scaler
                           -1.6,  # SubsidyAvg
                           -3.0,  # SubsidyWidth scaler
-                         -5.70,  # MedShkMean constant coefficient
-                         0.021,  # MedShkMean linear age coefficient
-                       0.00070,  # MedShkMean quadratic age coefficient
-                     -0.000008,  # MedShkMean cubic age coefficient
+                         -5.48,  # MedShkMean constant coefficient
+                        0.0030,  # MedShkMean linear age coefficient
+                       0.00138,  # MedShkMean quadratic age coefficient
+                     -0.000015,  # MedShkMean cubic age coefficient
                    -0.00000000,  # MedShkMean quartic age coefficient
-                          0.40,  # MedShkMean "very good" constant coefficient
+                          0.35,  # MedShkMean "very good" constant coefficient
                            0.0,  # MedShkMean "very good" linear coefficient
-                          0.30,  # MedShkMean "good" constant coefficient
+                          0.20,  # MedShkMean "good" constant coefficient
                          0.003,  # MedShkMean "good" linear coefficient
-                          0.45,  # MedShkMean "fair" constant coefficient
-                         0.005,  # MedShkMean "fair" linear coefficient
+                          0.50,  # MedShkMean "fair" constant coefficient
+                         0.001,  # MedShkMean "fair" linear coefficient
                            1.5,  # MedShkMean "poor" constant coefficient
                         -0.016,  # MedShkMean "poor" linear coefficient
                           0.47,  # MedShkStd constant coefficient
