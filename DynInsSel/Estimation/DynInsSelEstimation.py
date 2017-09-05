@@ -78,8 +78,9 @@ class DynInsSelType(BaseType):
         self.TotalMedHist[np.logical_and(self.TotalMedHist < 0.0001,self.TotalMedHist > 0.0,)] = 0.0001
         self.WealthRatioHist = self.aLvlNow_hist/self.pLvlHist
         self.InsuredBoolArray = self.ContractNow_hist > 0
+        self.deleteSolution()
         
-    def deleteSolution(self):
+    def deleteSolution(self): # Rewrite this later to keep the AVfuncs and vFuncByContracts
         del self.solution
         
     def reset(self):
@@ -637,7 +638,7 @@ def objectiveFunction(Parameters):
     sim_commands = ['initializeSim()','simulate()','postSim()']
     all_commands = solve_commands + sim_commands
     
-    multiThreadCommandsFake(MyMarket.agents,all_commands)
+    multiThreadCommands(MyMarket.agents,all_commands)
 
 # Reactivate this block when actually solving the model to get eqbm premiums    
 #    MyMarket.solve()

@@ -1251,7 +1251,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
     
     # Return the solution for this period
     t_end = clock()
-    print('Solving a period of the problem took ' + str(t_end-t_start) + ' seconds, fix count = ' + str(JDfixCount))
+    #print('Solving a period of the problem took ' + str(t_end-t_start) + ' seconds, fix count = ' + str(JDfixCount))
     return solution_now
     
 ####################################################################################################
@@ -1967,7 +1967,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         solution_terminal.vArrayBigList = vArrayBigList
         self.solution_terminal = solution_terminal
         t_end = clock()
-        print('Solving terminal period took ' + str(t_end-t_start) + ' seconds.')
+        #print('Solving terminal period took ' + str(t_end-t_start) + ' seconds.')
                 
         
     def update(self):
