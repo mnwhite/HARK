@@ -689,24 +689,24 @@ if __name__ == '__main__':
     plt.xlim((25,85))
     #plt.savefig('../Figures/StdevTotalMedFitByAge.pdf')
     plt.show()
-    
-    # Make a "detrender" based on quadratic fit of data moments
-    f = lambda x : 5.14607229 + 0.04242741*x
-    LogMedMeanAdj = np.mean(np.reshape(f(Age),(12,5)),axis=1)
-        
-    plt.plot(Age5year,MyMarket.LogTotalMedMeanByAgeHealth - np.tile(np.reshape(LogMedMeanAdj,(12,1)),(1,5)))
-    temp = np.reshape(MyMarket.data_moments[320:380],(12,5))
-    plt.plot(Age5year,temp[:,0] - LogMedMeanAdj,'.b')
-    plt.plot(Age5year,temp[:,1] - LogMedMeanAdj,'.g')
-    plt.plot(Age5year,temp[:,2] - LogMedMeanAdj,'.r')
-    plt.plot(Age5year,temp[:,3] - LogMedMeanAdj,'.c')
-    plt.plot(Age5year,temp[:,4] - LogMedMeanAdj,'.m')
-    plt.xlabel('Age')
-    plt.ylabel('Detrended mean log total (nonzero) medical expenses')
-    plt.title('Medical expenses by age group and health status')
-    plt.xlim((25,85))
-    #plt.savefig('../Figures/MeanTotalMedFitByAgeHealth.pdf')
-    plt.show()
+#    
+#    # Make a "detrender" based on quadratic fit of data moments
+#    f = lambda x : 5.14607229 + 0.04242741*x
+#    LogMedMeanAdj = np.mean(np.reshape(f(Age),(12,5)),axis=1)
+#        
+#    plt.plot(Age5year,MyMarket.LogTotalMedMeanByAgeHealth - np.tile(np.reshape(LogMedMeanAdj,(12,1)),(1,5)))
+#    temp = np.reshape(MyMarket.data_moments[320:380],(12,5))
+#    plt.plot(Age5year,temp[:,0] - LogMedMeanAdj,'.b')
+#    plt.plot(Age5year,temp[:,1] - LogMedMeanAdj,'.g')
+#    plt.plot(Age5year,temp[:,2] - LogMedMeanAdj,'.r')
+#    plt.plot(Age5year,temp[:,3] - LogMedMeanAdj,'.c')
+#    plt.plot(Age5year,temp[:,4] - LogMedMeanAdj,'.m')
+#    plt.xlabel('Age')
+#    plt.ylabel('Detrended mean log total (nonzero) medical expenses')
+#    plt.title('Medical expenses by age group and health status')
+#    plt.xlim((25,85))
+#    #plt.savefig('../Figures/MeanTotalMedFitByAgeHealth.pdf')
+#    plt.show()
 #    
 #    plt.plot(Age5year,MyMarket.LogTotalMedStdByAgeHealth)
 #    temp = np.reshape(MyMarket.data_moments[380:440],(12,5))
@@ -832,7 +832,7 @@ if __name__ == '__main__':
 #    print('Making the agents took ' + mystr(t_end-t_start) + ' seconds.')
 #    
 #    t_start = clock()
-#    MyType = MyMarket.agents[0] 
+#    MyType = MyMarket.agents[2] 
 #    MyType.solve()
 #    t_end = clock()
 #    print('Solving one agent type took ' + str(t_end-t_start) + ' seconds.')
@@ -844,7 +844,7 @@ if __name__ == '__main__':
 #    print('Simulating one agent type took ' + str(t_end-t_start) + ' seconds.')
 #       
 #    t = 0
-#    p = 3.0    
+#    p = 0.0    
 #    h = 4        
 #    MedShk = 1.0e-2
 #    z = 0

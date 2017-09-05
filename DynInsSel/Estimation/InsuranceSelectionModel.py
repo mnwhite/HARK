@@ -22,7 +22,7 @@ from ConsIndShockModel import ValueFunc
 from ConsPersistentShockModel import ValueFunc2D, MargValueFunc2D, MargMargValueFunc2D
 from ConsMarkovModel import MarkovConsumerType
 from ConsIndShockModel import constructLognormalIncomeProcessUnemployment
-from JorgensenDruedahl import makeJDxLvlLayer, makeGridDenser, JDfixer
+from JorgensenDruedahl import makeGridDenser, JDfixer
 import matplotlib.pyplot as plt
 from scipy.stats import norm
                                      
@@ -924,13 +924,16 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
             xLvlNow = Dfunc(cEffNow,MedShkVals_tiled)
             aLvlNow_tiled = np.tile(np.reshape(aLvlNow,(1,pCount,mCount)),(MedCount,1,1))
             mLvlNow = xLvlNow + aLvlNow_tiled
+            #print(np.sum(np.isnan(EndOfPrdvPnvrs_tiled)),np.sum(np.isinf(EndOfPrdvPnvrs_tiled)))
             
             # Calculate marginal propensity to spend
             if CubicBool:
                 print("CubicBool=True doesn't work at this time")
                 
             # Loop over each permanent income level and medical shock and make an xFunc
-            NeedsJDfix = np.any((xLvlNow[:,:,1:]-xLvlNow[:,:,:-1]) < 0.,axis=(0,2)) # whether each pLvl needs the Jorgensen-Druedahl fix
+            NonMonotonic = np.any((xLvlNow[:,:,1:]-xLvlNow[:,:,:-1]) < 0.,axis=(0,2)) # whether each pLvl has non-monotonic pattern in mLvl gridpoints
+            HasNaNs = np.any(np.isnan(xLvlNow),axis=(0,2)) # whether each pLvl contains any NaNs due to future vP=0.0
+            NeedsJDfix = np.logical_or(NonMonotonic,HasNaNs)
             JDfixCount += np.sum(NeedsJDfix)
             xFunc_by_pLvl = [] # Initialize the empty list of lists of 1D xFuncs
             for i in range(pCount):
@@ -946,7 +949,6 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
                     if pLvl_i == 0.0:
                         pLvl_i = pLvlGrid[i+1]
                     mGridDense = mGridDenseBase*pLvl_i
-                    #xFunc_by_pLvl.append(makeJDxLvlLayer(mLvl_data,MedShk_data,vNvrs_data,xLvl_data,mGridDense,ShkGridDense))
                     xFunc_by_pLvl.append(MyJDfixer(mLvl_data,MedShk_data,vNvrs_data,xLvl_data,mGridDense,ShkGridDense))
                     mLvlNow[:,i,0] = 0.0 # This fixes the "seam" problem so there are no NaNs
                     #t1 = clock()
@@ -982,7 +984,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
             vNvrsNow  = np.concatenate((np.zeros((MedCount,pCount,1)),uinv(vNow)),axis=2)
                 
             # Loop over each permanent income level and mLvl and make a vNvrsFunc over MedShk for each
-            vNvrsFunc_by_pLvl = [] # Initialize the empty list of lists of @D vNvrsFuncs
+            vNvrsFunc_by_pLvl = [] # Initialize the empty list of lists of vNvrsFuncs
             for i in range(pCount):
                 temp_list = [ConstantFunction(0.0)] # Initialize for mLvl=0 --> vNvrs=0
                 for j in range(1,mCount):
@@ -990,7 +992,6 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
                     temp_list.append(LogFunc1D(LinearInterp(MedShkVals,vNvrsLog_temp)))
                 m_temp = np.insert(mLvlArray[0,i,:],0,0.0) # Combine across mLvl within this pLvl
                 vNvrsFunc_by_pLvl.append(LinearInterpOnInterp1D(temp_list,m_temp))
-                #print(m_temp.size,len(temp_list))
             vNvrsFuncBase = LinearInterpOnInterp2D(vNvrsFunc_by_pLvl,pLvlGrid) # Combine across all pLvls
             vNvrsFunc = TwistFuncA(vNvrsFuncBase) # Change input order from (MedShk,mLvl,pLvl) to (mLvl,pLvl,MedShk)
             
