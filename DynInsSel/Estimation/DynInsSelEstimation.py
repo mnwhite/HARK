@@ -82,6 +82,7 @@ class DynInsSelType(BaseType):
         
     def deleteSolution(self): # Rewrite this later to keep the AVfuncs and vFuncByContracts
         del self.solution
+        self.delFromTimeVary('solution')
         
     def reset(self):
         return None
@@ -565,7 +566,7 @@ def makeMarketFromParams(ParamArray,PremiumArray,InsChoiceType,SubsidyTypeCount,
         WeightArray  = Temp[0]
         if ZeroSubsidyBool and SubsidyZeroRate > 0.0: 
             SubsidyArray = np.insert(SubsidyArray,0,0.0)
-            WeightArray  = np.insert(Temp[0]*(1.0-SubsidyZeroRate),0,SubsidyZeroRate)
+            WeightArray  = np.insert(WeightArray*(1.0-SubsidyZeroRate),0,SubsidyZeroRate)
     else:
         SubsidyArray = np.array([0.0])
         WeightArray  = np.array([1.0])
@@ -625,16 +626,16 @@ def objectiveFunction(Parameters):
     The objective function for the estimation.  Makes and solves a market, then
     returns the weighted sum of moment differences between simulation and data.
     '''
-    InsChoice = 0
+    InsChoice = 1
     SubsidyTypeCount = 1
     CRRAtypeCount = 1
-    ZeroSubsidyBool = False
-    MyMarket = makeMarketFromParams(Parameters,np.array([0.0, 0.0, 0.0, 0.0, 0.0]),InsChoice,SubsidyTypeCount,CRRAtypeCount,ZeroSubsidyBool)
+    ZeroSubsidyBool = True
+    MyMarket = makeMarketFromParams(Parameters,np.array([0.5, 0.0, 0.0, 0.0, 0.0]),InsChoice,SubsidyTypeCount,CRRAtypeCount,ZeroSubsidyBool)
     multiThreadCommands(MyMarket.agents,['update()','makeShockHistory()'])
     MyMarket.getIncomeQuintiles()
     multiThreadCommandsFake(MyMarket.agents,['makeIncBoolArray()'])
     
-    solve_commands = ['update()','solve()']
+    solve_commands = ['solve()']
     sim_commands = ['initializeSim()','simulate()','postSim()']
     all_commands = solve_commands + sim_commands
     
@@ -689,73 +690,73 @@ if __name__ == '__main__':
     plt.xlim((25,85))
     #plt.savefig('../Figures/StdevTotalMedFitByAge.pdf')
     plt.show()
-#    
-#    # Make a "detrender" based on quadratic fit of data moments
-#    f = lambda x : 5.14607229 + 0.04242741*x
-#    LogMedMeanAdj = np.mean(np.reshape(f(Age),(12,5)),axis=1)
-#        
-#    plt.plot(Age5year,MyMarket.LogTotalMedMeanByAgeHealth - np.tile(np.reshape(LogMedMeanAdj,(12,1)),(1,5)))
-#    temp = np.reshape(MyMarket.data_moments[320:380],(12,5))
-#    plt.plot(Age5year,temp[:,0] - LogMedMeanAdj,'.b')
-#    plt.plot(Age5year,temp[:,1] - LogMedMeanAdj,'.g')
-#    plt.plot(Age5year,temp[:,2] - LogMedMeanAdj,'.r')
-#    plt.plot(Age5year,temp[:,3] - LogMedMeanAdj,'.c')
-#    plt.plot(Age5year,temp[:,4] - LogMedMeanAdj,'.m')
-#    plt.xlabel('Age')
-#    plt.ylabel('Detrended mean log total (nonzero) medical expenses')
-#    plt.title('Medical expenses by age group and health status')
-#    plt.xlim((25,85))
-#    #plt.savefig('../Figures/MeanTotalMedFitByAgeHealth.pdf')
-#    plt.show()
-#    
-#    plt.plot(Age5year,MyMarket.LogTotalMedStdByAgeHealth)
-#    temp = np.reshape(MyMarket.data_moments[380:440],(12,5))
-#    plt.plot(Age5year,temp[:,0],'.b')
-#    plt.plot(Age5year,temp[:,1],'.g')
-#    plt.plot(Age5year,temp[:,2],'.r')
-#    plt.plot(Age5year,temp[:,3],'.c')
-#    plt.plot(Age5year,temp[:,4],'.m')
-#    plt.xlabel('Age')
-#    plt.ylabel('Stdev log total (nonzero) medical expenses')
-#    plt.title('Medical expenses by age group and health status')
-#    plt.xlim((25,85))
-#    #plt.savefig('../Figures/StdevTotalMedFitByAgeHealth.pdf')
-#    plt.show()
-#        
-#    plt.plot(Age5year[:8],MyMarket.LogTotalMedMeanByAgeIncome - np.tile(np.reshape(LogMedMeanAdj[:8],(8,1)),(1,5)))
-#    temp = np.reshape(MyMarket.data_moments[480:520],(8,5))
-#    plt.plot(Age5year[:8],temp[:,0] - LogMedMeanAdj[:8],'.b')
-#    plt.plot(Age5year[:8],temp[:,1] - LogMedMeanAdj[:8],'.g')
-#    plt.plot(Age5year[:8],temp[:,2] - LogMedMeanAdj[:8],'.r')
-#    plt.plot(Age5year[:8],temp[:,3] - LogMedMeanAdj[:8],'.c')
-#    plt.plot(Age5year[:8],temp[:,4] - LogMedMeanAdj[:8],'.m')
-#    plt.xlabel('Age')
-#    plt.ylabel('Detrended mean log total (nonzero) medical expenses')
-#    plt.title('Medical expenses by age group and income quintile')
-#    plt.xlim((25,65))
-#    #plt.savefig('../Figures/MeanTotalMedFitByAgeIncome.pdf')
-#    plt.show()
-#    
-#    plt.plot(Age5year[:8],MyMarket.LogTotalMedStdByAgeIncome)
-#    temp = np.reshape(MyMarket.data_moments[520:560],(8,5))
-#    plt.plot(Age5year[:8],temp[:,0],'.b')
-#    plt.plot(Age5year[:8],temp[:,1],'.g')
-#    plt.plot(Age5year[:8],temp[:,2],'.r')
-#    plt.plot(Age5year[:8],temp[:,3],'.c')
-#    plt.plot(Age5year[:8],temp[:,4],'.m')
-#    plt.xlabel('Age')
-#    plt.ylabel('Stdev log total (nonzero) medical expenses')
-#    plt.title('Medical expenses by age group and income quintile')
-#    plt.xlim((25,65))
-#    #plt.savefig('../Figures/StdevTotalMedFitByAgeIncome.pdf')
-#    plt.show()
-#    
-#    plt.plot(Age[0:40],MyMarket.InsuredRateByAge,'-b')
-#    plt.plot(Age[0:40],MyMarket.data_moments[160:200],'.k')
-#    plt.xlabel('Age')
-#    plt.ylabel('ESI uptake rate')
-#    plt.xlim((25,65))
-#    plt.show()
+    
+    # Make a "detrender" based on quadratic fit of data moments
+    f = lambda x : 5.14607229 + 0.04242741*x
+    LogMedMeanAdj = np.mean(np.reshape(f(Age),(12,5)),axis=1)
+        
+    plt.plot(Age5year,MyMarket.LogTotalMedMeanByAgeHealth - np.tile(np.reshape(LogMedMeanAdj,(12,1)),(1,5)))
+    temp = np.reshape(MyMarket.data_moments[320:380],(12,5))
+    plt.plot(Age5year,temp[:,0] - LogMedMeanAdj,'.b')
+    plt.plot(Age5year,temp[:,1] - LogMedMeanAdj,'.g')
+    plt.plot(Age5year,temp[:,2] - LogMedMeanAdj,'.r')
+    plt.plot(Age5year,temp[:,3] - LogMedMeanAdj,'.c')
+    plt.plot(Age5year,temp[:,4] - LogMedMeanAdj,'.m')
+    plt.xlabel('Age')
+    plt.ylabel('Detrended mean log total (nonzero) medical expenses')
+    plt.title('Medical expenses by age group and health status')
+    plt.xlim((25,85))
+    #plt.savefig('../Figures/MeanTotalMedFitByAgeHealth.pdf')
+    plt.show()
+    
+    plt.plot(Age5year,MyMarket.LogTotalMedStdByAgeHealth)
+    temp = np.reshape(MyMarket.data_moments[380:440],(12,5))
+    plt.plot(Age5year,temp[:,0],'.b')
+    plt.plot(Age5year,temp[:,1],'.g')
+    plt.plot(Age5year,temp[:,2],'.r')
+    plt.plot(Age5year,temp[:,3],'.c')
+    plt.plot(Age5year,temp[:,4],'.m')
+    plt.xlabel('Age')
+    plt.ylabel('Stdev log total (nonzero) medical expenses')
+    plt.title('Medical expenses by age group and health status')
+    plt.xlim((25,85))
+    #plt.savefig('../Figures/StdevTotalMedFitByAgeHealth.pdf')
+    plt.show()
+        
+    plt.plot(Age5year[:8],MyMarket.LogTotalMedMeanByAgeIncome - np.tile(np.reshape(LogMedMeanAdj[:8],(8,1)),(1,5)))
+    temp = np.reshape(MyMarket.data_moments[480:520],(8,5))
+    plt.plot(Age5year[:8],temp[:,0] - LogMedMeanAdj[:8],'.b')
+    plt.plot(Age5year[:8],temp[:,1] - LogMedMeanAdj[:8],'.g')
+    plt.plot(Age5year[:8],temp[:,2] - LogMedMeanAdj[:8],'.r')
+    plt.plot(Age5year[:8],temp[:,3] - LogMedMeanAdj[:8],'.c')
+    plt.plot(Age5year[:8],temp[:,4] - LogMedMeanAdj[:8],'.m')
+    plt.xlabel('Age')
+    plt.ylabel('Detrended mean log total (nonzero) medical expenses')
+    plt.title('Medical expenses by age group and income quintile')
+    plt.xlim((25,65))
+    #plt.savefig('../Figures/MeanTotalMedFitByAgeIncome.pdf')
+    plt.show()
+    
+    plt.plot(Age5year[:8],MyMarket.LogTotalMedStdByAgeIncome)
+    temp = np.reshape(MyMarket.data_moments[520:560],(8,5))
+    plt.plot(Age5year[:8],temp[:,0],'.b')
+    plt.plot(Age5year[:8],temp[:,1],'.g')
+    plt.plot(Age5year[:8],temp[:,2],'.r')
+    plt.plot(Age5year[:8],temp[:,3],'.c')
+    plt.plot(Age5year[:8],temp[:,4],'.m')
+    plt.xlabel('Age')
+    plt.ylabel('Stdev log total (nonzero) medical expenses')
+    plt.title('Medical expenses by age group and income quintile')
+    plt.xlim((25,65))
+    #plt.savefig('../Figures/StdevTotalMedFitByAgeIncome.pdf')
+    plt.show()
+    
+    plt.plot(Age[0:40],MyMarket.InsuredRateByAge,'-b')
+    plt.plot(Age[0:40],MyMarket.data_moments[160:200],'.k')
+    plt.xlabel('Age')
+    plt.ylabel('ESI uptake rate')
+    plt.xlim((25,65))
+    plt.show()
 #    
 #    plt.plot(Age5year[:8],MyMarket.InsuredRateByAgeIncome)
 #    temp = np.reshape(MyMarket.data_moments[560:600],(8,5))
@@ -769,12 +770,12 @@ if __name__ == '__main__':
 #    plt.xlim((25,65))
 #    plt.show()
 #    
-#    plt.plot(Age[0:40],MyMarket.PremiumMeanByAge,'-b')
-#    plt.plot(Age[0:40],MyMarket.data_moments[240:280],'.k')
-#    plt.xlabel('Age')
-#    plt.ylabel('Mean out-of-pocket premiums paid')
-#    plt.xlim((25,65))
-#    plt.show()
+    plt.plot(Age[0:40],MyMarket.PremiumMeanByAge,'-b')
+    plt.plot(Age[0:40],MyMarket.data_moments[240:280],'.k')
+    plt.xlabel('Age')
+    plt.ylabel('Mean out-of-pocket premiums paid')
+    plt.xlim((25,65))
+    plt.show()
 #    
 #    plt.plot(Age[0:40],MyMarket.PremiumStdByAge,'-b')
 #    plt.plot(Age[0:40],MyMarket.data_moments[280:320],'.k')
@@ -783,12 +784,12 @@ if __name__ == '__main__':
 #    plt.xlim((25,65))
 #    plt.show()
 #    
-#    plt.plot(Age[0:40],MyMarket.ZeroSubsidyRateByAge,'-b')
-#    plt.plot(Age[0:40],MyMarket.data_moments[200:240],'.k')
-#    plt.xlabel('Age')
-#    plt.ylabel('Pct insured with zero employer contribution')
-#    plt.xlim((25,65))
-#    plt.show()
+    plt.plot(Age[0:40],MyMarket.ZeroSubsidyRateByAge,'-b')
+    plt.plot(Age[0:40],MyMarket.data_moments[200:240],'.k')
+    plt.xlabel('Age')
+    plt.ylabel('Pct insured with zero employer contribution')
+    plt.xlim((25,65))
+    plt.show()
 #    
 #    plt.plot(Age,MyMarket.OOPshareByAge,'-b')
 #    plt.plot(Age,MyMarket.data_moments[760:820],'.k')
@@ -820,10 +821,10 @@ if __name__ == '__main__':
 
     # This block of code is for testing one type of agent
 #    t_start = clock()
-#    InsChoice = 0
+#    InsChoice = 1
 #    SubsidyTypeCount = 1
 #    CRRAtypeCount = 1
-#    ZeroSubsidyBool = False
+#    ZeroSubsidyBool = True
 #    MyMarket = makeMarketFromParams(Params.test_param_vec,np.array([0.5, 0.0, 0.0, 0.0, 0.0]),InsChoice,SubsidyTypeCount,CRRAtypeCount,ZeroSubsidyBool)
 #    multiThreadCommands(MyMarket.agents,['update()','makeShockHistory()'])
 #    MyMarket.getIncomeQuintiles()
@@ -832,7 +833,7 @@ if __name__ == '__main__':
 #    print('Making the agents took ' + mystr(t_end-t_start) + ' seconds.')
 #    
 #    t_start = clock()
-#    MyType = MyMarket.agents[2] 
+#    MyType = MyMarket.agents[0] 
 #    MyType.solve()
 #    t_end = clock()
 #    print('Solving one agent type took ' + str(t_end-t_start) + ' seconds.')
@@ -844,7 +845,7 @@ if __name__ == '__main__':
 #    print('Simulating one agent type took ' + str(t_end-t_start) + ' seconds.')
 #       
 #    t = 0
-#    p = 0.0    
+#    p = 2.0    
 #    h = 4        
 #    MedShk = 1.0e-2
 #    z = 0
@@ -857,4 +858,4 @@ if __name__ == '__main__':
 #    MyType.plotMedFuncByMedShk(t,h,z,p)
 #    MyType.plotxFuncByMedShk(t,h,z,p)
 #    MyType.plotcEffFuncByMedShk(t,h,z,p)
-  
+#  

@@ -1062,25 +1062,30 @@ class GenIncProcessConsumerType(IndShockConsumerType):
         self.timeFwd()
         LivPrbAll = np.array(self.LivPrb)
         
+        # Determine how many agents to simulate when generating pLvlGrids
+        agent_count_min = 10 # Minimum number of agents above/below each selected percentile
+        farthest_pctile = np.minimum(self.pLvlPctiles[0],1.-self.pLvlPctiles[-1])
+        AgentCount = np.round(agent_count_min/farthest_pctile).astype(int) # only for this method
+        
         # Simulate the distribution of permanent income levels by t_cycle in a lifecycle model
         if self.cycles == 1:
-            pLvlNow = drawLognormal(self.AgentCount,mu=self.pLvlInitMean,sigma=self.pLvlInitStd,seed=31382)
+            pLvlNow = drawLognormal(AgentCount,mu=self.pLvlInitMean,sigma=self.pLvlInitStd,seed=31382)
             PermIncGrid = [] # empty list of time-varying permanent income grids
             # Calculate distribution of permanent income in each period of lifecycle
             for t in range(len(self.PermShkStd)):
                 if t > 0:
-                    PermShkNow = drawDiscrete(N=self.AgentCount,P=self.PermShkDstn[t-1][0],X=self.PermShkDstn[t-1][1],exact_match=False,seed=t)
+                    PermShkNow = drawDiscrete(N=AgentCount,P=self.PermShkDstn[t-1][0],X=self.PermShkDstn[t-1][1],exact_match=False,seed=t)
                     pLvlNow = self.pLvlNextFunc[t-1](pLvlNow)*PermShkNow
                 PermIncGrid.append(getPercentiles(pLvlNow,percentiles=self.pLvlPctiles))
                 
         # Calculate "stationary" distribution in infinite horizon (might vary across periods of cycle)
         elif self.cycles == 0:
             T_long = 1000 # Number of periods to simulate to get to "stationary" distribution
-            pLvlNow = drawLognormal(self.AgentCount,mu=self.pLvlInitMean,sigma=self.pLvlInitStd,seed=31382)
-            t_cycle = np.zeros(self.AgentCount,dtype=int)
+            pLvlNow = drawLognormal(AgentCount,mu=self.pLvlInitMean,sigma=self.pLvlInitStd,seed=31382)
+            t_cycle = np.zeros(AgentCount,dtype=int)
             for t in range(T_long):
                 LivPrb = LivPrbAll[t_cycle] # Determine who dies and replace them with newborns
-                draws = drawUniform(self.AgentCount,seed=t)
+                draws = drawUniform(AgentCount,seed=t)
                 who_dies = draws > LivPrb
                 pLvlNow[who_dies] = drawLognormal(np.sum(who_dies),mu=self.pLvlInitMean,sigma=self.pLvlInitStd,seed=t+92615)
                 t_cycle[who_dies] = 0
