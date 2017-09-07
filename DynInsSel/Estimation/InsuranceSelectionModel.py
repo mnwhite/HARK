@@ -893,6 +893,10 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
         policyFuncsThisHealthCopay = []
         vFuncsThisHealthCopay = []
         
+        # Make an alternate shock and prob array for actuarial value calculation
+        MedShkArrayAlt = np.tile(np.reshape(MedShkVals,(1,1,MedCount)),(aLvlCount,pLvlCount,1))
+        ShkPrbsArrayAlt = np.tile(np.reshape(MedShkPrbs,(1,1,MedCount)),(aLvlCount,pLvlCount,1))
+        
         # Make the end of period value function for this health
         EndOfPrdvNvrsFunc_by_pLvl = []
         EndOfPrdvNvrs = uinv(EndOfPrdv[:,:,h])
@@ -1082,7 +1086,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
                            
             # Get value and marginal value at an array of states
             vArrayBig, vParrayBig, vPParrayBig = policyFuncsThisHealth[-1].evalvAndvPandvPP(mLvlArray,pLvlArray,MedShkArray)
-            ConArrayBig, MedArrayBig = policyFuncsThisHealth[-1](mLvlArray,pLvlArray,MedShkArray)
+            ConArrayBig, MedArrayBig = policyFuncsThisHealth[-1](mLvlArray,pLvlArray,MedShkArrayAlt)
             
             # Fix tiny non-monotonicities in value near the Cfloor seam
             vFloor_tiled = np.tile(np.reshape(vFloorBypLvl,(1,pLvlCount,1)),(aLvlCount,1,MedCount))
@@ -1091,27 +1095,25 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
             # Integrate (marginal) value across medical shocks
             vArray   = np.sum(vArrayBig*ShkPrbsArray,axis=2) + CfloorPrbArray*np.tile(np.reshape(vFloorBypLvl,(1,pLvlCount)),(aLvlCount,1))
             vParray  = np.sum(vParrayBig*ShkPrbsArray,axis=2)
-#            print(np.sum(np.isnan(vArray)),np.sum(np.isnan(vParray)))
                 
-            # Make a second array of shocks and probabilities *beyond* the critical shock (only relevant for AV)
-            ZadjAltArray = np.maximum(ZcritArray - ZgridBase[1],0.) # Should always be non-negative
-            ZshkAltArray = np.minimum(np.tile(np.reshape(ZgridBase[1:],(1,1,MedCount-1)),(aLvlCount,pLvlCount,1)) + np.tile(np.reshape(ZadjAltArray,(aLvlCount,pLvlCount,1)),(1,1,MedCount-1)),6.)
-            MedShkAltArray = np.exp(ZshkAltArray*MedShkStd[h] + MedShkAvg[h])
-            TempPrbAltArray = norm.pdf(ZshkAltArray)
-            ReweightAltArray = np.sum(TempPrbAltArray,axis=2)
-            ShkPrbsAltArray = TempPrbAltArray*np.tile(np.reshape(ReweightAltArray,(aLvlCount,pLvlCount,1)),(1,1,MedCount-1))
-            
-            # Find medical care at each "alternative shock" beyond the critical shock
-            xLvlAlt = DfuncList[Copay_idx](Cfloor*np.ones_like(MedShkAltArray),MedShkAltArray)
-            b_temp  = bFromxFuncList[Copay_idx](xLvlAlt,MedShkAltArray) # transformed consumption ratio
-            q_temp  = np.exp(-b_temp)
-            MedArrayAlt = xLvlAlt*q_temp/(1.+q_temp)
+#            # Make a second array of shocks and probabilities *beyond* the critical shock (only relevant for AV)
+#            ZadjAltArray = np.maximum(ZcritArray - ZgridBase[1],0.) # Should always be non-negative
+#            ZshkAltArray = np.minimum(np.tile(np.reshape(ZgridBase[1:],(1,1,MedCount-1)),(aLvlCount,pLvlCount,1)) + np.tile(np.reshape(ZadjAltArray,(aLvlCount,pLvlCount,1)),(1,1,MedCount-1)),6.)
+#            MedShkAltArray = np.exp(ZshkAltArray*MedShkStd[h] + MedShkAvg[h])
+#            TempPrbAltArray = norm.pdf(ZshkAltArray)
+#            ReweightAltArray = np.sum(TempPrbAltArray,axis=2)
+#            ShkPrbsAltArray = TempPrbAltArray*np.tile(np.reshape(ReweightAltArray,(aLvlCount,pLvlCount,1)),(1,1,MedCount-1))
+#            
+#            # Find medical care at each "alternative shock" beyond the critical shock
+#            xLvlAlt = DfuncList[Copay_idx](Cfloor*np.ones_like(MedShkAltArray),MedShkAltArray)
+#            b_temp  = bFromxFuncList[Copay_idx](xLvlAlt,MedShkAltArray) # transformed consumption ratio
+#            q_temp  = np.exp(-b_temp)
+#            MedArrayAlt = xLvlAlt*q_temp/(1.+q_temp)
             
             # Calculate actuarial value at each (mLvl,pLvl), combining shocks above and below the critical value
             AVarrayBig = MedArrayBig*MedPrice - Contract.OOPfunc(MedArrayBig) # realized "actuarial value" below critical shock
-            AVarrayAlt = MedArrayAlt*MedPrice - Contract.OOPfunc(MedArrayAlt) # realized "actuarial value" above critical shock
-            AVarray  = np.sum(AVarrayBig*ShkPrbsArray,axis=2) + CfloorPrbArray*np.sum(AVarrayAlt*ShkPrbsAltArray,axis=2)
-#            print(np.sum(np.isnan(AVarrayBig)),np.sum(np.isnan(AVarrayAlt)))
+#            AVarrayAlt = MedArrayAlt*MedPrice - Contract.OOPfunc(MedArrayAlt) # realized "actuarial value" above critical shock
+            AVarray  = np.sum(AVarrayBig*ShkPrbsArrayAlt,axis=2)# + CfloorPrbArray*np.sum(AVarrayAlt*ShkPrbsAltArray,axis=2)
             
             # Construct pseudo-inverse arrays of vNvrs and vPnvrs, adding some data at the bottom
             vNvrsFloorBypLvl = uinv(vFloorBypLvl)
@@ -1134,7 +1136,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
                 m_temp_C = mGrid_small_C[:,j]
                 vNvrs_temp  = vNvrsArray[:,j]
                 vPnvrs_temp = vPnvrsArray[:,j]
-                AV_temp = AVarray[:,j]
+                AV_temp = np.insert(AVarray[:,j],0,0.0)
                 vNvrsFunc_by_pLvl.append(LinearInterp(m_temp_A,vNvrs_temp))
                 vPnvrsFuncUpper_by_pLvl.append(LinearInterp(m_temp_B,vPnvrs_temp))
                 AVfunc_by_pLvl.append(LinearInterp(m_temp_C,AV_temp))
