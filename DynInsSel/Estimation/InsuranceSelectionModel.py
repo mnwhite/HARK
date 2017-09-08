@@ -892,6 +892,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
         ShkGridDense = makeGridDenser(MedShkVals,MedShk_aug_factor)
         policyFuncsThisHealthCopay = []
         vFuncsThisHealthCopay = []
+#        CritShkFuncsThisHealthCopay = []
         
         # Make an alternate shock and prob array for actuarial value calculation
         MedShkArrayAlt = np.tile(np.reshape(MedShkVals,(1,1,MedCount)),(aLvlCount,pLvlCount,1))
@@ -1002,6 +1003,47 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
             # Add the value function to the list for this health
             vFuncsThisHealthCopay.append(ValueFunc3D(vNvrsFunc,CRRA)) # Recurve value function
             
+#            # Find the critical med shock where Cfloor binds for each (mLvl,pLvl) value
+#            xFunc_temp = xFuncNow # Assume zero deductible for now, will fix later
+#            CritShkFunc = CritShkFuncList[k]
+#            mMinArray_temp = np.tile(np.reshape(mLvlMinNow(pLvlGrid),(1,pLvlCount)),(aLvlCount,1))
+#            pLvlArray_temp = np.tile(np.reshape(pLvlGrid,(1,pLvlCount)),(aLvlCount,1))
+#            mLvlArray_temp = mMinArray_temp + np.tile(np.reshape(aXtraGrid,(aLvlCount,1)),(1,pLvlCount))*pLvlArray_temp + Cfloor
+#            CritShkArray = 1e-8*np.ones_like(mLvlArray_temp) # Current guess of critical shock for each (mLvl,pLvl)
+#            DiffArray = np.ones_like(mLvlArray_temp) # Relative change in crit shock guess this iteration
+#            Unresolved = np.ones_like(mLvlArray_temp,dtype=bool) # Indicator for which points are still unresolved
+#            UnresolvedCount = Unresolved.size # Number of points whose CritShk has not been found
+#            DiffTol = 1e-5 # Convergence tolerance for the search
+#            LoopCount = 0
+#            LoopMax = 30
+#            while (UnresolvedCount > 0) and (LoopCount < LoopMax): # Loop until all points have converged on CritShk
+#                CritShkPrev = CritShkArray[Unresolved]
+#                mLvl_temp = mLvlArray_temp[Unresolved]                
+#                if LoopCount > 30: # Use Newton's method after a few iterations
+#                    xLvl_temp = np.minimum(xFunc_temp(mLvl_temp,pLvlArray_temp[Unresolved],CritShkPrev),mLvl_temp)
+#                    CritShk_temp = np.minimum(CritShkFunc(xLvl_temp),MedShkMax)
+#                    Target_diff = CritShk_temp - CritShkPrev # This is the expression we want to be zero
+#                    Target_slope = xFunc_temp.derivativeZ(mLvl_temp,pLvlArray_temp[Unresolved],CritShkPrev)*CritShkFunc.derivative(xLvl_temp) - 1.
+#                    CritShkNew = CritShkPrev - Target_diff/Target_slope
+#                    DiffNew = np.abs(CritShkNew/CritShkPrev - 1.)
+#                else: # Use fixed point iteration for first few iterations
+#                    xLvl_temp = np.minimum(xFunc_temp(mLvl_temp,pLvlArray_temp[Unresolved],CritShkPrev),mLvl_temp)
+#                    CritShkNew = np.minimum(CritShkFunc(xLvl_temp),MedShkMax)
+#                    DiffNew = np.abs(CritShkNew/CritShkPrev - 1.)                
+#                DiffArray[Unresolved] = DiffNew
+#                CritShkArray[Unresolved] = CritShkNew
+#                Unresolved[Unresolved] = DiffNew > DiffTol
+#                UnresolvedCount = np.sum(Unresolved)
+#                LoopCount += 1
+#                
+#            # Construct a function that yields the critical medical shock where the Cfloor begins to bind (for given mLvl,pLvl)
+#            CritShkFunc_by_pLvl = []
+#            for i in range(pLvlCount):
+#                m_temp = np.insert(mLvlArray_temp[:,i],0,Cfloor)
+#                Shk_temp = np.insert(CritShkArray[:,i],0,0.0)
+#                CritShkFunc_by_pLvl.append(LinearInterp(m_temp,Shk_temp))
+#            CritShkFuncsThisHealthCopay.append(LinearInterpOnInterp1D(CritShkFunc_by_pLvl,pLvlGrid))            
+            
         # Set up state grids to prepare for the medical shock integration step
         tempArray    = np.tile(np.reshape(aXtraGrid,(aLvlCount,1,1)),(1,pLvlCount,MedCount))
         mMinArray    = np.tile(np.reshape(mLvlMinNow(pLvlGrid),(1,pLvlCount,1)),(aLvlCount,1,MedCount))
@@ -1035,7 +1077,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
             # Make the policy function for this contract
             policyFuncsThisHealth.append(InsSelPolicyFunc(vFuncFullPrice,vFuncCopay,policyFuncFullPrice,policyFuncCopay,DpFuncFullPrice,DpFuncCopay,Contract,CRRAmed))
             
-            # Find the critical med shock where Cfloor binds for each (mLvl,pLvl) value
+#            # Find the critical med shock where Cfloor binds for each (mLvl,pLvl) value
             xFunc_temp = policyFuncCopay.xFunc # Assume zero deductible for now, will fix later
             mLvlArray_temp = mLvlArray[:,:,0]
             pLvlArray_temp = pLvlArray[:,:,0]
@@ -1067,6 +1109,12 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
                 LoopCount += 1
 #            if LoopCount == LoopMax:
 #                print(str(UnresolvedCount) + ' points still unresolved for h=' + str(h) + ', z=' + str(z) + '!')
+
+#            # Find the critical med shock where Cfloor binds for each (mLvl,pLvl) value
+#            mLvlArray_temp = mLvlArray[:,:,0]
+#            pLvlArray_temp = pLvlArray[:,:,0]
+#            CritShkFunc = CritShkFuncsThisHealthCopay[Copay_idx]
+#            CritShkArray = CritShkFunc(mLvlArray_temp,pLvlArray_temp)
                 
             # Make arrays of medical shocks and probabilities, along with Cfloor probs and vFloor values
             AlwaysCfloor = np.logical_not(CritShkArray > 0.)
@@ -1417,8 +1465,8 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
             return # Don't do anything if PremiumFuncs hasn't been defined
         time_orig = self.time_flow
         self.timeFwd()
-        T_retire = 40 # For determining whether the apply subsidy
-        T = len(self.ContractList)
+        T_retire = 40 # For determining whether to apply subsidy
+        T = len(self.PremiumFuncs)
         
         # Loop through each age-state-contract, filling in the updated premium in ContractList
         for t in range(T):
@@ -2133,7 +2181,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         Calculates total expected medical costs by age-state-contract, as well
         as the number of agents who buy the contract.
         '''
-        self.calcExpInsPaybyContract()
+        self.calcExpInsPayByContract()
         
     def simOnePeriod(self):
         '''
@@ -2288,8 +2336,9 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         # Store the results as attributes of self
         self.ContractPayments = ContractPayments
         self.ContractCounts = ContractCounts
+
         
-    def calcExpInsPaybyContract(self):
+    def calcExpInsPayByContract(self):
         '''
         Calculates the expected insurance payout for each contract in each health
         state at each age for this type.  Makes use of the premium functions
@@ -2311,31 +2360,34 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         ExpBuyers = np.zeros((self.T_sim,StateCount,MaxContracts))
         
         for t in range(self.T_sim):
-            random_choice = self.ChoiceShkMag[0] > 0.
+            random_choice = self.ChoiceShkMag[t] > 0.
             for j in range(StateCount):
                 these = self.MrkvHist[t,:] == j
-                N = these.size
+                N = np.sum(these)
                 mLvl = self.mLvlNow_hist[t,these]
                 pLvl = self.pLvlHist[t,these]
-                Z = len(self.PremiumFuncs[t][j])
+                Z = len(self.ContractList[t][j])
                 vNvrs_array = np.zeros((N,Z))
                 AV_array = np.zeros((N,Z))
                 for z in range(Z):
-                    Premium = self.PremiumFuncs[t][j][z](mLvl,pLvl)
+                    Premium = np.maximum(self.PremiumFuncs[t][j][z](mLvl,pLvl) - self.PremiumSubsidy, 0.0) # net premium
                     mLvl_temp = mLvl - Premium
-                    AV_array[:,z] = self.solution[t].AVfunc[j][z](mLvl_temp,pLvl)
-                    vNvrs_array[:,z] = self.solution[t].vFuncByContract[j][z].func(mLvl_temp,pLvl)
+                    Unaffordable = mLvl_temp < 0.
+                    AV_array[:,z] = self.AVfunc[t][j][z](mLvl_temp,pLvl)
+                    vNvrs_array[:,z] = self.vFuncByContract[t][j][z].func(mLvl_temp,pLvl)
+                    vNvrs_array[Unaffordable,z] = -np.inf
+                    AV_array[Unaffordable,z] = 0.0
                 if random_choice:
                     v_best = np.max(vNvrs_array,axis=1)
                     v_best_big = np.tile(np.reshape(v_best,(N,1)),(1,Z))
-                    v_adj_exp = np.exp((vNvrs_array - v_best_big)/self.ChoiceShkMag[0]) # THIS NEEDS TO LOOK UP t_cycle TO BE CORRECT IN ALL CASES
+                    v_adj_exp = np.exp((vNvrs_array - v_best_big)/self.ChoiceShkMag[t])
                     v_sum_rep = np.tile(np.reshape(np.sum(v_adj_exp,axis=1),(N,1)),(1,Z))
                     ChoicePrbs = v_adj_exp/v_sum_rep
                 else:
                     z_choice = np.argmax(vNvrs_array,axis=1)
                     ChoicePrbs = np.zeros((N,Z))
-                    for z in range(Z): # is there a non-loop way to do this?
-                        ChoicePrbs[z_choice==z,z] == 1.0
+                    for z in range(Z): # is there a non-loop way to do this? YES THERE IS
+                        ChoicePrbs[z_choice==z,z] = 1.0
                 ExpInsPay[t,j,0:Z] = np.sum(ChoicePrbs*AV_array,axis=0)
                 ExpBuyers[t,j,0:Z] = np.sum(ChoicePrbs,axis=0)
                 

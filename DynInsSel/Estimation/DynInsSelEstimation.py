@@ -60,10 +60,11 @@ class DynInsSelType(BaseType):
         self.installPremiumFuncs()
         self.updateSolutionTerminal()
         
-#    def postSolve(self): # This needs to be active in the dynamic model
-#        self.initializeSim()
-#        self.simulate()
-#        self.postSim()
+    def postSolve(self): # This needs to be active in the dynamic model
+        self.initializeSim()
+        self.simulate()
+        self.postSim()
+        self.deleteSolution()
         
     def initializeSim(self):
         InsSelConsumerType.initializeSim(self)
@@ -78,9 +79,16 @@ class DynInsSelType(BaseType):
         self.TotalMedHist[np.logical_and(self.TotalMedHist < 0.0001,self.TotalMedHist > 0.0,)] = 0.0001
         self.WealthRatioHist = self.aLvlNow_hist/self.pLvlHist
         self.InsuredBoolArray = self.ContractNow_hist > 0
-        self.deleteSolution()
         
     def deleteSolution(self): # Rewrite this later to keep the AVfuncs and vFuncByContracts
+        vFuncByContract = []
+        AVfunc = []
+        for t in range(self.T_cycle):
+            vFuncByContract.append(self.solution[t].vFuncByContract)
+            AVfunc.append(self.solution[t].AVfunc)
+        self.vFuncByContract = vFuncByContract
+        self.AVfunc = AVfunc
+        self.addToTimeVary('AVfunc','vFuncByContract')
         del self.solution
         self.delFromTimeVary('solution')
         
@@ -612,25 +620,32 @@ def makeMarketFromParams(ParamArray,PremiumArray,InsChoiceType,SubsidyTypeCount,
     InsuranceMarket.moment_weights = moment_weights
     InsuranceMarket.PremiumFuncs_init = PremiumFuncs_init
     InsuranceMarket.Premiums = Premiums_init
-    if Params.StaticBool:
-        InsuranceMarket.max_loops = 1
-    else:
-        InsuranceMarket.max_loops = 10
+#    if Params.StaticBool:
+#        InsuranceMarket.max_loops = 1
+#    else:
+#       InsuranceMarket.max_loops = 10
     InsuranceMarket.LoadFac = 1.2 # Make this an input later
     print('I made an insurance market with ' + str(len(InsuranceMarket.agents)) + ' agent types!')
     return InsuranceMarket
-    
 
 def objectiveFunction(Parameters):
     '''
     The objective function for the estimation.  Makes and solves a market, then
     returns the weighted sum of moment differences between simulation and data.
     '''
-    InsChoice = 1
-    SubsidyTypeCount = 1
-    CRRAtypeCount = 1
-    ZeroSubsidyBool = True
-    MyMarket = makeMarketFromParams(Parameters,np.array([0.5, 0.0, 0.0, 0.0, 0.0]),InsChoice,SubsidyTypeCount,CRRAtypeCount,ZeroSubsidyBool)
+    EvalType = 2 # Number of times to do a static search for eqbm premiums
+    InsChoice = 1 # Extent of insurance choice
+    SubsidyTypeCount = 1 # Number of discrete non-zero subsidy levels
+    CRRAtypeCount = 1 # Number of CRRA types (DON'T USE)
+    ZeroSubsidyBool = True # Whether to include a zero subsidy type
+    TestPremiums = True # Whether to start with the test premium level
+    
+    if TestPremiums:
+        PremiumArray = np.array([0.3260, 0.0, 0.0, 0.0, 0.0])
+    else:
+        PremiumArray = Params.PremiumsLast
+    
+    MyMarket = makeMarketFromParams(Parameters,PremiumArray,InsChoice,SubsidyTypeCount,CRRAtypeCount,ZeroSubsidyBool)
     multiThreadCommands(MyMarket.agents,['update()','makeShockHistory()'])
     MyMarket.getIncomeQuintiles()
     multiThreadCommandsFake(MyMarket.agents,['makeIncBoolArray()'])
@@ -639,18 +654,20 @@ def objectiveFunction(Parameters):
     sim_commands = ['initializeSim()','simulate()','postSim()']
     all_commands = solve_commands + sim_commands
     
-    multiThreadCommands(MyMarket.agents,all_commands)
+    if EvalType == 0:
+        multiThreadCommands(MyMarket.agents,solve_commands)
+    else:
+        MyMarket.max_loops = EvalType
+        MyMarket.solve()
+        Params.PremiumsLast = MyMarket.Premiums
 
-# Reactivate this block when actually solving the model to get eqbm premiums    
-#    MyMarket.solve()
-#    if Params.StaticBool:
-#        multiThreadCommands(MyMarket.agents,sim_commands)
-        
     MyMarket.calcSimulatedMoments()
     MyMarket.combineSimulatedMoments()
     moment_sum = MyMarket.aggregateMomentConditions()    
     return MyMarket
 
+
+###############################################################################
     
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
@@ -658,30 +675,30 @@ if __name__ == '__main__':
     mystr = lambda number : "{:.4f}".format(number)
     
     # This short block is for actually testing the objective function
-#    t_start = clock()
-#    MyMarket = objectiveFunction(Params.test_param_vec)
-#    t_end = clock()
-#    print('Objective function evaluation took ' + mystr(t_end-t_start) + ' seconds.')
-#    
-#    # This block of code is for displaying moment fits after running objectiveFunc  
-#    Age = np.arange(25,85)
-#    Age5year = 27.5 + 5*np.arange(12)
-#    
-#    if not Params.StaticBool:
-#        plt.plot(Age[0:40],MyMarket.WealthMedianByAge)
-#        plt.plot(Age[0:40],MyMarket.data_moments[0:40],'.k')
-#        plt.xlabel('Age')
-#        plt.ylabel('Median wealth/income ratio')
-#        #plt.savefig('../Figures/WealthFitByAge.pdf')
-#        plt.show()
-#    
-#    plt.plot(Age,MyMarket.LogTotalMedMeanByAge)
-#    plt.plot(Age,MyMarket.data_moments[40:100],'.k')
-#    plt.xlabel('Age')
-#    plt.ylabel('Mean log total (nonzero) medical expenses')
-#    plt.xlim((25,85))
-#    #plt.savefig('../Figures/MeanTotalMedFitByAge.pdf')
-#    plt.show()
+    t_start = clock()
+    MyMarket = objectiveFunction(Params.test_param_vec)
+    t_end = clock()
+    print('Objective function evaluation took ' + mystr(t_end-t_start) + ' seconds.')
+    
+    # This block of code is for displaying moment fits after running objectiveFunc  
+    Age = np.arange(25,85)
+    Age5year = 27.5 + 5*np.arange(12)
+    
+    if not Params.StaticBool:
+        plt.plot(Age[0:40],MyMarket.WealthMedianByAge)
+        plt.plot(Age[0:40],MyMarket.data_moments[0:40],'.k')
+        plt.xlabel('Age')
+        plt.ylabel('Median wealth/income ratio')
+        #plt.savefig('../Figures/WealthFitByAge.pdf')
+        plt.show()
+    
+    plt.plot(Age,MyMarket.LogTotalMedMeanByAge)
+    plt.plot(Age,MyMarket.data_moments[40:100],'.k')
+    plt.xlabel('Age')
+    plt.ylabel('Mean log total (nonzero) medical expenses')
+    plt.xlim((25,85))
+    #plt.savefig('../Figures/MeanTotalMedFitByAge.pdf')
+    plt.show()
 #
 #    plt.plot(Age,MyMarket.LogTotalMedStdByAge)
 #    plt.plot(Age,MyMarket.data_moments[100:160],'.k')
@@ -820,42 +837,47 @@ if __name__ == '__main__':
 #    print('Simulating a static agent type took ' + mystr(t_end-t_start) + ' seconds.')
 
     # This block of code is for testing one type of agent
-    t_start = clock()
-    InsChoice = 1
-    SubsidyTypeCount = 1
-    CRRAtypeCount = 1
-    ZeroSubsidyBool = True
-    MyMarket = makeMarketFromParams(Params.test_param_vec,np.array([0.5, 0.0, 0.0, 0.0, 0.0]),InsChoice,SubsidyTypeCount,CRRAtypeCount,ZeroSubsidyBool)
-    multiThreadCommands(MyMarket.agents,['update()','makeShockHistory()'])
-    MyMarket.getIncomeQuintiles()
-    multiThreadCommandsFake(MyMarket.agents,['makeIncBoolArray()'])
-    t_end = clock()
-    print('Making the agents took ' + mystr(t_end-t_start) + ' seconds.')
-    
-    t_start = clock()
-    MyType = MyMarket.agents[0] 
-    MyType.solve()
-    t_end = clock()
-    print('Solving one agent type took ' + str(t_end-t_start) + ' seconds.')
-    
+#    t_start = clock()
+#    InsChoice = 1
+#    SubsidyTypeCount = 1
+#    CRRAtypeCount = 1
+#    ZeroSubsidyBool = False
+#    MyMarket = makeMarketFromParams(Params.test_param_vec,np.array([0.5, 0.0, 0.0, 0.0, 0.0]),InsChoice,SubsidyTypeCount,CRRAtypeCount,ZeroSubsidyBool)
+#    multiThreadCommands(MyMarket.agents,['update()','makeShockHistory()'])
+#    MyMarket.getIncomeQuintiles()
+#    multiThreadCommandsFake(MyMarket.agents,['makeIncBoolArray()'])
+#    t_end = clock()
+#    print('Making the agents took ' + mystr(t_end-t_start) + ' seconds.')
+#    
+#    t_start = clock()
+#    MyType = MyMarket.agents[0] 
+#    MyType.solve()
+#    t_end = clock()
+#    print('Solving one agent type took ' + str(t_end-t_start) + ' seconds.')
+#    
 #    t_start = clock()
 #    MyType.initializeSim()
 #    MyType.simulate()
 #    t_end = clock()
 #    print('Simulating one agent type took ' + str(t_end-t_start) + ' seconds.')
-       
-    t = 0
-    p = 2.0    
-    h = 4        
-    MedShk = 1.0e-2
-    z = 0
-    
-    MyType.plotvFunc(t,p,decurve=False)
-    MyType.plotvPfunc(t,p,decurve=False)
-    MyType.plotvFuncByContract(t,h,p)
-    MyType.plotcFuncByContract(t,h,p,MedShk)
-    MyType.plotcFuncByMedShk(t,h,z,p)
-    MyType.plotMedFuncByMedShk(t,h,z,p)
-    MyType.plotxFuncByMedShk(t,h,z,p)
-    MyType.plotcEffFuncByMedShk(t,h,z,p)
-  
+#       
+#    t = 0
+#    p = 2.0    
+#    h = 4        
+#    MedShk = 1.0e-2
+#    z = 0
+#    
+#    MyType.plotvFunc(t,p,decurve=False)
+#    MyType.plotvPfunc(t,p,decurve=False)
+#    MyType.plotvFuncByContract(t,h,p)
+#    MyType.plotcFuncByContract(t,h,p,MedShk)
+#    MyType.plotcFuncByMedShk(t,h,z,p)
+#    MyType.plotMedFuncByMedShk(t,h,z,p)
+#    MyType.plotxFuncByMedShk(t,h,z,p)
+#    MyType.plotcEffFuncByMedShk(t,h,z,p)
+#    
+#    MyMarket.reset()
+#    MyMarket.sow()
+#    MyType.calcExpInsPayByContract()
+#    
+#  

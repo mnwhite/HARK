@@ -38,7 +38,7 @@ pLvlInitStd = 0.4                   # Initial standard deviation of (log) perman
 pLvlInitMean = 0.0                  # Initial average of log permanent income
 PermIncCorr = 0.99                  # Serial correlation coefficient for permanent income
 MedShkCount = 5                     # Number of medical shock points in "body"
-MedShkCountTail = [2,10]             # Number of medical shock points in "upper tail"
+MedShkCountTail = [2,8]             # Number of medical shock points in "upper tail"
 MedShkTailBound = [0.05,0.98]       # Boundaries of body (in CDF terms)
 MedPrice = 1.0                      # Relative price of a unit of medical care
 AgentCount = 10000                  # Number of agents of this type (only matters for simulation)
@@ -440,7 +440,7 @@ test_param_vec = np.array([0.973, # DiscFac
                            8.0,  # CRRAmed 
                        -np.inf,  # ChoiceShkMag in log
                            2.6,  # SubsidyZeroRate scaler
-                         -0.98,  # SubsidyAvg
+                         -1.61,  # SubsidyAvg
                           -3.0,  # SubsidyWidth scaler
                          -5.48,  # MedShkMean constant coefficient
                         0.0030,  # MedShkMean linear age coefficient
@@ -505,3 +505,6 @@ test_param_vec = np.array([0.973, # DiscFac
 #                           0.0,  # MedShkStd "poor" constant coefficient
 #                           0.0   # MedShkStd "poor" linear coefficient
 #                           ])
+    
+# This is very poor form, but I'm doing it anyway:
+PremiumsLast = np.zeros(5)    
