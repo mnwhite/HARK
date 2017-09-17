@@ -1077,7 +1077,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
             # Make the policy function for this contract
             policyFuncsThisHealth.append(InsSelPolicyFunc(vFuncFullPrice,vFuncCopay,policyFuncFullPrice,policyFuncCopay,DpFuncFullPrice,DpFuncCopay,Contract,CRRAmed))
             
-#            # Find the critical med shock where Cfloor binds for each (mLvl,pLvl) value
+            # Find the critical med shock where Cfloor binds for each (mLvl,pLvl) value
             xFunc_temp = policyFuncCopay.xFunc # Assume zero deductible for now, will fix later
             mLvlArray_temp = mLvlArray[:,:,0]
             pLvlArray_temp = pLvlArray[:,:,0]
@@ -1249,7 +1249,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
             vPnvrsArrayBig[UnaffordableArray] = 0.0
             
             # Weight each gridpoint by its contract probabilities
-            if ChoiceShkMag > 0.0:
+            if ChoiceShkMag < 0.0: # Never use choice shocks during solution
                 v_best = np.max(vNvrsArrayBig,axis=2)
                 v_best_tiled = np.tile(np.reshape(v_best,(mLvlCount,pLvlCount,1)),(1,1,len(ContractList[h])))
                 vNvrsArrayBig_adjexp = np.exp((vNvrsArrayBig - v_best_tiled)/ChoiceShkMag)
@@ -1314,8 +1314,8 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
     insurance contract, they learn their medical need shock and choose levels of consumption and
     medical care.
     '''
-    _time_vary = ['LivPrb','MedPrice','ContractList','MrkvArray','ChoiceShkMag','MedShkAvg','MedShkStd']
-    _time_inv = ['DiscFac','CRRA','CRRAmed','Cfloor','Rfree','BoroCnstArt','CubicBool']
+    _time_vary = ['DiscFac','LivPrb','MedPrice','ContractList','MrkvArray','ChoiceShkMag','MedShkAvg','MedShkStd']
+    _time_inv = ['CRRA','CRRAmed','Cfloor','Rfree','BoroCnstArt','CubicBool']
     
     def __init__(self,cycles=1,time_flow=True,**kwds):
         '''
@@ -1960,7 +1960,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
                     vPnvrsParrayBig[UnaffordableArray] = 0.0
                 
                 # Weight each gridpoint by its contract probabilities
-                if ChoiceShkMag > 0.0:
+                if ChoiceShkMag < 0.0: # Never use choice shocks in solution
                     v_best = np.max(vNvrsArrayBig,axis=2)
                     v_best_tiled = np.tile(np.reshape(v_best,(aLvlCount,pLvlCount,1)),(1,1,len(ContractList[h])))
                     vNvrsArrayBig_adjexp = np.exp((vNvrsArrayBig - v_best_tiled)/ChoiceShkMag)
@@ -2076,7 +2076,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         
         # Make initial permanent income and asset levels, etc
         pLvlInit = np.exp(self.pLvlInitMean)*drawMeanOneLognormal(N=self.AgentCount,sigma=self.pLvlInitStd,seed=self.RNG.randint(0,2**31-1))
-        self.aLvlInit = 0.0*pLvlInit
+        self.aLvlInit = 0.3*pLvlInit
         pLvlNow = pLvlInit
         Live = np.ones(self.AgentCount,dtype=bool)
         Dead = np.logical_not(Live)
