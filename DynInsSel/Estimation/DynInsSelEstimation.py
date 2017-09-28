@@ -420,7 +420,7 @@ def makeDynInsSelType(CRRAcon,CRRAmed,DiscFac,ChoiceShkMag,MedShkMeanAgeParams,M
         assert False, 'EducType must be 0, 1, or 2!'
         
     # Make a timepath of discount factors
-    DiscFac_time_vary = 10*[DiscFac-0.13] + 85*[DiscFac]    
+    DiscFac_time_vary = np.linspace(DiscFac-0.25,DiscFac,25).tolist() + 70*[DiscFac]    
         
     TypeDict['CRRA'] = CRRAcon
     TypeDict['CRRAmed'] = CRRAmed
@@ -635,7 +635,7 @@ def objectiveFunction(Parameters):
     The objective function for the estimation.  Makes and solves a market, then
     returns the weighted sum of moment differences between simulation and data.
     '''
-    EvalType = 1 # Number of times to do a static search for eqbm premiums
+    EvalType = 0 # Number of times to do a static search for eqbm premiums
     InsChoice = 1 # Extent of insurance choice
     SubsidyTypeCount = 1 # Number of discrete non-zero subsidy levels
     CRRAtypeCount = 1 # Number of CRRA types (DON'T USE)
@@ -691,7 +691,7 @@ if __name__ == '__main__':
         plt.plot(Age[0:40],MyMarket.data_moments[0:40],'.k')
         plt.xlabel('Age')
         plt.ylabel('Median wealth/income ratio')
-        #plt.savefig('../Figures/WealthFitByAge.pdf')
+        plt.savefig('../Figures/WealthFitByAge.pdf')
         plt.show()
     
     plt.plot(Age,MyMarket.LogTotalMedMeanByAge)
@@ -699,7 +699,7 @@ if __name__ == '__main__':
     plt.xlabel('Age')
     plt.ylabel('Mean log total (nonzero) medical expenses')
     plt.xlim((25,85))
-    #plt.savefig('../Figures/MeanTotalMedFitByAge.pdf')
+    plt.savefig('../Figures/MeanTotalMedFitByAge.pdf')
     plt.show()
 
     plt.plot(Age,MyMarket.LogTotalMedStdByAge)
@@ -707,7 +707,7 @@ if __name__ == '__main__':
     plt.xlabel('Age')
     plt.ylabel('Stdev log total (nonzero) medical expenses')
     plt.xlim((25,85))
-    #plt.savefig('../Figures/StdevTotalMedFitByAge.pdf')
+    plt.savefig('../Figures/StdevTotalMedFitByAge.pdf')
     plt.show()
     
     # Make a "detrender" based on quadratic fit of data moments
@@ -725,7 +725,7 @@ if __name__ == '__main__':
     plt.ylabel('Detrended mean log total (nonzero) medical expenses')
     plt.title('Medical expenses by age group and health status')
     plt.xlim((25,85))
-    #plt.savefig('../Figures/MeanTotalMedFitByAgeHealth.pdf')
+    plt.savefig('../Figures/MeanTotalMedFitByAgeHealth.pdf')
     plt.show()
     
     plt.plot(Age5year,MyMarket.LogTotalMedStdByAgeHealth)
@@ -739,7 +739,7 @@ if __name__ == '__main__':
     plt.ylabel('Stdev log total (nonzero) medical expenses')
     plt.title('Medical expenses by age group and health status')
     plt.xlim((25,85))
-    #plt.savefig('../Figures/StdevTotalMedFitByAgeHealth.pdf')
+    plt.savefig('../Figures/StdevTotalMedFitByAgeHealth.pdf')
     plt.show()
         
     plt.plot(Age5year[:8],MyMarket.LogTotalMedMeanByAgeIncome - np.tile(np.reshape(LogMedMeanAdj[:8],(8,1)),(1,5)))
@@ -753,7 +753,7 @@ if __name__ == '__main__':
     plt.ylabel('Detrended mean log total (nonzero) medical expenses')
     plt.title('Medical expenses by age group and income quintile')
     plt.xlim((25,65))
-    #plt.savefig('../Figures/MeanTotalMedFitByAgeIncome.pdf')
+    plt.savefig('../Figures/MeanTotalMedFitByAgeIncome.pdf')
     plt.show()
     
     plt.plot(Age5year[:8],MyMarket.LogTotalMedStdByAgeIncome)
@@ -767,7 +767,7 @@ if __name__ == '__main__':
     plt.ylabel('Stdev log total (nonzero) medical expenses')
     plt.title('Medical expenses by age group and income quintile')
     plt.xlim((25,65))
-    #plt.savefig('../Figures/StdevTotalMedFitByAgeIncome.pdf')
+    plt.savefig('../Figures/StdevTotalMedFitByAgeIncome.pdf')
     plt.show()
     
     plt.plot(Age[0:40],MyMarket.InsuredRateByAge,'-b')
@@ -775,6 +775,7 @@ if __name__ == '__main__':
     plt.xlabel('Age')
     plt.ylabel('ESI uptake rate')
     plt.xlim((25,65))
+    plt.savefig('../Figures/ESIuptakeFitByAge.pdf')
     plt.show()
     
     plt.plot(Age5year[:8],MyMarket.InsuredRateByAgeIncome)
@@ -787,15 +788,16 @@ if __name__ == '__main__':
     plt.xlabel('Age')
     plt.ylabel('ESI uptake rate')
     plt.xlim((25,65))
+    plt.savefig('../Figures/ESIuptakeFitByAgeIncome.pdf')
     plt.show()
-#    
-#    plt.plot(Age[0:40],MyMarket.PremiumMeanByAge,'-b')
-#    plt.plot(Age[0:40],MyMarket.data_moments[240:280],'.k')
-#    plt.xlabel('Age')
-#    plt.ylabel('Mean out-of-pocket premiums paid')
-#    plt.xlim((25,65))
-#    plt.show()
-#    
+    
+    plt.plot(Age[0:40],MyMarket.PremiumMeanByAge,'-b')
+    plt.plot(Age[0:40],MyMarket.data_moments[240:280],'.k')
+    plt.xlabel('Age')
+    plt.ylabel('Mean out-of-pocket premiums paid')
+    plt.xlim((25,65))
+    plt.show()
+    
 #    plt.plot(Age[0:40],MyMarket.PremiumStdByAge,'-b')
 #    plt.plot(Age[0:40],MyMarket.data_moments[280:320],'.k')
 #    plt.xlabel('Age')
@@ -803,21 +805,21 @@ if __name__ == '__main__':
 #    plt.xlim((25,65))
 #    plt.show()
 #    
-#    plt.plot(Age[0:40],MyMarket.ZeroSubsidyRateByAge,'-b')
-#    plt.plot(Age[0:40],MyMarket.data_moments[200:240],'.k')
-#    plt.xlabel('Age')
-#    plt.ylabel('Pct insured with zero employer contribution')
-#    plt.xlim((25,65))
-#    plt.show()
-#    
-#    plt.plot(Age,MyMarket.OOPshareByAge,'-b')
-#    plt.plot(Age,MyMarket.data_moments[760:820],'.k')
-#    plt.xlabel('Age')
-#    plt.ylabel('Share of medical expenses paid out-of-pocket')
-#    plt.xlim((25,85))
-#    plt.show()
-#    
-#     
+    plt.plot(Age[0:40],MyMarket.ZeroSubsidyRateByAge,'-b')
+    plt.plot(Age[0:40],MyMarket.data_moments[200:240],'.k')
+    plt.xlabel('Age')
+    plt.ylabel('Pct insured with zero employer contribution')
+    plt.xlim((25,65))
+    plt.show()
+    
+    plt.plot(Age,MyMarket.OOPshareByAge,'-b')
+    plt.plot(Age,MyMarket.data_moments[760:820],'.k')
+    plt.xlabel('Age')
+    plt.ylabel('Share of medical expenses paid out-of-pocket')
+    plt.xlim((25,85))
+    plt.show()
+    
+     
 
 # This block of code is for testing the static model
 #    t_start = clock()

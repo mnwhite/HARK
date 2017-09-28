@@ -82,7 +82,6 @@ class MedShockPolicyFunc(HARKobject):
                 elif MedShk == 0.0: 
                     bOpt = np.nan # Placeholder for when MedShk = 0
                 else:
-                    #optMedZeroFunc = lambda q : (MedShk/MedPrice)**(-1.0/CRRAcon)*(xLvl/MedPrice*(q/(1.+q)))**(CRRAmed/CRRAcon) - (xLvl/(1.+q))
                     optMedZeroFunc = lambda q : 1. + CRRAmed/(MedPrice*MedShk)*xLvl/(1.+q) - np.exp((xLvl/MedPrice*q/(1.+q))/MedShk)
                     optFuncTransformed = lambda b : optMedZeroFunc(tempf(b))
                     bOpt = brentq(optFuncTransformed,-100.0,100.0)

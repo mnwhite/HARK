@@ -16,7 +16,7 @@ AgentCountTotal = 100000
 StaticBool = False
 
 # Calibrated / other parameters (grid sizes, etc)
-Cfloor = 0.01                        # Effective consumption floor
+Cfloor = 0.265                      # Effective consumption floor
 Rfree = 5*[1.03]                    # Interest factor on assets
 DiscFac = 0.96                      # Intertemporal discount factor
 aXtraMin = 0.001                    # Minimum end-of-period "assets above minimum" value
@@ -36,7 +36,7 @@ DecurveBool = True                  # "Decurve" value through the inverse utilit
 pLvlPctiles = np.concatenate(([0.001, 0.005, 0.01, 0.03], np.linspace(0.05, 0.95, num=12),[0.97, 0.99, 0.995, 0.999]))
 pLvlInitStd = 0.4                   # Initial standard deviation of (log) permanent income
 pLvlInitMean = 0.0                  # Initial average of log permanent income
-PermIncCorr = 0.99                  # Serial correlation coefficient for permanent income
+PermIncCorr = 1.00                  # Serial correlation coefficient for permanent income
 MedShkCount = 5                     # Number of medical shock points in "body"
 MedShkCountTail = [2,8]             # Number of medical shock points in "upper tail"
 MedShkTailBound = [0.05,0.98]       # Boundaries of body (in CDF terms)
@@ -435,8 +435,8 @@ CollegeDictionary['pLvlInitMean'] = pLvlInitMean_c
 CollegeDictionary['pLvlNextFuncRet'] = RetirementFunc_c
 
 # Make a test parameter vector for estimation
-test_param_vec = np.array([0.962, # DiscFac
-                           3.2,  # CRRAcon
+test_param_vec = np.array([0.95, # DiscFac
+                           5.1,  # CRRAcon
                            8.0,  # CRRAmed 
                          -7.35,  # ChoiceShkMag in log
                            2.6,  # SubsidyZeroRate scaler
