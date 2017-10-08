@@ -10,8 +10,9 @@ sys.path.insert(0,'../ConsumptionSaving/')
 from copy import copy
 import numpy as np
 from scipy.stats import norm
+from scipy.optimize import brentq
 from HARKcore import NullFunc, Solution
-from HARKinterpolation import ConstantFunction
+from HARKinterpolation import ConstantFunction, BilinearInterp
 from HARKutilities import makeGridExpMult, CRRAutility, CRRAutilityP, CRRAutilityP_inv, CRRAutility_inv
 from ConsIndShockModel import IndShockConsumerType
 
@@ -88,10 +89,10 @@ class HealthInvestmentSolution(Solution):
             PolicyFunc = NullFunc()
         if vFunc is None:
             vFunc = NullFunc()
-        if dvdbfunc is None:
-            dvdb = NullFunc()
-        if dvdhfunc is None:
-            dvdh = NullFunc()
+        if dvdbFunc is None:
+            dvdbFunc = NullFunc()
+        if dvdhFunc is None:
+            dvdhFunc = NullFunc()
         self.PolicyFunc   = PolicyFunc
         self.vFunc        = vFunc
         self.dvdbFunc     = dvdbFunc
@@ -132,7 +133,7 @@ def makebFromxFunc(xLvlGrid,MedShkGrid,CRRA,MedCurve):
             elif MedShk == 0.0: 
                 bOpt = np.nan # Placeholder for when MedShk = 0
             else:
-                optMedZeroFunc = lambda q : 1. + CRRAmed/(MedPrice*MedShk)*xLvl/(1.+q) - np.exp((xLvl/MedPrice*q/(1.+q))/MedShk)
+                optMedZeroFunc = lambda q : 1. + MedCurve/MedShk*xLvl/(1.+q) - np.exp((xLvl*q/(1.+q))/MedShk)
                 optFuncTransformed = lambda b : optMedZeroFunc(tempf(b))
                 bOpt = brentq(optFuncTransformed,-100.0,100.0)
             bGrid[i,j] = bOpt
