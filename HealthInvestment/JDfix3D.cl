@@ -116,13 +116,17 @@ __kernel void doJorgensenDruedahlFix3D(
     int IdxF;
     int IdxG;
     int IdxH;
+    int Idx1;
+    int Idx2;
+    int Idx3;
+    int Idx4;
 
     /* Unpack the integer inputs */
     int bLvlDataDim = IntegerInputs[0];
-    int hLvlDataDim = IntegerInputs[1]
+    int hLvlDataDim = IntegerInputs[1];
     int MedShkDataDim = IntegerInputs[2];
     int bGridDenseSize = IntegerInputs[3];
-    int hGridDenseSize = IntergerInputs[4]
+    int hGridDenseSize = IntegerInputs[4];
     int ShkGridDenseSize = IntegerInputs[5];
     int ThreadCount = IntegerInputs[6];
     
@@ -143,7 +147,7 @@ __kernel void doJorgensenDruedahlFix3D(
     double iLvl = iLvlOut[Gid];
     double Value = ValueOut[Gid];
     double dvdh = dvdhOut[Gid];
-    int hAndShkDataDim = hLvlDataDim*MedShkDataDim
+    int hAndShkDataDim = hLvlDataDim*MedShkDataDim;
     
     /* Loop over each triangular sector of (mLvl,MedShk) from the data */
     int i = 0;
@@ -152,7 +156,7 @@ __kernel void doJorgensenDruedahlFix3D(
     double Low = -0.01;
     double High = 1.01;
     while (k < (MedShkDataDim-1)) {
-        if (MedShk >= MedShkData[i]) & (MedShk <= MedShkData[i+1]) { /* Only look at MedShk layers that are relevant */
+        if ((MedShk >= MedShkData[k]) & (MedShk <= MedShkData[k+1])) { /* Only look at MedShk layers that are relevant */
             j = 0;
             while (j < (hLvlDataDim-1)) {
                 i = 0;
@@ -214,7 +218,7 @@ __kernel void doJorgensenDruedahlFix3D(
                                 i2 = iLvlData[Idx2];
                                 i3 = iLvlData[Idx3];
                                 i4 = iLvlData[Idx4];
-                                iNew = SectorWeights.*i1 + SectorWeights.y*i2 + SectorWeights.z*i3 + SectorWeights.w*i4;
+                                iNew = SectorWeights.x*i1 + SectorWeights.y*i2 + SectorWeights.z*i3 + SectorWeights.w*i4;
                                 dvdh1 = dvdhData[Idx1];
                                 dvdh2 = dvdhData[Idx2];
                                 dvdh3 = dvdhData[Idx3];
@@ -225,6 +229,7 @@ __kernel void doJorgensenDruedahlFix3D(
                                 dvdh = dvdhNew;
                                 Value = vNew;
                             }
+                            
                         }
                     } /* End of checking tetrahedron 1 */
                             
@@ -275,7 +280,7 @@ __kernel void doJorgensenDruedahlFix3D(
                                 i2 = iLvlData[Idx2];
                                 i3 = iLvlData[Idx3];
                                 i4 = iLvlData[Idx4];
-                                iNew = SectorWeights.*i1 + SectorWeights.y*i2 + SectorWeights.z*i3 + SectorWeights.w*i4;
+                                iNew = SectorWeights.x*i1 + SectorWeights.y*i2 + SectorWeights.z*i3 + SectorWeights.w*i4;
                                 dvdh1 = dvdhData[Idx1];
                                 dvdh2 = dvdhData[Idx2];
                                 dvdh3 = dvdhData[Idx3];
@@ -336,7 +341,7 @@ __kernel void doJorgensenDruedahlFix3D(
                                 i2 = iLvlData[Idx2];
                                 i3 = iLvlData[Idx3];
                                 i4 = iLvlData[Idx4];
-                                iNew = SectorWeights.*i1 + SectorWeights.y*i2 + SectorWeights.z*i3 + SectorWeights.w*i4;
+                                iNew = SectorWeights.x*i1 + SectorWeights.y*i2 + SectorWeights.z*i3 + SectorWeights.w*i4;
                                 dvdh1 = dvdhData[Idx1];
                                 dvdh2 = dvdhData[Idx2];
                                 dvdh3 = dvdhData[Idx3];
@@ -397,7 +402,7 @@ __kernel void doJorgensenDruedahlFix3D(
                                 i2 = iLvlData[Idx2];
                                 i3 = iLvlData[Idx3];
                                 i4 = iLvlData[Idx4];
-                                iNew = SectorWeights.*i1 + SectorWeights.y*i2 + SectorWeights.z*i3 + SectorWeights.w*i4;
+                                iNew = SectorWeights.x*i1 + SectorWeights.y*i2 + SectorWeights.z*i3 + SectorWeights.w*i4;
                                 dvdh1 = dvdhData[Idx1];
                                 dvdh2 = dvdhData[Idx2];
                                 dvdh3 = dvdhData[Idx3];
@@ -458,7 +463,7 @@ __kernel void doJorgensenDruedahlFix3D(
                                 i2 = iLvlData[Idx2];
                                 i3 = iLvlData[Idx3];
                                 i4 = iLvlData[Idx4];
-                                iNew = SectorWeights.*i1 + SectorWeights.y*i2 + SectorWeights.z*i3 + SectorWeights.w*i4;
+                                iNew = SectorWeights.x*i1 + SectorWeights.y*i2 + SectorWeights.z*i3 + SectorWeights.w*i4;
                                 dvdh1 = dvdhData[Idx1];
                                 dvdh2 = dvdhData[Idx2];
                                 dvdh3 = dvdhData[Idx3];
@@ -471,6 +476,7 @@ __kernel void doJorgensenDruedahlFix3D(
                             }
                         }
                     } /* End of checking tetrahedron 5 */
+                      
                     i++;
                 }
                 j++;
@@ -478,18 +484,11 @@ __kernel void doJorgensenDruedahlFix3D(
         }
         k++;
     }
-                            
+                
     /* Store the final results in the Out buffers */
     xLvlOut[Gid] = xLvl;
     iLvlOut[Gid] = iLvl;
     ValueOut[Gid] = Value;
     dvdhOut[Gid] = dvdh;
 }
-                
-                
-/*                
-Tetr1: ABCE
-Tetr2: DCBH
-Tetr3: FEHB
-Tetr4: GHEC
-Tetr5: HBCE*/              
+              

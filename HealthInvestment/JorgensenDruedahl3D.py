@@ -44,18 +44,19 @@ class JDfixer(object):
         IntegerInputs = np.array([bLvlDataDim,hLvlDataDim,MedShkDataDim,bGridDenseSize,hGridDenseSize,ShkGridDenseSize,self.ThreadCount],dtype=np.int32)
         data_temp = np.zeros(bLvlDataDim*hLvlDataDim*MedShkDataDim)
         out_temp = np.zeros(self.ThreadCount)
+        self.data_size = data_temp.size
         
         # Make buffers
-        self.bLvlData_buf = ctx.create_buffer(cl.CL_MEM_READ_WRITE | cl.CL_MEM_COPY_HOST_PTR,data_temp)
-        self.hLvlData_buf = ctx.create_buffer(cl.CL_MEM_READ_WRITE | cl.CL_MEM_COPY_HOST_PTR,data_temp)
-        self.MedShkData_buf = ctx.create_buffer(cl.CL_MEM_READ_WRITE | cl.CL_MEM_COPY_HOST_PTR,data_temp)
-        self.ValueData_buf = ctx.create_buffer(cl.CL_MEM_READ_WRITE | cl.CL_MEM_COPY_HOST_PTR,data_temp)
-        self.dvdhData_buf = ctx.create_buffer(cl.CL_MEM_READ_WRITE | cl.CL_MEM_COPY_HOST_PTR,data_temp)
-        self.xLvlData_buf = ctx.create_buffer(cl.CL_MEM_READ_WRITE | cl.CL_MEM_COPY_HOST_PTR,data_temp)
-        self.iLvlData_buf = ctx.create_buffer(cl.CL_MEM_READ_WRITE | cl.CL_MEM_COPY_HOST_PTR,data_temp)
-        self.bGridDense_buf = ctx.create_buffer(cl.CL_MEM_READ_WRITE | cl.CL_MEM_COPY_HOST_PTR,np.zeros(bGridDenseSize))
-        self.hGridDense_buf = ctx.create_buffer(cl.CL_MEM_READ_WRITE | cl.CL_MEM_COPY_HOST_PTR,np.zeros(hGridDenseSize))
-        self.ShkGridDense_buf = ctx.create_buffer(cl.CL_MEM_READ_WRITE | cl.CL_MEM_COPY_HOST_PTR,np.zeros(ShkGridDenseSize))
+        self.bLvlData_buf = ctx.create_buffer(cl.CL_MEM_READ_ONLY | cl.CL_MEM_COPY_HOST_PTR,data_temp)
+        self.hLvlData_buf = ctx.create_buffer(cl.CL_MEM_READ_ONLY | cl.CL_MEM_COPY_HOST_PTR,data_temp)
+        self.MedShkData_buf = ctx.create_buffer(cl.CL_MEM_READ_ONLY | cl.CL_MEM_COPY_HOST_PTR,data_temp)
+        self.ValueData_buf = ctx.create_buffer(cl.CL_MEM_READ_ONLY | cl.CL_MEM_COPY_HOST_PTR,data_temp)
+        self.dvdhData_buf = ctx.create_buffer(cl.CL_MEM_READ_ONLY | cl.CL_MEM_COPY_HOST_PTR,data_temp)
+        self.xLvlData_buf = ctx.create_buffer(cl.CL_MEM_READ_ONLY | cl.CL_MEM_COPY_HOST_PTR,data_temp)
+        self.iLvlData_buf = ctx.create_buffer(cl.CL_MEM_READ_ONLY | cl.CL_MEM_COPY_HOST_PTR,data_temp)
+        self.bGridDense_buf = ctx.create_buffer(cl.CL_MEM_READ_ONLY | cl.CL_MEM_COPY_HOST_PTR,np.zeros(bGridDenseSize))
+        self.hGridDense_buf = ctx.create_buffer(cl.CL_MEM_READ_ONLY | cl.CL_MEM_COPY_HOST_PTR,np.zeros(hGridDenseSize))
+        self.ShkGridDense_buf = ctx.create_buffer(cl.CL_MEM_READ_ONLY | cl.CL_MEM_COPY_HOST_PTR,np.zeros(ShkGridDenseSize))
         self.xLvlOut_buf = ctx.create_buffer(cl.CL_MEM_READ_WRITE | cl.CL_MEM_COPY_HOST_PTR,out_temp)
         self.iLvlOut_buf = ctx.create_buffer(cl.CL_MEM_READ_WRITE | cl.CL_MEM_COPY_HOST_PTR,out_temp)
         self.ValueOut_buf = ctx.create_buffer(cl.CL_MEM_READ_WRITE | cl.CL_MEM_COPY_HOST_PTR,out_temp)
@@ -126,6 +127,11 @@ class JDfixer(object):
         queue.read_buffer(self.iLvlOut_buf,iLvlOut)
         queue.read_buffer(self.ValueOut_buf,ValueOut)
         queue.read_buffer(self.dvdhOut_buf,dvdhOut)
+        
+        xLvlArray = np.reshape(xLvlOut,(self.bGridDenseSize,self.hGridDenseSize,self.ShkGridDenseSize))
+        iLvlArray = np.reshape(iLvlOut,(self.bGridDenseSize,self.hGridDenseSize,self.ShkGridDenseSize))
+        vNvrsArray = np.reshape(ValueOut,(self.bGridDenseSize,self.hGridDenseSize,self.ShkGridDenseSize))
+        dvdhArray = np.reshape(dvdhOut,(self.bGridDenseSize,self.hGridDenseSize,self.ShkGridDenseSize))
     
         # Return results of the Jorgensen-Druedahl fix
-        return xLvlOut, iLvlOut, ValueOut, dvdhOut
+        return xLvlArray, iLvlArray, vNvrsArray, dvdhArray
