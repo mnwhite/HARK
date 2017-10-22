@@ -13,7 +13,7 @@ hCount = 2*(Hcount-1)+1
 bNrmCount = 2*aXtraCount
 MedShkCount = 24
 aXtraMin = 0.001
-aXtraMax = 200
+aXtraMax = 50
 aXtraNestFac = 3
 T_cycle = 25
 

@@ -831,7 +831,7 @@ def solveOneCycle(agent,solution_last):
     # Initialize the solution for this cycle, then iterate on periods
     solution_cycle = []
     solution_next  = solution_last
-    for t in range(1):
+    for t in range(T):
         # Update which single period solver to use (if it depends on time)
         if not always_same_solver:
             solveOnePeriod = agent.solveOnePeriod[t]

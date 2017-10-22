@@ -153,8 +153,8 @@ __kernel void doJorgensenDruedahlFix3D(
     int i = 0;
     int j = 0;
     int k = 0;
-    double Low = -0.01;
-    double High = 1.01;
+    double Low = -0.10;
+    double High = 1.10;
     while (k < (MedShkDataDim-1)) {
         if ((MedShk >= MedShkData[k]) & (MedShk <= MedShkData[k+1])) { /* Only look at MedShk layers that are relevant */
             j = 0;
