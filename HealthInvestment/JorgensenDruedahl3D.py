@@ -13,7 +13,12 @@ sys.path.insert(0, os.path.abspath('../'))
 sys.path.insert(0,'../../')
 sys.path.insert(0, os.path.abspath('./'))
 
-f = open('JDfix3D.cl')
+ALT = True
+
+if ALT:
+    f = open('JDfix3Dalt.cl')
+else:
+    f = open('JDfix3D.cl')
 program_code = f.read()
 f.close()
 
@@ -40,10 +45,14 @@ class JDfixer(object):
         self.bGridDenseSize = bGridDenseSize
         self.hGridDenseSize = hGridDenseSize
         self.ShkGridDenseSize = ShkGridDenseSize
-        self.ThreadCount = bGridDenseSize*hGridDenseSize*ShkGridDenseSize
+        DenseCount = bGridDenseSize*hGridDenseSize*ShkGridDenseSize
+        if ALT:
+            self.ThreadCount = MedShkDataDim-1
+        else:
+            self.ThreadCount = DenseCount
         IntegerInputs = np.array([bLvlDataDim,hLvlDataDim,MedShkDataDim,bGridDenseSize,hGridDenseSize,ShkGridDenseSize,self.ThreadCount],dtype=np.int32)
         data_temp = np.zeros(bLvlDataDim*hLvlDataDim*MedShkDataDim)
-        out_temp = np.zeros(self.ThreadCount)
+        out_temp = np.zeros(DenseCount)
         self.data_size = data_temp.size
         
         # Make buffers

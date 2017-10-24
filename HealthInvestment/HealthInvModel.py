@@ -525,7 +525,7 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
     LogMedShkGrid = np.linspace(LogMedShkMin,LogMedShkMax,MedShkCount)
     MedShkGrid = np.insert(np.exp(LogMedShkGrid),0,0.0)
     ShkCount = MedShkGrid.size
-    LogMedShkGridDense = np.linspace(LogMedShkMin,LogMedShkMax,MedShkCount*2)
+    LogMedShkGridDense = np.linspace(LogMedShkMin,LogMedShkMax,MedShkCount*2+1)
     ShkGridDense = np.insert(np.exp(LogMedShkGridDense),0,0.0)
     
     # Make 3D arrays of states, health investment, insurance terms, and (marginal) values
@@ -550,10 +550,6 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
     bLvlArrayBig = aLvlArrayBig + xLvlArrayBig + MedPrice*CopayArrayBig*iLvlArrayBig + PremiumArrayBig
     vArrayBig = u(cEffArrayBig) + LifeUtility + EndOfPrdvBig
     dvdhArrayBig = ExpHealthNextFunc.der(hLvlArrayBig)*EndOfPrddvdHBig
-    
-#    for j in range(Hcount):
-#        plt.plot(bLvlArrayBig[:,j,10],iLvlArrayBig[:,j,10])
-#    plt.show()
     
     # Make an exogenous grid of bLvl and MedShk values where individual is constrained
     bCnstCount = 16
@@ -610,7 +606,6 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
     hLvlArrayCnst = hNow
     iLvlArrayCnst = iNow
     vArrayCnst = u(cEffArrayCnst) + LifeUtility + np.tile(np.reshape(EndOfPrdvBig[0,:,:],(1,Hcount,ShkCount)),(bCnstCount,1,1))
-#    dvdbArrayCnst = uP(cEffArrayCnst)/DpFunc(cEffArrayCnst,MedShkArrayAdj)
     dvdhArrayCnst = ExpHealthNextFunc.der(hLvlArrayCnst)*EndOfPrddvdHCnst
     
     # Combine the constrained and unconstrained solutions into unified arrays
@@ -620,7 +615,6 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
     xLvlArrayAll = np.concatenate((xLvlArrayCnst,xLvlArrayBig),axis=0)
     iLvlArrayAll = np.concatenate((iLvlArrayCnst,iLvlArrayBig),axis=0)
     vArrayAll = np.concatenate((vArrayCnst,vArrayBig),axis=0)
-#    dvdbArrayAll = np.concatenate((dvdbArrayCnst,dvdbArrayBig),axis=0)
     dvdhArrayAll = np.concatenate((dvdhArrayCnst,dvdhArrayBig),axis=0)
     vNvrsArrayAll = uinv(vArrayAll - vLimNow)
     
@@ -630,7 +624,6 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
                                         vNvrsArrayAll,dvdhArrayAll,xLvlArrayAll,iLvlArrayAll,bLvlGrid,hLvlGrid,ShkGridDense)
 #    t_end = clock()
 #    print('JD fix took ' + str(t_end-t_start) + ' seconds.')
-#    ValueArray = u(vNvrsArray) + vLimNow
     xFuncNow = TrilinearInterp(xLvlArray,bLvlGrid,hLvlGrid,ShkGridDense)
     iFuncNow = TrilinearInterp(iLvlArray,bLvlGrid,hLvlGrid,ShkGridDense)
     PolicyFuncNow = HealthInvestmentPolicyFunc(xFuncNow,iFuncNow,bFromxFunc,CopayFunc)
@@ -1065,7 +1058,7 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         None
         '''
         self.ConvexityFixer = JDfixer(self.aXtraGrid.size+16,self.Hgrid.size,self.MedShkCount+1,
-                                      self.bNrmGrid.size,self.hLvlGrid.size,self.MedShkCount*2+1)
+                                      self.bNrmGrid.size,self.hLvlGrid.size,self.MedShkCount*2+2)
         self.addToTimeInv('ConvexityFixer')
         
         
@@ -1383,17 +1376,18 @@ if __name__ == '__main__':
     t_end = clock()
     print('Solving a health investment consumer took ' + str(t_end-t_start) + ' seconds.')
     
-    TestType.plotxFuncByHealth(0,MedShk=1.0)
-    TestType.plotxFuncByMedShk(0,hLvl=1.0)
+    t=0
     
-    TestType.plotcFuncByHealth(0,MedShk=1.0)
-    TestType.plotcFuncByMedShk(0,hLvl=1.0)
+    TestType.plotxFuncByHealth(t,MedShk=1.0)
+    TestType.plotxFuncByMedShk(t,hLvl=1.0)
     
-    TestType.plotiFuncByHealth(0,MedShk=1.0)
-    TestType.plotiFuncByMedShk(0,hLvl=1.0)
+    TestType.plotcFuncByHealth(t,MedShk=1.0)
+    TestType.plotcFuncByMedShk(t,hLvl=1.0)
     
-    TestType.plotvFuncByHealth(0,pseudo_inverse=False,bMax=20.)
-    TestType.plotdvdbFuncByHealth(0,pseudo_inverse=False,bMax=20.)
-    TestType.plotdvdhFuncByHealth(0,bMax=20.)
-        
-        
+    TestType.plotiFuncByHealth(t,MedShk=1.0)
+    TestType.plotiFuncByMedShk(t,hLvl=1.0)
+    
+    TestType.plotvFuncByHealth(t,pseudo_inverse=False,bMax=20.)
+    TestType.plotdvdbFuncByHealth(t,pseudo_inverse=False,bMax=20.)
+    TestType.plotdvdhFuncByHealth(t,bMax=20.)
+    
