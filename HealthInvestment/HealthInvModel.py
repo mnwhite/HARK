@@ -412,7 +412,7 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
     # Unpack next period's solution
     vFuncNext = solution_next.vFunc
     dvdbFuncNext = solution_next.dvdbFunc
-    dvdhFuncNext = solution_next.dvdhFunc
+#    dvdhFuncNext = solution_next.dvdhFunc
     if hasattr(vFuncNext,'vLim'):
         vLimNext = vFuncNext.vLim
     else: # This only happens in terminal period, when vFuncNext is a constant function
@@ -423,7 +423,6 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
     aCount = aXtraGrid.size
     Hcount = Hgrid.size
     aLvlGrid = IncomeNow*aXtraGrid
-#    aLvlArray = np.tile(np.reshape(aLvlGrid,(aCount,1)),(1,Hcount))
     Harray = np.tile(np.reshape(Hgrid,(1,Hcount)),(aCount,1))
     
     # Make arrays of states we could arrive in next period
@@ -436,14 +435,14 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
     # Evaluate (marginal) value at the grid of future states, then tile
     vNext = vFuncNext(bNextArray,hNextArray)
     dvdbNext = dvdbFuncNext(bNextArray,hNextArray)
-    dvdhNext = dvdhFuncNext(bNextArray,hNextArray)
+#    dvdhNext = dvdhFuncNext(bNextArray,hNextArray)
     vNext[:,0,0] = BequestMotive(aLvlGrid) # Bequest motive when dead
     dvdbNext[:,0,0] = BequestMotiveP(aLvlGrid) # Marginal bequest motive when dead
-    dvdhNext[:,0,0] = 0.0 # No value of additional health if dead
-    dvdhNext[:,0,-1] = 0.0 # No value of additional health if capped at 1
+#    dvdhNext[:,0,0] = 0.0 # No value of additional health if dead
+#    dvdhNext[:,0,-1] = 0.0 # No value of additional health if capped at 1
     vNext_tiled = np.tile(vNext,(1,Hcount,1))
     dvdbNext_tiled = np.tile(dvdbNext,(1,Hcount,1))
-    dvdhNext_tiled = np.tile(dvdhNext,(1,Hcount,1))
+#    dvdhNext_tiled = np.tile(dvdhNext,(1,Hcount,1))
     
     # Calculate the probability of arriving at each future health state from each current health state
     Harray_temp = np.tile(np.reshape(Hgrid,(1,Hcount,1)),(1,1,hNextCount))
@@ -455,7 +454,7 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
     ProbSum = np.tile(np.sum(BaseProbs,axis=2,keepdims=True),(1,1,hNextCount-2))
     LivPrb = norm.sf(LivPrbFunc(Hgrid))
     DeathPrb = norm.cdf(zArray[:,:,0])*LivPrb
-    PerfectPrb = (1.0 - norm.cdf(zArray[:,:,-1]))*LivPrb
+    PerfectPrb = norm.sf(zArray[:,:,-1])*LivPrb
     BaseProbsAdj = BaseProbs/ProbSum*np.tile(np.reshape((LivPrb-DeathPrb-PerfectPrb),(1,Hcount,1)),(1,1,hNextCount-2))
     ProbArray[:,:,1:-1] = BaseProbsAdj
     ProbArray[:,:,0] = DeathPrb + (1.-LivPrb)
@@ -464,15 +463,14 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
     # Calculate the rate of change in probabilities of arriving in each future health state from end-of-period health
     H_eps = 0.0001
     Harray_temp = np.tile(np.reshape(Hgrid+H_eps,(1,Hcount,1)),(1,1,hNextCount))
-    hNextArray_temp = np.tile(np.reshape(hNextGrid,(1,1,hNextCount)),(1,Hcount,1))
     HealthShkStd = HealthShkStd0 + HealthShkStd1*Harray_temp
     zArray = (hNextArray_temp - Harray_temp)/HealthShkStd
     ProbArrayAlt = np.zeros((1,Hcount,hNextCount))
     BaseProbs = norm.pdf(zArray[:,:,1:-1]) # Don't include h=0 or h=1
     ProbSum = np.tile(np.sum(BaseProbs,axis=2,keepdims=True),(1,1,hNextCount-2))
-    LivPrb = norm.sf(LivPrbFunc(Hgrid))
+    LivPrb = norm.sf(LivPrbFunc(Hgrid+H_eps))
     DeathPrb = norm.cdf(zArray[:,:,0])*LivPrb
-    PerfectPrb = (1.0 - norm.cdf(zArray[:,:,-1]))*LivPrb
+    PerfectPrb = norm.sf(zArray[:,:,-1])*LivPrb
     BaseProbsAdj = BaseProbs/ProbSum*np.tile(np.reshape((LivPrb-DeathPrb-PerfectPrb),(1,Hcount,1)),(1,1,hNextCount-2))
     ProbArrayAlt[:,:,1:-1] = BaseProbsAdj
     ProbArrayAlt[:,:,0] = DeathPrb + (1.-LivPrb)
@@ -486,13 +484,9 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
     # Take expectations over future (marginal) value
     EndOfPrdv = DiscFac*np.sum(vNext_tiled*ProbArray_tiled,axis=2)
     EndOfPrddvda = Rfree*DiscFac*np.sum(dvdbNext_tiled*ProbArray_tiled,axis=2)
-    EndOfPrddvdH = DiscFac*(np.sum(dvdhNext_tiled*ProbArray_tiled,axis=2) + np.sum(vNext_tiled*dProbdHArray_tiled,axis=2))
+    EndOfPrddvdH = DiscFac*(np.sum(vNext_tiled*dProbdHArray_tiled,axis=2))# + np.sum(dvdhNext_tiled*ProbArray_tiled,axis=2))
     MargValueRatio = EndOfPrddvda/EndOfPrddvdH
     MargValueRatioAdj = np.maximum(MargValueRatio*MedPrice,0.0)
-    
-#    for j in range(Hcount):
-#        plt.plot(aLvlGrid,EndOfPrddvdH[:,j])
-#    plt.show()
     
     # Use a fixed point loop to find optimal health investment (unconstrained)
     tol = 0.00001
@@ -721,7 +715,7 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
     
     # Integrate marginal value of health according to the shock probabilities
     dvdh_temp = alpha_comp*dvdhArray[bIdx,hIdx,IdxLo] + alpha*dvdhArray[bIdx,hIdx,IdxHi]
-    dvdhArrayFlat = np.sum(dvdh_temp*MedShkPrbArray,axis=2) + np.sum(v_temp*dMedShkPrbdhArray,axis=2) + dCritShkPrbdhArray*vFloorArray + CritShkPrbArray*dvdhFloorArray
+    dvdhArrayFlat = dCritShkPrbdhArray*vFloorArray + np.sum(v_temp*dMedShkPrbdhArray,axis=2) + np.sum(dvdh_temp*MedShkPrbArray,axis=2) + CritShkPrbArray*dvdhFloorArray
     
     # Make (marginal) value functions
     vNvrsFuncNow = BilinearInterp(vNvrsArrayFlat,bLvlGrid,hLvlGrid)
@@ -730,12 +724,16 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
     dvdbFuncNow = MargValueFunc2D(dvdbNvrsFuncNow,CRRA)
     dvdhFuncNow = BilinearInterp(dvdhArrayFlat,bLvlGrid,hLvlGrid)
     
-#    print(np.sum(np.isinf(ValueArrayFlat)),np.sum(np.isnan(ValueArrayFlat)))
-#    print(np.sum(np.isinf(dvdbArrayFlat)),np.sum(np.isnan(dvdbArrayFlat)))
-#   print(np.sum(np.isinf(dvdhArrayFlat)),np.sum(np.isnan(dvdhArrayFlat)))
+#    # Make an alternate dvdhFunc using first differences of vFunc
+#    h_eps = 0.0001
+#    b_temp = np.tile(np.reshape(bLvlGrid,(bLvlGrid.size,1)),(1,hLvlGrid.size))
+#    h_temp = np.tile(np.reshape(hLvlGrid,(1,hLvlGrid.size)),(bLvlGrid.size,1))
+#    dvdhArrayAlt = (vFuncNow(b_temp,h_temp+h_eps) - vFuncNow(b_temp,h_temp))/h_eps
+#    dvdhFuncNowAlt = BilinearInterp(dvdhArrayAlt,bLvlGrid,hLvlGrid)
     
     # Package and return the solution object
     solution_now = HealthInvestmentSolution(PolicyFuncNow,vFuncNow,dvdbFuncNow,dvdhFuncNow)
+#    solution_now.dvdhFuncAlt = dvdhFuncNowAlt
     return solution_now
     
     
@@ -894,7 +892,7 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         self.aXtraGrid = np.insert(self.aXtraGrid,0,0.0)
         
         hGrid = np.linspace(0.,1.,self.hCount)
-        Hgrid = np.linspace(-0.1,1.02,self.Hcount)
+        Hgrid = np.linspace(-0.1,1.1,self.Hcount)
         
         self.bNrmGrid = bNrmGrid
         self.hLvlGrid = hGrid
@@ -1077,6 +1075,7 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         None
         '''
         self.solution_terminal = HealthInvestmentSolution(PolicyFunc=NullFunc(), vFunc=ConstantFunction(0.), dvdbFunc=ConstantFunction(0.), dvdhFunc=ConstantFunction(0.))
+        self.solution_terminal.dvdhFuncAlt = ConstantFunction(0.)
         self.pseudo_terminal = True
         
         
@@ -1331,7 +1330,7 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         plt.show()
 
         
-    def plotdvdhFuncByHealth(self,t,bMin=None,bMax=20.0,hSet=None):
+    def plotdvdhFuncByHealth(self,t,bMin=None,bMax=20.0,hSet=None,Alt=False):
         '''
         Plot the marginal value function with respect to health status vs bLvl
         at a set of health values.
@@ -1352,7 +1351,10 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         B = np.linspace(bMin,bMax,300)
         some_ones = np.ones_like(B)
         for hLvl in hSet:
-            dvdh = self.solution[t].dvdhFunc(B,hLvl*some_ones)
+            if Alt:
+                dvdh = self.solution[t].dvdhFuncAlt(B,hLvl*some_ones)
+            else:
+                dvdh = self.solution[t].dvdhFunc(B,hLvl*some_ones)
             plt.plot(B,dvdh)
         plt.xlabel('Market resources bLvl')
         plt.ylabel('Marginal value dvdh')
@@ -1376,18 +1378,20 @@ if __name__ == '__main__':
     t_end = clock()
     print('Solving a health investment consumer took ' + str(t_end-t_start) + ' seconds.')
     
-    t=0
+    t=00
+    bMax=50.
     
-    TestType.plotxFuncByHealth(t,MedShk=1.0)
-    TestType.plotxFuncByMedShk(t,hLvl=1.0)
+    TestType.plotxFuncByHealth(t,MedShk=1.0,bMax=bMax)
+    TestType.plotxFuncByMedShk(t,hLvl=0.7,bMax=bMax)
     
-    TestType.plotcFuncByHealth(t,MedShk=1.0)
-    TestType.plotcFuncByMedShk(t,hLvl=1.0)
+    TestType.plotcFuncByHealth(t,MedShk=1.0,bMax=bMax)
+    TestType.plotcFuncByMedShk(t,hLvl=0.7)
     
-    TestType.plotiFuncByHealth(t,MedShk=1.0)
-    TestType.plotiFuncByMedShk(t,hLvl=1.0)
+    TestType.plotiFuncByHealth(t,MedShk=1.0,bMax=bMax)
+    TestType.plotiFuncByMedShk(t,hLvl=0.7,bMax=bMax)
     
-    TestType.plotvFuncByHealth(t,pseudo_inverse=False,bMax=20.)
-    TestType.plotdvdbFuncByHealth(t,pseudo_inverse=False,bMax=20.)
-    TestType.plotdvdhFuncByHealth(t,bMax=20.)
+    TestType.plotvFuncByHealth(t,pseudo_inverse=False,bMax=bMax)
+    TestType.plotdvdbFuncByHealth(t,pseudo_inverse=False,bMax=bMax)
+    TestType.plotdvdhFuncByHealth(t,bMax=bMax)
+#    TestType.plotdvdhFuncByHealth(t,bMax=bMax,Alt=True)
     

@@ -8,7 +8,7 @@ import numpy as np
 
 # Choose state grid sizes and bounds (exogenously chosen)
 Hcount = 21
-aXtraCount = 48
+aXtraCount = 64
 hCount = 2*(Hcount-1)+1
 bNrmCount = 2*aXtraCount
 MedShkCount = 24
@@ -85,7 +85,7 @@ struct_test_params = {
     'CRRA' : 2.5,
     'DiscFac' : 0.94,
     'MedCurve' : 6.0,
-    'LifeUtility' : 0.3,
+    'LifeUtility' : 0.8,
     'MargUtilityShift' : -0.5,
     'Cfloor' : 0.2,
     'Bequest0' : 1.0,
@@ -106,9 +106,9 @@ struct_test_params = {
     'HealthNextHealthSq' : 0.159,
     'HealthShkStd0' : 0.13,
     'HealthShkStd1' : -0.04,
-    'HealthProd0' : 0.1,
-    'HealthProd1' : 0.01,
-    'HealthProd2' : 0.01,
+    'HealthProd0' : 0.03,
+    'HealthProd1' : 0.001,
+    'HealthProd2' : 0.02,
     'Mortality0' : -0.6,
     'MortalitySex' : 0.45,
     'MortalityAge' : 0.017,
