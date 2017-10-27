@@ -14,6 +14,7 @@ from scipy.optimize import brentq
 from HARKcore import NullFunc, Solution, HARKobject, AgentType
 from HARKinterpolation import ConstantFunction, LinearInterp, BilinearInterp, TrilinearInterp, LinearInterpOnInterp1D
 from HARKutilities import makeGridExpMult, CRRAutility, CRRAutilityP, CRRAutilityP_inv, CRRAutility_inv
+from HARKsimulation import drawNormal
 from ConsIndShockModel import IndShockConsumerType, ValueFunc
 from ConsAggShockModel import MargValueFunc2D
 from JorgensenDruedahl3D import JDfixer
@@ -184,20 +185,24 @@ class HealthInvestmentPolicyFunc(HARKobject):
         cLvl = xLvl/(1.+q)
         MedLvl = xLvl*q/(1.+q)
         iLvl = self.iFunc(bLvl,hLvl,MedShk)
-        return cLvl, MedLvl, iLvl
+        return cLvl, MedLvl, iLvl, xLvl
     
     
     def cFunc(self,bLvl,hLvl,MedShk):
-        cLvl, MedLvl, iLvl = self(bLvl,hLvl,MedShk)
+        cLvl, MedLvl, iLvl, xLvl = self(bLvl,hLvl,MedShk)
         return cLvl
     
     def MedFunc(self,bLvl,hLvl,MedShk):
-        cLvl, MedLvl, iLvl = self(bLvl,hLvl,MedShk)
+        cLvl, MedLvl, iLvl, xLvl = self(bLvl,hLvl,MedShk)
         return MedLvl
     
     def iFunc(self,bLvl,hLvl,MedShk):
-        cLvl, MedLvl, iLvl = self(bLvl,hLvl,MedShk)
+        cLvl, MedLvl, iLvl, xLvl = self(bLvl,hLvl,MedShk)
         return iLvl
+    
+    def xFunc(self,bLvl,hLvl,MedShk):
+        cLvl, MedLvl, iLvl, xLvl = self(bLvl,hLvl,MedShk)
+        return xLvl
     
     
     
@@ -304,7 +309,7 @@ def makebFromxFunc(xLvlGrid,MedShkGrid,CRRA,MedCurve):
 
 def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeNow,Rfree,Cfloor,LifeUtility,
                           MargUtilityShift,Bequest0,Bequest1,MedPrice,aXtraGrid,bLvlGrid,Hgrid,
-                          hLvlGrid,HealthProd0,HealthProd1,HealthProd2,HealthShkStd0,HealthShkStd1,
+                          hLvlGrid,HealthProdFunc,MargHealthProdInvFunc,HealthShkStd0,HealthShkStd1,
                           MedShkCount,ExpHealthNextFunc,ExpHealthNextInvFunc,LivPrbFunc,Gfunc,
                           Dfunc,DpFunc,CritShkFunc,cEffFunc,bFromxFunc,PremiumFunc,CopayFunc,
                           MedShkMeanFunc,MedShkStdFunc,ConvexityFixer):
@@ -350,12 +355,11 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
         Exogenous grid of beginning-of-period health levels for use in the JDfix step.
     MedShkCount : int
         Number of non-zero medical need shocks to use in EGM step.
-    HealthProd0 : float
-        Curvature of the health production function with respect to investment.
-    HealthProd1 : float
-        Baseline effectiveness of the health production function.
-    HealthProd2 : float
-        Change in effectiveness of health production function with illness.
+    HealthProdFunc : function
+        Additional health produced as a function of hLvl and iLvl.
+    MargHealthProdInvFunc : function
+        Inverse of marginal health produced function.  Takes a marginal health produced
+        and an hLvl, returns an iLvl with that marginal productivity.
     HealthShkStd0 : float
         Standard deviation of health shocks when in perfect health.
     HealthShkStd1 : float
@@ -402,12 +406,6 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
     uPinv = lambda C : CRRAutilityP_inv(C,gam=CRRA)
     BequestMotive = lambda a : Bequest1*CRRAutility(a + Bequest0,gam=CRRA)
     BequestMotiveP = lambda a : Bequest1*CRRAutilityP(a + Bequest0,gam=CRRA)
-    
-    # Define the (inverse) health production function
-    HealthProdFunc = lambda i,h : (HealthProd1 + h*HealthProd2)*i**HealthProd0
-#    HealthProdInvFunc = lambda x,h : (x/(HealthProd1 + h*HealthProd2))**(1./HealthProd0)
-#    MargHealthProdFunc = lambda i,h : HealthProd0*(HealthProd1 + h*HealthProd2)*i**(HealthProd0-1)
-    MargHealthProdInvFunc = lambda x,h : (x/(HealthProd0*(HealthProd1 + h*HealthProd2)))**(1./(HealthProd0-1.))
 
     # Unpack next period's solution
     vFuncNext = solution_next.vFunc
@@ -742,12 +740,14 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
     '''
     A class for representing agents in the health investment model.
     '''
+    
     def __init__(self,**kwds):
         AgentType.__init__(self,solution_terminal=None,time_flow=True,pseudo_terminal=True,**kwds)
         self.time_inv = ['CRRA','DiscFac','MedCurve','Cfloor','LifeUtility','MargUtilityShift',
                          'Rfree','Bequest0','Bequest1','MedShkCount','HealthProd0','HealthProd1',
                          'HealthProd2','HealthShkStd0','HealthShkStd1','MedPrice']
         self.time_vary = []
+        self.poststate_vars = ['aLvlNow','HlvlNow']
         self.solveOnePeriod = solveHealthInvestment
         self.update()
     
@@ -1043,6 +1043,19 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         self.addToTimeInv('bFromxFunc','Dfunc','DpFunc','Gfunc','cEffFunc','CritShkFunc')
         
         
+    def updateHealthProdFuncs(self):
+        '''
+        Defines the time-invariant attributes HealthProdFunc, HealthProdInvFunc,
+        MargHealthProdFunc, and MargHealthProdInvFunc.
+        '''
+        # Define the (inverse) health production function
+        self.HealthProdFunc = lambda i,h : (self.HealthProd1 + h*self.HealthProd2)*i**self.HealthProd0
+        self.HealthProdInvFunc = lambda x,h : (x/(self.HealthProd1 + h*self.HealthProd2))**(1./self.HealthProd0)
+        self.MargHealthProdFunc = lambda i,h : self.HealthProd0*(self.HealthProd1 + h*self.HealthProd2)*i**(self.HealthProd0-1.)
+        self.MargHealthProdInvFunc = lambda x,h : (x/(self.HealthProd0*(self.HealthProd1 + h*self.HealthProd2)))**(1./(self.HealthProd0-1.))
+        self.addToTimeInv('HealthProdFunc','HealthProdInvFunc','MargHealthProdFunc','MargHealthProdInvFunc')
+        
+        
     def updateConvexityFixer(self):
         '''
         Creates the time-invariant attribute ConvexityFixer as an instance of JDfix.
@@ -1096,9 +1109,169 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         self.updateInsuranceFuncs()
         self.updateMedShkDstnFuncs()
         self.updateHealthTransFuncs()
+        self.updateHealthProdFuncs()
         self.updateSolutionTerminal()
         self.updateFirstOrderConditionFuncs()
         self.updateConvexityFixer()
+        
+        
+    def initializeSim(self):
+        '''
+        Prepares for a new simulation run by clearing histories and post-state
+        variable arrays, and setting time to zero.
+        '''
+        self.resetRNG()
+        self.t_sim = 0
+        self.t_age = 0
+        self.t_cycle = np.zeros(self.AgentCount,dtype=int)
+        blank_array = np.zeros(self.AgentCount)
+        for var_name in self.poststate_vars:
+            exec('self.' + var_name + ' = copy(blank_array)')
+        self.clearHistory()
+        self.ActiveNow = np.zeros(self.AgentCount,dtype=bool)
+        self.DiedNow = np.zeros(self.AgentCount,dtype=bool)
+        self.hLvlNow = np.zeros(self.AgentCount) + np.nan
+        
+        
+    def getMortality(self):
+        '''
+        Overwrites the standard method in AgentType with a simple thing.
+        '''
+        self.simDeath()
+        self.simBirth()
+
+
+    def simBirth(self):
+        '''
+        Activates agents who enter the data in this period.
+        '''
+        t = self.t_sim
+        activate = self.BornBoolArray[t,:]
+        self.ActiveNow[activate] = True
+        self.aLvlNow[activate] = self.aLvlInit[activate]
+        self.HlvlNow[activate] = self.HlvlInit[activate]
+
+    
+    def simDeath(self):
+        '''
+        Kills agents based on their probit mortality function.
+        '''
+        these = self.ActiveNow
+        t = self.t_sim
+        N = np.sum(these)
+        
+        MortShkNow = drawNormal(N,seed=self.RNG.randint(0,2**31-1))
+        CritShk = self.LivPrbFunc[t](self.HlvlNow[these])
+        kill = MortShkNow < CritShk
+        just_died = np.zeros(self.AgentCount,dtype=bool)
+        just_died[these] = kill
+        
+        self.hLvlNow[just_died] = 0.0
+        self.ActiveNow[just_died] = False
+        self.DiedNow[just_died] = True
+    
+    
+    def getShocks(self):
+        '''
+        Draws health shocks and base values for the medical need shock.
+        '''
+        these = self.ActiveNow
+        not_these = np.logical_not(these)
+        N = np.sum(these)
+        
+        HlvlNow = self.HlvlNow[these]
+        HealthShkStd = self.HealthShkStd0 + self.HealthShkStd1*HlvlNow
+        hShkNow = drawNormal(N,seed=self.RNG.randint(0,2**31-1))*HealthShkStd
+        if ~hasattr(self,'hShkNow'):
+            self.hShkNow = np.zeros(self.AgentCount)
+        self.hShkNow[these] = hShkNow
+        self.hShkNow[not_these] = np.nan
+        
+        MedShkBase = drawNormal(N,seed=self.RNG.randint(0,2**31-1))
+        if ~hasattr(self,'MedShkBase'):
+            self.MedShkBase = np.zeros(self.AgentCount)
+        self.MedShkBase[these] = MedShkBase
+        self.MedShkBase[not_these] = np.nan
+
+ 
+    def getStates(self):
+        '''
+        Calculates hLvlNow, bLvlNow, and MedShkNow using aLvlNow, HlvlNow,
+        hShkNow, and MedShkBase.
+        '''
+        hLvlNow = np.maximum(np.minimum(self.HlvlNow + self.hShkNow,1.0),0.0)
+        just_died = hLvlNow == 0.
+        self.ActiveNow[just_died] = False
+        self.DiedNow[just_died] = True
+        hLvlNow[self.HlvlNow == 0.] = np.nan
+        self.hLvlNow = hLvlNow
+        
+        these = self.ActiveNow
+        not_these = np.logical_not(these)
+        t = self.t_sim
+        
+        MedShkMean = self.MedShkMeanFunc[t](hLvlNow)
+        MedShkStd = self.MedShkStdFunc(hLvlNow)
+        LogMedShkNow = MedShkMean + self.MedShkBase*MedShkStd
+        MedShkNow = np.exp(LogMedShkNow)
+        self.MedShkNow = MedShkNow
+        
+        bLvlNow = self.Rfree*self.aLvlNow + self.IncomeNow[t]
+        bLvlNow[not_these] = np.nan
+        self.bLvlNow = bLvlNow
+        
+        
+    def getControls(self):
+        '''
+        Evaluates control variables cLvlNow, iLvlNow, MedLvlNow using state variables.
+        '''
+        t = self.t_sim
+        these = self.ActiveNow
+        not_these = np.logical_not(these)
+        
+        PremiumNow = self.PremiumFunc[t](self.hLvlNow[these])
+        CopayNow = self.CopayFunc[t](self.hLvlNow[these])
+        
+        bLvlNow = self.bLvlNow[these]
+        hLvlNow = self.hLvlNow[these]
+        MedShkNow = self.MedShkNow[these]
+        cLvlNow, MedLvlNow, iLvlNow, xLvlNow = self.solution[t].PolicyFunc(bLvlNow,hLvlNow,MedShkNow)
+        iLvlNow = np.maximum(iLvlNow,0.)
+        
+        if ~hasattr(self,'cLvlNow'):
+            self.cLvlNow = np.zeros(self.AgentCount)
+            self.MedLvlNow = np.zeros(self.AgentCount)
+            self.iLvlNow = np.zeros(self.AgentCount)
+            self.xLvlNow = np.zeros(self.AgentCount)
+            self.PremiumNow = np.zeros(self.AgentCount)
+            self.CopayNow = np.zeros(self.AgentCount)
+            
+        self.PremiumNow[these] = PremiumNow
+        self.CopayNow[these] = CopayNow
+        self.cLvlNow[these] = cLvlNow
+        self.MedLvlNow[these] = MedLvlNow
+        self.iLvlNow[these] = iLvlNow
+        self.xLvlNow[these] = xLvlNow
+        self.PremiumNow[not_these] = np.nan
+        self.CopayNow[not_these] = np.nan
+        self.cLvlNow[not_these] = np.nan
+        self.MedLvlNow[not_these] = np.nan
+        self.iLvlNow[not_these] = np.nan
+        self.xLvlNow[not_these] = np.nan
+        
+        
+    def getPostStates(self):
+        '''
+        Calculates post states aLvlNow and HlvlNow.
+        '''
+        t = self.t_sim
+        aLvlNow = self.bLvlNow - self.PremiumNow - self.xLvlNow - self.CopayNow*self.MedPrice*self.iLvlNow
+        HlvlNow = self.ExpHealthNextFunc[t](self.hLvlNow) + self.HealthProdFunc(self.iLvlNow,self.hLvlNow)
+        self.aLvlNow = aLvlNow
+        self.HlvlNow = HlvlNow
+        
+        self.TotalMedNow = self.MedPrice*(self.MedLvlNow + self.iLvlNow)
+        self.OOPmedNow = self.TotalMedNow*self.CopayNow
 
     
     def plotxFuncByHealth(self,t,MedShk,bMin=None,bMax=20.0,hSet=None):
@@ -1378,7 +1551,7 @@ if __name__ == '__main__':
     t_end = clock()
     print('Solving a health investment consumer took ' + str(t_end-t_start) + ' seconds.')
     
-    t=00
+    t=0
     bMax=50.
     
     TestType.plotxFuncByHealth(t,MedShk=1.0,bMax=bMax)
@@ -1394,4 +1567,21 @@ if __name__ == '__main__':
     TestType.plotdvdbFuncByHealth(t,pseudo_inverse=False,bMax=bMax)
     TestType.plotdvdhFuncByHealth(t,bMax=bMax)
 #    TestType.plotdvdhFuncByHealth(t,bMax=bMax,Alt=True)
+
+    TestType.T_sim = 25
+    TestType.AgentCount = 10000
+    TestType.track_vars = ['cLvlNow','MedLvlNow','iLvlNow','hLvlNow','aLvlNow','xLvlNow']
+    TestType.aLvlInit = np.random.rand(10000)*45. + 3.
+    TestType.HlvlInit = np.random.rand(10000)*0.45 + 0.5
+    BornArray = np.zeros((25,10000),dtype=bool)
+    BornArray[0,:] = True
+    TestType.BornBoolArray = BornArray
+    TestType.initializeSim()
+    
+    t_start = clock()
+    TestType.simulate()
+    t_end = clock()
+    print('Simulating ' + str(TestType.AgentCount) + ' health investment consumers took ' + str(t_end-t_start) + ' seconds.')
+    
+    
     

@@ -77,17 +77,17 @@ income_test_params = {
     'IncomeAgeCu' : 0.0,
     'IncomeAgeQu' : 0.0,
     'MedPrice' : 1.0,
-    'Rfree' : 1.06
+    'Rfree' : 1.04
 }
 
 # Make a dictionary with structural parameters for testing
 struct_test_params = {
     'CRRA' : 2.5,
-    'DiscFac' : 0.94,
+    'DiscFac' : 0.92,
     'MedCurve' : 6.0,
     'LifeUtility' : 0.8,
     'MargUtilityShift' : -0.5,
-    'Cfloor' : 0.2,
+    'Cfloor' : 0.4,
     'Bequest0' : 1.0,
     'Bequest1' : 4.0,
     'MedShkMean0' : -6.,
@@ -96,7 +96,7 @@ struct_test_params = {
     'MedShkMeanAgeSq' : 0.001,
     'MedShkMeanHealth' : -1.0,
     'MedShkMeanHealthSq' : -3.0,
-    'MedShkStd0' : 1.6,
+    'MedShkStd0' : 1.2,
     'MedShkStd1' : -0.2,
     'HealthNext0' : 0.03,
     'HealthNextSex' : -0.005,
