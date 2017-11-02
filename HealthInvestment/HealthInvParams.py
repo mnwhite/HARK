@@ -13,7 +13,7 @@ hCount = 2*(Hcount-1)+1
 bNrmCount = 2*aXtraCount
 MedShkCount = 24
 aXtraMin = 0.001
-aXtraMax = 50
+aXtraMax = 200
 aXtraNestFac = 3
 T_cycle = 25
 
@@ -71,19 +71,20 @@ insurance_params = {
 
 # Make a dictionary with example income parameters
 income_test_params = {
-    'Income0' : 1.,
+    'Income0' : 2.0,
     'IncomeAge' : -.01,
     'IncomeAgeSq' : 0.0,
     'IncomeAgeCu' : 0.0,
     'IncomeAgeQu' : 0.0,
-    'MedPrice' : 1.0,
-    'Rfree' : 1.04
+    'MedPrice0' : 1.0,
+    'Rfree' : 1.04,
+    'Sex' : 0.0
 }
 
 # Make a dictionary with structural parameters for testing
 struct_test_params = {
     'CRRA' : 2.5,
-    'DiscFac' : 0.92,
+    'DiscFac' : 0.94,
     'MedCurve' : 6.0,
     'LifeUtility' : 0.8,
     'MargUtilityShift' : -0.5,
@@ -106,11 +107,11 @@ struct_test_params = {
     'HealthNextHealthSq' : 0.159,
     'HealthShkStd0' : 0.13,
     'HealthShkStd1' : -0.04,
-    'HealthProd0' : 0.03,
+    'HealthProd0' : 0.01,
     'HealthProd1' : 0.001,
-    'HealthProd2' : 0.02,
+    'HealthProd2' : 0.001,
     'Mortality0' : -0.6,
-    'MortalitySex' : 0.45,
+    'MortalitySex' : 0.10,
     'MortalityAge' : 0.017,
     'MortalityAgeSq' : 0.0014,
     'MortalityHealth' : -1.5,

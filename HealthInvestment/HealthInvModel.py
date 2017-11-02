@@ -517,12 +517,12 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
     LogMedShkGrid = np.linspace(LogMedShkMin,LogMedShkMax,MedShkCount)
     MedShkGrid = np.insert(np.exp(LogMedShkGrid),0,0.0)
     ShkCount = MedShkGrid.size
-    LogMedShkGridDense = np.linspace(LogMedShkMin,LogMedShkMax,MedShkCount*2+1)
+    LogMedShkGridDense = np.linspace(LogMedShkMin,LogMedShkMax,MedShkCount*2)
     ShkGridDense = np.insert(np.exp(LogMedShkGridDense),0,0.0)
     
     # Make 3D arrays of states, health investment, insurance terms, and (marginal) values
     MedShkArrayBig = np.tile(np.reshape(MedShkGrid,(1,1,ShkCount)),(aCount,Hcount,1))
-    aLvlArrayBig = np.tile(np.reshape(aXtraGrid,(aCount,1,1)),(1,Hcount,ShkCount))
+    aLvlArrayBig = np.tile(np.reshape(aLvlGrid,(aCount,1,1)),(1,Hcount,ShkCount))
     hLvlArrayBig = np.tile(np.reshape(hNow,(aCount,Hcount,1)),(1,1,ShkCount))
     iLvlArrayBig = np.tile(np.reshape(iNow,(aCount,Hcount,1)),(1,1,ShkCount))
     PremiumArrayBig = PremiumFunc(hLvlArrayBig)
@@ -545,9 +545,10 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
     
     # Make an exogenous grid of bLvl and MedShk values where individual is constrained
     bCnstCount = 16
+    PremiumTemp = PremiumFunc(hLvlArrayBig[0,:,:]) # Decent candidate for lower bound of bLvl
     MedShkArrayCnst = np.tile(np.reshape(MedShkGrid,(1,1,ShkCount)),(bCnstCount,Hcount,1))
     FractionGrid = np.tile(np.reshape(np.arange(bCnstCount,dtype=float)/bCnstCount,(bCnstCount,1,1)),(1,Hcount,ShkCount))
-    bLvlArrayCnst = np.tile(np.reshape(bLvlArrayBig[0,:,:]-IncomeNow*0.5,(1,Hcount,ShkCount)),(bCnstCount,1,1))*FractionGrid + IncomeNow*0.5
+    bLvlArrayCnst = np.tile(np.reshape(bLvlArrayBig[0,:,:]-PremiumTemp,(1,Hcount,ShkCount)),(bCnstCount,1,1))*FractionGrid + np.tile(np.reshape(PremiumTemp,(1,Hcount,ShkCount)),(bCnstCount,1,1))
     HarrayCnst = np.tile(np.reshape(Hgrid,(1,Hcount,1)),(bCnstCount,1,ShkCount))
     EndOfPrddvdHCnst = np.tile(np.reshape(EndOfPrddvdH[0,:],(1,Hcount,1)),(bCnstCount,1,ShkCount))
     EndOfPrddvdHCnstAdj = np.maximum(EndOfPrddvdHCnst,0.0)
@@ -745,11 +746,10 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         AgentType.__init__(self,solution_terminal=None,time_flow=True,pseudo_terminal=True,**kwds)
         self.time_inv = ['CRRA','DiscFac','MedCurve','Cfloor','LifeUtility','MargUtilityShift',
                          'Rfree','Bequest0','Bequest1','MedShkCount','HealthProd0','HealthProd1',
-                         'HealthProd2','HealthShkStd0','HealthShkStd1','MedPrice']
+                         'HealthProd2','HealthShkStd0','HealthShkStd1']
         self.time_vary = []
         self.poststate_vars = ['aLvlNow','HlvlNow']
         self.solveOnePeriod = solveHealthInvestment
-        self.update()
     
     
     def updateMedShkDstnFuncs(self):
@@ -774,7 +774,7 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         MedShkMeanFunc = []
         MedShkStdFunc = QuadraticFunction(self.MedShkStd0,self.MedShkStd1,0.0)
         for t in range(self.T_cycle):
-            beta0 = self.MedShkMean0 + self.MedShkMeanAge*t + self.MedShkMeanAgeSq*t**2
+            beta0 = self.MedShkMean0 + self.Sex*self.MedShkMeanSex + self.MedShkMeanAge*t + self.MedShkMeanAgeSq*t**2
             beta1 = self.MedShkMeanHealth
             beta2 = self.MedShkMeanHealthSq
             MedShkMeanFunc.append(QuadraticFunction(beta0,beta1,beta2))
@@ -811,12 +811,12 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         ExpHealthNextFunc = []
         ExpHealthNextInvFunc = []
         for t in range(self.T_cycle):
-            theta0 = self.Mortality0 + self.MortalityAge*t + self.MortalityAgeSq*t**2
+            theta0 = self.Mortality0 + self.Sex*self.MortalitySex + self.MortalityAge*t + self.MortalityAgeSq*t**2
             theta1 = self.MortalityHealth
             theta2 = self.MortalityHealthSq
             LivPrbFunc.append(QuadraticFunction(theta0,theta1,theta2))
             
-            gamma0 = self.HealthNext0 + self.HealthNextAge*t + self.HealthNextAgeSq*t**2
+            gamma0 = self.HealthNext0 + self.Sex*self.HealthNextSex + self.HealthNextAge*t + self.HealthNextAgeSq*t**2
             gamma1 = self.HealthNextHealth
             gamma2 = self.HealthNextHealthSq
             ThisHealthFunc = QuadraticFunction(gamma0,gamma1,gamma2)
@@ -856,12 +856,12 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         CopayFunc = []
         for t in range(self.T_cycle):
             y = self.IncomeNow[t]
-            p0 = self.Premium0 + self.PremiumAge*t + self.PremiumAgeSq*t**2 + self.PremiumInc*y + self.PremiumIncSq*y**2 + self.PremiumIncCu*y**3
+            p0 = self.Premium0 + self.Sex*self.PremiumSex + self.PremiumAge*t + self.PremiumAgeSq*t**2 + self.PremiumInc*y + self.PremiumIncSq*y**2 + self.PremiumIncCu*y**3
             p1 = self.PremiumHealth + self.PremiumHealthAge*t + self.PremiumHealthAgeSq*t**2 + self.PremiumHealthInc*y + self.PremiumHealthIncSq*y**2
             p2 = self.PremiumHealthSq + self.PremiumHealthSqAge*t + self.PremiumHealthSqAgeSq*t**2 + self.PremiumHealthSqInc*y + self.PremiumHealthSqIncSq*y**2
             PremiumFunc.append(QuadraticFunction(p0,p1,p2))
             
-            c0 = self.Copay0 + self.CopayAge*t + self.CopayAgeSq*t**2 + self.CopayInc*y + self.CopayIncSq*y**2 + self.CopayIncCu*y**3
+            c0 = self.Copay0 + self.Sex*self.CopaySex + self.CopayAge*t + self.CopayAgeSq*t**2 + self.CopayInc*y + self.CopayIncSq*y**2 + self.CopayIncCu*y**3
             c1 = self.CopayHealth + self.CopayHealthAge*t + self.CopayHealthAgeSq*t**2 + self.CopayHealthInc*y + self.CopayHealthIncSq*y**2
             c2 = self.CopayHealthSq + self.CopayHealthSqAge*t + self.CopayHealthSqAgeSq*t**2 + self.CopayHealthSqInc*y + self.CopayHealthSqIncSq*y**2
             CopayFunc.append(QuadraticFunction(c0,c1,c2))
@@ -907,7 +907,7 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         self.addToTimeVary('bLvlGrid')
 
         
-    def updateIncomePath(self):
+    def makeQuarticIncomePath(self):
         '''
         Constructs the time-varying attribute called income using a fourth degree
         polynomial for income by age.
@@ -1069,7 +1069,7 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         None
         '''
         self.ConvexityFixer = JDfixer(self.aXtraGrid.size+16,self.Hgrid.size,self.MedShkCount+1,
-                                      self.bNrmGrid.size,self.hLvlGrid.size,self.MedShkCount*2+2)
+                                      self.bNrmGrid.size,self.hLvlGrid.size,self.MedShkCount*2+1)
         self.addToTimeInv('ConvexityFixer')
         
         
@@ -1090,8 +1090,53 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         self.solution_terminal = HealthInvestmentSolution(PolicyFunc=NullFunc(), vFunc=ConstantFunction(0.), dvdbFunc=ConstantFunction(0.), dvdhFunc=ConstantFunction(0.))
         self.solution_terminal.dvdhFuncAlt = ConstantFunction(0.)
         self.pseudo_terminal = True
+
+
+    def makeConstantMedPrice(self):
+        '''
+        Dummy method to fill in MedPrice as a constant value at every age.
+        
+        Parameters
+        ----------
+        None
+        
+        Returns
+        -------
+        None
+        '''
+        self.MedPrice = self.T_cycle*[self.MedPrice0]
+        self.addToTimeVary('MedPrice')
         
         
+    def takeVaryingMedPrice(self,MedPriceHistory,t0):
+        '''
+        Method to generate a time-varying sequence of MedPrice values based on an
+        absolute time history of MedPrice and an initial period t0.
+        
+        Parameters
+        ----------
+        MedPriceHistory : np.array
+            History of MedPrice over absolute time (not agent-age-time).
+        t0 : int
+            Period of absolute history when this instance is "born".
+        
+        Returns
+        -------
+        None
+        '''
+        orig_time = self.time_flow
+        if not self.time_flow:
+            self.timeFwd()
+            
+        t1 = t0 + self.T_cycle
+        MedPriceArray = MedPriceHistory[t0:t1]
+        self.MedPrice = MedPriceArray.tolist()
+        self.addToTimeVary('MedPrice')
+        
+        if not orig_time:
+            self.timeRev()
+        
+             
     def update(self):
         '''
         Calls all the various update methods to preconstruct objects for the solver.
@@ -1104,7 +1149,6 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         -------
         None
         '''
-        self.updateIncomePath()
         self.updateStateGrids()
         self.updateInsuranceFuncs()
         self.updateMedShkDstnFuncs()
@@ -1238,6 +1282,18 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         cLvlNow, MedLvlNow, iLvlNow, xLvlNow = self.solution[t].PolicyFunc(bLvlNow,hLvlNow,MedShkNow)
         iLvlNow = np.maximum(iLvlNow,0.)
         
+        MedPriceEff = self.MedPrice[t]*CopayNow
+        MedShkEff = MedShkNow*MedPriceEff
+        cEffNow = (1. - np.exp(-MedLvlNow/(MedShkEff)))*cLvlNow
+        BelowCfloor = cEffNow < self.Cfloor
+        
+        xLvlNow[BelowCfloor] = self.Dfunc(self.Cfloor*np.ones_like(MedShkEff[BelowCfloor]),MedShkEff[BelowCfloor])
+        iLvlNow[BelowCfloor] = 0.0
+        cShareTrans = self.bFromxFunc(xLvlNow[BelowCfloor],MedShkEff[BelowCfloor])
+        q = np.exp(-cShareTrans)
+        cLvlNow[BelowCfloor] = xLvlNow[BelowCfloor]/(1.+q)
+        MedLvlNow[BelowCfloor] = xLvlNow[BelowCfloor]*q/(1.+q)
+        
         if ~hasattr(self,'cLvlNow'):
             self.cLvlNow = np.zeros(self.AgentCount)
             self.MedLvlNow = np.zeros(self.AgentCount)
@@ -1265,12 +1321,13 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         Calculates post states aLvlNow and HlvlNow.
         '''
         t = self.t_sim
-        aLvlNow = self.bLvlNow - self.PremiumNow - self.xLvlNow - self.CopayNow*self.MedPrice*self.iLvlNow
+        aLvlNow = self.bLvlNow - self.PremiumNow - self.xLvlNow - self.CopayNow*self.MedPrice[t]*self.iLvlNow
+        aLvlNow = np.maximum(aLvlNow,0.0) # Fixes those who go negative due to Cfloor help
         HlvlNow = self.ExpHealthNextFunc[t](self.hLvlNow) + self.HealthProdFunc(self.iLvlNow,self.hLvlNow)
         self.aLvlNow = aLvlNow
         self.HlvlNow = HlvlNow
         
-        self.TotalMedNow = self.MedPrice*(self.MedLvlNow + self.iLvlNow)
+        self.TotalMedNow = self.MedPrice[t]*(self.MedLvlNow + self.iLvlNow)
         self.OOPmedNow = self.TotalMedNow*self.CopayNow
 
     
@@ -1542,6 +1599,9 @@ if __name__ == '__main__':
     
     t_start = clock()
     TestType = HealthInvestmentConsumerType(**Params.test_params)
+    TestType.makeQuarticIncomePath()
+    TestType.makeConstantMedPrice()
+    TestType.update()
     TestType.cycles = 1
     t_end = clock()
     print('Making a health investment consumer took ' + str(t_end-t_start) + ' seconds.')
@@ -1552,13 +1612,13 @@ if __name__ == '__main__':
     print('Solving a health investment consumer took ' + str(t_end-t_start) + ' seconds.')
     
     t=0
-    bMax=50.
+    bMax=200.
     
     TestType.plotxFuncByHealth(t,MedShk=1.0,bMax=bMax)
     TestType.plotxFuncByMedShk(t,hLvl=0.7,bMax=bMax)
     
     TestType.plotcFuncByHealth(t,MedShk=1.0,bMax=bMax)
-    TestType.plotcFuncByMedShk(t,hLvl=0.7)
+    TestType.plotcFuncByMedShk(t,hLvl=0.7,bMax=bMax)
     
     TestType.plotiFuncByHealth(t,MedShk=1.0,bMax=bMax)
     TestType.plotiFuncByMedShk(t,hLvl=0.7,bMax=bMax)
@@ -1571,7 +1631,7 @@ if __name__ == '__main__':
     TestType.T_sim = 25
     TestType.AgentCount = 10000
     TestType.track_vars = ['cLvlNow','MedLvlNow','iLvlNow','hLvlNow','aLvlNow','xLvlNow']
-    TestType.aLvlInit = np.random.rand(10000)*45. + 3.
+    TestType.aLvlInit = np.random.rand(10000)*5. + 3.
     TestType.HlvlInit = np.random.rand(10000)*0.45 + 0.5
     BornArray = np.zeros((25,10000),dtype=bool)
     BornArray[0,:] = True
@@ -1583,5 +1643,6 @@ if __name__ == '__main__':
     t_end = clock()
     print('Simulating ' + str(TestType.AgentCount) + ' health investment consumers took ' + str(t_end-t_start) + ' seconds.')
     
-    
+#    for t in range(25):
+#        TestType.plotxFuncByHealth(t,MedShk=1.0,bMax=bMax)
     
