@@ -1602,7 +1602,6 @@ if __name__ == '__main__':
     TestType.makeQuarticIncomePath()
     TestType.makeConstantMedPrice()
     TestType.update()
-    TestType.cycles = 1
     t_end = clock()
     print('Making a health investment consumer took ' + str(t_end-t_start) + ' seconds.')
     

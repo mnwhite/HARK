@@ -8,10 +8,10 @@ import numpy as np
 
 # Choose state grid sizes and bounds (exogenously chosen)
 Hcount = 21
-aXtraCount = 64
+aXtraCount = 48
 hCount = 2*(Hcount-1)+1
 bNrmCount = 2*aXtraCount
-MedShkCount = 24
+MedShkCount = 18
 aXtraMin = 0.001
 aXtraMax = 200
 aXtraNestFac = 3
@@ -78,7 +78,9 @@ income_test_params = {
     'IncomeAgeQu' : 0.0,
     'MedPrice0' : 1.0,
     'Rfree' : 1.04,
-    'Sex' : 0.0
+    'Sex' : 0.0,
+    'cycles' : 1,
+    'DataToSimRepFactor' : 100
 }
 
 # Make a dictionary with structural parameters for testing

@@ -129,6 +129,16 @@ InitBoolArray[t0,idx] = True
 w_init = w_data[t0,idx]
 h_init = h_data[t0,idx]
 
+# Make boolean arrays of types (with and without cohorts)
+N = 150
+TypeBoolArray = np.zeros((N,obs),dtype=bool)
+for n in range(N):
+    TypeBoolArray[n,:] = typenum_data == n+1
+typenum_temp = np.mod(typenum_data - 1,10)
+TypeBoolArraySmall = np.zeros((10,obs),dtype=bool)
+for n in range(10):
+    TypeBoolArraySmall[n,:] = np.logical_and(typenum_temp == n,typenum_data <= 150)
+    
 # Load the income profiles into memory
 infile = open('./Data/IncProfilesNew.txt','r') 
 my_reader = csv.reader(infile,delimiter='\t')
@@ -137,17 +147,17 @@ infile.close()
 TypeCount = len(all_data) - 1
 
 # Extract income and maximum wealth data into arrays
-IncomeArray = np.zeros((TypeCount,26))
+IncomeArray = np.zeros((TypeCount,25))
 MaxWealth = np.zeros(TypeCount)
 for i in range(TypeCount):
     j = i+1
     MaxWealth[i] = float(all_data[j][1])
     for t in range(21):
         IncomeArray[i,t] = float(all_data[j][t+2])
-IncomeArray[:,21:] = np.tile(np.reshape(IncomeArray[:,20],(TypeCount,1)),(1,5))
+IncomeArray[:,21:] = np.tile(np.reshape(IncomeArray[:,20],(TypeCount,1)),(1,4))
 
 # Make a "small" array of income profiles by sex and income quintile
-IncomeArraySmall = np.zeros((10,26))
+IncomeArraySmall = np.zeros((10,25))
 MaxWealthSmall = np.zeros(10)
 for j in range(10):
     these = j + np.arange(0,150,10)
