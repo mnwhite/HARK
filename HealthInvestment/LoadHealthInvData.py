@@ -239,6 +239,9 @@ for i in range(5):
         HealthByIncAge[i,a] = np.mean(h_data[these])
         OOPbyIncAge[i,a] = np.nanmean(arsinh(m_data[these]))
         IncAgeCellSize[i,a] = np.sum(these)
+        
+WealthNorm = np.sum(WealthByIncAge*IncAgeCellSize)/np.sum(IncAgeCellSize)
+HealthNorm = np.sum(HealthByIncAge*IncAgeCellSize)/np.sum(IncAgeCellSize)
 
 # Calculate median wealth by income quintile by wealth quintile by age: 375
 # Calculate mean health status by income quintile by wealth quintile by age: 375
@@ -276,8 +279,8 @@ for s in range(2):
             MortBySexHealthAge[s,h,a] = DeathCount/float(np.sum(those))
             SexHealthAgeCellSizeMort[s,h,a] = np.sum(those)
 
-# Calculate mean IHS OOP medical spending by age: 15
-# Calculate stdev IHS OOP medical spending by age: 15
+# Calculate mean OOP medical spending by age: 15
+# Calculate stdev OOP medical spending by age: 15
 # Calculate mortality probability by age: 15
 # Calculate stdev delta health by age: 15
 OOPbyAge = np.zeros(15)
@@ -300,6 +303,11 @@ for a in range(15):
     MortByAge[a] = DeathCount/float(np.sum(those))
     AgeCellSizeMort[a] = np.sum(those)
 
+OOPnorm = np.dot(OOPbyAge,AgeCellSize)/np.sum(AgeCellSize)
+StDevOOPnorm = np.dot(StDevOOPbyAge,AgeCellSize)/np.sum(AgeCellSize)
+MortNorm = np.dot(MortByAge,AgeCellSize)/np.sum(AgeCellSize)
+DeltaHealthNorm = np.dot(StDevDeltaHealthByAge,AgeCellSize)/np.sum(AgeCellSize)
+
 # Calculate stdev IHS OOP medical spending by health tertile by age: 45
 # Calculate stdev delta health by health tertile by age: 45
 StDevOOPbyHealthAge = np.zeros((3,15))
@@ -315,6 +323,63 @@ for h in range(3):
         thise = np.logical_and(HealthDeltaUseable,np.logical_and(HealthTertBoolArray[:,:,h],AgeBoolArray[:,:,a]))
         StDevDeltaHealthByHealthAge[h,a] = np.nanstd(HealthDelta[thise])
         HealthAgeCellSizeHealthDelta[h,a] = np.sum(thise)
+        
+# Aggregate moments into a single vector
+all_moments = np.concatenate([
+        OOPbyAge,
+        StDevOOPbyAge,
+        MortByAge,
+        StDevDeltaHealthByAge,
+        StDevOOPbyHealthAge.flatten(),
+        StDevDeltaHealthByHealthAge.flatten(),
+        HealthBySexHealthAge.flatten(),
+        OOPbySexHealthAge.flatten(),
+        MortBySexHealthAge.flatten(),
+        WealthByIncAge.flatten(),
+        HealthByIncAge.flatten(),
+        OOPbyIncAge.flatten(),
+        WealthByIncWealthAge.flatten(),
+        HealthByIncWealthAge.flatten(),
+        OOPbyIncWealthAge.flatten()
+        ])
+    
+# Aggregate moment normalizers into a single vector
+normalizer = np.concatenate([
+        OOPnorm*np.ones(15),
+        StDevOOPnorm*np.ones(15),
+        MortNorm*np.ones(15),
+        DeltaHealthNorm*np.ones(15),
+        StDevOOPnorm*np.ones(45),
+        DeltaHealthNorm*np.ones(45),
+        HealthNorm*np.ones(90),
+        OOPnorm*np.ones(90),
+        MortNorm*np.ones(90),
+        WealthNorm*np.ones(75),
+        HealthNorm*np.ones(75),
+        OOPnorm*np.ones(75),
+        WealthNorm*np.ones(375),
+        HealthNorm*np.ones(375),
+        OOPnorm*np.ones(375)
+        ])
+    
+# Aggregate moment cell sizes into a single vector
+all_cell_sizes = np.concatenate([
+        AgeCellSize,
+        AgeCellSize,
+        AgeCellSizeMort,
+        AgeCellSizeHealthDelta,
+        HealthAgeCellSize.flatten(),
+        HealthAgeCellSizeHealthDelta.flatten(),
+        SexHealthAgeCellSize.flatten(),
+        SexHealthAgeCellSize.flatten(),
+        SexHealthAgeCellSizeMort.flatten(),
+        IncAgeCellSize.flatten(),
+        IncAgeCellSize.flatten(),
+        IncAgeCellSize.flatten(),        
+        IncWealthAgeCellSize.flatten(),
+        IncWealthAgeCellSize.flatten(),
+        IncWealthAgeCellSize.flatten()
+        ])
         
         
 # Load in the absolute timepath of the relative price of care: 1977 to 2011

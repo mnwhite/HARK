@@ -80,7 +80,7 @@ income_test_params = {
     'Rfree' : 1.04,
     'Sex' : 0.0,
     'cycles' : 1,
-    'DataToSimRepFactor' : 100
+    'DataToSimRepFactor' : 50
 }
 
 # Make a dictionary with structural parameters for testing

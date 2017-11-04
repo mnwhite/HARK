@@ -13,7 +13,11 @@ from HARKparallel import multiThreadCommands, multiThreadCommandsFake
 from HealthInvModel import HealthInvestmentConsumerType
 import LoadHealthInvData as Data
 import HealthInvParams as Params
+import matplotlib.pyplot as plt
 
+DataMoments = Data.all_moments # Rename this to keep objects straight
+Normalizer = Data.normalizer
+CellSizes = Data.all_cell_sizes
 
 class EstimationAgentType(HealthInvestmentConsumerType):
     '''
@@ -45,6 +49,11 @@ class EstimationAgentType(HealthInvestmentConsumerType):
         self.aLvlInit = np.tile(self.aLvlInit,X)
         self.HlvlInit = np.tile(self.HlvlInit,X)
         self.BornBoolArray = np.tile(self.BornBoolArray,(1,X))
+        if self.Sex:
+            self.SexLong = np.ones(self.AgentCount,dtype=bool)
+        else:
+            self.SexLong = np.zeros(self.AgentCount,dtype=bool)
+        self.IncQuintLong = self.IncQuint*np.ones(self.AgentCount)
     
         
     def delSolution(self):
@@ -90,6 +99,7 @@ def makeMultiTypeWithCohorts(params):
         ThisType.aLvlInit = Data.w_init[these]
         ThisType.HlvlInit = Data.h_init[these]
         ThisType.BornBoolArray = Data.BornBoolArray[:,these]
+        ThisType.track_vars = ['OOPmedNow','hLvlNow','aLvlNow']
         
         type_list.append(ThisType)
         
@@ -130,6 +140,7 @@ def makeMultiTypeSimple(params):
         ThisType.aLvlInit = Data.w_init[these]
         ThisType.HlvlInit = Data.h_init[these]
         ThisType.BornBoolArray = Data.BornBoolArray[:,these]
+        ThisType.track_vars = ['OOPmedNow','hLvlNow','aLvlNow']
         
         type_list.append(ThisType)
         
@@ -162,6 +173,154 @@ def processSimulatedTypes(params,use_cohorts):
     return type_list
 
 
+def calcSimulatedMoments(type_list):
+    '''
+    Calculate simulated counterparts to all of the data moments.
+    
+    Parameters
+    ----------
+    type_list : [EstimationAgentType]
+        List of agent types, with simulation results but no solution.
+        
+    Returns
+    -------
+    all_moments : np.array
+        Very long 1D array with all simulated moments.
+    '''
+    # Combine simulated data across all types
+    aLvlHist = np.concatenate([this_type.aLvlNow_hist for this_type in type_list],axis=1)
+    hLvlHist = np.concatenate([this_type.hLvlNow_hist for this_type in type_list],axis=1)
+    OOPhist  = np.concatenate([this_type.OOPmedNow_hist for this_type in type_list],axis=1)*10000
+    T = type_list[0].T_sim
+    N = aLvlHist.shape[1]
+    
+    # Combine data labels across types
+    HealthTert = np.concatenate([this_type.HealthTert for this_type in type_list])
+    WealthQuint = np.concatenate([this_type.WealthQuint for this_type in type_list])
+    IncQuint = np.concatenate([this_type.IncQuintLong for this_type in type_list])
+    Sex = np.concatenate([this_type.SexLong for this_type in type_list])
+    
+    # Determine eligibility to be used for various purposes
+    Alive = hLvlHist > 0.
+    AliveNextPeriod = np.zeros((T,N))
+    AliveNextPeriod[:-1,:] = Alive[1:,:]
+    DeadNextPeriod = np.logical_not(AliveNextPeriod)
+    AliveNowAndLater = np.logical_and(Alive,AliveNextPeriod)
+    DyingThisPeriod = np.logical_and(Alive,DeadNextPeriod)
+    
+    # Calculate the change in health from period to period for all simulated agents
+    DeltaHealth = np.zeros_like(hLvlHist)
+    DeltaHealth[:-1,:] = hLvlHist[1:,:] - hLvlHist[:-1,:]
+    
+    # Initialize arrays to hold simulated moments
+    OOPbyAge = np.zeros(15)
+    StDevOOPbyAge = np.zeros(15)
+    MortByAge = np.zeros(15)
+    StDevDeltaHealthByAge = np.zeros(15)
+    StDevOOPbyHealthAge = np.zeros((3,15))
+    StDevDeltaHealthByHealthAge = np.zeros((3,15))
+    HealthBySexHealthAge = np.zeros((2,3,15))
+    OOPbySexHealthAge = np.zeros((2,3,15))
+    MortBySexHealthAge = np.zeros((2,3,15))
+    WealthByIncAge = np.zeros((5,15))
+    HealthByIncAge = np.zeros((5,15))
+    OOPbyIncAge = np.zeros((5,15))
+    WealthByIncWealthAge = np.zeros((5,5,15))
+    HealthByIncWealthAge = np.zeros((5,5,15))
+    OOPbyIncWealthAge = np.zeros((5,5,15))
+    
+    # Loop through ages, sexes, quintiles, and health to fill in simulated moments
+    for t in range(15):
+        # Calculate mean and stdev of OOP medical spending, mortality rate, and stdev delta health by age
+        OOP = OOPhist[t,AliveNowAndLater[t,:]]
+        OOPbyAge[t] = np.mean(OOP)
+        StDevOOPbyAge[t] = np.std(OOP)
+        NewDead = np.sum(DyingThisPeriod[t,:])
+        Total = NewDead + np.sum(AliveNowAndLater[t,:])
+        MortByAge[t] = float(NewDead)/float(Total)
+        StDevDeltaHealthByAge[t] = np.std(DeltaHealth[t,AliveNowAndLater[t,:]])
+        
+        for h in range(3):
+            # Calculate stdev OOP medical spending and stdev delta health by health by age
+            right_health = HealthTert==(h+1)
+            these = np.logical_and(AliveNowAndLater[t,:],right_health)
+            OOP = OOPhist[t,these]
+            StDevOOPbyHealthAge[h,t] = np.std(OOP)
+            StDevDeltaHealthByHealthAge[h,t] = np.std(DeltaHealth[t,these])
+            
+            for s in range(2):
+                # Calculate mean OOP medical spending and mortality by sex by health by age
+                right_sex = Sex==s
+                those = np.logical_and(these,right_sex)
+                OOPbySexHealthAge[s,h,t] = np.mean(OOPhist[t,those])
+                HealthBySexHealthAge[s,h,t] = np.mean(hLvlHist[t+1,those])
+                NewDead = np.sum(np.logical_and(np.logical_and(DyingThisPeriod[t,:],right_sex),right_health))
+                Total = NewDead + np.sum(np.logical_and(np.logical_and(AliveNowAndLater[t,:],right_sex),right_health))
+                MortBySexHealthAge[s,h,t] = float(NewDead)/float(Total)
+                
+        for i in range(5):
+            # Calculate median wealth, mean health, and mean OOP medical spending by income quintile by age
+            right_inc = IncQuint == i+1
+            these = np.logical_and(AliveNowAndLater[t,:],right_inc)
+            WealthByIncAge[i,t] = np.median(aLvlHist[t,these])
+            HealthByIncAge[i,t] = np.mean(hLvlHist[t+1,these])
+            OOPbyIncAge[i,t] = np.mean(OOPhist[t,these])
+            
+            for j in range(5):
+                # Calculate median wealth, mean health, and mean OOP medical spending by income quintile by wealth quintile by age
+                right_wealth = WealthQuint == j+1
+                those = np.logical_and(these,right_wealth)
+                WealthByIncWealthAge[i,j,t] = np.median(aLvlHist[t,those])
+                HealthByIncWealthAge[i,j,t] = np.mean(hLvlHist[t+1,those])
+                OOPbyIncWealthAge[i,j,t] = np.mean(OOPhist[t,those])
+                
+    # Aggregate moments into a single vector and return
+    all_moments = np.concatenate([
+            OOPbyAge,
+            StDevOOPbyAge,
+            MortByAge,
+            StDevDeltaHealthByAge,
+            StDevOOPbyHealthAge.flatten(),
+            StDevDeltaHealthByHealthAge.flatten(),
+            HealthBySexHealthAge.flatten(),
+            OOPbySexHealthAge.flatten(),
+            MortBySexHealthAge.flatten(),
+            WealthByIncAge.flatten(),
+            HealthByIncAge.flatten(),
+            OOPbyIncAge.flatten(),
+            WealthByIncWealthAge.flatten(),
+            HealthByIncWealthAge.flatten(),
+            OOPbyIncWealthAge.flatten()
+            ])
+    return all_moments
+
+
+def objectiveFunction(params,use_cohorts):
+    '''
+    The objective function for the ounce of prevention estimation.  Takes a dictionary
+    of parameters and a boolean indicator for whether to break sample up by cohorts.
+    Returns a single real representing the weighted sum of squared moment distances.
+    
+    Parameters
+    ----------
+    params : dict
+        The dictionary to be used to construct each of the types.
+    use_cohorts : bool
+        Indicator for whether to separately solve and simulate the 15 cohorts.
+        
+    Returns
+    -------
+    weighted_moment_sum : float
+        Weighted sum of squared moment differences between data and simulation.
+    '''
+    TypeList = processSimulatedTypes(params,use_cohorts)
+    SimulatedMoments = calcSimulatedMoments(TypeList)
+    MomentDifferences = (SimulatedMoments - DataMoments)/Normalizer
+    MomentDifferencesSq = MomentDifferences**2
+    weighted_moment_sum = np.dot(MomentDifferencesSq,CellSizes)
+    return weighted_moment_sum
+
+
 
 if __name__ == '__main__':
 
@@ -171,14 +330,24 @@ if __name__ == '__main__':
     #t_end = clock()
     #print('Processing one agent type took ' + str(t_end-t_start) + ' seconds.')
     
-    t_start = clock()
-    MyTypes = processSimulatedTypes(Params.test_params,False)
-    t_end = clock()
-    print('Processing ten agent types took ' + str(t_end-t_start) + ' seconds.')
+#    t_start = clock()
+#    MyTypes = processSimulatedTypes(Params.test_params,False)
+#    t_end = clock()
+#    print('Processing ten agent types took ' + str(t_end-t_start) + ' seconds.')
+#    
+#    t_start = clock()
+#    X = calcSimulatedMoments(MyTypes)
+#    t_end = clock()
+#    print('Calculating moments took ' + str(t_end-t_start) + ' seconds.')
     
 #    t=0
 #    bMax=200.
 #    
 #    for j in range(10):
 #        MyTypes[j].plotxFuncByHealth(t,MedShk=1.0,bMax=bMax)
+
+    t_start = clock()
+    X = objectiveFunction(Params.test_params,False)
+    t_end = clock()
+    print('One objective function evaluation took ' + str(t_end-t_start) + ' seconds.')
     
