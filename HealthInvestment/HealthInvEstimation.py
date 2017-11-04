@@ -100,6 +100,7 @@ def makeMultiTypeWithCohorts(params):
         ThisType.HlvlInit = Data.h_init[these]
         ThisType.BornBoolArray = Data.BornBoolArray[:,these]
         ThisType.track_vars = ['OOPmedNow','hLvlNow','aLvlNow']
+        ThisType.seed = n
         
         type_list.append(ThisType)
         
@@ -141,6 +142,7 @@ def makeMultiTypeSimple(params):
         ThisType.HlvlInit = Data.h_init[these]
         ThisType.BornBoolArray = Data.BornBoolArray[:,these]
         ThisType.track_vars = ['OOPmedNow','hLvlNow','aLvlNow']
+        ThisType.seed = n
         
         type_list.append(ThisType)
         
@@ -321,6 +323,66 @@ def objectiveFunction(params,use_cohorts):
     return weighted_moment_sum
 
 
+def objectiveFunctionWrapper(param_vec):
+    '''
+    Wrapper funtion around the objective function so that it can be used with
+    optimization routines.  Takes a single 1D array as input, returns a single float.
+    
+    Parameters
+    ----------
+    param_vec : np.array
+        1D array of structural parameters to be estimated.  Should have size 33.
+        
+    Returns
+    -------
+    weighted_moment_sum : float
+        Weighted sum of squared moment differences between data and simulation.
+    '''
+    # Make a dictionary with structural parameters for testing
+    struct_params = {
+        'CRRA' : param_vec[0],
+        'DiscFac' : param_vec[1],
+        'MedCurve' : param_vec[2],
+        'LifeUtility' : param_vec[3],
+        'MargUtilityShift' : param_vec[4],
+        'Cfloor' : param_vec[5],
+        'Bequest0' : param_vec[6],
+        'Bequest1' : param_vec[7],
+        'MedShkMean0' : param_vec[8],
+        'MedShkMeanSex' : param_vec[9],
+        'MedShkMeanAge' : param_vec[10],
+        'MedShkMeanAgeSq' : param_vec[11],
+        'MedShkMeanHealth' : param_vec[12],
+        'MedShkMeanHealthSq' : param_vec[13],
+        'MedShkStd0' : param_vec[14],
+        'MedShkStd1' : param_vec[15],
+        'HealthNext0' : param_vec[16],
+        'HealthNextSex' : param_vec[17],
+        'HealthNextAge' : param_vec[18],
+        'HealthNextAgeSq' : param_vec[19],
+        'HealthNextHealth' : param_vec[20],
+        'HealthNextHealthSq' : param_vec[21],
+        'HealthShkStd0' : param_vec[22],
+        'HealthShkStd1' : param_vec[23],
+        'HealthProd0' : param_vec[24],
+        'HealthProd1' : param_vec[25],
+        'HealthProd2' : param_vec[26],
+        'Mortality0' : param_vec[27],
+        'MortalitySex' : param_vec[28],
+        'MortalityAge' : param_vec[29],
+        'MortalityAgeSq' : param_vec[30],
+        'MortalityHealth' : param_vec[31],
+        'MortalityHealthSq' : param_vec[32]
+    }
+    these_params = copy(Params.basic_estimation_dict)
+    these_params.update(struct_params)
+    
+    # Run the objective function with the newly created dictionary
+    use_cohorts = Data.use_cohorts
+    weighted_moment_sum = objectiveFunction(these_params,use_cohorts)
+    return weighted_moment_sum
+
+
 
 if __name__ == '__main__':
 
@@ -347,7 +409,8 @@ if __name__ == '__main__':
 #        MyTypes[j].plotxFuncByHealth(t,MedShk=1.0,bMax=bMax)
 
     t_start = clock()
-    X = objectiveFunction(Params.test_params,False)
+    #X = objectiveFunction(Params.test_params,False)
+    X = objectiveFunctionWrapper(Params.test_param_vec)
     t_end = clock()
     print('One objective function evaluation took ' + str(t_end-t_start) + ' seconds.')
     

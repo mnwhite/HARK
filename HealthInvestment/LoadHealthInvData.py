@@ -10,6 +10,28 @@ import numpy as np
 sys.path.insert(0,'../')
 sys.path.insert(0,'./Data/')
 
+# Choose whether to use cohorts in simulation (True) or aggregate into only 10 types (False)
+use_cohorts = False
+
+# Choose which moments will actually be used
+moment_dummies = np.array([
+        True, # OOPbyAge
+        True, # StDevOOPbyAge
+        True, # MortByAge
+        True, # StDevDeltaHealthByAge
+        True, # StDevOOPbyHealthAge
+        True, # StDevDeltaHealthByHealthAge
+        True, # HealthBySexHealthAge
+        True, # OOPbySexHealthAge
+        True, # MortBySexHealthAge
+        True, # WealthByIncAge
+        True, # HealthByIncAge
+        True, # OOPbyIncAge
+        False, # WealthByIncWealthAge
+        False, # HealthByIncWealthAge
+        False, # OOPbyIncWealthAge
+        ])
+
 # Load the estimation data into memory
 infile = open('./Data/EstimationData.txt','r') 
 my_reader = csv.reader(infile,delimiter='\t')
@@ -380,6 +402,26 @@ all_cell_sizes = np.concatenate([
         IncWealthAgeCellSize.flatten(),
         IncWealthAgeCellSize.flatten()
         ])
+    
+# Make moment masking array and apply it to the cell sizes
+moment_mask = np.concatenate([
+        np.ones(15)*moment_dummies[0],
+        np.ones(15)*moment_dummies[1],
+        np.ones(15)*moment_dummies[2],
+        np.ones(15)*moment_dummies[3],
+        np.ones(45)*moment_dummies[4],
+        np.ones(45)*moment_dummies[5],
+        np.ones(90)*moment_dummies[6],
+        np.ones(90)*moment_dummies[7],
+        np.ones(90)*moment_dummies[8],
+        np.ones(75)*moment_dummies[9],
+        np.ones(75)*moment_dummies[10],
+        np.ones(75)*moment_dummies[11],
+        np.ones(375)*moment_dummies[12],
+        np.ones(375)*moment_dummies[13],
+        np.ones(375)*moment_dummies[14],
+        ])
+all_cell_sizes *= moment_mask # Turn off some moments, as chosen at the top of this file
         
         
 # Load in the absolute timepath of the relative price of care: 1977 to 2011

@@ -7,7 +7,7 @@ from copy import copy
 import numpy as np
 
 # Choose state grid sizes and bounds (exogenously chosen)
-Hcount = 21
+Hcount = 16
 aXtraCount = 48
 hCount = 2*(Hcount-1)+1
 bNrmCount = 2*aXtraCount
@@ -69,8 +69,8 @@ insurance_params = {
     'CopayHealthSqIncSq' : -0.00136,
 }
 
-# Make a dictionary with example income parameters
-income_test_params = {
+# Make a dictionary with example basic parameters
+other_exog_params = {
     'Income0' : 2.0,
     'IncomeAge' : -.01,
     'IncomeAgeSq' : 0.0,
@@ -122,6 +122,48 @@ struct_test_params = {
 
 # Make a test dictionary
 test_params = copy(struct_test_params)
-test_params.update(income_test_params)
+test_params.update(other_exog_params)
 test_params.update(insurance_params)
 test_params.update(grid_size_params)
+
+# Make a dictionary of basic exogenous parameters
+basic_estimation_dict = copy(other_exog_params)
+basic_estimation_dict.update(insurance_params)
+basic_estimation_dict.update(grid_size_params)
+
+# Make a test parameter vector
+test_param_vec = np.array([
+    2.5,                # CRRA
+    0.94,               # DiscFac
+    6.0,                # MedCurve
+    0.8,                # LifeUtility
+    -0.5,               # MargUtilityShift
+    0.4,                # Cfloor
+    1.0,                # Bequest0
+    4.0,                # Bequest1
+    -6.0,               # MedShkMean0
+    -0.5,               # MedShkMeanSex
+    0.3,                # MedShkMeanAge
+    0.001,              # MedShkMeanAgeSq
+    -1.0,               # MedShkMeanHealth
+    -3.0,               # MedShkMeanHealthSq
+    1.2,                # MedShkStd0
+    -0.2,               # MedShkStd1
+    0.03,               # HealthNext0
+    -0.005,             # HealthNextSex
+    -0.003,             # HealthNextAge
+    -0.000006,          # HealthNextAgeSq
+    0.82,               # HealthNextHealth
+    0.159,              # HealthNextHealthSq
+    0.13,               # HealthShkStd0
+    -0.04,              # HealthShkStd1
+    0.01,               # HealthProd0
+    0.001,              # HealthProd1
+    0.001,              # HealthProd2
+    -0.6,               # Mortality0
+    0.10,               # MortalitySex
+    0.017,              # MortalityAge
+    0.0014,             # MortalityAgeSq
+    -1.5,               # MortalityHealth
+    -0.6                # MortalityHealthSq
+        ])
