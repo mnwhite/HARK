@@ -7,11 +7,11 @@ from copy import copy
 import numpy as np
 
 # Choose state grid sizes and bounds (exogenously chosen)
-Hcount = 16
-aXtraCount = 48
+Hcount = 21
+aXtraCount = 64
 hCount = 2*(Hcount-1)+1
 bNrmCount = 2*aXtraCount
-MedShkCount = 18
+MedShkCount = 21
 aXtraMin = 0.001
 aXtraMax = 200
 aXtraNestFac = 3
@@ -72,7 +72,7 @@ insurance_params = {
 # Make a dictionary with example basic parameters
 other_exog_params = {
     'Income0' : 2.0,
-    'IncomeAge' : -.01,
+    'IncomeAge' : 0.0,
     'IncomeAgeSq' : 0.0,
     'IncomeAgeCu' : 0.0,
     'IncomeAgeQu' : 0.0,
@@ -86,20 +86,20 @@ other_exog_params = {
 # Make a dictionary with structural parameters for testing
 struct_test_params = {
     'CRRA' : 2.5,
-    'DiscFac' : 0.94,
+    'DiscFac' : 0.90,
     'MedCurve' : 6.0,
     'LifeUtility' : 0.8,
     'MargUtilityShift' : -0.5,
     'Cfloor' : 0.4,
     'Bequest0' : 1.0,
-    'Bequest1' : 4.0,
-    'MedShkMean0' : -6.,
+    'Bequest1' : 0.1,
+    'MedShkMean0' : -0.65,
     'MedShkMeanSex' : -0.5,
-    'MedShkMeanAge' : 0.3,
-    'MedShkMeanAgeSq' : 0.001,
+    'MedShkMeanAge' : 0.15,
+    'MedShkMeanAgeSq' : 0.002,
     'MedShkMeanHealth' : -1.0,
     'MedShkMeanHealthSq' : -3.0,
-    'MedShkStd0' : 1.2,
+    'MedShkStd0' : 2.0,
     'MedShkStd1' : -0.2,
     'HealthNext0' : 0.03,
     'HealthNextSex' : -0.005,
@@ -109,15 +109,15 @@ struct_test_params = {
     'HealthNextHealthSq' : 0.159,
     'HealthShkStd0' : 0.13,
     'HealthShkStd1' : -0.04,
-    'HealthProd0' : 0.01,
-    'HealthProd1' : 0.001,
-    'HealthProd2' : 0.001,
-    'Mortality0' : -0.6,
-    'MortalitySex' : 0.10,
-    'MortalityAge' : 0.017,
-    'MortalityAgeSq' : 0.0014,
+    'HealthProd0' : 0.00,
+    'HealthProd1' : 0.000,
+    'HealthProd2' : 0.000,
+    'Mortality0' : -0.79,
+    'MortalitySex' : 0.29,
+    'MortalityAge' : -0.01,
+    'MortalityAgeSq' : 0.007,
     'MortalityHealth' : -1.5,
-    'MortalityHealthSq' : -0.6
+    'MortalityHealthSq' : -0.7
 }
 
 # Make a test dictionary
@@ -138,16 +138,16 @@ test_param_vec = np.array([
     6.0,                # MedCurve
     0.8,                # LifeUtility
     -0.5,               # MargUtilityShift
-    0.4,                # Cfloor
+    0.8,                # Cfloor
     1.0,                # Bequest0
     4.0,                # Bequest1
-    -6.0,               # MedShkMean0
+    -0.65,              # MedShkMean0
     -0.5,               # MedShkMeanSex
-    0.3,                # MedShkMeanAge
-    0.001,              # MedShkMeanAgeSq
+    0.15,               # MedShkMeanAge
+    0.002,              # MedShkMeanAgeSq
     -1.0,               # MedShkMeanHealth
     -3.0,               # MedShkMeanHealthSq
-    1.2,                # MedShkStd0
+    2.0,                # MedShkStd0
     -0.2,               # MedShkStd1
     0.03,               # HealthNext0
     -0.005,             # HealthNextSex
@@ -157,13 +157,50 @@ test_param_vec = np.array([
     0.159,              # HealthNextHealthSq
     0.13,               # HealthShkStd0
     -0.04,              # HealthShkStd1
-    0.01,               # HealthProd0
-    0.001,              # HealthProd1
-    0.001,              # HealthProd2
-    -0.6,               # Mortality0
-    0.10,               # MortalitySex
-    0.017,              # MortalityAge
-    0.0014,             # MortalityAgeSq
+    0.00,               # HealthProd0
+    0.000,              # HealthProd1
+    0.000,              # HealthProd2
+    -0.79,              # Mortality0
+    0.29,               # MortalitySex
+    -0.01,              # MortalityAge
+    0.007,              # MortalityAgeSq
     -1.5,               # MortalityHealth
-    -0.6                # MortalityHealthSq
-        ])
+    -0.7                # MortalityHealthSq
+    ])
+
+# Make a list of parameter names corresponding to their position in the vector above
+param_names = [
+    'CRRA',
+    'DiscFac',
+    'MedCurve',
+    'LifeUtility',
+    'MargUtilityShift',
+    'Cfloor',
+    'Bequest0',
+    'Bequest1',
+    'MedShkMean0',
+    'MedShkMeanSex',
+    'MedShkMeanAge',
+    'MedShkMeanAgeSq',
+    'MedShkMeanHealth',
+    'MedShkMeanHealthSq',
+    'MedShkStd0',
+    'MedShkStd1',
+    'HealthNext0',
+    'HealthNextSex',
+    'HealthNextAge',
+    'HealthNextAgeSq',
+    'HealthNextHealth',
+    'HealthNextHealthSq',
+    'HealthShkStd0',
+    'HealthShkStd1',
+    'HealthProd0',
+    'HealthProd1',
+    'HealthProd2',
+    'Mortality0',
+    'MortalitySex',
+    'MortalityAge',
+    'MortalityAgeSq',
+    'MortalityHealth',
+    'MortalityHealthSq'
+    ]

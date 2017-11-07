@@ -171,11 +171,11 @@ def processSimulatedTypes(params,use_cohorts):
     else:
         type_list = makeMultiTypeSimple(params)
         
-    multiThreadCommands(type_list,['estimationAction()'])
+    multiThreadCommands(type_list,['estimationAction()'],num_jobs=5)
     return type_list
 
 
-def calcSimulatedMoments(type_list):
+def calcSimulatedMoments(type_list,return_as_list):
     '''
     Calculate simulated counterparts to all of the data moments.
     
@@ -183,11 +183,14 @@ def calcSimulatedMoments(type_list):
     ----------
     type_list : [EstimationAgentType]
         List of agent types, with simulation results but no solution.
+    return_as_list : bool
+        Indicator for whether the moments should be returned as a list of arrays
+        or already aggregated into a single vector.
         
     Returns
     -------
-    all_moments : np.array
-        Very long 1D array with all simulated moments.
+    all_moments : np.array or [np.array]
+        Very long 1D array with all simulated moments OR list of arrays.
     '''
     # Combine simulated data across all types
     aLvlHist = np.concatenate([this_type.aLvlNow_hist for this_type in type_list],axis=1)
@@ -277,27 +280,46 @@ def calcSimulatedMoments(type_list):
                 OOPbyIncWealthAge[i,j,t] = np.mean(OOPhist[t,those])
                 
     # Aggregate moments into a single vector and return
-    all_moments = np.concatenate([
-            OOPbyAge,
-            StDevOOPbyAge,
-            MortByAge,
-            StDevDeltaHealthByAge,
-            StDevOOPbyHealthAge.flatten(),
-            StDevDeltaHealthByHealthAge.flatten(),
-            HealthBySexHealthAge.flatten(),
-            OOPbySexHealthAge.flatten(),
-            MortBySexHealthAge.flatten(),
-            WealthByIncAge.flatten(),
-            HealthByIncAge.flatten(),
-            OOPbyIncAge.flatten(),
-            WealthByIncWealthAge.flatten(),
-            HealthByIncWealthAge.flatten(),
-            OOPbyIncWealthAge.flatten()
-            ])
+    if return_as_list:
+       all_moments = [
+                OOPbyAge,
+                StDevOOPbyAge,
+                MortByAge,
+                StDevDeltaHealthByAge,
+                StDevOOPbyHealthAge,
+                StDevDeltaHealthByHealthAge,
+                HealthBySexHealthAge,
+                OOPbySexHealthAge,
+                MortBySexHealthAge,
+                WealthByIncAge,
+                HealthByIncAge,
+                OOPbyIncAge,
+                WealthByIncWealthAge,
+                HealthByIncWealthAge,
+                OOPbyIncWealthAge
+                ]
+    else: 
+        all_moments = np.concatenate([
+                OOPbyAge,
+                StDevOOPbyAge,
+                MortByAge,
+                StDevDeltaHealthByAge,
+                StDevOOPbyHealthAge.flatten(),
+                StDevDeltaHealthByHealthAge.flatten(),
+                HealthBySexHealthAge.flatten(),
+                OOPbySexHealthAge.flatten(),
+                MortBySexHealthAge.flatten(),
+                WealthByIncAge.flatten(),
+                HealthByIncAge.flatten(),
+                OOPbyIncAge.flatten(),
+                WealthByIncWealthAge.flatten(),
+                HealthByIncWealthAge.flatten(),
+                OOPbyIncWealthAge.flatten()
+                ])
     return all_moments
 
 
-def objectiveFunction(params,use_cohorts):
+def objectiveFunction(params,use_cohorts,return_as_list):
     '''
     The objective function for the ounce of prevention estimation.  Takes a dictionary
     of parameters and a boolean indicator for whether to break sample up by cohorts.
@@ -309,18 +331,28 @@ def objectiveFunction(params,use_cohorts):
         The dictionary to be used to construct each of the types.
     use_cohorts : bool
         Indicator for whether to separately solve and simulate the 15 cohorts.
+    return_as_list : bool
+        Indicator for whether the moments should be returned as a list of arrays
+        or already aggregated into a single vector.
         
     Returns
     -------
     weighted_moment_sum : float
         Weighted sum of squared moment differences between data and simulation.
+        OR
+    SimulatedMoments : [np.array]
+        List of all moments, separated by types into different arrays.
     '''
     TypeList = processSimulatedTypes(params,use_cohorts)
-    SimulatedMoments = calcSimulatedMoments(TypeList)
-    MomentDifferences = (SimulatedMoments - DataMoments)/Normalizer
-    MomentDifferencesSq = MomentDifferences**2
-    weighted_moment_sum = np.dot(MomentDifferencesSq,CellSizes)
-    return weighted_moment_sum
+    SimulatedMoments = calcSimulatedMoments(TypeList,return_as_list)
+    
+    if return_as_list:
+        return SimulatedMoments
+    else:
+        MomentDifferences = (SimulatedMoments - DataMoments)/Normalizer
+        MomentDifferencesSq = MomentDifferences**2
+        weighted_moment_sum = np.dot(MomentDifferencesSq,CellSizes)
+        return weighted_moment_sum
 
 
 def objectiveFunctionWrapper(param_vec):
@@ -379,18 +411,18 @@ def objectiveFunctionWrapper(param_vec):
     
     # Run the objective function with the newly created dictionary
     use_cohorts = Data.use_cohorts
-    weighted_moment_sum = objectiveFunction(these_params,use_cohorts)
+    weighted_moment_sum = objectiveFunction(these_params,use_cohorts,True)
     return weighted_moment_sum
 
 
 
 if __name__ == '__main__':
 
-    #MyTypes = makeMultiTypeSimple(Params.test_params)
-    #t_start = clock()
-    #MyTypes[0].estimationAction()
-    #t_end = clock()
-    #print('Processing one agent type took ' + str(t_end-t_start) + ' seconds.')
+#    MyTypes = makeMultiTypeSimple(Params.test_params)
+#    t_start = clock()
+#    MyTypes[0].estimationAction()
+#    t_end = clock()
+#    print('Processing one agent type took ' + str(t_end-t_start) + ' seconds.')
     
 #    t_start = clock()
 #    MyTypes = processSimulatedTypes(Params.test_params,False)
@@ -408,9 +440,90 @@ if __name__ == '__main__':
 #    for j in range(10):
 #        MyTypes[j].plotxFuncByHealth(t,MedShk=1.0,bMax=bMax)
 
+
+
     t_start = clock()
-    #X = objectiveFunction(Params.test_params,False)
     X = objectiveFunctionWrapper(Params.test_param_vec)
     t_end = clock()
     print('One objective function evaluation took ' + str(t_end-t_start) + ' seconds.')
+    
+#    # Plot model fit of mean out of pocket medical spending by age
+#    plt.plot(X[0])
+#    plt.plot(Data.OOPbyAge,'.k')
+#    plt.ylabel('Mean OOP medical spending')
+#    plt.show()
+#    
+#    # Plot model fit of mean out of pocket medical spending by age-health for females
+#    plt.plot(X[7][0,:,:].transpose())
+#    for h in range(3):
+#        plt.plot(Data.OOPbySexHealthAge[0,h,:],'--')
+#    plt.ylabel('Mean OOP medical spending')
+#    plt.show()
+#    
+#    # Plot model fit of mean out of pocket medical spending by age-health for males
+#    plt.plot(X[7][1,:,:].transpose())
+#    for h in range(3):
+#        plt.plot(Data.OOPbySexHealthAge[1,h,:],'--')
+#    plt.ylabel('Mean OOP medical spending')
+#    plt.show()
+#
+#    # Plot model fit of stdev out of pocket medical spending by age
+#    plt.plot(X[1])
+#    plt.plot(Data.StDevOOPbyAge,'.k')
+#    plt.ylabel('StDev OOP medical spending')
+#    plt.show()
+#    
+#    # Plot model fit of stdev out of pocket medical spending by age and health
+#    plt.plot(X[4].transpose())
+#    for h in range(3):
+#        plt.plot(Data.StDevOOPbyHealthAge[h,:],'--')
+#    plt.ylabel('StDev OOP medical spending')
+#    plt.show()
+    
+#    # Plot model fit of mortality by age
+#    plt.plot(X[2].transpose())
+#    plt.plot(Data.MortByAge,'.k')
+#    plt.ylabel('Mortality probability')
+#    plt.show()
+#    
+#    # Plot model fit of mortality by age and health for females
+#    plt.plot(X[8][0,:,:].transpose())
+#    for h in range(3):
+#        plt.plot(Data.MortBySexHealthAge[0,h,:],'.')
+#    plt.ylabel('Mortality probability')
+#    plt.show()
+#    
+#    # Plot model fit of mortality by age and health for males
+#    plt.plot(X[8][1,:,:].transpose())
+#    for h in range(3):
+#        plt.plot(Data.MortBySexHealthAge[1,h,:],'.')
+#    plt.ylabel('Mortality probability')
+#    plt.show()
+
+    # Plot model fit of wealth by age and income quintile
+    plt.plot(X[9].transpose())
+    for i in range(5):
+        plt.plot(Data.WealthByIncAge[i,:],'.')
+    plt.ylabel('Median wealth profiles')
+    plt.show()
+    
+
+
+    
+#    # Test model identification by perturbing one parameter at a time
+#    param_i = 31
+#    param_min = -1.7
+#    param_max = -1.4
+#    N = 10
+#    perturb_vec = np.linspace(param_min,param_max,num=N)
+#    fit_vec = np.zeros(N) + np.nan
+#    for j in range(N):
+#        params = copy(Params.test_param_vec)
+#        params[param_i] = perturb_vec[j]
+#        fit_vec[j] = objectiveFunctionWrapper(params)
+#        
+#    plt.plot(perturb_vec,fit_vec)
+#    plt.xlabel(Params.param_names[param_i])
+#    plt.ylabel('Sum of squared moment differences')
+#    plt.show()
     

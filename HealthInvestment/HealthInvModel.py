@@ -486,6 +486,8 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
     MargValueRatio = EndOfPrddvda/EndOfPrddvdH
     MargValueRatioAdj = np.maximum(MargValueRatio*MedPrice,0.0)
     
+    print(uPinv(EndOfPrddvda[:,0]))
+    
     # Use a fixed point loop to find optimal health investment (unconstrained)
     tol = 0.00001
     LoopCount = 0
@@ -705,7 +707,7 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
     
     # Integrate marginal value of bank balances according to the shock probabilities
     x_temp = alpha_comp*xLvlArray[bIdx,hIdx,IdxLo] + alpha*xLvlArray[bIdx,hIdx,IdxHi]
-    Copay_temp = np.tile(np.reshape(CopayFunc(hLvlGrid),(1,hLvlCount,1)),(bLvlCount,1,MedShkCount))
+    Copay_temp = np.tile(np.reshape(CopayFunc(hLvlGrid),(1,hLvlCount,1)),(bLvlCount,1,MedShkCount))*MedPrice
     cEff_temp = cEffFunc(x_temp,MedShkValArray*Copay_temp)
     Dp_temp = DpFunc(x_temp,MedShkValArray*Copay_temp)
     dvdb_temp = uP(cEff_temp)/Dp_temp
@@ -774,7 +776,8 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         MedShkMeanFunc = []
         MedShkStdFunc = QuadraticFunction(self.MedShkStd0,self.MedShkStd1,0.0)
         for t in range(self.T_cycle):
-            beta0 = self.MedShkMean0 + self.Sex*self.MedShkMeanSex + self.MedShkMeanAge*t + self.MedShkMeanAgeSq*t**2
+            Age = t*1
+            beta0 = self.MedShkMean0 + self.Sex*self.MedShkMeanSex + self.MedShkMeanAge*Age + self.MedShkMeanAgeSq*Age**2
             beta1 = self.MedShkMeanHealth
             beta2 = self.MedShkMeanHealthSq
             MedShkMeanFunc.append(QuadraticFunction(beta0,beta1,beta2))
@@ -811,12 +814,13 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         ExpHealthNextFunc = []
         ExpHealthNextInvFunc = []
         for t in range(self.T_cycle):
-            theta0 = self.Mortality0 + self.Sex*self.MortalitySex + self.MortalityAge*t + self.MortalityAgeSq*t**2
+            Age = t*1
+            theta0 = self.Mortality0 + self.Sex*self.MortalitySex + self.MortalityAge*Age + self.MortalityAgeSq*Age**2
             theta1 = self.MortalityHealth
             theta2 = self.MortalityHealthSq
             LivPrbFunc.append(QuadraticFunction(theta0,theta1,theta2))
             
-            gamma0 = self.HealthNext0 + self.Sex*self.HealthNextSex + self.HealthNextAge*t + self.HealthNextAgeSq*t**2
+            gamma0 = self.HealthNext0 + self.Sex*self.HealthNextSex + self.HealthNextAge*Age + self.HealthNextAgeSq*Age**2
             gamma1 = self.HealthNextHealth
             gamma2 = self.HealthNextHealthSq
             ThisHealthFunc = QuadraticFunction(gamma0,gamma1,gamma2)
@@ -855,15 +859,16 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         PremiumFunc = []
         CopayFunc = []
         for t in range(self.T_cycle):
+            Age = t*1
             y = self.IncomeNow[t]
-            p0 = self.Premium0 + self.Sex*self.PremiumSex + self.PremiumAge*t + self.PremiumAgeSq*t**2 + self.PremiumInc*y + self.PremiumIncSq*y**2 + self.PremiumIncCu*y**3
-            p1 = self.PremiumHealth + self.PremiumHealthAge*t + self.PremiumHealthAgeSq*t**2 + self.PremiumHealthInc*y + self.PremiumHealthIncSq*y**2
-            p2 = self.PremiumHealthSq + self.PremiumHealthSqAge*t + self.PremiumHealthSqAgeSq*t**2 + self.PremiumHealthSqInc*y + self.PremiumHealthSqIncSq*y**2
+            p0 = self.Premium0 + self.Sex*self.PremiumSex + self.PremiumAge*Age + self.PremiumAgeSq*Age**2 + self.PremiumInc*y + self.PremiumIncSq*y**2 + self.PremiumIncCu*y**3
+            p1 = self.PremiumHealth + self.PremiumHealthAge*Age + self.PremiumHealthAgeSq*Age**2 + self.PremiumHealthInc*y + self.PremiumHealthIncSq*y**2
+            p2 = self.PremiumHealthSq + self.PremiumHealthSqAge*Age + self.PremiumHealthSqAgeSq*Age**2 + self.PremiumHealthSqInc*y + self.PremiumHealthSqIncSq*y**2
             PremiumFunc.append(QuadraticFunction(p0,p1,p2))
             
-            c0 = self.Copay0 + self.Sex*self.CopaySex + self.CopayAge*t + self.CopayAgeSq*t**2 + self.CopayInc*y + self.CopayIncSq*y**2 + self.CopayIncCu*y**3
-            c1 = self.CopayHealth + self.CopayHealthAge*t + self.CopayHealthAgeSq*t**2 + self.CopayHealthInc*y + self.CopayHealthIncSq*y**2
-            c2 = self.CopayHealthSq + self.CopayHealthSqAge*t + self.CopayHealthSqAgeSq*t**2 + self.CopayHealthSqInc*y + self.CopayHealthSqIncSq*y**2
+            c0 = self.Copay0 + self.Sex*self.CopaySex + self.CopayAge*Age + self.CopayAgeSq*Age**2 + self.CopayInc*y + self.CopayIncSq*y**2 + self.CopayIncCu*y**3
+            c1 = self.CopayHealth + self.CopayHealthAge*Age + self.CopayHealthAgeSq*Age**2 + self.CopayHealthInc*y + self.CopayHealthIncSq*y**2
+            c2 = self.CopayHealthSq + self.CopayHealthSqAge*Age + self.CopayHealthSqAgeSq*Age**2 + self.CopayHealthSqInc*y + self.CopayHealthSqIncSq*y**2
             CopayFunc.append(QuadraticFunction(c0,c1,c2))
             
         self.PremiumFunc = PremiumFunc
@@ -1644,4 +1649,5 @@ if __name__ == '__main__':
     
 #    for t in range(25):
 #        TestType.plotxFuncByHealth(t,MedShk=1.0,bMax=bMax)
+
     
