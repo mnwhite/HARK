@@ -16,7 +16,7 @@ AgentCountTotal = 100000
 StaticBool = False
 
 # Calibrated / other parameters (grid sizes, etc)
-Cfloor = 0.265                      # Effective consumption floor
+Cfloor = 0.20                       # Effective consumption floor
 Rfree = 5*[1.03]                    # Interest factor on assets
 DiscFac = 0.96                      # Intertemporal discount factor
 aXtraMin = 0.001                    # Minimum end-of-period "assets above minimum" value
@@ -435,17 +435,17 @@ CollegeDictionary['pLvlInitMean'] = pLvlInitMean_c
 CollegeDictionary['pLvlNextFuncRet'] = RetirementFunc_c
 
 # Make a test parameter vector for estimation
-test_param_vec = np.array([0.95, # DiscFac
-                           5.1,  # CRRAcon
+test_param_vec = np.array([0.90, # DiscFac
+                           5.2,  # CRRAcon
                            8.0,  # CRRAmed 
-                         -7.35,  # ChoiceShkMag in log
+                          -8.5,  # ChoiceShkMag in log
                            2.6,  # SubsidyZeroRate scaler
                          -1.51,  # SubsidyAvg
                           -3.0,  # SubsidyWidth scaler
-                         -5.53,  # MedShkMean constant coefficient
+                         -5.40,  # MedShkMean constant coefficient
                         0.0030,  # MedShkMean linear age coefficient
-                       0.00138,  # MedShkMean quadratic age coefficient
-                     -0.000015,  # MedShkMean cubic age coefficient
+                       0.00110,  # MedShkMean quadratic age coefficient
+                    -0.0000090,  # MedShkMean cubic age coefficient
                    -0.00000000,  # MedShkMean quartic age coefficient
                           0.35,  # MedShkMean "very good" constant coefficient
                            0.0,  # MedShkMean "very good" linear coefficient
@@ -455,18 +455,18 @@ test_param_vec = np.array([0.95, # DiscFac
                          0.001,  # MedShkMean "fair" linear coefficient
                            1.5,  # MedShkMean "poor" constant coefficient
                         -0.016,  # MedShkMean "poor" linear coefficient
-                          0.47,  # MedShkStd constant coefficient
+                          0.42,  # MedShkStd constant coefficient
                          0.000,  # MedShkStd linear age coefficient
                            0.0,  # MedShkStd quadratic age coefficient
                            0.0,  # MedShkStd cubic age coefficient
                            0.0,  # MedShkStd quartic age coefficient
                            0.0,  # MedShkStd "very good" constant coefficient
                            0.0,  # MedShkStd "very good" linear coefficient
-                           0.0,  # MedShkStd "good" constant coefficient
+                           0.04, # MedShkStd "good" constant coefficient
                            0.0,  # MedShkStd "good" linear coefficient
-                           0.0,  # MedShkStd "fair" constant coefficient
+                           0.09, # MedShkStd "fair" constant coefficient
                            0.0,  # MedShkStd "fair" linear coefficient
-                           0.0,  # MedShkStd "poor" constant coefficient
+                           0.02, # MedShkStd "poor" constant coefficient
                            0.0   # MedShkStd "poor" linear coefficient
                            ])
 

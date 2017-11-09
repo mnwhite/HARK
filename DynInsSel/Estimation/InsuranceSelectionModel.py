@@ -401,7 +401,7 @@ class InsSelPolicyFunc(HARKobject):
         else:
             return cLvl, MedLvl
         
-    def xFunc(self,mLvl,pLvl,MedShk):
+    def xFunc(self,mLvl,pLvl,MedShk,return_copay_bool=False):
         '''
         Evaluate the expenditure function for this contract.
         
@@ -413,6 +413,8 @@ class InsSelPolicyFunc(HARKobject):
              Permanent income levels.
         MedShk : np.array
              Medical need shocks.
+        return_copay_bool : bool
+            Indicator for whether to return the boolean array Copay_better.
              
         Returns
         -------
@@ -449,7 +451,10 @@ class InsSelPolicyFunc(HARKobject):
         if float_in:
             return xLvl[0]
         else:
-            return xLvl       
+            if return_copay_bool: # Return Copay_better if requested
+                return xLvl, Copay_better
+            else:
+                return xLvl
         
 
     def evalvAndvPandvPP(self,mLvl,pLvl,MedShk):
@@ -1072,13 +1077,14 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
             policyFuncCopay = policyFuncsThisHealthCopay[Copay_idx]
             DpFuncFullPrice = DpFuncList[FullPrice_idx]
             DpFuncCopay = DpFuncList[Copay_idx]
-            CritShkFunc = CritShkFuncList[Copay_idx]
+            CritShkFuncFullPrice = CritShkFuncList[FullPrice_idx]
+            CritShkFuncCopay = CritShkFuncList[Copay_idx]
             
             # Make the policy function for this contract
             policyFuncsThisHealth.append(InsSelPolicyFunc(vFuncFullPrice,vFuncCopay,policyFuncFullPrice,policyFuncCopay,DpFuncFullPrice,DpFuncCopay,Contract,CRRAmed))
             
             # Find the critical med shock where Cfloor binds for each (mLvl,pLvl) value
-            xFunc_temp = policyFuncCopay.xFunc # Assume zero deductible for now, will fix later
+            xFunc_temp = policyFuncsThisHealth[-1].xFunc
             mLvlArray_temp = mLvlArray[:,:,0]
             pLvlArray_temp = pLvlArray[:,:,0]
             CritShkArray = 1e-8*np.ones_like(mLvlArray_temp) # Current guess of critical shock for each (mLvl,pLvl)
@@ -1091,17 +1097,22 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
             while (UnresolvedCount > 0) and (LoopCount < LoopMax): # Loop until all points have converged on CritShk
                 CritShkPrev = CritShkArray[Unresolved]
                 mLvl_temp = mLvlArray_temp[Unresolved]                
-                if LoopCount > 30: # Use Newton's method after a few iterations
-                    xLvl_temp = np.minimum(xFunc_temp(mLvl_temp,pLvlArray_temp[Unresolved],CritShkPrev),mLvl_temp)
-                    CritShk_temp = np.minimum(CritShkFunc(xLvl_temp),MedShkMax)
-                    Target_diff = CritShk_temp - CritShkPrev # This is the expression we want to be zero
-                    Target_slope = xFunc_temp.derivativeZ(mLvl_temp,pLvlArray_temp[Unresolved],CritShkPrev)*CritShkFunc.derivative(xLvl_temp) - 1.
-                    CritShkNew = CritShkPrev - Target_diff/Target_slope
-                    DiffNew = np.abs(CritShkNew/CritShkPrev - 1.)
-                else: # Use fixed point iteration for first few iterations
-                    xLvl_temp = np.minimum(xFunc_temp(mLvl_temp,pLvlArray_temp[Unresolved],CritShkPrev),mLvl_temp)
-                    CritShkNew = np.minimum(CritShkFunc(xLvl_temp),MedShkMax)
-                    DiffNew = np.abs(CritShkNew/CritShkPrev - 1.)                
+#                if LoopCount > 30: # Use Newton's method after a few iterations
+#                    xLvl_temp = np.minimum(xFunc_temp(mLvl_temp,pLvlArray_temp[Unresolved],CritShkPrev),mLvl_temp)
+#                    CritShk_temp = np.minimum(CritShkFunc(xLvl_temp),MedShkMax)
+#                    Target_diff = CritShk_temp - CritShkPrev # This is the expression we want to be zero
+#                    Target_slope = xFunc_temp.derivativeZ(mLvl_temp,pLvlArray_temp[Unresolved],CritShkPrev)*CritShkFunc.derivative(xLvl_temp) - 1.
+#                    CritShkNew = CritShkPrev - Target_diff/Target_slope
+#                    DiffNew = np.abs(CritShkNew/CritShkPrev - 1.)
+#                else: # Use fixed point iteration for first few iterations
+                xLvl_temp, Copay_bool_temp = xFunc_temp(mLvl_temp,pLvlArray_temp[Unresolved],CritShkPrev,return_copay_bool=True)
+                xLvl_temp = np.minimum(xLvl_temp,mLvl_temp)
+                CritShkNew = np.zeros_like(xLvl_temp)
+                FullPrice_bool_temp = np.logical_not(Copay_bool_temp)
+                CritShkNew[Copay_bool_temp] = np.minimum(CritShkFuncCopay(xLvl_temp[Copay_bool_temp]),MedShkMax)
+                CritShkNew[FullPrice_bool_temp] = np.minimum(CritShkFuncFullPrice(xLvl_temp[FullPrice_bool_temp]),MedShkMax)
+                DiffNew = np.abs(CritShkNew/CritShkPrev - 1.)
+                
                 DiffArray[Unresolved] = DiffNew
                 CritShkArray[Unresolved] = CritShkNew
                 Unresolved[Unresolved] = DiffNew > DiffTol

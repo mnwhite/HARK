@@ -420,7 +420,8 @@ def makeDynInsSelType(CRRAcon,CRRAmed,DiscFac,ChoiceShkMag,MedShkMeanAgeParams,M
         assert False, 'EducType must be 0, 1, or 2!'
         
     # Make a timepath of discount factors
-    DiscFac_time_vary = np.linspace(DiscFac-0.25,DiscFac,25).tolist() + 70*[DiscFac]    
+    DiscFac_time_vary = np.linspace(DiscFac-0.25,DiscFac,25).tolist() + 70*[DiscFac]
+    #DiscFac_time_vary = np.linspace(DiscFac-0.00,DiscFac,25).tolist() + 70*[DiscFac]  
         
     TypeDict['CRRA'] = CRRAcon
     TypeDict['CRRAmed'] = CRRAmed
@@ -460,7 +461,7 @@ def makeDynInsSelType(CRRAcon,CRRAmed,DiscFac,ChoiceShkMag,MedShkMeanAgeParams,M
         MedShkMeanGD85 = MedShkMeanGDfunc(60.)
         MedShkMeanFR85 = MedShkMeanFRfunc(60.)
         MedShkMeanPR85 = MedShkMeanPRfunc(60.)
-        MedShkSlopeEX85 = MedShkMeanAgeParams[1] + 2*MedShkMeanAgeParams[2]*60 + 3*MedShkMeanAgeParams[3]*60**2 + 3*MedShkMeanAgeParams[4]*60**3
+        MedShkSlopeEX85 = MedShkMeanAgeParams[1] + 2*MedShkMeanAgeParams[2]*60 + 3*MedShkMeanAgeParams[3]*60**2 + 4*MedShkMeanAgeParams[4]*60**3
         MedShkSlopeVG85 = MedShkSlopeEX85 + MedShkMeanVGparams[1]
         MedShkSlopeGD85 = MedShkSlopeVG85 + MedShkMeanGDparams[1]
         MedShkSlopeFR85 = MedShkSlopeGD85 + MedShkMeanFRparams[1]
@@ -505,13 +506,13 @@ def makeDynInsSelType(CRRAcon,CRRAmed,DiscFac,ChoiceShkMag,MedShkMeanAgeParams,M
         WorkingContractList.append(MedInsuranceContract(ConstantFunction(0.0),0.0,1.0,Params.MedPrice))
         Premium = max([PremiumArray[0] - PremiumSubsidy,0.0])
         Copay = 0.08
-        Deductible = 0.00
+        Deductible = 0.04
         WorkingContractList.append(MedInsuranceContract(ConstantFunction(Premium),Deductible,Copay,Params.MedPrice))
     else:
         WorkingContractList.append(MedInsuranceContract(ConstantFunction(0.0),0.00,0.1,Params.MedPrice))
         
-    RetiredContractListA = [MedInsuranceContract(ConstantFunction(0.0),0.0,0.05,Params.MedPrice)]
-    #RetiredContractListB = [MedInsuranceContract(ConstantFunction(0.0),0.2,0.05,Params.MedPrice)]
+    RetiredContractListA = [MedInsuranceContract(ConstantFunction(0.0),0.0,0.12,Params.MedPrice)]
+    
     TypeDict['ContractList'] = Params.working_T*[5*[WorkingContractList]] + (Params.retired_T)*[5*[RetiredContractListA]]
     
     # Make and return a DynInsSelType
@@ -755,21 +756,21 @@ if __name__ == '__main__':
     plt.xlim((25,65))
     plt.savefig('../Figures/MeanTotalMedFitByAgeIncome.pdf')
     plt.show()
-    
-    plt.plot(Age5year[:8],MyMarket.LogTotalMedStdByAgeIncome)
-    temp = np.reshape(MyMarket.data_moments[520:560],(8,5))
-    plt.plot(Age5year[:8],temp[:,0],'.b')
-    plt.plot(Age5year[:8],temp[:,1],'.g')
-    plt.plot(Age5year[:8],temp[:,2],'.r')
-    plt.plot(Age5year[:8],temp[:,3],'.c')
-    plt.plot(Age5year[:8],temp[:,4],'.m')
-    plt.xlabel('Age')
-    plt.ylabel('Stdev log total (nonzero) medical expenses')
-    plt.title('Medical expenses by age group and income quintile')
-    plt.xlim((25,65))
-    plt.savefig('../Figures/StdevTotalMedFitByAgeIncome.pdf')
-    plt.show()
-    
+#    
+#    plt.plot(Age5year[:8],MyMarket.LogTotalMedStdByAgeIncome)
+#    temp = np.reshape(MyMarket.data_moments[520:560],(8,5))
+#    plt.plot(Age5year[:8],temp[:,0],'.b')
+#    plt.plot(Age5year[:8],temp[:,1],'.g')
+#    plt.plot(Age5year[:8],temp[:,2],'.r')
+#    plt.plot(Age5year[:8],temp[:,3],'.c')
+#    plt.plot(Age5year[:8],temp[:,4],'.m')
+#    plt.xlabel('Age')
+#    plt.ylabel('Stdev log total (nonzero) medical expenses')
+#    plt.title('Medical expenses by age group and income quintile')
+#    plt.xlim((25,65))
+#    plt.savefig('../Figures/StdevTotalMedFitByAgeIncome.pdf')
+#    plt.show()
+#    
     plt.plot(Age[0:40],MyMarket.InsuredRateByAge,'-b')
     plt.plot(Age[0:40],MyMarket.data_moments[160:200],'.k')
     plt.xlabel('Age')
@@ -805,13 +806,13 @@ if __name__ == '__main__':
 #    plt.xlim((25,65))
 #    plt.show()
 #    
-    plt.plot(Age[0:40],MyMarket.ZeroSubsidyRateByAge,'-b')
-    plt.plot(Age[0:40],MyMarket.data_moments[200:240],'.k')
-    plt.xlabel('Age')
-    plt.ylabel('Pct insured with zero employer contribution')
-    plt.xlim((25,65))
-    plt.show()
-    
+#    plt.plot(Age[0:40],MyMarket.ZeroSubsidyRateByAge,'-b')
+#    plt.plot(Age[0:40],MyMarket.data_moments[200:240],'.k')
+#    plt.xlabel('Age')
+#    plt.ylabel('Pct insured with zero employer contribution')
+#    plt.xlim((25,65))
+#    plt.show()
+#    
     plt.plot(Age,MyMarket.OOPshareByAge,'-b')
     plt.plot(Age,MyMarket.data_moments[760:820],'.k')
     plt.xlabel('Age')
@@ -840,7 +841,8 @@ if __name__ == '__main__':
 #    t_end = clock()
 #    print('Simulating a static agent type took ' + mystr(t_end-t_start) + ' seconds.')
 
-    # This block of code is for testing one type of agent
+
+#    # This block of code is for testing one type of agent
 #    t_start = clock()
 #    InsChoice = 1
 #    SubsidyTypeCount = 1
@@ -866,9 +868,9 @@ if __name__ == '__main__':
 #    print('Simulating one agent type took ' + str(t_end-t_start) + ' seconds.')
 #       
 #    t = 0
-#    p = 2.0    
-#    h = 4        
-#    MedShk = 1.0e-2
+#    p = 3.0    
+#    h = 3        
+#    MedShk = 1.0e-1
 #    z = 0
 #    
 #    MyType.plotvFunc(t,p,decurve=False)
@@ -883,5 +885,5 @@ if __name__ == '__main__':
 #    MyMarket.reset()
 #    MyMarket.sow()
 #    MyType.calcExpInsPayByContract()
-#    
-#  
+    
+  
