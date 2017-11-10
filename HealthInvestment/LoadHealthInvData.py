@@ -192,6 +192,19 @@ born_t = t0 - np.maximum(turn65_t,0)
 BornBoolArray = np.zeros((25,obs),dtype=bool)
 BornBoolArray[born_t,idx] = True
 
+# Make a boolean array indicating which periods of life *could* be observed in the data for each agent
+DataStartByCohort = np.concatenate([np.arange(10,0,-1), np.zeros(8,dtype=int)])
+DataEndByCohort = np.arange(17,-1,-1)
+InDataSpanArray = np.zeros((25,obs),dtype=bool)
+for j in range(18):
+    c = j+1 # cohort number
+    these = cohort_data == c
+    N = np.sum(these)
+    temp_bool = np.zeros((25,1),dtype=bool)
+    temp_bool[DataStartByCohort[j]:DataEndByCohort[j]] = True
+    temp_bool_rep = np.tile(temp_bool,(1,N))
+    InDataSpanArray[:,these] = temp_bool_rep
+
 # Make an array of "ages" for each observation (plus boolean version)
 age_data = np.tile(np.reshape(np.arange(8),(8,1)),(1,obs)) - np.tile(np.reshape(turn65_t,(1,obs)),(8,1))
 AgeBoolArray = np.zeros((8,obs,15),dtype=bool)

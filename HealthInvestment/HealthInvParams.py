@@ -7,11 +7,11 @@ from copy import copy
 import numpy as np
 
 # Choose state grid sizes and bounds (exogenously chosen)
-Hcount = 21
-aXtraCount = 64
+Hcount = 16
+aXtraCount = 48
 hCount = 2*(Hcount-1)+1
 bNrmCount = 2*aXtraCount
-MedShkCount = 21
+MedShkCount = 18
 aXtraMin = 0.001
 aXtraMax = 200
 aXtraNestFac = 3

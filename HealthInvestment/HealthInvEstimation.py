@@ -49,6 +49,7 @@ class EstimationAgentType(HealthInvestmentConsumerType):
         self.aLvlInit = np.tile(self.aLvlInit,X)
         self.HlvlInit = np.tile(self.HlvlInit,X)
         self.BornBoolArray = np.tile(self.BornBoolArray,(1,X))
+        self.InDataSpanArray = np.tile(self.InDataSpanArray,(1,X))
         if self.Sex:
             self.SexLong = np.ones(self.AgentCount,dtype=bool)
         else:
@@ -99,6 +100,7 @@ def makeMultiTypeWithCohorts(params):
         ThisType.aLvlInit = Data.w_init[these]
         ThisType.HlvlInit = Data.h_init[these]
         ThisType.BornBoolArray = Data.BornBoolArray[:,these]
+        ThisType.InDataSpanArray = Data.InDataSpanArray[:,these]
         ThisType.track_vars = ['OOPmedNow','hLvlNow','aLvlNow']
         ThisType.seed = n
         
@@ -141,6 +143,7 @@ def makeMultiTypeSimple(params):
         ThisType.aLvlInit = Data.w_init[these]
         ThisType.HlvlInit = Data.h_init[these]
         ThisType.BornBoolArray = Data.BornBoolArray[:,these]
+        ThisType.InDataSpanArray = Data.InDataSpanArray[:,these]
         ThisType.track_vars = ['OOPmedNow','hLvlNow','aLvlNow']
         ThisType.seed = n
         
@@ -204,6 +207,9 @@ def calcSimulatedMoments(type_list,return_as_list):
     WealthQuint = np.concatenate([this_type.WealthQuint for this_type in type_list])
     IncQuint = np.concatenate([this_type.IncQuintLong for this_type in type_list])
     Sex = np.concatenate([this_type.SexLong for this_type in type_list])
+    
+    # Combine in-data-span masking array across all types
+    InDataSpan = np.concatenate([this_type.InDataSpanArray for this_type in type_list],axis=1)
     
     # Determine eligibility to be used for various purposes
     Alive = hLvlHist > 0.
