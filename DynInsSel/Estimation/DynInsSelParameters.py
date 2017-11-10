@@ -16,7 +16,7 @@ AgentCountTotal = 100000
 StaticBool = False
 
 # Calibrated / other parameters (grid sizes, etc)
-Cfloor = 0.23                       # Effective consumption floor
+Cfloor = 0.24                       # Effective consumption floor
 Rfree = 5*[1.03]                    # Interest factor on assets
 DiscFac = 0.96                      # Intertemporal discount factor
 aXtraMin = 0.001                    # Minimum end-of-period "assets above minimum" value
