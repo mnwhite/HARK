@@ -16,7 +16,7 @@ AgentCountTotal = 100000
 StaticBool = False
 
 # Calibrated / other parameters (grid sizes, etc)
-Cfloor = 0.20                       # Effective consumption floor
+Cfloor = 0.23                       # Effective consumption floor
 Rfree = 5*[1.03]                    # Interest factor on assets
 DiscFac = 0.96                      # Intertemporal discount factor
 aXtraMin = 0.001                    # Minimum end-of-period "assets above minimum" value
@@ -436,18 +436,18 @@ CollegeDictionary['pLvlNextFuncRet'] = RetirementFunc_c
 
 # Make a test parameter vector for estimation
 test_param_vec = np.array([0.90, # DiscFac
-                           5.2,  # CRRAcon
+                           4.8,  # CRRAcon
                            8.0,  # CRRAmed 
                           -8.5,  # ChoiceShkMag in log
                            2.6,  # SubsidyZeroRate scaler
                          -1.51,  # SubsidyAvg
                           -3.0,  # SubsidyWidth scaler
-                         -5.40,  # MedShkMean constant coefficient
+                         -5.35,  # MedShkMean constant coefficient
                         0.0030,  # MedShkMean linear age coefficient
                        0.00110,  # MedShkMean quadratic age coefficient
-                    -0.0000090,  # MedShkMean cubic age coefficient
-                   -0.00000000,  # MedShkMean quartic age coefficient
-                          0.35,  # MedShkMean "very good" constant coefficient
+                    -0.0000020,  # MedShkMean cubic age coefficient
+                   -0.00000013,  # MedShkMean quartic age coefficient
+                          0.30,  # MedShkMean "very good" constant coefficient
                            0.0,  # MedShkMean "very good" linear coefficient
                           0.20,  # MedShkMean "good" constant coefficient
                          0.003,  # MedShkMean "good" linear coefficient
