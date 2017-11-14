@@ -11,7 +11,7 @@ Hcount = 16
 aXtraCount = 48
 hCount = 2*(Hcount-1)+1
 bNrmCount = 2*aXtraCount
-MedShkCount = 18
+MedShkCount = 24
 aXtraMin = 0.001
 aXtraMax = 200
 aXtraNestFac = 3
@@ -71,7 +71,7 @@ insurance_params = {
 
 # Make a dictionary with example basic parameters
 other_exog_params = {
-    'Income0' : 2.0,
+    'Income0' : 8.0,
     'IncomeAge' : 0.0,
     'IncomeAgeSq' : 0.0,
     'IncomeAgeCu' : 0.0,
@@ -85,17 +85,17 @@ other_exog_params = {
 
 # Make a dictionary with structural parameters for testing
 struct_test_params = {
-    'CRRA' : 2.5,
+    'CRRA' : 2.0,
     'DiscFac' : 0.90,
     'MedCurve' : 6.0,
     'LifeUtility' : 0.8,
     'MargUtilityShift' : -0.5,
-    'Cfloor' : 0.4,
+    'Cfloor' : 0.8,
     'Bequest0' : 1.0,
-    'Bequest1' : 0.1,
+    'Bequest1' : 4.0,
     'MedShkMean0' : -0.65,
     'MedShkMeanSex' : -0.5,
-    'MedShkMeanAge' : 0.15,
+    'MedShkMeanAge' : 0.11,
     'MedShkMeanAgeSq' : 0.002,
     'MedShkMeanHealth' : -1.0,
     'MedShkMeanHealthSq' : -3.0,
@@ -133,17 +133,17 @@ basic_estimation_dict.update(grid_size_params)
 
 # Make a test parameter vector
 test_param_vec = np.array([
-    2.5,                # CRRA
-    0.94,               # DiscFac
+    2.0,                # CRRA
+    0.90,               # DiscFac
     6.0,                # MedCurve
     0.8,                # LifeUtility
     -0.5,               # MargUtilityShift
-    0.8,                # Cfloor
-    1.0,                # Bequest0
-    4.0,                # Bequest1
+    0.6,                # Cfloor
+    2.0,                # Bequest0
+    3.3,                # Bequest1
     -0.65,              # MedShkMean0
     -0.5,               # MedShkMeanSex
-    0.15,               # MedShkMeanAge
+    0.11,               # MedShkMeanAge
     0.002,              # MedShkMeanAgeSq
     -1.0,               # MedShkMeanHealth
     -3.0,               # MedShkMeanHealthSq

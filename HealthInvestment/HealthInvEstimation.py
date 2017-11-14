@@ -243,18 +243,19 @@ def calcSimulatedMoments(type_list,return_as_list):
     # Loop through ages, sexes, quintiles, and health to fill in simulated moments
     for t in range(15):
         # Calculate mean and stdev of OOP medical spending, mortality rate, and stdev delta health by age
-        OOP = OOPhist[t,AliveNowAndLater[t,:]]
+        THESE = np.logical_and(AliveNowAndLater[t,:],InDataSpan[t,:])
+        OOP = OOPhist[t,THESE]
         OOPbyAge[t] = np.mean(OOP)
         StDevOOPbyAge[t] = np.std(OOP)
-        NewDead = np.sum(DyingThisPeriod[t,:])
-        Total = NewDead + np.sum(AliveNowAndLater[t,:])
+        NewDead = np.sum(np.logical_and(DyingThisPeriod[t,:],InDataSpan[t,:]))
+        Total = NewDead + np.sum(THESE)
         MortByAge[t] = float(NewDead)/float(Total)
-        StDevDeltaHealthByAge[t] = np.std(DeltaHealth[t,AliveNowAndLater[t,:]])
+        StDevDeltaHealthByAge[t] = np.std(DeltaHealth[t,THESE])
         
         for h in range(3):
             # Calculate stdev OOP medical spending and stdev delta health by health by age
             right_health = HealthTert==(h+1)
-            these = np.logical_and(AliveNowAndLater[t,:],right_health)
+            these = np.logical_and(THESE,right_health)
             OOP = OOPhist[t,these]
             StDevOOPbyHealthAge[h,t] = np.std(OOP)
             StDevDeltaHealthByHealthAge[h,t] = np.std(DeltaHealth[t,these])
@@ -265,14 +266,14 @@ def calcSimulatedMoments(type_list,return_as_list):
                 those = np.logical_and(these,right_sex)
                 OOPbySexHealthAge[s,h,t] = np.mean(OOPhist[t,those])
                 HealthBySexHealthAge[s,h,t] = np.mean(hLvlHist[t+1,those])
-                NewDead = np.sum(np.logical_and(np.logical_and(DyingThisPeriod[t,:],right_sex),right_health))
-                Total = NewDead + np.sum(np.logical_and(np.logical_and(AliveNowAndLater[t,:],right_sex),right_health))
+                NewDead = np.sum(np.logical_and(np.logical_and(np.logical_and(DyingThisPeriod[t,:],right_sex),right_health),InDataSpan[t,:]))
+                Total = NewDead + np.sum(those)
                 MortBySexHealthAge[s,h,t] = float(NewDead)/float(Total)
                 
         for i in range(5):
             # Calculate median wealth, mean health, and mean OOP medical spending by income quintile by age
             right_inc = IncQuint == i+1
-            these = np.logical_and(AliveNowAndLater[t,:],right_inc)
+            these = np.logical_and(THESE,right_inc)
             WealthByIncAge[i,t] = np.median(aLvlHist[t,these])
             HealthByIncAge[i,t] = np.mean(hLvlHist[t+1,these])
             OOPbyIncAge[i,t] = np.mean(OOPhist[t,these])
@@ -453,58 +454,58 @@ if __name__ == '__main__':
     t_end = clock()
     print('One objective function evaluation took ' + str(t_end-t_start) + ' seconds.')
     
-#    # Plot model fit of mean out of pocket medical spending by age
-#    plt.plot(X[0])
-#    plt.plot(Data.OOPbyAge,'.k')
-#    plt.ylabel('Mean OOP medical spending')
-#    plt.show()
-#    
-#    # Plot model fit of mean out of pocket medical spending by age-health for females
-#    plt.plot(X[7][0,:,:].transpose())
-#    for h in range(3):
-#        plt.plot(Data.OOPbySexHealthAge[0,h,:],'--')
-#    plt.ylabel('Mean OOP medical spending')
-#    plt.show()
-#    
-#    # Plot model fit of mean out of pocket medical spending by age-health for males
-#    plt.plot(X[7][1,:,:].transpose())
-#    for h in range(3):
-#        plt.plot(Data.OOPbySexHealthAge[1,h,:],'--')
-#    plt.ylabel('Mean OOP medical spending')
-#    plt.show()
-#
-#    # Plot model fit of stdev out of pocket medical spending by age
-#    plt.plot(X[1])
-#    plt.plot(Data.StDevOOPbyAge,'.k')
-#    plt.ylabel('StDev OOP medical spending')
-#    plt.show()
-#    
-#    # Plot model fit of stdev out of pocket medical spending by age and health
-#    plt.plot(X[4].transpose())
-#    for h in range(3):
-#        plt.plot(Data.StDevOOPbyHealthAge[h,:],'--')
-#    plt.ylabel('StDev OOP medical spending')
-#    plt.show()
+    # Plot model fit of mean out of pocket medical spending by age
+    plt.plot(X[0])
+    plt.plot(Data.OOPbyAge,'.k')
+    plt.ylabel('Mean OOP medical spending')
+    plt.show()
     
-#    # Plot model fit of mortality by age
-#    plt.plot(X[2].transpose())
-#    plt.plot(Data.MortByAge,'.k')
-#    plt.ylabel('Mortality probability')
-#    plt.show()
-#    
-#    # Plot model fit of mortality by age and health for females
-#    plt.plot(X[8][0,:,:].transpose())
-#    for h in range(3):
-#        plt.plot(Data.MortBySexHealthAge[0,h,:],'.')
-#    plt.ylabel('Mortality probability')
-#    plt.show()
-#    
-#    # Plot model fit of mortality by age and health for males
-#    plt.plot(X[8][1,:,:].transpose())
-#    for h in range(3):
-#        plt.plot(Data.MortBySexHealthAge[1,h,:],'.')
-#    plt.ylabel('Mortality probability')
-#    plt.show()
+    # Plot model fit of mean out of pocket medical spending by age-health for females
+    plt.plot(X[7][0,:,:].transpose())
+    for h in range(3):
+        plt.plot(Data.OOPbySexHealthAge[0,h,:],'--')
+    plt.ylabel('Mean OOP medical spending')
+    plt.show()
+    
+    # Plot model fit of mean out of pocket medical spending by age-health for males
+    plt.plot(X[7][1,:,:].transpose())
+    for h in range(3):
+        plt.plot(Data.OOPbySexHealthAge[1,h,:],'--')
+    plt.ylabel('Mean OOP medical spending')
+    plt.show()
+
+    # Plot model fit of stdev out of pocket medical spending by age
+    plt.plot(X[1])
+    plt.plot(Data.StDevOOPbyAge,'.k')
+    plt.ylabel('StDev OOP medical spending')
+    plt.show()
+    
+    # Plot model fit of stdev out of pocket medical spending by age and health
+    plt.plot(X[4].transpose())
+    for h in range(3):
+        plt.plot(Data.StDevOOPbyHealthAge[h,:],'--')
+    plt.ylabel('StDev OOP medical spending')
+    plt.show()
+    
+    # Plot model fit of mortality by age
+    plt.plot(X[2].transpose())
+    plt.plot(Data.MortByAge,'.k')
+    plt.ylabel('Mortality probability')
+    plt.show()
+    
+    # Plot model fit of mortality by age and health for females
+    plt.plot(X[8][0,:,:].transpose())
+    for h in range(3):
+        plt.plot(Data.MortBySexHealthAge[0,h,:],'.')
+    plt.ylabel('Mortality probability')
+    plt.show()
+    
+    # Plot model fit of mortality by age and health for males
+    plt.plot(X[8][1,:,:].transpose())
+    for h in range(3):
+        plt.plot(Data.MortBySexHealthAge[1,h,:],'.')
+    plt.ylabel('Mortality probability')
+    plt.show()
 
     # Plot model fit of wealth by age and income quintile
     plt.plot(X[9].transpose())
