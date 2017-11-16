@@ -80,7 +80,7 @@ other_exog_params = {
     'Rfree' : 1.04,
     'Sex' : 0.0,
     'cycles' : 1,
-    'DataToSimRepFactor' : 50
+    'DataToSimRepFactor' : 200
 }
 
 # Make a dictionary with structural parameters for testing
@@ -133,21 +133,21 @@ basic_estimation_dict.update(grid_size_params)
 
 # Make a test parameter vector
 test_param_vec = np.array([
-    2.0,                # CRRA
-    0.90,               # DiscFac
+    1.5,                # CRRA
+    0.913,              # DiscFac
     6.0,                # MedCurve
     0.8,                # LifeUtility
     -0.5,               # MargUtilityShift
     0.6,                # Cfloor
-    2.0,                # Bequest0
-    3.3,                # Bequest1
-    -0.65,              # MedShkMean0
+    1.6,                # Bequest0
+    3.2,                # Bequest1
+    -1.25,              # MedShkMean0
     -0.5,               # MedShkMeanSex
-    0.11,               # MedShkMeanAge
-    0.002,              # MedShkMeanAgeSq
+    0.10,               # MedShkMeanAge
+    0.005,              # MedShkMeanAgeSq
     -1.0,               # MedShkMeanHealth
     -3.0,               # MedShkMeanHealthSq
-    2.0,                # MedShkStd0
+    2.25,               # MedShkStd0
     -0.2,               # MedShkStd1
     0.03,               # HealthNext0
     -0.005,             # HealthNextSex
@@ -160,10 +160,10 @@ test_param_vec = np.array([
     0.00,               # HealthProd0
     0.000,              # HealthProd1
     0.000,              # HealthProd2
-    -0.79,              # Mortality0
-    0.29,               # MortalitySex
-    -0.01,              # MortalityAge
-    0.007,              # MortalityAgeSq
+    -0.86,              # Mortality0
+    0.49,               # MortalitySex
+    -0.03,              # MortalityAge
+    0.009,              # MortalityAgeSq
     -1.5,               # MortalityHealth
     -0.7                # MortalityHealthSq
     ])

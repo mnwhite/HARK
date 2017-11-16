@@ -453,60 +453,60 @@ if __name__ == '__main__':
     X = objectiveFunctionWrapper(Params.test_param_vec)
     t_end = clock()
     print('One objective function evaluation took ' + str(t_end-t_start) + ' seconds.')
-    
-    # Plot model fit of mean out of pocket medical spending by age
-    plt.plot(X[0])
-    plt.plot(Data.OOPbyAge,'.k')
-    plt.ylabel('Mean OOP medical spending')
-    plt.show()
-    
-    # Plot model fit of mean out of pocket medical spending by age-health for females
-    plt.plot(X[7][0,:,:].transpose())
-    for h in range(3):
-        plt.plot(Data.OOPbySexHealthAge[0,h,:],'--')
-    plt.ylabel('Mean OOP medical spending')
-    plt.show()
-    
-    # Plot model fit of mean out of pocket medical spending by age-health for males
-    plt.plot(X[7][1,:,:].transpose())
-    for h in range(3):
-        plt.plot(Data.OOPbySexHealthAge[1,h,:],'--')
-    plt.ylabel('Mean OOP medical spending')
-    plt.show()
-
-    # Plot model fit of stdev out of pocket medical spending by age
-    plt.plot(X[1])
-    plt.plot(Data.StDevOOPbyAge,'.k')
-    plt.ylabel('StDev OOP medical spending')
-    plt.show()
-    
-    # Plot model fit of stdev out of pocket medical spending by age and health
-    plt.plot(X[4].transpose())
-    for h in range(3):
-        plt.plot(Data.StDevOOPbyHealthAge[h,:],'--')
-    plt.ylabel('StDev OOP medical spending')
-    plt.show()
-    
-    # Plot model fit of mortality by age
-    plt.plot(X[2].transpose())
-    plt.plot(Data.MortByAge,'.k')
-    plt.ylabel('Mortality probability')
-    plt.show()
-    
-    # Plot model fit of mortality by age and health for females
-    plt.plot(X[8][0,:,:].transpose())
-    for h in range(3):
-        plt.plot(Data.MortBySexHealthAge[0,h,:],'.')
-    plt.ylabel('Mortality probability')
-    plt.show()
-    
-    # Plot model fit of mortality by age and health for males
-    plt.plot(X[8][1,:,:].transpose())
-    for h in range(3):
-        plt.plot(Data.MortBySexHealthAge[1,h,:],'.')
-    plt.ylabel('Mortality probability')
-    plt.show()
-
+#    
+#    # Plot model fit of mean out of pocket medical spending by age
+#    plt.plot(X[0])
+#    plt.plot(Data.OOPbyAge,'.k')
+#    plt.ylabel('Mean OOP medical spending')
+#    plt.show()
+#    
+#    # Plot model fit of mean out of pocket medical spending by age-health for females
+#    plt.plot(X[7][0,:,:].transpose())
+#    for h in range(3):
+#        plt.plot(Data.OOPbySexHealthAge[0,h,:],'--')
+#    plt.ylabel('Mean OOP medical spending')
+#    plt.show()
+#    
+#    # Plot model fit of mean out of pocket medical spending by age-health for males
+#    plt.plot(X[7][1,:,:].transpose())
+#    for h in range(3):
+#        plt.plot(Data.OOPbySexHealthAge[1,h,:],'--')
+#    plt.ylabel('Mean OOP medical spending')
+#    plt.show()
+#
+#    # Plot model fit of stdev out of pocket medical spending by age
+#    plt.plot(X[1])
+#    plt.plot(Data.StDevOOPbyAge,'.k')
+#    plt.ylabel('StDev OOP medical spending')
+#    plt.show()
+#    
+#    # Plot model fit of stdev out of pocket medical spending by age and health
+#    plt.plot(X[4].transpose())
+#    for h in range(3):
+#        plt.plot(Data.StDevOOPbyHealthAge[h,:],'--')
+#    plt.ylabel('StDev OOP medical spending')
+#    plt.show()
+#    
+#    # Plot model fit of mortality by age
+#    plt.plot(X[2].transpose())
+#    plt.plot(Data.MortByAge,'.k')
+#    plt.ylabel('Mortality probability')
+#    plt.show()
+#    
+#    # Plot model fit of mortality by age and health for females
+#    plt.plot(X[8][0,:,:].transpose())
+#    for h in range(3):
+#        plt.plot(Data.MortBySexHealthAge[0,h,:],'.')
+#    plt.ylabel('Mortality probability')
+#    plt.show()
+#    
+#    # Plot model fit of mortality by age and health for males
+#    plt.plot(X[8][1,:,:].transpose())
+#    for h in range(3):
+#        plt.plot(Data.MortBySexHealthAge[1,h,:],'.')
+#    plt.ylabel('Mortality probability')
+#    plt.show()
+#
     # Plot model fit of wealth by age and income quintile
     plt.plot(X[9].transpose())
     for i in range(5):
@@ -514,13 +514,21 @@ if __name__ == '__main__':
     plt.ylabel('Median wealth profiles')
     plt.show()
     
+    # Plot model fit of wealth by age and wealth quintile (for one income quintile)
+    i = 0
+    plt.plot(X[12][i,:,:].transpose())
+    for j in range(5):
+        plt.plot(Data.WealthByIncWealthAge[i,j,:],'.')
+    plt.ylabel('Median wealth profiles')
+    plt.show()
+    
 
 
     
 #    # Test model identification by perturbing one parameter at a time
-#    param_i = 31
-#    param_min = -1.7
-#    param_max = -1.4
+#    param_i = 0
+#    param_min = 1.7
+#    param_max = 2.0
 #    N = 10
 #    perturb_vec = np.linspace(param_min,param_max,num=N)
 #    fit_vec = np.zeros(N) + np.nan
@@ -533,4 +541,35 @@ if __name__ == '__main__':
 #    plt.xlabel(Params.param_names[param_i])
 #    plt.ylabel('Sum of squared moment differences')
 #    plt.show()
+    
+#    # Test model identification by perturbing two parameters at a time
+#    import pylab
+#    level_count = 100
+#    param1_i = 6
+#    param2_i = 7
+#    param1_min = 0.5
+#    param1_max = 5.0
+#    param2_min = 2.0
+#    param2_max = 5.0
+#    N = 20
+#    param1_vec = np.linspace(param1_min,param1_max,N)
+#    param2_vec = np.linspace(param2_min,param2_max,N)
+#    param1_mesh, param2_mesh = pylab.meshgrid(param1_vec,param2_vec)
+#    fit_array = np.zeros([N,N]) + np.nan
+#    for i in range(N):
+#        param1 = param1_vec[i]
+#        for j in range(N):
+#            param2 = param2_vec[j]
+#            params = copy(Params.test_param_vec)
+#            params[param1_i] = param1
+#            params[param2_i] = param2
+#            fit_array[i,j] = objectiveFunctionWrapper(params)
+#            print(i,j,fit_array[i,j])
+#    smm_contour = pylab.contourf(param2_mesh,param1_mesh,fit_array.transpose(),40)
+#    pylab.colorbar(smm_contour)
+#    pylab.xlabel(Params.param_names[param2_i])
+#    pylab.ylabel(Params.param_names[param1_i])
+#    pylab.show()
+#    
+    
     
