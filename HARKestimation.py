@@ -7,11 +7,11 @@ and bootstrapping tools.
 from __future__ import division                         # Use new division function
 import numpy as np                                      # Numerical Python
 from time import time                                   # Used to time execution
-from copy import deepcopy                               # For replicating complex objects
+from copy import copy, deepcopy                         # For replicating complex objects
 from scipy.optimize import fmin, fmin_powell            # Minimizers
 from HARKutilities import warnings                      # Import modified "warnings" library
 
-def minimizeNelderMead(objectiveFunction, parameter_guess, verbose=False, **kwargs):
+def minimizeNelderMead(objectiveFunction, parameter_guess, verbose=False, which_vars=None, **kwargs):
     '''
     Minimizes the objective function using the Nelder-Mead simplex algorithm,
     starting from an initial parameter guess.
@@ -24,6 +24,9 @@ def minimizeNelderMead(objectiveFunction, parameter_guess, verbose=False, **kwar
     parameter_guess : [float]
         A starting point for the Nelder-Mead algorithm, which must be a valid
         input for objectiveFunction.
+    which_vars : np.array or None
+        Array of booleans indicating which parameters should be estimated.  When
+        not provided, estimation is performed on all parameters.
     verbose : boolean
         A flag for the amount of output to print.
         
@@ -32,10 +35,19 @@ def minimizeNelderMead(objectiveFunction, parameter_guess, verbose=False, **kwar
     xopt : [float]
         The values that minimize objectiveFunction.
     '''
+    # Specify a temporary "modified objective function" that restricts parameters to be estimated
+    if which_vars is None:
+        which_vars = np.ones(len(parameter_guess),dtype=bool)
+    def objectiveFunctionMod(params):
+        params_full = copy(parameter_guess)
+        params_full[which_vars] = params
+        out = objectiveFunction(params_full)
+        return out
+    parameter_guess_mod = parameter_guess[which_vars]
 
     # Execute the minimization, starting from the given parameter guess
     t0 = time() # Time the process
-    OUTPUT = fmin(objectiveFunction, parameter_guess, full_output=1, maxiter=1000, disp=verbose, **kwargs)
+    OUTPUT = fmin(objectiveFunctionMod, parameter_guess_mod, full_output=1, maxiter=1000, disp=verbose, **kwargs)
     t1 = time()
 
     # Extract values from optimization output:
@@ -51,11 +63,13 @@ def minimizeNelderMead(objectiveFunction, parameter_guess, verbose=False, **kwar
         warnings.warn("Minimization failed! xopt=" + str(xopt) + ', fopt=' + str(fopt) + 
                       ', optiter=' + str(optiter) +', funcalls=' + str(funcalls) +
                       ', warnflag=' + str(warnflag))
+    xopt_full = copy(parameter_guess)
+    xopt_full[which_vars] = xopt
 
     # Display and return the results:
     if verbose:
         print("Time to estimate is " + str(t1-t0) +  " seconds.")
-    return xopt
+    return xopt_full
     
     
 def minimizePowell(objectiveFunction, parameter_guess, verbose=False):
