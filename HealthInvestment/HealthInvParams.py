@@ -133,39 +133,39 @@ basic_estimation_dict.update(grid_size_params)
 
 # Make a test parameter vector
 test_param_vec = np.array([
-    1.7,                # CRRA
-    0.8726,             # DiscFac
-    6.0,                # MedCurve
-    0.8,                # LifeUtility
-    -0.5,               # MargUtilityShift
-    0.153,              # Cfloor
-    1.82,               # Bequest0
-    1.17,               # Bequest1
-    -1.25,              # MedShkMean0
-    -0.5,               # MedShkMeanSex
-    0.10,               # MedShkMeanAge
-    0.005,              # MedShkMeanAgeSq
-    -1.0,               # MedShkMeanHealth
-    -3.0,               # MedShkMeanHealthSq
-    2.25,               # MedShkStd0
-    -0.2,               # MedShkStd1
-    0.03,               # HealthNext0
-    -0.005,             # HealthNextSex
-    -0.003,             # HealthNextAge
-    -0.000006,          # HealthNextAgeSq
-    0.82,               # HealthNextHealth
-    0.159,              # HealthNextHealthSq
-    0.1566,             # HealthShkStd0
-    -0.0424,            # HealthShkStd1
-    0.00,               # HealthProd0
-    0.000,              # HealthProd1
-    0.000,              # HealthProd2
-    -0.86,              # Mortality0
-    0.49,               # MortalitySex
-    -0.03,              # MortalityAge
-    0.009,              # MortalityAgeSq
-    -1.5,               # MortalityHealth
-    -0.7                # MortalityHealthSq
+    1.7,                # 0 CRRA
+    0.8726,             # 1 DiscFac
+    6.0,                # 2 MedCurve
+    0.8,                # 3 LifeUtility
+    -0.5,               # 4 MargUtilityShift
+    0.153,              # 5 Cfloor
+    1.82,               # 6 Bequest0
+    1.17,               # 7 Bequest1
+    -1.25,              # 8 MedShkMean0
+    -0.5,               # 9 MedShkMeanSex
+    0.10,               # 10 MedShkMeanAge
+    0.005,              # 11 MedShkMeanAgeSq
+    -1.0,               # 12 MedShkMeanHealth
+    -3.0,               # 13 MedShkMeanHealthSq
+    2.25,               # 14 MedShkStd0
+    -0.2,               # 15 MedShkStd1
+    0.03313,            # 16 HealthNext0
+    -0.003189,          # 17 HealthNextSex
+    -0.00382,           # 18 HealthNextAge
+    -0.000006,          # 19 HealthNextAgeSq
+    0.84,               # 20 HealthNextHealth
+    0.1025,             # 21 HealthNextHealthSq
+    0.1522,             # 22 HealthShkStd0
+    -0.0437,            # 23 HealthShkStd1
+    0.00,               # 24 HealthProd0
+    0.000,              # 25 HealthProd1
+    0.000,              # 26 HealthProd2
+    -1.045,             # 27 Mortality0
+    0.49,               # 28 MortalitySex
+    -0.03832,           # 29 MortalityAge
+    0.008067,           # 30 MortalityAgeSq
+    -1.149,             # 31 MortalityHealth
+    -0.0                # 32 MortalityHealthSq
     ])
 
 # Make a list of parameter names corresponding to their position in the vector above

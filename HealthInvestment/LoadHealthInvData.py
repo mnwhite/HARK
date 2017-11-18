@@ -20,8 +20,8 @@ moment_dummies = np.array([
         False, # MortByAge
         True,  # StDevDeltaHealthByAge
         False, # StDevOOPbyHealthAge
-        True, # StDevDeltaHealthByHealthAge
-        False, # HealthBySexHealthAge
+        True,  # StDevDeltaHealthByHealthAge
+        True,  # HealthBySexHealthAge
         False, # OOPbySexHealthAge
         False, # MortBySexHealthAge
         False, # WealthByIncAge
@@ -187,8 +187,7 @@ for j in range(10):
     MaxWealthSmall[j] = np.max(MaxWealth[these])
 
 # Make a boolean array indicating when each agent is "born" in the data
-turn65_t = cohort_data - 11
-born_t = t0 - np.maximum(turn65_t,0)
+born_t = np.maximum(t0 + 11 - cohort_data,0)
 BornBoolArray = np.zeros((25,obs),dtype=bool)
 BornBoolArray[born_t,idx] = True
 
@@ -206,6 +205,7 @@ for j in range(18):
     InDataSpanArray[:,these] = temp_bool_rep
 
 # Make an array of "ages" for each observation (plus boolean version)
+turn65_t = cohort_data - 11
 age_data = np.tile(np.reshape(np.arange(8),(8,1)),(1,obs)) - np.tile(np.reshape(turn65_t,(1,obs)),(8,1))
 AgeBoolArray = np.zeros((8,obs,15),dtype=bool)
 for j in range(15):
