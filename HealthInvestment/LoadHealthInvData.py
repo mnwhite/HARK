@@ -17,13 +17,13 @@ use_cohorts = False
 moment_dummies = np.array([
         False, # OOPbyAge
         False, # StDevOOPbyAge
-        False, # MortByAge
-        True,  # StDevDeltaHealthByAge
+        True,  # MortByAge
+        False, # StDevDeltaHealthByAge
         False, # StDevOOPbyHealthAge
-        True,  # StDevDeltaHealthByHealthAge
-        True,  # HealthBySexHealthAge
+        False, # StDevDeltaHealthByHealthAge
+        False, # HealthBySexHealthAge
         False, # OOPbySexHealthAge
-        False, # MortBySexHealthAge
+        True,  # MortBySexHealthAge
         False, # WealthByIncAge
         False, # HealthByIncAge
         False, # OOPbyIncAge

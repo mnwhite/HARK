@@ -534,7 +534,6 @@ if __name__ == '__main__':
     plt.plot(Data.HealthBySexHealthAge[1,:,:].transpose(),'.k')
     plt.ylabel('Health profiles by health tertile, men')
     plt.show()
-
     
     # Plot model fit of standard deviation of change in health by age
     plt.plot(X[3])
@@ -552,9 +551,9 @@ if __name__ == '__main__':
 
     
 #    # Test model identification by perturbing one parameter at a time
-#    param_i = 22
-#    param_min = 0.10
-#    param_max = 0.20
+#    param_i = 27
+#    param_min = -1.2
+#    param_max = -1.0
 #    N = 20
 #    perturb_vec = np.linspace(param_min,param_max,num=N)
 #    fit_vec = np.zeros(N) + np.nan
@@ -603,8 +602,11 @@ if __name__ == '__main__':
 
 
 #    # Estimate some (or all) of the model parameters
-#    which_indices = np.array([16,17,18,20,21,22,23])
+#    which_indices = np.array([27,28,29,30,31])
 #    which_bool = np.zeros(33,dtype=bool)
 #    which_bool[which_indices] = True
 #    estimated_params = minimizeNelderMead(objectiveFunctionWrapper,Params.test_param_vec,verbose=True,which_vars=which_bool)
+#    for i in which_indices.tolist():
+#        print(Params.param_names[i] + ' = ' + str(estimated_params[i]))
+#    
 #    

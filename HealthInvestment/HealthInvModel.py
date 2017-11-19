@@ -434,13 +434,15 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
     vNext = vFuncNext(bNextArray,hNextArray)
     dvdbNext = dvdbFuncNext(bNextArray,hNextArray)
 #    dvdhNext = dvdhFuncNext(bNextArray,hNextArray)
-    vNext[:,0,0] = BequestMotive(aLvlGrid) # Bequest motive when dead
-    dvdbNext[:,0,0] = BequestMotiveP(aLvlGrid) # Marginal bequest motive when dead
+#    vNext[:,0,0] = BequestMotive(aLvlGrid) # Bequest motive when dead
+#    dvdbNext[:,0,0] = BequestMotiveP(aLvlGrid) # Marginal bequest motive when dead
 #    dvdhNext[:,0,0] = 0.0 # No value of additional health if dead
 #    dvdhNext[:,0,-1] = 0.0 # No value of additional health if capped at 1
     vNext_tiled = np.tile(vNext,(1,Hcount,1))
     dvdbNext_tiled = np.tile(dvdbNext,(1,Hcount,1))
 #    dvdhNext_tiled = np.tile(dvdhNext,(1,Hcount,1))
+    BequestMotiveArray = np.tile(np.reshape(BequestMotive(aLvlGrid),(aCount,1)),(1,Hcount))
+    BequestMotiveParray = np.tile(np.reshape(BequestMotiveP(aLvlGrid),(aCount,1)),(1,Hcount))
     
     # Calculate the probability of arriving at each future health state from each current health state
     Harray_temp = np.tile(np.reshape(Hgrid,(1,Hcount,1)),(1,1,hNextCount))
@@ -451,12 +453,13 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
     BaseProbs = norm.pdf(zArray[:,:,1:-1]) # Don't include h=0 or h=1
     ProbSum = np.tile(np.sum(BaseProbs,axis=2,keepdims=True),(1,1,hNextCount-2))
     LivPrb = norm.sf(LivPrbFunc(Hgrid))
-    DeathPrb = norm.cdf(zArray[:,:,0])*LivPrb
+    TerriblePrb = norm.cdf(zArray[:,:,0])*LivPrb
     PerfectPrb = norm.sf(zArray[:,:,-1])*LivPrb
-    BaseProbsAdj = BaseProbs/ProbSum*np.tile(np.reshape((LivPrb-DeathPrb-PerfectPrb),(1,Hcount,1)),(1,1,hNextCount-2))
+    BaseProbsAdj = BaseProbs/ProbSum*np.tile(np.reshape((LivPrb-TerriblePrb-PerfectPrb),(1,Hcount,1)),(1,1,hNextCount-2))
     ProbArray[:,:,1:-1] = BaseProbsAdj
-    ProbArray[:,:,0] = DeathPrb + (1.-LivPrb)
+    ProbArray[:,:,0] = TerriblePrb
     ProbArray[:,:,-1] = PerfectPrb
+    DiePrb = 1. - LivPrb
         
     # Calculate the rate of change in probabilities of arriving in each future health state from end-of-period health
     H_eps = 0.0001
@@ -467,27 +470,26 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
     BaseProbs = norm.pdf(zArray[:,:,1:-1]) # Don't include h=0 or h=1
     ProbSum = np.tile(np.sum(BaseProbs,axis=2,keepdims=True),(1,1,hNextCount-2))
     LivPrb = norm.sf(LivPrbFunc(Hgrid+H_eps))
-    DeathPrb = norm.cdf(zArray[:,:,0])*LivPrb
+    TerriblePrb = norm.cdf(zArray[:,:,0])*LivPrb
     PerfectPrb = norm.sf(zArray[:,:,-1])*LivPrb
-    BaseProbsAdj = BaseProbs/ProbSum*np.tile(np.reshape((LivPrb-DeathPrb-PerfectPrb),(1,Hcount,1)),(1,1,hNextCount-2))
+    BaseProbsAdj = BaseProbs/ProbSum*np.tile(np.reshape((LivPrb-TerriblePrb-PerfectPrb),(1,Hcount,1)),(1,1,hNextCount-2))
     ProbArrayAlt[:,:,1:-1] = BaseProbsAdj
-    ProbArrayAlt[:,:,0] = DeathPrb + (1.-LivPrb)
+    ProbArrayAlt[:,:,0] = TerriblePrb
     ProbArrayAlt[:,:,-1] = PerfectPrb
     dProbdHArray = (ProbArrayAlt - ProbArray)/H_eps
+    DiePrbAlt = 1. - LivPrb
+    dDiePrbdH = (DiePrbAlt - DiePrb)/H_eps # This can actually be calculated in closed form: -norm.pdf(LivPrb)
     
     # Tile the probability arrays
     ProbArray_tiled = np.tile(ProbArray,(aCount,1,1))
     dProbdHArray_tiled = np.tile(dProbdHArray,(aCount,1,1))
-    
-#    print('ProbArray',np.sum(np.isnan(ProbArray)),np.sum(np.isinf(ProbArray)))
-#    print('dvdbNext',np.sum(np.isnan(dvdbNext)),np.sum(np.isinf(dvdbNext)))
-#    print('where',dvdbNext.shape,np.where(np.isnan(dvdbNext)))
-#    print('what',bNextArray[42,0,1],hNextArray[42,0,1])
+    DiePrb_tiled = np.tile(np.reshape(DiePrb,(1,Hcount)),(aCount,1))
+    dDiePrbdH_tiled = np.tile(np.reshape(dDiePrbdH,(1,Hcount)),(aCount,1))
     
     # Take expectations over future (marginal) value
-    EndOfPrdv = DiscFac*np.sum(vNext_tiled*ProbArray_tiled,axis=2)
-    EndOfPrddvda = Rfree*DiscFac*np.sum(dvdbNext_tiled*ProbArray_tiled,axis=2)
-    EndOfPrddvdH = DiscFac*(np.sum(vNext_tiled*dProbdHArray_tiled,axis=2))# + np.sum(dvdhNext_tiled*ProbArray_tiled,axis=2))
+    EndOfPrdv = DiscFac*np.sum(vNext_tiled*ProbArray_tiled,axis=2) + DiePrb_tiled*BequestMotiveArray
+    EndOfPrddvda = Rfree*DiscFac*np.sum(dvdbNext_tiled*ProbArray_tiled,axis=2) + DiePrb_tiled*BequestMotiveParray
+    EndOfPrddvdH = DiscFac*(np.sum(vNext_tiled*dProbdHArray_tiled,axis=2)) + dDiePrbdH_tiled*BequestMotiveArray
     MargValueRatio = EndOfPrddvda/EndOfPrddvdH
     MargValueRatioAdj = np.maximum(MargValueRatio*MedPrice,0.0)
     
@@ -1300,7 +1302,7 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         Calculates hLvlNow, bLvlNow, and MedShkNow using aLvlNow, HlvlNow,
         hShkNow, and MedShkBase.
         '''
-        hLvlNow = np.maximum(np.minimum(self.HlvlNow + self.hShkNow,1.0),0.0)
+        hLvlNow = np.maximum(np.minimum(self.HlvlNow + self.hShkNow,1.0),0.001)
         just_died = hLvlNow == 0.
         self.ActiveNow[just_died] = False
         self.DiedNow[just_died] = True
