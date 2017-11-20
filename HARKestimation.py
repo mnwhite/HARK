@@ -47,7 +47,7 @@ def minimizeNelderMead(objectiveFunction, parameter_guess, verbose=False, which_
 
     # Execute the minimization, starting from the given parameter guess
     t0 = time() # Time the process
-    OUTPUT = fmin(objectiveFunctionMod, parameter_guess_mod, full_output=1, maxiter=1000, disp=verbose, **kwargs)
+    OUTPUT = fmin(objectiveFunctionMod, parameter_guess_mod, full_output=1, maxiter=5000, maxfun=10000, disp=verbose, **kwargs)
     t1 = time()
 
     # Extract values from optimization output:

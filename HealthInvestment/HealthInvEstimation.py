@@ -551,9 +551,9 @@ if __name__ == '__main__':
 
     
 #    # Test model identification by perturbing one parameter at a time
-#    param_i = 27
-#    param_min = -1.2
-#    param_max = -1.0
+#    param_i = 32
+#    param_min = -0.8
+#    param_max = -0.3
 #    N = 20
 #    perturb_vec = np.linspace(param_min,param_max,num=N)
 #    fit_vec = np.zeros(N) + np.nan
@@ -572,12 +572,12 @@ if __name__ == '__main__':
 #    # Test model identification by perturbing two parameters at a time
 #    import pylab
 #    level_count = 100
-#    param1_i = 6
-#    param2_i = 7
-#    param1_min = 0.5
-#    param1_max = 5.0
-#    param2_min = 2.0
-#    param2_max = 5.0
+#    param1_i = 31
+#    param2_i = 32
+#    param1_min = -2.0
+#    param1_max = -1.6
+#    param2_min = -0.4
+#    param2_max = 0.0
 #    N = 20
 #    param1_vec = np.linspace(param1_min,param1_max,N)
 #    param2_vec = np.linspace(param2_min,param2_max,N)
@@ -592,7 +592,7 @@ if __name__ == '__main__':
 #            params[param2_i] = param2
 #            fit_array[i,j] = objectiveFunctionWrapper(params)
 #            print(i,j,fit_array[i,j])
-#    smm_contour = pylab.contourf(param2_mesh,param1_mesh,fit_array.transpose(),40)
+#    smm_contour = pylab.contourf(param2_mesh,param1_mesh,fit_array.transpose()**0.1,40)
 #    pylab.colorbar(smm_contour)
 #    pylab.xlabel(Params.param_names[param2_i])
 #    pylab.ylabel(Params.param_names[param1_i])
@@ -602,11 +602,11 @@ if __name__ == '__main__':
 
 
 #    # Estimate some (or all) of the model parameters
-#    which_indices = np.array([27,28,29,30,31])
+#    which_indices = np.array([27,28,29,30,31,32])
 #    which_bool = np.zeros(33,dtype=bool)
 #    which_bool[which_indices] = True
 #    estimated_params = minimizeNelderMead(objectiveFunctionWrapper,Params.test_param_vec,verbose=True,which_vars=which_bool)
 #    for i in which_indices.tolist():
 #        print(Params.param_names[i] + ' = ' + str(estimated_params[i]))
 #    
-#    
+    
