@@ -548,8 +548,8 @@ def makeMarketFromParams(ParamArray,PremiumArray,InsChoiceType,SubsidyTypeCount,
         
     Returns
     -------
-    AgentList : [DynInsSelType]
-        List of DynInsSelTypes to be used in estimation.
+    InsuranceMarket : DynInsSelMarket
+        Market to be used in estimation or counterfactual, with agents filled in.
     '''
     # Unpack the parameters
     DiscFac = ParamArray[0]
@@ -578,6 +578,8 @@ def makeMarketFromParams(ParamArray,PremiumArray,InsChoiceType,SubsidyTypeCount,
         if ZeroSubsidyBool and SubsidyZeroRate > 0.0: 
             SubsidyArray = np.insert(SubsidyArray,0,0.0)
             WeightArray  = np.insert(WeightArray*(1.0-SubsidyZeroRate),0,SubsidyZeroRate)
+            if SubsidyTypeCount == 0: # If no one gets a subsidy...
+                WeightArray = np.array([1.0]) # Need to manually set this weight to 1.0
     else:
         SubsidyArray = np.array([0.0])
         WeightArray  = np.array([1.0])
@@ -612,6 +614,7 @@ def makeMarketFromParams(ParamArray,PremiumArray,InsChoiceType,SubsidyTypeCount,
     ZeroPremiumFunc = ConstantFunction(0.0)
     PremiumFuncBase = [ZeroPremiumFunc]
     Premiums_init = np.concatenate((np.array([0.]),PremiumArray[0:ContractCounts[InsChoiceType]]))
+    
     for z in range(ContractCounts[InsChoiceType]):
         PremiumFuncBase.append(ConstantFunction(PremiumArray[z]))
     PremiumFuncs_init = 40*[StateCount*[PremiumFuncBase]] + 20*[StateCount*[(ContractCounts[InsChoiceType]+1)*[ZeroPremiumFunc]]]
@@ -631,12 +634,13 @@ def makeMarketFromParams(ParamArray,PremiumArray,InsChoiceType,SubsidyTypeCount,
     print('I made an insurance market with ' + str(len(InsuranceMarket.agents)) + ' agent types!')
     return InsuranceMarket
 
+
 def objectiveFunction(Parameters):
     '''
     The objective function for the estimation.  Makes and solves a market, then
     returns the weighted sum of moment differences between simulation and data.
     '''
-    EvalType = 0 # Number of times to do a static search for eqbm premiums
+    EvalType = 1 # Number of times to do a static search for eqbm premiums
     InsChoice = 1 # Extent of insurance choice
     SubsidyTypeCount = 1 # Number of discrete non-zero subsidy levels
     CRRAtypeCount = 1 # Number of CRRA types (DON'T USE)
@@ -806,7 +810,7 @@ if __name__ == '__main__':
 #    plt.ylabel('Stdev out-of-pocket premiums paid')
 #    plt.xlim((25,65))
 #    plt.show()
-#    
+    
     plt.plot(Age[0:40],MyMarket.ZeroSubsidyRateByAge,'-b')
     plt.plot(Age[0:40],MyMarket.data_moments[200:240],'.k')
     plt.xlabel('Age')

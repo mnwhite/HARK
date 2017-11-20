@@ -1136,6 +1136,14 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
             ZadjArray = np.minimum(ZcritArray - ZgridBase[-1],0.) # Should always be non-positive
             ZshkArray = np.tile(np.reshape(ZgridBase,(1,1,MedCount)),(aLvlCount,pLvlCount,1)) + np.tile(np.reshape(ZadjArray,(aLvlCount,pLvlCount,1)),(1,1,MedCount))
             MedShkArray = np.exp(ZshkArray*MedShkStd[h] + MedShkAvg[h])
+
+#            LogMedShkLower = MedShkAvg[h] - 3.0*MedShkStd[h]
+#            LogCritShkArray = np.log(CritShkArray)
+#            FracArray = np.tile(np.reshape(np.linspace(0.0,1.0,MedCount),(1,1,MedCount)),(aLvlCount,pLvlCount,1))
+#            LogMedShkArray = LogMedShkLower + FracArray*(np.tile(np.reshape(LogCritShkArray,(aLvlCount,pLvlCount,1)),(1,1,MedCount)) - LogMedShkLower)
+#            MedShkArray = np.exp(LogMedShkArray)
+#            ZshkArray = (LogMedShkArray - MedShkAvg[h])/MedShkStd[h]
+            
             TempPrbArray = norm.pdf(ZshkArray)
             ReweightArray = (1.-MedShkPrbs[0]-CfloorPrbArray)/np.sum(TempPrbArray,axis=2)
             ShkPrbsArray = TempPrbArray*np.tile(np.reshape(ReweightArray,(aLvlCount,pLvlCount,1)),(1,1,MedCount))
@@ -2308,45 +2316,45 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         self.ContractNow = ContractNow
         self.WelfareNow = WelfareNow
         
-    def calcInsurancePayments(self):
-        '''
-        Uses the results of a simulation to calculate the expected payments of
-        each insurance contract by age-health.  Requires that track_vars
-        includes 'MedLvlNow' and 'OOPnow' or will fail.  Results are stored
-        in the attributes ContractPayments and ContractCounts.
-        
-        Parameters
-        ----------
-        None
-        
-        Returns
-        -------
-        None
-        '''
-        # Get dimensions of output objects and initialize them
-        StateCount = self.MrkvArray[0].shape[0]
-        MaxContracts = max([max([len(self.ContractList[t][h]) for h in range(StateCount)]) for t in range(self.T_sim)])
-        ContractPayments = np.zeros((self.T_sim,StateCount,MaxContracts)) + np.nan
-        ContractCounts = np.zeros((self.T_sim,StateCount,MaxContracts),dtype=int)
-        
-        # Make arrays of payments by insurance and the indices of contracts and states
-        MedPrice_temp = np.tile(np.reshape(self.MedPrice[0:self.T_sim],(self.T_sim,1)),(1,self.AgentCount))
-        Payments = self.MedLvlNow_hist*MedPrice_temp - self.OOPnow_hist
-        Choices = self.ContractNow_hist
-        States = self.MrkvHist
-        Payments[States == -1] = 0.0 # Dead people have no costs
-        
-        # Calculate insurance payment and individual count for each age-state-contract
-        for j in range(StateCount):
-            temp = States == j
-            for z in range(MaxContracts):
-                these = np.logical_and(temp,Choices == z)
-                ContractPayments[:,j,z] = np.sum(Payments*these,axis=1)
-                ContractCounts[:,j,z] = np.sum(these,axis=1)
-                
-        # Store the results as attributes of self
-        self.ContractPayments = ContractPayments
-        self.ContractCounts = ContractCounts
+#    def calcInsurancePayments(self):
+#        '''
+#        Uses the results of a simulation to calculate the expected payments of
+#        each insurance contract by age-health.  Requires that track_vars
+#        includes 'MedLvlNow' and 'OOPnow' or will fail.  Results are stored
+#        in the attributes ContractPayments and ContractCounts.
+#        
+#        Parameters
+#        ----------
+#        None
+#        
+#        Returns
+#        -------
+#        None
+#        '''
+#        # Get dimensions of output objects and initialize them
+#        StateCount = self.MrkvArray[0].shape[0]
+#        MaxContracts = max([max([len(self.ContractList[t][h]) for h in range(StateCount)]) for t in range(self.T_sim)])
+#        ContractPayments = np.zeros((self.T_sim,StateCount,MaxContracts)) + np.nan
+#        ContractCounts = np.zeros((self.T_sim,StateCount,MaxContracts),dtype=int)
+#        
+#        # Make arrays of payments by insurance and the indices of contracts and states
+#        MedPrice_temp = np.tile(np.reshape(self.MedPrice[0:self.T_sim],(self.T_sim,1)),(1,self.AgentCount))
+#        Payments = self.MedLvlNow_hist*MedPrice_temp - self.OOPnow_hist
+#        Choices = self.ContractNow_hist
+#        States = self.MrkvHist
+#        Payments[States == -1] = 0.0 # Dead people have no costs
+#        
+#        # Calculate insurance payment and individual count for each age-state-contract
+#        for j in range(StateCount):
+#            temp = States == j
+#            for z in range(MaxContracts):
+#                these = np.logical_and(temp,Choices == z)
+#                ContractPayments[:,j,z] = np.sum(Payments*these,axis=1)
+#                ContractCounts[:,j,z] = np.sum(these,axis=1)
+#                
+#        # Store the results as attributes of self
+#        self.ContractPayments = ContractPayments
+#        self.ContractCounts = ContractCounts
 
         
     def calcExpInsPayByContract(self):
