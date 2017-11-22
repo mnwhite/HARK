@@ -55,21 +55,41 @@ class DynInsSelType(BaseType):
         self.IncQuintBoolArray = IncQuintBoolArray
         
     def preSolve(self):
+        '''
+        Moves the premium functions from the attribute PremiumFuncs into the
+        Premium attribute in ContractList, so that they are used correctly
+        during solution of the dynamic model.
+        '''
         self.installPremiumFuncs()
         self.updateSolutionTerminal()
         
     def postSolve(self): # This needs to be active in the dynamic model
+        '''
+        Initializes and executes the simulation, and does some post-simulation
+        processing of the results.  Also deletes most of the dynamic solution
+        so that a smaller pickled object is passed back to the master process,
+        using less hard drive time.  This method should be different if the
+        quasi-static model is ever used, but I forget how at this point.
+        '''
         self.initializeSim()
         self.simulate()
         self.postSim()
         self.deleteSolution()
         
     def initializeSim(self):
+        '''
+        Initializes the simulation using the base class method, making sure that
+        ContractNow is tracked as an integer, not a float.
+        '''
         InsSelConsumerType.initializeSim(self)
         if 'ContractNow' in self.track_vars:
             self.ContractNow_hist = np.zeros_like(self.ContractNow_hist).astype(int)
             
     def postSim(self):
+        '''
+        Makes small fixes to OOP medical spending (can't be below $1 but above $0),
+        and calculates total medical spending, wealth-to-income ratio, and insured status.
+        '''
         self.OOPmedHist = self.OOPnow_hist
         self.OOPmedHist[np.logical_and(self.OOPmedHist < 0.0001,self.OOPmedHist > 0.0,)] = 0.0001
         MedPrice_temp = np.tile(np.reshape(self.MedPrice[0:self.T_sim],(self.T_sim,1)),(1,self.AgentCount))
@@ -79,19 +99,94 @@ class DynInsSelType(BaseType):
         self.InsuredBoolArray = self.ContractNow_hist > 0
         
     def deleteSolution(self):
+        '''
+        Deletes most of the dynamic solution in order to reduce the size of the
+        objected that is pickled back to the master process by joblib.  Keeps
+        the value function (overall and by contract) and the actuarial value
+        functions, as these are needed during static premium equilibrium search
+        and counterfactual analysis.
+        '''
         vFuncByContract = []
         AVfunc = []
+        vFunc = []
         for t in range(self.T_cycle):
             vFuncByContract.append(self.solution[t].vFuncByContract)
             AVfunc.append(self.solution[t].AVfunc)
+            vFunc.append(self.solution[t].vFunc)
         self.vFuncByContract = vFuncByContract
         self.AVfunc = AVfunc
-        self.addToTimeVary('AVfunc','vFuncByContract')
+        self.vFunc = vFunc
+        self.addToTimeVary('AVfunc','vFuncByContract','vFunc')
         del self.solution
         self.delFromTimeVary('solution')
         
-    def reset(self):
+    def reset(self): # Apparently nothing at all
         return None
+    
+    def makevHistArray(self):
+        '''
+        Create an array of value levels based on the simulated history of this
+        type, stored as the attribute vNow_hist.  This is called only during
+        counterfactual analysis (of the "before" world).
+        '''
+        N = self.AgentCount
+        T = 60
+        vNow_hist = np.zeros((T,N)) + np.nan
+        for t in range(T):
+            StateCount = len(self.vFunc[t])
+            for h in range(StateCount):
+                these = self.HealthBoolArray[t,:,h]
+                m_temp = self.mLvlNow_hist[t,these]
+                p_temp = self.pLvlHist[t,these]
+                vNow_hist[t,these] = self.vFunc[t][h](m_temp,p_temp)
+        self.vNow_hist = vNow_hist
+        
+        
+    def findCompensatingpLvl(self):
+        '''
+        For each simulated agent in the history, find the pLvl that makes them
+        indifferent between the current state of the world (the "after" scenario)
+        and a target value level (from the "before" scenario).  This is called
+        only during counterfactual analysis (of the "after" world).
+        '''
+        N = self.AgentCount
+        T = 60
+        pCompHist = np.zeros((T,N)) + np.nan
+        out_of_bounds = np.zeros((T,N),dtype=bool) # Mark agents whose pComp is too high (requires extrapolation)
+        for t in range(T):
+            StateCount = len(self.vFunc[t])
+            for h in range(StateCount):
+                # Extract data for this age-health
+                these = self.HealthBoolArray[t,:,h]
+                m = self.mLvlNow_hist[t,these]
+                vTarg = self.vTarg_hist[t,these]
+                vFunc = self.vFunc[t][h]
+                pMin = vFunc.func.func.y_list[0] # Lowest pLvl, should always be 0.0
+                pMax = vFunc.func.func.y_list[-1] # Highest pLvl in grid
+                 
+                # Evaluate the value function at the minimum and maximum pLvl
+                pBot = pMin*np.ones(np.sum(these))
+                pTop = pMax*np.ones(np.sum(these))
+                vBot = vFunc(m,pBot)
+                vTop = vFunc(m,pTop)
+                out_of_bounds[t,these] = np.logical_or(vTarg < vBot, vTarg > vTop)
+                
+                # Do a bracketing search for compensating pLvl
+                j_max = 20 # Number of loops to run
+                for j in range(j_max):
+                    pMid = 0.5*(pBot + pTop)
+                    vMid = vFunc(m,pMid)
+                    targ_below_mid = vTarg <= vMid
+                    targ_above_mid = np.logical_not(targ_below_mid)
+                    pTop[targ_below_mid] = pMid[targ_below_mid]
+                    pBot[targ_above_mid] = pMid[targ_above_mid]
+                    
+                # Record the result of the bracketing search in pComp_hist
+                pCompHist[t,these] = pMid
+                
+        # Store the results as attributes of self
+        self.pCompHist = pCompHist
+        self.pComp_invalid = out_of_bounds
         
 
 # This is a trivial "container" class
@@ -107,16 +202,18 @@ class DynInsSelMarket(Market):
     A class for representing the "insurance economy" with many agent types.
     '''
 
-    def __init__(self):
+    def __init__(self,ActuarialRule):
         Market.__init__(self,agents=[],sow_vars=['PremiumFuncs'],reap_vars=['ExpInsPay','ExpBuyers'],
                         const_vars=[],track_vars=['Premiums'],dyn_vars=['PremiumFuncs'],
-                 millRule=None,calcDynamics=None,act_T=10,tolerance=0.0001)
+                        millRule=None,calcDynamics=None,act_T=10,tolerance=0.0001)
+        self.ActuarialRule = ActuarialRule
 
     def millRule(self,ExpInsPay,ExpBuyers):
-        temp = flatActuarialRule(self,ExpInsPay,ExpBuyers)
+        temp = self.ActuarialRule(self,ExpInsPay,ExpBuyers)
         return temp
         
     def calcDynamics(self,Premiums):
+        self.PremiumFuncs_init = self.PremiumFuncs # So that these are used on the next iteration
         return PremiumFuncsContainer(self.PremiumFuncs)
         
     
@@ -358,7 +455,7 @@ class DynInsSelMarket(Market):
 def makeDynInsSelType(CRRAcon,CRRAmed,DiscFac,ChoiceShkMag,MedShkMeanAgeParams,MedShkMeanVGparams,
                       MedShkMeanGDparams,MedShkMeanFRparams,MedShkMeanPRparams,MedShkStdAgeParams,
                       MedShkStdVGparams,MedShkStdGDparams,MedShkStdFRparams,MedShkStdPRparams,
-                      PremiumArray,PremiumSubsidy,EducType,InsChoiceType):
+                      PremiumSubsidy,EducType,InsChoiceType,ContractCount):
     '''
     Makes an InsSelConsumerType using (human-organized) structural parameters for the estimation.
     
@@ -392,8 +489,6 @@ def makeDynInsSelType(CRRAcon,CRRAmed,DiscFac,ChoiceShkMag,MedShkMeanAgeParams,M
         Linear parameters for the stdev of log medical need shocks by age: adjuster for fair health.
     MedShkStdGDparams: [float]
         Linear parameters for the stdev of log medical need shocks by age: adjuster for poor health.
-    PremiumArray : np.array
-        Array of constant premiums for the N insurance contracts.
     PremiumSubsidy : float
         Employer contribution to any (non-null) insurance contract.
     EducType : int
@@ -403,6 +498,8 @@ def makeDynInsSelType(CRRAcon,CRRAmed,DiscFac,ChoiceShkMag,MedShkMeanAgeParams,M
         choose among several insurance contracts, while retirees choose between basic Medicare,
         Medicare A+B, or Medicare A+B + Medigap.  When 0, agents get exogenous contracts.
         When 1, agents have a binary contract choice when working.
+    ContractCount : int
+        Total number of contracts available to agents, including null contract.
     
     Returns
     -------
@@ -497,23 +594,37 @@ def makeDynInsSelType(CRRAcon,CRRAmed,DiscFac,ChoiceShkMag,MedShkMeanAgeParams,M
     WorkingContractList = []
     if InsChoiceType >= 2:
         WorkingContractList.append(MedInsuranceContract(ConstantFunction(0.0),0.0,1.0,Params.MedPrice))
-        for j in range(PremiumArray.size):
-            Premium = max([PremiumArray[j] - PremiumSubsidy,0.0])
+        for j in range(ContractCount-1):
+            #Premium = max([PremiumArray[j] - PremiumSubsidy,0.0])
+            Premium = 0.0 # Will be changed by installPremiumFuncs
             Copay = 0.08
             Deductible = Params.DeductibleList[j]
             WorkingContractList.append(MedInsuranceContract(ConstantFunction(Premium),Deductible,Copay,Params.MedPrice))
     elif InsChoiceType == 1:
         WorkingContractList.append(MedInsuranceContract(ConstantFunction(0.0),0.0,1.0,Params.MedPrice))
-        Premium = max([PremiumArray[0] - PremiumSubsidy,0.0])
+        #Premium = max([PremiumArray[0] - PremiumSubsidy,0.0])
+        Premium = 0. # Will be changed by installPremiumFuncs
         Copay = 0.08
         Deductible = 0.04
         WorkingContractList.append(MedInsuranceContract(ConstantFunction(Premium),Deductible,Copay,Params.MedPrice))
     else:
         WorkingContractList.append(MedInsuranceContract(ConstantFunction(0.0),0.00,0.1,Params.MedPrice))
         
-    RetiredContractListA = [MedInsuranceContract(ConstantFunction(0.0),0.0,0.12,Params.MedPrice)]
+    RetiredContractList = [MedInsuranceContract(ConstantFunction(0.0),0.0,0.12,Params.MedPrice)]
     
-    TypeDict['ContractList'] = Params.working_T*[5*[WorkingContractList]] + (Params.retired_T)*[5*[RetiredContractListA]]
+    ContractList = []
+    for t in range(Params.working_T):
+        ContractList_t = []
+        for h in range(5):
+            ContractList_t.append(deepcopy(WorkingContractList))
+        ContractList.append(ContractList_t)
+    for t in range(Params.retired_T):
+        ContractList_t = []
+        for h in range(5):
+            ContractList_t.append(deepcopy(RetiredContractList))
+        ContractList.append(ContractList_t)
+    
+    TypeDict['ContractList'] = ContractList # Params.working_T*[5*[WorkingContractList]] + Params.retired_T*[5*[RetiredContractList]]
     
     # Make and return a DynInsSelType
     ThisType = DynInsSelType(**TypeDict)
@@ -526,7 +637,7 @@ def makeDynInsSelType(CRRAcon,CRRAmed,DiscFac,ChoiceShkMag,MedShkMeanAgeParams,M
     return ThisType
         
 
-def makeMarketFromParams(ParamArray,PremiumArray,InsChoiceType,SubsidyTypeCount,CRRAtypeCount,ZeroSubsidyBool):
+def makeMarketFromParams(ParamArray,ActuarialRule,PremiumArray,InsChoiceType,SubsidyTypeCount,CRRAtypeCount,ZeroSubsidyBool):
     '''
     Makes a list of 3 or 24 DynInsSelTypes, to be used for estimation.
     
@@ -534,8 +645,12 @@ def makeMarketFromParams(ParamArray,PremiumArray,InsChoiceType,SubsidyTypeCount,
     ----------
     ParamArray : np.array
         Array of size 33, representing all of the structural parameters.
+    ActuarialRule : function
+        Function representing how insurance market outcomes are translated into
+        premiums.  Will be installed as the millRule attribute of the market.
     PremiumArray : np.array
         Array of premiums for insurance contracts for workers. Irrelevant if InsChoiceBool = False.
+        Should be of size (60,ContractCount).
     InsChoiceType : int
         Indicator for the extent of consumer choice over contracts.  0 --> no choice,
         1 --> one non-null contract, 2 --> five non-null contracts.
@@ -583,17 +698,17 @@ def makeMarketFromParams(ParamArray,PremiumArray,InsChoiceType,SubsidyTypeCount,
     else:
         SubsidyArray = np.array([0.0])
         WeightArray  = np.array([1.0])
-    ContractCounts = [0,1,5] # plus one
     
     # Make the list of types
     AgentList = []
+    ContractCount = PremiumArray.shape[1]
     i = 0
     for j in range(SubsidyArray.size):
         for k in range(3):
             AgentList.append(makeDynInsSelType(CRRAcon,CRRAmed,DiscFac,ChoiceShkMag,MedShkMeanAgeParams,
                       MedShkMeanVGparams,MedShkMeanGDparams,MedShkMeanFRparams,MedShkMeanPRparams,
                       MedShkStdAgeParams,MedShkStdVGparams,MedShkStdGDparams,MedShkStdFRparams,
-                      MedShkStdPRparams,PremiumArray,SubsidyArray[j],k,InsChoiceType))
+                      MedShkStdPRparams,SubsidyArray[j],k,InsChoiceType,ContractCount))
             AgentList[-1].Weight = WeightArray[j]*Params.EducWeight[k]
             AgentList[-1].AgentCount = int(round(AgentList[-1].Weight*Params.AgentCountTotal))
             i += 1
@@ -611,26 +726,26 @@ def makeMarketFromParams(ParamArray,PremiumArray,InsChoiceType,SubsidyTypeCount,
     StateCount = AgentList[0].MrkvArray[0].shape[0]
             
     # Construct an initial nested list for premiums
-    ZeroPremiumFunc = ConstantFunction(0.0)
-    PremiumFuncBase = [ZeroPremiumFunc]
-    Premiums_init = np.concatenate((np.array([0.]),PremiumArray[0:ContractCounts[InsChoiceType]]))
-    
-    for z in range(ContractCounts[InsChoiceType]):
-        PremiumFuncBase.append(ConstantFunction(PremiumArray[z]))
-    PremiumFuncs_init = 40*[StateCount*[PremiumFuncBase]] + 20*[StateCount*[(ContractCounts[InsChoiceType]+1)*[ZeroPremiumFunc]]]
+    PremiumFuncs_init = []
+    for t in range(60):
+        PremiumFuncBase_t = []
+        for z in range(ContractCount):
+            PremiumFuncBase_t.append(ConstantFunction(PremiumArray[t,z]))
+        PremiumFuncs_t = StateCount*[PremiumFuncBase_t]
+        PremiumFuncs_init.append(PremiumFuncs_t)
 
     # Make a market to hold the agents
-    InsuranceMarket = DynInsSelMarket()
+    InsuranceMarket = DynInsSelMarket(ActuarialRule)
     InsuranceMarket.agents = AgentList
     InsuranceMarket.data_moments = data_moments
     InsuranceMarket.moment_weights = moment_weights
     InsuranceMarket.PremiumFuncs_init = PremiumFuncs_init
-    InsuranceMarket.Premiums = Premiums_init
-#    if Params.StaticBool:
-#        InsuranceMarket.max_loops = 1
-#    else:
-#       InsuranceMarket.max_loops = 10
     InsuranceMarket.LoadFac = 1.2 # Make this an input later
+    
+    # Have each agent type in the market inherit the premium functions
+    for this_agent in InsuranceMarket.agents:
+        setattr(this_agent,'PremiumFuncs',PremiumFuncs_init)
+    
     print('I made an insurance market with ' + str(len(InsuranceMarket.agents)) + ' agent types!')
     return InsuranceMarket
 
@@ -640,9 +755,9 @@ def objectiveFunction(Parameters):
     The objective function for the estimation.  Makes and solves a market, then
     returns the weighted sum of moment differences between simulation and data.
     '''
-    EvalType = 1 # Number of times to do a static search for eqbm premiums
+    EvalType = 3 # Number of times to do a static search for eqbm premiums
     InsChoice = 1 # Extent of insurance choice
-    SubsidyTypeCount = 1 # Number of discrete non-zero subsidy levels
+    SubsidyTypeCount = 0 # Number of discrete non-zero subsidy levels
     CRRAtypeCount = 1 # Number of CRRA types (DON'T USE)
     ZeroSubsidyBool = True # Whether to include a zero subsidy type
     TestPremiums = True # Whether to start with the test premium level
@@ -652,17 +767,19 @@ def objectiveFunction(Parameters):
     else:
         PremiumArray = Params.PremiumsLast
     
-    MyMarket = makeMarketFromParams(Parameters,PremiumArray,InsChoice,SubsidyTypeCount,CRRAtypeCount,ZeroSubsidyBool)
+    ContractCounts = [0,1,5] # plus one
+    Premiums_init_short = np.concatenate((np.array([0.]),PremiumArray[0:ContractCounts[InsChoice]]))
+    Premiums_init = np.tile(np.reshape(Premiums_init_short,(1,Premiums_init_short.size)),(40,1))
+    Premiums_init = np.vstack((Premiums_init,np.zeros((20,ContractCounts[InsChoice]+1))))
+    
+    MyMarket = makeMarketFromParams(Parameters,ageHealthRatedActuarialRule,Premiums_init,InsChoice,SubsidyTypeCount,CRRAtypeCount,ZeroSubsidyBool)
+    MyMarket.Premiums = Premiums_init_short
     multiThreadCommands(MyMarket.agents,['update()','makeShockHistory()'])
     MyMarket.getIncomeQuintiles()
     multiThreadCommandsFake(MyMarket.agents,['makeIncBoolArray()'])
     
-    solve_commands = ['solve()']
-    sim_commands = ['initializeSim()','simulate()','postSim()']
-    all_commands = solve_commands + sim_commands
-    
     if EvalType == 0:
-        multiThreadCommands(MyMarket.agents,solve_commands)
+        multiThreadCommands(MyMarket.agents,['solve()'])
     else:
         MyMarket.max_loops = EvalType
         MyMarket.solve()

@@ -179,8 +179,8 @@ def ageHealthRatedActuarialRule(self,ExpInsPay,ExpBuyers):
     None
     '''
     #HealthStateGroups = [[0],[1],[2],[3],[4]]
-    #HealthStateGroups = [[0,1],[2,3,4]]
-    HealthStateGroups = [[0,1,2,3,4]]
+    HealthStateGroups = [[0,1],[2,3,4]]
+    #HealthStateGroups = [[0,1,2,3,4]]
     GroupCount = len(HealthStateGroups)
     AgeCount = 40
     
@@ -245,7 +245,7 @@ def ageRatedActuarialRule(self,ExpInsPay,ExpBuyers):
     -------
     None
     '''
-    AgeRatingFunc = lambda x : (np.exp(x/40.*1.8)-1.)/(np.exp(1.8)-1.)
+    AgeRatingFunc = lambda x : (np.exp(x/40.*3.0)-1.)/(np.exp(3.0)-1.)
     AgeBandLimit = 5.0
     AgeCount = 40
     
