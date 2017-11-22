@@ -490,7 +490,7 @@ if __name__ == '__main__':
     plt.show()
     
     # Plot model fit of mortality by age
-    plt.plot(X[2].transpose())
+    plt.plot(X[2])
     plt.plot(Data.MortByAge,'.k')
     plt.ylabel('Mortality probability')
     plt.show()
@@ -533,6 +533,12 @@ if __name__ == '__main__':
     plt.plot(X[6][1,:,:].transpose())
     plt.plot(Data.HealthBySexHealthAge[1,:,:].transpose(),'.k')
     plt.ylabel('Health profiles by health tertile, men')
+    plt.show()
+    
+    # Plot model fit of mean health by income and age
+    plt.plot(X[10].transpose())
+    plt.plot(Data.HealthByIncAge.transpose(),'--')
+    plt.ylabel('Health profiles by income quintile')
     plt.show()
     
     # Plot model fit of standard deviation of change in health by age
@@ -602,7 +608,7 @@ if __name__ == '__main__':
 
 
 #    # Estimate some (or all) of the model parameters
-#    which_indices = np.array([27,28,29,30,31,32])
+#    which_indices = np.array([0,1,5,6,7])
 #    which_bool = np.zeros(33,dtype=bool)
 #    which_bool[which_indices] = True
 #    estimated_params = minimizeNelderMead(objectiveFunctionWrapper,Params.test_param_vec,verbose=True,which_vars=which_bool)

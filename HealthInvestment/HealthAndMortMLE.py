@@ -122,7 +122,7 @@ idx = np.arange(obs)
 N = np.sum(cohort_data <= 15)
 
 # Make an array of age and sex
-age_data = 11 + np.tile(np.reshape(np.arange(7),(7,1)),(1,obs)) - np.tile(np.reshape(cohort_data,(1,obs)),(7,1))
+age_data = 12 + np.tile(np.reshape(np.arange(7),(7,1)),(1,obs)) - np.tile(np.reshape(cohort_data,(1,obs)),(7,1))
 sex_big_data = np.tile(np.reshape(sex_data,(1,obs)),(7,1))
 
 # Choose the data to be used in the health transition and mortality MLEs
@@ -145,7 +145,7 @@ h_temp = HealthNext_trans - 0.000001
 HealthNextBot = np.floor(h_temp*100)/100
 HealthNextTop = np.ceil(h_temp*100)/100
 HealthNextBot[HealthNextBot == 0.] = -np.inf
-HealthNextTop[HealthNextBot == 1.] = np.inf
+HealthNextTop[HealthNextTop == 1.] = np.inf
 
 # Select the data for the mortality MLE (probit)
 HealthNow_mort = h_data[:7,:][UseForMortality]

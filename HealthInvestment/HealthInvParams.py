@@ -133,14 +133,14 @@ basic_estimation_dict.update(grid_size_params)
 
 # Make a test parameter vector
 test_param_vec = np.array([
-    1.7,                # 0 CRRA
-    0.8726,             # 1 DiscFac
+    0.925379629494,     # 0 CRRA
+    0.939130246082,     # 1 DiscFac
     6.0,                # 2 MedCurve
     0.8,                # 3 LifeUtility
     -0.5,               # 4 MargUtilityShift
-    0.153,              # 5 Cfloor
-    1.82,               # 6 Bequest0
-    1.17,               # 7 Bequest1
+    0.318118952621,     # 5 Cfloor
+    1.12864654388,      # 6 Bequest0
+    1.68380627955,      # 7 Bequest1
     -1.25,              # 8 MedShkMean0
     -0.5,               # 9 MedShkMeanSex
     0.10,               # 10 MedShkMeanAge
@@ -149,24 +149,40 @@ test_param_vec = np.array([
     -3.0,               # 13 MedShkMeanHealthSq
     2.25,               # 14 MedShkStd0
     -0.2,               # 15 MedShkStd1
-    0.0443444467755,    # 16 HealthNext0
-    -0.00405556530728,  # 17 HealthNextSex
-    -0.00222782686958,  # 18 HealthNextAge
-    -6.26452935747e-05, # 19 HealthNextAgeSq
-    0.861973085897,     # 20 HealthNextHealth
-    0.0509161635,       # 21 HealthNextHealthSq
-    0.1522,             # 22 HealthShkStd0
-    -0.0437,            # 23 HealthShkStd1
+    0.0751267734165,    # 16 HealthNext0
+    0.000652372782436,  # 17 HealthNextSex
+    -0.00318214151265,  # 18 HealthNextAge
+    -8.06904135285e-05, # 19 HealthNextAgeSq
+    0.712442283389,     # 20 HealthNextHealth
+    0.192813117089,     # 21 HealthNextHealthSq
+    0.145500758249,     # 22 HealthShkStd0
+    -0.0420576397446,   # 23 HealthShkStd1
     0.00,               # 24 HealthProd0
     0.000,              # 25 HealthProd1
     0.000,              # 26 HealthProd2
-    -0.440000438868,    # 27 Mortality0
-    0.262746178082,     # 28 MortalitySex
-    -0.0431778012882,   # 29 MortalityAge
-    0.00757117387978,   # 30 MortalityAgeSq
-    -2.000357327,       # 31 MortalityHealth
-    -0.0                # 32 MortalityHealthSq
+    -0.560893044685,    # 27 Mortality0
+    0.322114494221,     # 28 MortalitySex
+    0.00255647243691,   # 29 MortalityAge
+    0.00499450352754,   # 30 MortalityAgeSq
+    -1.95133175026,     # 31 MortalityHealth
+    -0.0665321815635    # 32 MortalityHealthSq
     ])
+    
+#    -0.440000438868,    # 27 Mortality0
+#    0.262746178082,     # 28 MortalitySex
+#    -0.0431778012882,   # 29 MortalityAge
+#    0.00757117387978,   # 30 MortalityAgeSq
+#    -2.000357327,       # 31 MortalityHealth
+#    -0.0                # 32 MortalityHealthSq
+    
+#    0.0443444467755,    # 16 HealthNext0
+#    -0.00405556530728,  # 17 HealthNextSex
+#    -0.00222782686958,  # 18 HealthNextAge
+#    -6.26452935747e-05, # 19 HealthNextAgeSq
+#    0.861973085897,     # 20 HealthNextHealth
+#    0.0509161635,       # 21 HealthNextHealthSq
+#    0.1522,             # 22 HealthShkStd0
+#    -0.0437,            # 23 HealthShkStd1
 
 # Make a list of parameter names corresponding to their position in the vector above
 param_names = [
