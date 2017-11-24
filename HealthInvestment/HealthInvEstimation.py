@@ -466,15 +466,20 @@ if __name__ == '__main__':
     plt.plot(X[7][0,:,:].transpose())
     for h in range(3):
         plt.plot(Data.OOPbySexHealthAge[0,h,:],'--')
-    plt.ylabel('Mean OOP medical spending')
+    plt.ylabel('Mean OOP medical spending, women')
     plt.show()
     
     # Plot model fit of mean out of pocket medical spending by age-health for males
     plt.plot(X[7][1,:,:].transpose())
     for h in range(3):
         plt.plot(Data.OOPbySexHealthAge[1,h,:],'--')
-    plt.ylabel('Mean OOP medical spending')
+    plt.ylabel('Mean OOP medical spending, men')
     plt.show()
+    
+    # Plot model fit of mean out of pocket medical spending by age-income
+    plt.plot(X[10].transpose())
+    plt.plot(Data.OOPbyIncAge.transpose(),'.')
+    plt.ylabel('Mean OOP medical spending by income quintile')
 
     # Plot model fit of stdev out of pocket medical spending by age
     plt.plot(X[1])
@@ -499,14 +504,14 @@ if __name__ == '__main__':
     plt.plot(X[8][0,:,:].transpose())
     for h in range(3):
         plt.plot(Data.MortBySexHealthAge[0,h,:],'.')
-    plt.ylabel('Mortality probability')
+    plt.ylabel('Mortality probability, women')
     plt.show()
     
     # Plot model fit of mortality by age and health for males
     plt.plot(X[8][1,:,:].transpose())
     for h in range(3):
         plt.plot(Data.MortBySexHealthAge[1,h,:],'.')
-    plt.ylabel('Mortality probability')
+    plt.ylabel('Mortality probability, men')
     plt.show()
 
     # Plot model fit of wealth by age and income quintile
@@ -608,7 +613,7 @@ if __name__ == '__main__':
 
 
 #    # Estimate some (or all) of the model parameters
-#    which_indices = np.array([0,1,5,6,7])
+#    which_indices = np.array([8,9,10,11,12,13,14,15])
 #    which_bool = np.zeros(33,dtype=bool)
 #    which_bool[which_indices] = True
 #    estimated_params = minimizeNelderMead(objectiveFunctionWrapper,Params.test_param_vec,verbose=True,which_vars=which_bool)

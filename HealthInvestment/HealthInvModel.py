@@ -867,7 +867,7 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         ExpHealthNextFunc = []
         ExpHealthNextInvFunc = []
         for t in range(self.T_cycle):
-            Age = t*1
+            Age = t
             theta0 = self.Mortality0 + self.Sex*self.MortalitySex + self.MortalityAge*Age + self.MortalityAgeSq*Age**2
             theta1 = self.MortalityHealth
             theta2 = self.MortalityHealthSq
@@ -1264,7 +1264,10 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         N = np.sum(these)
         
         MortShkNow = drawNormal(N,seed=self.RNG.randint(0,2**31-1))
-        CritShk = self.LivPrbFunc[t](self.HlvlNow[these])
+        if t > 0: # Draw on LivPrbFunc from *previous* age into this age
+            CritShk = self.LivPrbFunc[t-1](self.HlvlNow[these])
+        else: # Shouldn't be any agents yet, but just in case...
+            CritShk = np.ones(N) - np.inf
         kill = MortShkNow < CritShk
         just_died = np.zeros(self.AgentCount,dtype=bool)
         just_died[these] = kill

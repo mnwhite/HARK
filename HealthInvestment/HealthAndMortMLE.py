@@ -8,6 +8,7 @@ import os
 import csv
 import numpy as np
 from scipy.stats import norm
+import matplotlib.pyplot as plt
 sys.path.insert(0,'../')
 sys.path.insert(0,'./Data/')
 
@@ -122,7 +123,7 @@ idx = np.arange(obs)
 N = np.sum(cohort_data <= 15)
 
 # Make an array of age and sex
-age_data = 12 + np.tile(np.reshape(np.arange(7),(7,1)),(1,obs)) - np.tile(np.reshape(cohort_data,(1,obs)),(7,1))
+age_data = 11 + np.tile(np.reshape(np.arange(7),(7,1)),(1,obs)) - np.tile(np.reshape(cohort_data,(1,obs)),(7,1))
 sex_big_data = np.tile(np.reshape(sex_data,(1,obs)),(7,1))
 
 # Choose the data to be used in the health transition and mortality MLEs
@@ -155,6 +156,9 @@ AgeSq_mort = Age_mort**2
 Sex_mort = sex_big_data[UseForMortality]
 Died_mort = h_data[1:,:][UseForMortality] == 0.
 Lived_mort = np.logical_not(Died_mort)
+
+
+    
 
 # Define the log likelihood function for the mortality probit
 def MortalityLL(params):
@@ -231,11 +235,10 @@ if __name__ == '__main__':
     import HealthInvParams as Params
     from time import clock
     from copy import copy
-    import matplotlib.pyplot as plt
     from HARKestimation import minimizeNelderMead
     
-    estimate_mortality = False
-    estimate_health_trans = True
+    estimate_mortality = True
+    estimate_health_trans = False
     
     mort_test_params = Params.test_param_vec[27:33]
     trans_test_params = Params.test_param_vec[16:24]
@@ -271,6 +274,32 @@ if __name__ == '__main__':
         estimated_params = minimizeNelderMead(NegMortLL,mort_test_params,verbose=True,which_vars=which_bool)
         for i in which_indices.tolist():
             print(Params.param_names[i+27] + ' = ' + str(estimated_params[i]))
+            
+        # Unpack the parameters
+        Mortality0 = estimated_params[0]
+        MortalitySex = estimated_params[1]
+        MortalityAge = estimated_params[2]
+        MortalityAgeSq = estimated_params[3]
+        MortalityHealth = estimated_params[4]
+        MortalityHealthSq = estimated_params[5]
+        
+        # Calculate the Z value of the mortality process
+        Z = Mortality0 + Sex_mort*MortalitySex + Age_mort*MortalityAge + AgeSq_mort*MortalityAgeSq + HealthNow_mort*MortalityHealth + HealthSqNow_mort*MortalityHealthSq
+    
+        # Calculate the predicted probability of observed mortality event given the Z score
+        PredictedMortProb = norm.cdf(Z)
+                    
+        death_prob_data = np.zeros(15)
+        death_prob_model = np.zeros(15)
+        for a in range(15):
+            these = Age_mort == a
+            data_deaths = float(np.sum(Died_mort[these]))
+            data_total = float(np.sum(these))
+            death_prob_data[a] = data_deaths/data_total
+            death_prob_model[a] = np.mean(PredictedMortProb[these])
+        plt.plot(death_prob_data,'.k')
+        plt.plot(death_prob_model,'-')
+        plt.show()
             
             
     if estimate_health_trans:
