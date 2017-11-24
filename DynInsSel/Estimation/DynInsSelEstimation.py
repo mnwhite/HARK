@@ -755,9 +755,9 @@ def objectiveFunction(Parameters):
     The objective function for the estimation.  Makes and solves a market, then
     returns the weighted sum of moment differences between simulation and data.
     '''
-    EvalType = 3 # Number of times to do a static search for eqbm premiums
+    EvalType = 2 # Number of times to do a static search for eqbm premiums
     InsChoice = 1 # Extent of insurance choice
-    SubsidyTypeCount = 0 # Number of discrete non-zero subsidy levels
+    SubsidyTypeCount = 1 # Number of discrete non-zero subsidy levels
     CRRAtypeCount = 1 # Number of CRRA types (DON'T USE)
     ZeroSubsidyBool = True # Whether to include a zero subsidy type
     TestPremiums = True # Whether to start with the test premium level
@@ -772,7 +772,7 @@ def objectiveFunction(Parameters):
     Premiums_init = np.tile(np.reshape(Premiums_init_short,(1,Premiums_init_short.size)),(40,1))
     Premiums_init = np.vstack((Premiums_init,np.zeros((20,ContractCounts[InsChoice]+1))))
     
-    MyMarket = makeMarketFromParams(Parameters,ageHealthRatedActuarialRule,Premiums_init,InsChoice,SubsidyTypeCount,CRRAtypeCount,ZeroSubsidyBool)
+    MyMarket = makeMarketFromParams(Parameters,flatActuarialRule,Premiums_init,InsChoice,SubsidyTypeCount,CRRAtypeCount,ZeroSubsidyBool)
     MyMarket.Premiums = Premiums_init_short
     multiThreadCommands(MyMarket.agents,['update()','makeShockHistory()'])
     MyMarket.getIncomeQuintiles()

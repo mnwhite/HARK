@@ -39,7 +39,10 @@ def flatActuarialRule(self,ExpInsPay,ExpBuyers):
     TotalBuyers = np.sum(ExpBuyersX[0:40,:,:,:],axis=(0,1,3))
     AvgInsPay   = TotalInsPay/TotalBuyers
     DampingFac = 0.2
-    NewPremiums = (1.0-DampingFac)*self.LoadFac*AvgInsPay + DampingFac*self.Premiums
+    try:
+        NewPremiums = (1.0-DampingFac)*self.LoadFac*AvgInsPay + DampingFac*self.Premiums
+    except:
+        NewPremiums = self.LoadFac*AvgInsPay
     NewPremiums[0] = 0.0 # First contract is always free
     print(NewPremiums)
     print(TotalBuyers/np.sum(TotalBuyers))
@@ -82,7 +85,10 @@ def exclusionaryActuarialRule(self,ExpInsPay,ExpBuyers):
     TotalBuyers = np.sum(ExpBuyersX[0:40,:,:,:],axis=(0,1,3))
     AvgInsPay   = TotalInsPay/TotalBuyers
     DampingFac = 0.2
-    NewPremiums = (1.0-DampingFac)*self.LoadFac*AvgInsPay + DampingFac*self.Premiums
+    try:
+        NewPremiums = (1.0-DampingFac)*self.LoadFac*AvgInsPay + DampingFac*self.Premiums
+    except:
+        NewPremiums = self.LoadFac*AvgInsPay    
     NewPremiums[0] = 0.0 # First contract is always free
     print(NewPremiums)
     print(TotalBuyers/np.sum(TotalBuyers))
@@ -119,9 +125,10 @@ def healthRatedActuarialRule(self,ExpInsPay,ExpBuyers):
     -------
     None
     '''
-    HealthStateGroups = [[0],[1],[2],[3],[4]]
+    #HealthStateGroups = [[0],[1],[2],[3],[4]]
     #HealthStateGroups = [[0,1],[2,3,4]]
     #HealthStateGroups = [[0,1,2,3,4]]
+    HealthStateGroups = self.HealthStateGroups
     GroupCount = len(HealthStateGroups)
     
     StateCount = ExpInsPay[0].shape[1]
@@ -179,8 +186,9 @@ def ageHealthRatedActuarialRule(self,ExpInsPay,ExpBuyers):
     None
     '''
     #HealthStateGroups = [[0],[1],[2],[3],[4]]
-    HealthStateGroups = [[0,1],[2,3,4]]
+    #HealthStateGroups = [[0,1],[2,3,4]]
     #HealthStateGroups = [[0,1,2,3,4]]
+    HealthStateGroups = self.HealthStateGroups
     GroupCount = len(HealthStateGroups)
     AgeCount = 40
     
@@ -246,7 +254,7 @@ def ageRatedActuarialRule(self,ExpInsPay,ExpBuyers):
     None
     '''
     AgeRatingFunc = lambda x : (np.exp(x/40.*3.0)-1.)/(np.exp(3.0)-1.)
-    AgeBandLimit = 5.0
+    AgeBandLimit = self.AgeBandLimit
     AgeCount = 40
     
     StateCount = ExpInsPay[0].shape[1]
@@ -272,7 +280,7 @@ def ageRatedActuarialRule(self,ExpInsPay,ExpBuyers):
     AvgInsPay = TotalInsPay/TotalBuyers
     print(TotalBuyers/np.sum(TotalBuyers))
     
-    AgeRatingScale = 1.0 + AgeBandLimit*AgeRatingFunc(np.arange(AgeCount,dtype=float))
+    AgeRatingScale = 1.0 + (AgeBandLimit-1.0)*AgeRatingFunc(np.arange(AgeCount,dtype=float))
     for z in range(1,MaxContracts):
         def tempFunc(BasePremium):
             PremiumVec = BasePremium*AgeRatingScale

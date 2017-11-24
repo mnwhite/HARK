@@ -15,7 +15,7 @@ from HARKutilities import CRRAutility, CRRAutilityP, CRRAutilityPP, CRRAutilityP
 from HARKinterpolation import LinearInterp, CubicInterp, BilinearInterpOnInterp1D, LinearInterpOnInterp1D, \
                               LinearInterpOnInterp2D,UpperEnvelope, TrilinearInterp, ConstantFunction, CompositeFunc2D, \
                               VariableLowerBoundFunc2D, VariableLowerBoundFunc3D, VariableLowerBoundFunc3Dalt, \
-                              BilinearInterp, CompositeFunc3D, IdentityFunction
+                              BilinearInterp, CompositeFunc3D, IdentityFunction, LowerEnvelope2D
 from HARKsimulation import drawUniform, drawLognormal, drawMeanOneLognormal, drawDiscrete, drawBernoulli
 from ConsMedModel import MedShockPolicyFunc, MedShockConsumerType
 from ConsIndShockModel import ValueFunc
@@ -1493,12 +1493,15 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
             for h in range(StateCount):
                 ContractCount = len(self.ContractList[t][h])
                 for z in range(ContractCount):
-                    PremiumFunc = self.PremiumFuncs[t][h][z]
+                    if z == 0:
+                        PremiumFunc = self.UninsuredPremiumFunc
+                    else:
+                        PremiumFunc = self.PremiumFuncs[t][h][z]
                     if PremiumFunc.__class__.__name__ == 'ConstantFunction':
                         NetPremium = np.maximum(PremiumFunc.value - (t < T_retire)*self.PremiumSubsidy, 0.0)
                         self.ContractList[t][h][z].Premium = ConstantFunction(NetPremium)
-                    else:
-                        raise TypeError("installPremiumFuncs can't yet handle non-ConstantFunctions!")
+                    else: # If not a constant function, forget PremiumSubsidy and just install as is
+                        self.ContractList[t][h][z].Premium = PremiumFunc
                         
         # Restore the original flow of time
         if not time_orig:
@@ -1737,8 +1740,34 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         self.cEffFuncListAll = cEffFuncList
         self.GfuncListAll = GfuncList
         self.CritShkFuncListAll = CritShkFuncList
+        
+        
+    def updateUninsuredPremium(self,MandateTaxRate=0.):
+        '''
+        Create the attribute UninsuredPremiumFunc, a function that will be used
+        as the "premium" for being uninsured.  It is installed automatically by
+        installPremiumFuncs, which is called by preSolve.  Will make (effectively)
+        a free uninsured plan by default, but can be used for individual mandate.
+        
+        Parameters
+        ----------
+        MandateTaxRate : float
+            Percentage of permanent income that must be paid in order to be uninsured.
+            Defaults to zero.  Actual "premium" never exceeds 20% of market resources.
             
-    
+        Returns
+        -------
+        None
+        '''
+        X = MandateTaxRate # For easier typing
+        mLvlGrid = np.array([0.,100.])
+        pLvlGrid = np.array([0.,100.])
+        pLvlBasedPenalty = BilinearInterp(np.array([[0.,X*100.],[0.,X*100.]]),mLvlGrid,pLvlGrid)
+        mLvlBasedPenalty = BilinearInterp(np.array([[0.,0.],[20.,20.]]),mLvlGrid,pLvlGrid)
+        #ConstantPenalty = ConstantFunction(0.07) # Could use this later
+        self.UninsuredPremiumFunc = LowerEnvelope2D(pLvlBasedPenalty,mLvlBasedPenalty)
+        
+               
     def updateSolutionTerminal(self):
         '''
         Solve for the terminal period solution.  For the sake of simplicity, assume that the last
@@ -2069,6 +2098,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         self.makeMasterbFromxFuncs()
         self.makeMasterDfuncs()
         self.distributeConstructedFuncs()
+        self.updateUninsuredPremium()
         
     def preSolve(self):
         self.update()
@@ -2389,7 +2419,10 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
                 vNvrs_array = np.zeros((N,Z))
                 AV_array = np.zeros((N,Z))
                 for z in range(Z):
-                    Premium = np.maximum(self.PremiumFuncs[t][j][z](mLvl,pLvl) - self.PremiumSubsidy, 0.0) # net premium
+                    if z > 0:
+                        Premium = np.maximum(self.PremiumFuncs[t][j][z](mLvl,pLvl) - self.PremiumSubsidy, 0.0) # net premium
+                    else:
+                        Premium = self.UninsuredPremiumFunc(mLvl,pLvl)
                     mLvl_temp = mLvl - Premium
                     Unaffordable = mLvl_temp < 0.
                     AV_array[:,z] = self.AVfunc[t][j][z](mLvl_temp,pLvl)
