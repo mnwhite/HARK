@@ -477,9 +477,10 @@ if __name__ == '__main__':
     plt.show()
     
     # Plot model fit of mean out of pocket medical spending by age-income
-    plt.plot(X[10].transpose())
+    plt.plot(X[11].transpose())
     plt.plot(Data.OOPbyIncAge.transpose(),'.')
     plt.ylabel('Mean OOP medical spending by income quintile')
+    plt.show()
 
     # Plot model fit of stdev out of pocket medical spending by age
     plt.plot(X[1])
@@ -613,7 +614,7 @@ if __name__ == '__main__':
 
 
 #    # Estimate some (or all) of the model parameters
-#    which_indices = np.array([8,9,10,11,12,13,14,15])
+#    which_indices = np.array([16,17,18,19,20,21,22,23])
 #    which_bool = np.zeros(33,dtype=bool)
 #    which_bool[which_indices] = True
 #    estimated_params = minimizeNelderMead(objectiveFunctionWrapper,Params.test_param_vec,verbose=True,which_vars=which_bool)
