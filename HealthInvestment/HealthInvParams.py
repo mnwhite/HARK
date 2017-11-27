@@ -133,30 +133,30 @@ basic_estimation_dict.update(grid_size_params)
 
 # Make a test parameter vector
 test_param_vec = np.array([
-    0.925379629494,     # 0 CRRA
-    0.939130246082,     # 1 DiscFac
-    4.96720043459,      # 2 MedCurve
+    0.930017960426,     # 0 CRRA
+    0.941114911416,     # 1 DiscFac
+    4.99200903857,      # 2 MedCurve
     0.8,                # 3 LifeUtility
     -0.5,               # 4 MargUtilityShift
-    0.318118952621,     # 5 Cfloor
-    1.12864654388,      # 6 Bequest0
-    1.68380627955,      # 7 Bequest1
-    -0.831147491302,    # 8 MedShkMean0
-    -0.167087280266,    # 9 MedShkMeanSex
-    0.189957272924,     # 10 MedShkMeanAge
-    -0.00432673570041,  # 11 MedShkMeanAgeSq
-    -1.5313660123,      # 12 MedShkMeanHealth
-    -3.33471516371,     # 13 MedShkMeanHealthSq
-    2.29091567868,      # 14 MedShkStd0
-    -0.290673386815,    # 15 MedShkStd1
-    0.0741301856645,    # 16 HealthNext0
-    0.000663495021682,  # 17 HealthNextSex
-    -0.00317121166049,  # 18 HealthNextAge
-    -8.26565217832e-05, # 19 HealthNextAgeSq
-    0.714012774776,     # 20 HealthNextHealth
-    0.193623187072,     # 21 HealthNextHealthSq
-    0.149207672193,     # 22 HealthShkStd0
-    -0.0415559258355,   # 23 HealthShkStd1
+    0.322698674023,     # 5 Cfloor
+    1.13434385588,      # 6 Bequest0
+    1.69223467631,      # 7 Bequest1
+    -0.835340554283,    # 8 MedShkMean0
+    -0.167922415399,    # 9 MedShkMeanSex
+    0.190899420958,     # 10 MedShkMeanAge
+    -0.00434846801486,  # 11 MedShkMeanAgeSq
+    -1.5390783741,      # 12 MedShkMeanHealth
+    -3.35144465932,     # 13 MedShkMeanHealthSq
+    2.28683496837,      # 14 MedShkStd0
+    -0.292126838546,    # 15 MedShkStd1
+    0.0744949430233,    # 16 HealthNext0
+    0.000666823326486,  # 17 HealthNextSex
+    -0.00318516515447,  # 18 HealthNextAge
+    -8.23478665001e-05, # 19 HealthNextAgeSq
+    0.71190201807,      # 20 HealthNextHealth
+    0.186603804692,     # 21 HealthNextHealthSq
+    0.148786822625,     # 22 HealthShkStd0
+    -0.0418279671933,   # 23 HealthShkStd1
     0.00,               # 24 HealthProd0
     0.000,              # 25 HealthProd1
     0.000,              # 26 HealthProd2
