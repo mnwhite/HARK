@@ -14,7 +14,7 @@ from HARKutilities import getPercentiles, kernelRegression
 from HARKparallel import multiThreadCommands, multiThreadCommandsFake
 import matplotlib.pyplot as plt
 
-def runCounterfactual(Parameters,Baseline,Counterfactuals):
+def runCounterfactual(Parameters,Baseline,Counterfactuals,PremiumLim):
     '''
     Runs a counterfactual experiment comparing individuals' welfare under two
     actuarial rules.  Constructs a market for the agents to live in, and solves
@@ -34,6 +34,8 @@ def runCounterfactual(Parameters,Baseline,Counterfactuals):
         Specification of the actuarial rule for the "before" state.
     Counterfactuals : [ActuarialSpecification]
         Specification(s) of the actuarial rule for the counterfactual world.
+    PremiumLim : [float,float]
+        Vertical axis limit for counterfactual premium-by-age-health figure.
         
     Returns
     -------
@@ -106,6 +108,7 @@ def runCounterfactual(Parameters,Baseline,Counterfactuals):
             plt.plot(np.arange(25,65),10*PremiumsBefore[1,g,:],'-')
     plt.xlabel('Age')
     plt.ylabel('Annual premium (thousands of USD)')
+    plt.ylim(PremiumLim)
     plt.title('Premiums by age in baseline scenario')
     plt.savefig(FigsDir + 'PremiumsBaseline.pdf')
     plt.show()
@@ -133,7 +136,7 @@ def runCounterfactual(Parameters,Baseline,Counterfactuals):
         plt.xlabel('Age')
         plt.ylabel('Annual premium (thousands of USD)')
         plt.title('Premiums by age, ' + Counterfactual.text)
-        plt.ylim(0.,11.)
+        plt.ylim(PremiumLim)
         plt.savefig(FigsDir + 'Premiums' + Counterfactual.name + '.pdf')
         plt.show()
         
@@ -177,7 +180,7 @@ def runCounterfactual(Parameters,Baseline,Counterfactuals):
     return MyMarket
 
 
-def makeCounterfactualFigures(specification):
+def makeCounterfactualFigures(specification,AgeHealthLim,AgeIncomeLim,IncomeHealthLim):
     '''
     Produces many figures to graphically represent the results of a counterfactual
     experiment and saves them to the folder ../CounterfactualFigures.
@@ -186,6 +189,12 @@ def makeCounterfactualFigures(specification):
     ----------
     specification : ActuarialSpecification
         Counterfactual specification whose figures are to be produced.
+    AgeHealthLim : [float,float]
+        Vertical axis limits for the age-health WTP plot.
+    IncomeAgeLim : [float,float]
+        Vertical axis limits for the income-age WTP plot.
+    IncomeHealthLim : [float,float]
+        Vertical axis limits for the income-health WTP plot.
         
     Returns
     -------
@@ -293,24 +302,49 @@ def makeCounterfactualFigures(specification):
     plt.xlabel('Age')
     plt.ylabel('Willingness-to-pay (% of permanent income)')
     plt.title('Mean willingness-to-pay by age and health, ' + specification.text)
+    plt.legend(labels=['Poor','Fair','Good','Very good','Excellent'],loc=2)
+    plt.ylim(AgeHealthLim)
     plt.savefig(FigsDir + 'WTPbyAgeHealth' + specification.name + '.pdf')
     plt.show()
     
-    # Make a plot of kernel regression of willingness to pay by permanent income and age (in 5 year age blocks)
-    for a in range(8):
-        age_min = a*5
-        age_max = age_min+5
-        these = np.logical_and(np.logical_and(age >= age_min,age < age_max), valid)
+    # Make a plot of kernel regression of willingness to pay by age and income quintile
+    WTPmeanByAgeIncome = np.zeros((T,5)) + np.nan
+    for t in range(T):
+        these = np.logical_and(age == t, valid)
         p_temp = pLvl[these]
-        cuts = getPercentiles(p_temp,percentiles=[0.01,0.99])
-        f = kernelRegression(p_temp,WTP[these],bot=cuts[0],top=20.,N=200,h=0.5)
-        P = np.linspace(cuts[0],20.,200)
-        plt.plot(P*10,f(P)*100,'-')
-    plt.xlabel('Permanent income level (thousands of USD)')
+        WTP_temp = WTP[these]
+        quintile_cuts = getPercentiles(p_temp,percentiles=[0.2,0.4,0.6,0.8])
+        quintiles = np.zeros(np.sum(these),dtype=int)
+        for i in range(4):
+            quintiles[p_temp > quintile_cuts[i]] += 1
+        for i in range(5):
+            those = quintiles==i
+            WTPmeanByAgeIncome[t,i] = np.mean(WTP_temp[those])
+    plt.plot(AgeVec,WTPmeanByAgeIncome*100,'-')
+    plt.xlabel('Age')
     plt.ylabel('Willingness-to-pay (% of permanent income)')
-    plt.title('Mean willingness-to-pay by income and age, ' + specification.text)
+    plt.title('Mean willingness-to-pay by age and income, ' + specification.text)
+    plt.legend(labels=['Poorest quintile','Second quintile','Third quintile','Fourth quintile','Richest quintile'],loc=2)
+    plt.ylim(AgeIncomeLim)
     plt.savefig(FigsDir + 'WTPbyAgeIncome' + specification.name + '.pdf')
     plt.show()
+    
+#    for a in range(4):
+#        age_min = a*10
+#        age_max = age_min+10
+#        these = np.logical_and(np.logical_and(age >= age_min,age < age_max), valid)
+#        p_temp = pLvl[these]
+#        cuts = getPercentiles(p_temp,percentiles=[0.01,0.99])
+#        f = kernelRegression(p_temp,WTP[these],bot=cuts[0],top=20.,N=200,h=0.5)
+#        P = np.linspace(cuts[0],20.,200)
+#        plt.plot(P*10,f(P)*100,'-')
+#    plt.xlabel('Permanent income level (thousands of USD)')
+#    plt.ylabel('Willingness-to-pay (% of permanent income)')
+#    plt.title('Mean willingness-to-pay by income and age, ' + specification.text)
+#    plt.legend(labels=['Age 25-34','Age 35-44','Age 45-54','Age 55-64'],loc=1)
+#    plt.ylim(IncomeAgeLim)
+#    plt.savefig(FigsDir + 'WTPbyAgeIncome' + specification.name + '.pdf')
+#    plt.show()
     
     # Make a plot of kernel regression of willingness to pay by permanent income and health
     for h in range(5):
@@ -323,6 +357,8 @@ def makeCounterfactualFigures(specification):
     plt.xlabel('Permanent income level (thousands of USD)')
     plt.ylabel('Willingness-to-pay (% of permanent income)')
     plt.title('Mean willingness-to-pay by income and health, ' + specification.text)
+    plt.legend(labels=['Poor','Fair','Good','Very good','Excellent'],loc=1)
+    plt.ylim(IncomeHealthLim)
     plt.savefig(FigsDir + 'WTPbyIncomeHealth' + specification.name + '.pdf')
     plt.show()
         
@@ -375,12 +411,12 @@ AgeBandSpecBase = ActuarialSpecification(
                         name = 'AgeBand10x',
                         text = 'age band limit 10x')
 AgeBandSpecs = []
-AgeBandLimits = [10.,9.0,8.0,7.0,6.0,5.0,4.0,3.0,2.0]
+AgeBandLimits = [10.,9.5,9.0,8.5,8.0,7.5,7.0,6.5,6.0,5.5,5.0,4.5,4.0,3.5,3.0,2.5,2.0,1.5]
 for AgeBandLimit in AgeBandLimits:
     NewSpec = copy(AgeBandSpecBase)
     NewSpec.AgeBandLimit= AgeBandLimit
-    NewSpec.name = 'AgeBand' + str(int(AgeBandLimit)) + 'x'
-    NewSpec.text = 'age band limit ' + str(int(AgeBandLimit)) + 'x'
+    NewSpec.name = 'AgeBand' + str(int(AgeBandLimit*10)) + 'x'
+    NewSpec.text = 'age band limit ' + '%.1f' % AgeBandLimit + 'x'
     AgeBandSpecs.append(NewSpec)
 FlatSpec = copy(AgeBandSpecBase)
 FlatSpec.ActuarialRule = flatActuarialRule
@@ -397,7 +433,7 @@ MandateSpecBase = ActuarialSpecification(
                         MandateTax = 0.0,
                         name = 'MandateBaseline',
                         text = 'individual mandate 0%')
-MandateTaxRates = [0.005,0.010,0.015,0.020,0.025,0.030,0.035,0.04,0.045,0.050,0.055,0.060]
+MandateTaxRates = [0.000,0.005,0.010,0.015,0.020,0.025,0.030,0.035,0.04,0.045,0.050,0.055,0.060,0.065,0.070,0.075,0.080,0.085,0.090,0.095,0.100]
 MandateSpecs = []
 for MandateTaxRate in MandateTaxRates:
     NewSpec = copy(MandateSpecBase)
@@ -418,51 +454,52 @@ if __name__ == '__main__':
     # Choose which experiments to work on
     do_health_groups = False
     do_age_bands = False
-    do_mandate_tax = True
+    do_mandate_tax = False
     
     # Choose what kind of work to do
     run_experiments = False
-    make_figures = True
+    make_figures = False
     
     if do_health_groups:
         if run_experiments:
             # Run the health groups experiments
             t_start = clock()
-            MyMarket = runCounterfactual(Params.test_param_vec,BaselineSpec,HealthGroupSpecs)
+            MyMarket = runCounterfactual(Params.test_param_vec,BaselineSpec,HealthGroupSpecs,[0.,42.])
             t_end = clock()
             print('Health groups counterfactual experiment took ' + mystr(t_end-t_start) + ' seconds.')
         
         if make_figures:
             # Make figures for the health groups experiments
             for specification in HealthGroupSpecs:
-                makeCounterfactualFigures(specification)
+                makeCounterfactualFigures(specification,[-5,20],[-5,10],[-5,20])
                 
     
     if do_age_bands:
         if run_experiments:
             # Run the age band limits experiments
             t_start = clock()
-            MyMarket = runCounterfactual(Params.test_param_vec,BaselineSpec,AgeBandSpecs)
+            MyMarket = runCounterfactual(Params.test_param_vec,BaselineSpec,AgeBandSpecs,[0.,17.])
             t_end = clock()
             print('Age band limit counterfactual experiment took ' + mystr(t_end-t_start) + ' seconds.')
             
         if make_figures:
             # Make figures for the age bands experiments
             for specification in AgeBandSpecs:
-                makeCounterfactualFigures(specification)
+                makeCounterfactualFigures(specification,[-20,35],[-11,25],[-5,35])
+
     
     if do_mandate_tax:
         if run_experiments:
             # Run the individual mandate experiments
             t_start = clock()
-            MyMarket = runCounterfactual(Params.test_param_vec,BaselineSpec,MandateSpecs)
+            MyMarket = runCounterfactual(Params.test_param_vec,BaselineSpec,MandateSpecs,[0.,11.])
             t_end = clock()
             print('Individual mandate counterfactual experiment took ' + mystr(t_end-t_start) + ' seconds.')
             
         if make_figures:
             # Make figures for the individual mandate experiments
             for specification in MandateSpecs:
-                makeCounterfactualFigures(specification)
+                makeCounterfactualFigures(specification,[-10,30],[-15,20],[-5,35])
  
     
     

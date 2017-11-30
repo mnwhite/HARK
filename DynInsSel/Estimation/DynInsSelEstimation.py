@@ -921,12 +921,12 @@ if __name__ == '__main__':
     plt.savefig('../Figures/OOPpremiumFitByAge.pdf')
     plt.show()
     
-#    plt.plot(Age[0:40],MyMarket.PremiumStdByAge,'-b')
-#    plt.plot(Age[0:40],MyMarket.data_moments[280:320],'.k')
-#    plt.xlabel('Age')
-#    plt.ylabel('Stdev out-of-pocket premiums paid')
-#    plt.xlim((25,65))
-#    plt.show()
+    plt.plot(Age[0:40],MyMarket.PremiumStdByAge,'-b')
+    plt.plot(Age[0:40],MyMarket.data_moments[280:320],'.k')
+    plt.xlabel('Age')
+    plt.ylabel('Stdev out-of-pocket premiums paid')
+    plt.xlim((25,65))
+    plt.show()
     
     plt.plot(Age[0:40],MyMarket.ZeroSubsidyRateByAge,'-b')
     plt.plot(Age[0:40],MyMarket.data_moments[200:240],'.k')
@@ -968,11 +968,25 @@ if __name__ == '__main__':
 
 #    # This block of code is for testing one type of agent
 #    t_start = clock()
-#    InsChoice = 1
-#    SubsidyTypeCount = 1
-#    CRRAtypeCount = 1
-#    ZeroSubsidyBool = False
-#    MyMarket = makeMarketFromParams(Params.test_param_vec,np.array([0.5, 0.0, 0.0, 0.0, 0.0]),InsChoice,SubsidyTypeCount,CRRAtypeCount,ZeroSubsidyBool)
+#    EvalType = 1 # Number of times to do a static search for eqbm premiums
+#    InsChoice = 1 # Extent of insurance choice
+#    SubsidyTypeCount = 0 # Number of discrete non-zero subsidy levels
+#    CRRAtypeCount = 1 # Number of CRRA types (DON'T USE)
+#    ZeroSubsidyBool = True # Whether to include a zero subsidy type
+#    TestPremiums = True # Whether to start with the test premium level
+#    
+#    if TestPremiums:
+#        PremiumArray = np.array([0.3260, 0.0, 0.0, 0.0, 0.0])
+#    else:
+#        PremiumArray = Params.PremiumsLast
+#    
+#    ContractCounts = [0,1,5] # plus one
+#    Premiums_init_short = np.concatenate((np.array([0.]),PremiumArray[0:ContractCounts[InsChoice]]))
+#    Premiums_init = np.tile(np.reshape(Premiums_init_short,(1,Premiums_init_short.size)),(40,1))
+#    Premiums_init = np.vstack((Premiums_init,np.zeros((20,ContractCounts[InsChoice]+1))))
+#    
+#    MyMarket = makeMarketFromParams(Params.test_param_vec,flatActuarialRule,Premiums_init,InsChoice,SubsidyTypeCount,CRRAtypeCount,ZeroSubsidyBool)
+#    MyMarket.Premiums = Premiums_init_short
 #    multiThreadCommands(MyMarket.agents,['update()','makeShockHistory()'])
 #    MyMarket.getIncomeQuintiles()
 #    multiThreadCommandsFake(MyMarket.agents,['makeIncBoolArray()'])
@@ -993,7 +1007,7 @@ if __name__ == '__main__':
 #       
 #    t = 0
 #    p = 3.0    
-#    h = 3        
+#    h = 4        
 #    MedShk = 1.0e-1
 #    z = 0
 #    
@@ -1005,7 +1019,7 @@ if __name__ == '__main__':
 #    MyType.plotMedFuncByMedShk(t,h,z,p)
 #    MyType.plotxFuncByMedShk(t,h,z,p)
 #    MyType.plotcEffFuncByMedShk(t,h,z,p)
-#    
+    
 #    MyMarket.reset()
 #    MyMarket.sow()
 #    MyType.calcExpInsPayByContract()

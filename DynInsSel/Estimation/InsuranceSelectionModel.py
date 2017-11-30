@@ -2447,7 +2447,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         self.ExpBuyers = ExpBuyers
     
     
-    def plotvFunc(self,t,p,mMin=0.0,mMax=10.0,H=None,decurve=True):
+    def plotvFunc(self,t,p,mMin=0.0,mMax=10.0,H=None,decurve=True,savename=None):
         mLvl = np.linspace(mMin,mMax,200)
         if H is None:
             H = range(len(self.LivPrb[0]))
@@ -2462,9 +2462,11 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
             plt.ylabel('Pseudo-inverse value uinv(v(mLvl))')
         else:
             plt.ylabel('Value v(mLvl)')
+        if savename is not None:
+            plt.savefig('../Figures/' + savename + '.pdf')
         plt.show()
         
-    def plotvPfunc(self,t,p,mMin=0.0,mMax=10.0,H=None,decurve=True):
+    def plotvPfunc(self,t,p,mMin=0.0,mMax=10.0,H=None,decurve=True,savename=None):
         mLvl = np.linspace(mMin,mMax,200)
         if H is None:
             H = range(len(self.LivPrb[0]))
@@ -2479,22 +2481,26 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
             plt.ylabel('Pseudo-inverse marg value uPinv(vP(mLvl))')
         else:
             plt.ylabel('Marginal value vP(mLvl)')
+        if savename is not None:
+            plt.savefig('../Figures/' + savename + '.pdf')
         plt.show()
         
-    def plotvFuncByContract(self,t,h,p,mMin=0.0,mMax=10.0,Z=None):
+    def plotvFuncByContract(self,t,h,p,mMin=0.0,mMax=10.0,Z=None,savename=None):
         print('Pseudo-inverse value function by contract:')
         mLvl = np.linspace(mMin,mMax,200)
         if Z is None:
             Z = range(len(self.solution[t].vFuncByContract[h]))
         for z in Z:
             f = lambda x : self.solution[t].vFuncByContract[h][z].func(x,p*np.ones_like(x))
-            Prem = self.ContractList[t][h][z].Premium(0)
+            Prem = self.ContractList[t][h][z].Premium(0.,0.) # Need to fix this if want to see IM in action
             plt.plot(mLvl+Prem,f(mLvl))
-        f = lambda x : self.solution[t].vFunc[h].func(x,p*np.ones_like(x))
-        plt.plot(mLvl,f(mLvl),'-k')
+        #f = lambda x : self.solution[t].vFunc[h].func(x,p*np.ones_like(x))
+        #plt.plot(mLvl,f(mLvl),'-k')
         plt.xlabel('Market resources mLvl')
         plt.ylabel('Contract pseudo-inverse value uinv(v(mLvl))')
         plt.ylim(ymin=0.0)
+        if savename is not None:
+            plt.savefig('../Figures/' + savename + '.pdf')
         plt.show()
         
     def plotcFuncByContract(self,t,h,p,MedShk,mMin=0.0,mMax=10.0,Z=None):
@@ -2503,27 +2509,27 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
             Z = range(len(self.solution[t].policyFunc[h]))
         for z in Z:
             cLvl,MedLvl = self.solution[t].policyFunc[h][z](mLvl,p*np.ones_like(mLvl),MedShk*np.ones_like(mLvl))
-            #plt.plot(mLvl[:-1],(cLvl[1:]-cLvl[0:-1])/(mLvl[1]-mLvl[0]))
             plt.plot(mLvl,cLvl)
         plt.xlabel('Market resources mLvl')
         plt.ylabel('Consumption c(mLvl)')
         plt.ylim(ymin=0.0)
         plt.show()
         
-    def plotMedFuncByContract(self,t,h,p,MedShk,mMin=0.0,mMax=10.0,Z=None):
+    def plotMedFuncByContract(self,t,h,p,MedShk,mMin=0.0,mMax=10.0,Z=None,savename=None):
         mLvl = np.linspace(mMin,mMax,200)
         if Z is None:
             Z = range(len(self.solution[t].policyFunc[h]))
         for z in Z:
             cLvl,MedLvl = self.solution[t].policyFunc[h][z](mLvl,p*np.ones_like(mLvl),MedShk*np.ones_like(mLvl))
-            #plt.plot(mLvl[:-1],(MedLvl[1:]-MedLvl[0:-1])/(mLvl[1]-mLvl[0]))
             plt.plot(mLvl,MedLvl)
         plt.xlabel('Market resources mLvl')
         plt.ylabel('Medical care Med(mLvl)')
         plt.ylim(ymin=0.0)
+        if savename is not None:
+            plt.savefig('../Figures/' + savename + '.pdf')
         plt.show()
         
-    def plotcFuncByMedShk(self,t,h,z,p,mMin=0.0,mMax=10.0,MedShkSet=None):        
+    def plotcFuncByMedShk(self,t,h,z,p,mMin=0.0,mMax=10.0,MedShkSet=None,savename=None):        
         mLvl = np.linspace(mMin,mMax,200)
         if MedShkSet is None:
             MedShkSet = self.MedShkDstn[t][h][1]
@@ -2533,9 +2539,11 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         plt.xlabel('Market resources mLvl')
         plt.ylabel('Consumption c(mLvl)')
         plt.ylim(ymin=0.0)
+        if savename is not None:
+            plt.savefig('../Figures/' + savename + '.pdf')
         plt.show()
         
-    def plotMedFuncByMedShk(self,t,h,z,p,mMin=0.0,mMax=10.0,MedShkSet=None):        
+    def plotMedFuncByMedShk(self,t,h,z,p,mMin=0.0,mMax=10.0,MedShkSet=None,savename=None):        
         mLvl = np.linspace(mMin,mMax,200)
         if MedShkSet is None:
             MedShkSet = self.MedShkDstn[t][h][1]
@@ -2545,9 +2553,11 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         plt.xlabel('Market resources mLvl')
         plt.ylabel('Medical care Med(mLvl)')
         plt.ylim(ymin=0.0)
+        if savename is not None:
+            plt.savefig('../Figures/' + savename + '.pdf')
         plt.show()
         
-    def plotxFuncByMedShk(self,t,h,z,p,mMin=0.0,mMax=10.0,MedShkSet=None):        
+    def plotxFuncByMedShk(self,t,h,z,p,mMin=0.0,mMax=10.0,MedShkSet=None,savename=None):        
         mLvl = np.linspace(mMin,mMax,200)
         if MedShkSet is None:
             MedShkSet = self.MedShkDstn[t][h][1]
@@ -2557,9 +2567,11 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         plt.xlabel('Market resources mLvl')
         plt.ylabel('Expenditure x(mLvl)')
         plt.ylim(ymin=0.0)
+        if savename is not None:
+            plt.savefig('../Figures/' + savename + '.pdf')
         plt.show()
         
-    def plotcEffFuncByMedShk(self,t,h,z,p,mMin=0.0,mMax=10.0,MedShkSet=None):        
+    def plotcEffFuncByMedShk(self,t,h,z,p,mMin=0.0,mMax=10.0,MedShkSet=None,savename=None):        
         mLvl = np.linspace(mMin,mMax,200)
         if MedShkSet is None:
             MedShkSet = self.MedShkDstn[t][h][1]
@@ -2570,6 +2582,8 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         plt.xlabel('Market resources mLvl')
         plt.ylabel('Effective consumption C(mLvl)')
         plt.ylim(ymin=0.0)
+        if savename is not None:
+            plt.savefig('../Figures/' + savename + '.pdf')
         plt.show()
         
     def plotAVfuncByContract(self,t,h,p,mMin=0.0,mMax=10.0,Z=None):
