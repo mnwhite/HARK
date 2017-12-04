@@ -80,7 +80,7 @@ other_exog_params = {
     'Rfree' : 1.04,
     'Sex' : 0.0,
     'cycles' : 1,
-    'DataToSimRepFactor' : 50
+    'DataToSimRepFactor' : 200
 }
 
 # Make a dictionary with structural parameters for testing
@@ -133,14 +133,14 @@ basic_estimation_dict.update(grid_size_params)
 
 # Make a test parameter vector
 test_param_vec = np.array([
-    0.930017960426,     # 0 CRRA
-    0.941114911416,     # 1 DiscFac
+    2.0,                # 0 CRRA
+    0.826851467639,     # 1 DiscFac
     4.99200903857,      # 2 MedCurve
-    0.8,                # 3 LifeUtility
+    0.10,               # 3 LifeUtility
     -0.5,               # 4 MargUtilityShift
-    0.322698674023,     # 5 Cfloor
-    1.13434385588,      # 6 Bequest0
-    1.69223467631,      # 7 Bequest1
+    0.371107323164,     # 5 Cfloor
+    0.492413649548,     # 6 Bequest0
+    1.57686798194,      # 7 Bequest1
     -0.835340554283,    # 8 MedShkMean0
     -0.167922415399,    # 9 MedShkMeanSex
     0.190899420958,     # 10 MedShkMeanAge
@@ -149,16 +149,16 @@ test_param_vec = np.array([
     -3.35144465932,     # 13 MedShkMeanHealthSq
     2.28683496837,      # 14 MedShkStd0
     -0.292126838546,    # 15 MedShkStd1
-    0.0744949430233,    # 16 HealthNext0
-    0.000666823326486,  # 17 HealthNextSex
-    -0.00318516515447,  # 18 HealthNextAge
-    -8.23478665001e-05, # 19 HealthNextAgeSq
-    0.71190201807,      # 20 HealthNextHealth
-    0.186603804692,     # 21 HealthNextHealthSq
+    0.0591797244852,    # 16 HealthNext0
+    0.000676652660547,  # 17 HealthNextSex
+    -0.00315015423632,  # 18 HealthNextAge
+    -8.20752765824e-05, # 19 HealthNextAgeSq
+    0.711326097866,      # 20 HealthNextHealth
+    0.185609606214,     # 21 HealthNextHealthSq
     0.148786822625,     # 22 HealthShkStd0
     -0.0418279671933,   # 23 HealthShkStd1
-    0.00,               # 24 HealthProd0
-    0.000,              # 25 HealthProd1
+    0.0325143531006,    # 24 HealthProd0
+    0.0311610231235,    # 25 HealthProd1
     0.000,              # 26 HealthProd2
     -0.560893044685,    # 27 Mortality0
     0.322114494221,     # 28 MortalitySex
@@ -168,14 +168,7 @@ test_param_vec = np.array([
     -0.0665321815635    # 32 MortalityHealthSq
     ])
 
-#    -0.877842165285,    # 8 MedShkMean0
-#    -0.312786338072,    # 9 MedShkMeanSex
-#    0.184114821232,     # 10 MedShkMeanAge
-#    -0.00432928664255,  # 11 MedShkMeanAgeSq
-#    -1.37969883877,     # 12 MedShkMeanHealth
-#    -3.49816455842,     # 13 MedShkMeanHealthSq
-#    2.2684352139,       # 14 MedShkStd0
-#    -0.324372888098,    # 15 MedShkStd1    
+# 0.930017960426,     # 0 CRRA
 
 
 # Make a list of parameter names corresponding to their position in the vector above

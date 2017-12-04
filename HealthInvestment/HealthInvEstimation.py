@@ -420,7 +420,7 @@ def objectiveFunctionWrapper(param_vec):
     # Run the objective function with the newly created dictionary
     use_cohorts = Data.use_cohorts
     weighted_moment_sum = objectiveFunction(these_params,use_cohorts,True)
-    print(weighted_moment_sum)
+    #print(weighted_moment_sum)
     return weighted_moment_sum
 
 
@@ -454,7 +454,7 @@ if __name__ == '__main__':
     t_start = clock()
     X = objectiveFunctionWrapper(Params.test_param_vec)
     t_end = clock()
-    #print('One objective function evaluation took ' + str(t_end-t_start) + ' seconds.')
+    print('One objective function evaluation took ' + str(t_end-t_start) + ' seconds.')
     
     # Plot model fit of mean out of pocket medical spending by age
     plt.plot(X[0])
@@ -563,9 +563,9 @@ if __name__ == '__main__':
 
     
 #    # Test model identification by perturbing one parameter at a time
-#    param_i = 32
-#    param_min = -0.8
-#    param_max = -0.3
+#    param_i = 25
+#    param_min = 0.01
+#    param_max = 0.03
 #    N = 20
 #    perturb_vec = np.linspace(param_min,param_max,num=N)
 #    fit_vec = np.zeros(N) + np.nan
@@ -614,7 +614,7 @@ if __name__ == '__main__':
 
 
 #    # Estimate some (or all) of the model parameters
-#    which_indices = np.array([0,1,2,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23])
+#    which_indices = np.array([16,17,18,19,20,21,25])
 #    which_bool = np.zeros(33,dtype=bool)
 #    which_bool[which_indices] = True
 #    estimated_params = minimizeNelderMead(objectiveFunctionWrapper,Params.test_param_vec,verbose=True,which_vars=which_bool)
