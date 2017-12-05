@@ -1234,6 +1234,8 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         self.ActiveNow = np.zeros(self.AgentCount,dtype=bool)
         self.DiedNow = np.zeros(self.AgentCount,dtype=bool)
         self.hLvlNow = np.zeros(self.AgentCount) + np.nan
+        self.CumLivPrb = np.zeros(self.AgentCount)
+        self.DiePrbNow = np.zeros(self.AgentCount)
         
         
     def getMortality(self):
@@ -1253,28 +1255,49 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         self.ActiveNow[activate] = True
         self.aLvlNow[activate] = self.aLvlInit[activate]
         self.HlvlNow[activate] = self.HlvlInit[activate]
+        self.CumLivPrb[activate] = 1.0
 
     
+#    def simDeath(self):
+#        '''
+#        Kills agents based on their probit mortality function.
+#        '''
+#        these = self.ActiveNow
+#        t = self.t_sim
+#        N = np.sum(these)
+#        
+#        MortShkNow = drawNormal(N,seed=self.RNG.randint(0,2**31-1))
+#        if t > 0: # Draw on LivPrbFunc from *previous* age into this age
+#            CritShk = self.LivPrbFunc[t-1](self.HlvlNow[these])
+#        else: # Shouldn't be any agents yet, but just in case...
+#            CritShk = np.ones(N) - np.inf
+#        kill = MortShkNow < CritShk
+#        just_died = np.zeros(self.AgentCount,dtype=bool)
+#        just_died[these] = kill
+#        
+#        self.hLvlNow[just_died] = 0.0
+#        self.ActiveNow[just_died] = False
+#        self.DiedNow[just_died] = True
+
     def simDeath(self):
         '''
-        Kills agents based on their probit mortality function.
+        Calculates death probability for each simulated agent and updates population
+        weights for active agents.  Does not "kill" agents by removing them from sim.
         '''
         these = self.ActiveNow
         t = self.t_sim
         N = np.sum(these)
         
-        MortShkNow = drawNormal(N,seed=self.RNG.randint(0,2**31-1))
+        # Get survival and mortality probabilities
         if t > 0: # Draw on LivPrbFunc from *previous* age into this age
-            CritShk = self.LivPrbFunc[t-1](self.HlvlNow[these])
+            LivPrb = norm.sf(self.LivPrbFunc[t-1](self.HlvlNow[these]))
         else: # Shouldn't be any agents yet, but just in case...
-            CritShk = np.ones(N) - np.inf
-        kill = MortShkNow < CritShk
-        just_died = np.zeros(self.AgentCount,dtype=bool)
-        just_died[these] = kill
+            LivPrb = np.ones(N)
+        DiePrb = 1. - LivPrb
         
-        self.hLvlNow[just_died] = 0.0
-        self.ActiveNow[just_died] = False
-        self.DiedNow[just_died] = True
+        # Apply survival probabilities to active agents and store mortality probabilities
+        self.CumLivPrb[these] *= LivPrb
+        self.DiePrbNow[these] = DiePrb
     
     
     def getShocks(self):
@@ -1306,9 +1329,9 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         hShkNow, and MedShkBase.
         '''
         hLvlNow = np.maximum(np.minimum(self.HlvlNow + self.hShkNow,1.0),0.001)
-        just_died = hLvlNow == 0.
-        self.ActiveNow[just_died] = False
-        self.DiedNow[just_died] = True
+        #just_died = hLvlNow == 0.
+        #self.ActiveNow[just_died] = False
+        #self.DiedNow[just_died] = True
         hLvlNow[self.HlvlNow == 0.] = np.nan
         self.hLvlNow = hLvlNow
         
