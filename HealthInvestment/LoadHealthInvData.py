@@ -10,27 +10,35 @@ import numpy as np
 sys.path.insert(0,'../')
 sys.path.insert(0,'./Data/')
 
+# Choose how many times to bootstrap the data to calculate standard errors for data moments.
+# If this is zero, the module will try to read the CSV file ./Data/MomentWeights.txt to load
+# the weighting matrix.  If this is non-zero, the moment weights will be created and saved.
+data_bootstrap_count = 0
+
 # Choose whether to use cohorts in simulation (True) or aggregate into only 10 types (False)
 use_cohorts = False
 
 # Choose which moments will actually be used
 moment_dummies = np.array([
-        True,  # OOPbyAge
-        True,  # StDevOOPbyAge
+        False, # OOPbyAge
+        False, # StDevOOPbyAge
         True,  # MortByAge
         False, # StDevDeltaHealthByAge
-        True,  # StDevOOPbyHealthAge
+        False, # StDevOOPbyHealthAge
         False, # StDevDeltaHealthByHealthAge
-        False, # HealthBySexHealthAge
-        True,  # OOPbySexHealthAge
+        True,  # HealthBySexHealthAge
+        False, # OOPbySexHealthAge
         True,  # MortBySexHealthAge
         False, # WealthByIncAge
-        False, # HealthByIncAge
-        True,  # OOPbyIncAge
+        True,  # HealthByIncAge
+        False, # OOPbyIncAge
         False, # WealthByIncWealthAge
         False, # HealthByIncWealthAge
         False, # OOPbyIncWealthAge
         ])
+
+# Make a random number generator for the data bootstrap
+RNG = np.random.RandomState(seed=112883)
 
 # Load the estimation data into memory
 infile = open('./Data/EstimationData.txt','r') 
@@ -44,13 +52,13 @@ def arsinh(x):
     return x
 
 # Initialize numpy arrays for the data
-typenum_data = np.zeros(obs,dtype=int)
-sex_data = np.zeros(obs,dtype=int)
-inc_quint_data = np.zeros(obs,dtype=int)
-cohort_data = np.zeros(obs,dtype=int)
-wealth_quint_data = np.zeros(obs,dtype=int)
-health_tert_data = np.zeros(obs,dtype=int)
-first_ob_data = np.zeros(obs,dtype=int)
+typenum_data_orig = np.zeros(obs,dtype=int)
+sex_data_orig = np.zeros(obs,dtype=int)
+inc_quint_data_orig = np.zeros(obs,dtype=int)
+cohort_data_orig = np.zeros(obs,dtype=int)
+wealth_quint_data_orig = np.zeros(obs,dtype=int)
+health_tert_data_orig = np.zeros(obs,dtype=int)
+first_ob_data_orig = np.zeros(obs,dtype=int)
 w0_data = np.zeros(obs) # 1996 wealth
 w1_data = np.zeros(obs) # 1998 wealth
 w2_data = np.zeros(obs) # 2000 wealth
@@ -79,13 +87,13 @@ m7_data = np.zeros(obs) # 2010 OOPmed
 # Unpack data into numpy arrays
 for i in range(obs):
     j = i+1
-    typenum_data[i] = int(all_data[j][0])
-    sex_data[i] = int(all_data[j][1])
-    inc_quint_data[i] = int(all_data[j][2])
-    cohort_data[i] = int(all_data[j][3])
-    wealth_quint_data[i] = int(all_data[j][4])
-    health_tert_data[i] = int(all_data[j][5])
-    first_ob_data[i] = int(all_data[j][6])
+    typenum_data_orig[i] = int(all_data[j][0])
+    sex_data_orig[i] = int(all_data[j][1])
+    inc_quint_data_orig[i] = int(all_data[j][2])
+    cohort_data_orig[i] = int(all_data[j][3])
+    wealth_quint_data_orig[i] = int(all_data[j][4])
+    health_tert_data_orig[i] = int(all_data[j][5])
+    first_ob_data_orig[i] = int(all_data[j][6])
     w0_data[i] = float(all_data[j][7])
     w1_data[i] = float(all_data[j][8])
     w2_data[i] = float(all_data[j][9])
@@ -136,31 +144,14 @@ m4_data[m4_data==-1.] = np.nan
 m5_data[m5_data==-1.] = np.nan
 m6_data[m6_data==-1.] = np.nan
 m7_data[m7_data==-1.] = np.nan
-inc_quint_data[inc_quint_data==0] = 5
+inc_quint_data_orig[inc_quint_data_orig==0] = 5
 
 # Combine the data by year
-w_data = np.vstack((w0_data,w1_data,w2_data,w3_data,w4_data,w5_data,w6_data,w7_data))
-h_data = np.vstack((h0_data,h1_data,h2_data,h3_data,h4_data,h5_data,h6_data,h7_data))
-m_data = np.vstack((m0_data,m1_data,m2_data,m3_data,m4_data,m5_data,m6_data,m7_data))*10000
-t0 = (first_ob_data-1996)/2
+w_data_orig = np.vstack((w0_data,w1_data,w2_data,w3_data,w4_data,w5_data,w6_data,w7_data))
+h_data_orig = np.vstack((h0_data,h1_data,h2_data,h3_data,h4_data,h5_data,h6_data,h7_data))
+m_data_orig = np.vstack((m0_data,m1_data,m2_data,m3_data,m4_data,m5_data,m6_data,m7_data))*10000
 idx = np.arange(obs)
-InitBoolArray = np.zeros((8,obs),dtype=bool)
-InitBoolArray[t0,idx] = True
 
-# Get initial data states
-w_init = w_data[t0,idx]
-h_init = h_data[t0,idx]
-
-# Make boolean arrays of types (with and without cohorts)
-N = 150
-TypeBoolArray = np.zeros((N,obs),dtype=bool)
-for n in range(N):
-    TypeBoolArray[n,:] = typenum_data == n+1
-typenum_temp = np.mod(typenum_data - 1,10)
-TypeBoolArraySmall = np.zeros((10,obs),dtype=bool)
-for n in range(10):
-    TypeBoolArraySmall[n,:] = np.logical_and(typenum_temp == n,typenum_data <= 150)
-    
 # Load the income profiles into memory
 infile = open('./Data/IncProfilesNew.txt','r') 
 my_reader = csv.reader(infile,delimiter='\t')
@@ -186,255 +177,325 @@ for j in range(10):
     IncomeArraySmall[j,:] = np.mean(IncomeArray[these,:],axis=0)
     MaxWealthSmall[j] = np.max(MaxWealth[these])
 
-# Make a boolean array indicating when each agent is "born" in the data
-born_t = np.maximum(t0 + 11 - cohort_data,0)
-BornBoolArray = np.zeros((25,obs),dtype=bool)
-BornBoolArray[born_t,idx] = True
+# Initialize an array of bootstrapped data moments
+BootstrappedMoments = np.zeros((data_bootstrap_count,1770)) + np.nan
 
-# Make a boolean array indicating which periods of life *could* be observed in the data for each agent
-DataStartByCohort = np.concatenate([np.arange(10,0,-1), np.zeros(8,dtype=int)])
-DataEndByCohort = np.arange(17,-1,-1)
-InDataSpanArray = np.zeros((25,obs),dtype=bool)
-for j in range(18):
-    c = j+1 # cohort number
-    these = cohort_data == c
-    N = np.sum(these)
-    temp_bool = np.zeros((25,1),dtype=bool)
-    temp_bool[DataStartByCohort[j]:DataEndByCohort[j]] = True
-    temp_bool_rep = np.tile(temp_bool,(1,N))
-    InDataSpanArray[:,these] = temp_bool_rep
-
-# Make an array of "ages" for each observation (plus boolean version)
-turn65_t = cohort_data - 11
-age_data = np.tile(np.reshape(np.arange(8),(8,1)),(1,obs)) - np.tile(np.reshape(turn65_t,(1,obs)),(8,1))
-AgeBoolArray = np.zeros((8,obs,15),dtype=bool)
-for j in range(15):
-    right_age = age_data == j+1
-    AgeBoolArray[:,:,j] = right_age
-    
-# Make a boolean array of usable observations (for non-mortality moments)
-BelowCohort16 = np.tile(np.reshape(cohort_data,(1,obs)),(8,1)) < 16
-Alive = h_data > 0.
-NotInit = np.logical_not(InitBoolArray)
-Useable = np.logical_and(BelowCohort16,np.logical_and(Alive,NotInit))
-
-# Make a boolean array of usable observations (for mortality moments)
-AliveLastPeriod = np.zeros_like(h_data,dtype=bool)
-AliveLastPeriod[1:,:] = Alive[:-1,:]
-ObsThisPeriod = np.logical_not(np.isnan(h_data))
-DeadThisPeriod = h_data == 0.
-MortUseable = np.logical_and(AliveLastPeriod,ObsThisPeriod)
-JustDied = np.logical_and(AliveLastPeriod,DeadThisPeriod)
-
-# Make a boolean array of usable observations (for stdev health delta moments)
-HealthDeltaUseable = np.zeros_like(h_data,dtype=bool)
-HealthDeltaUseable[1:,:] = np.logical_and(AliveLastPeriod[1:,:],Alive[1:,:])
-HealthDelta = np.zeros((8,obs))
-HealthDelta[1:,:] = h_data[1:,:] - h_data[:-1,:]
-
-# Make boolean array of income quintiles for the data
-IncQuint = np.tile(np.reshape(inc_quint_data,(1,obs)),(8,1))
-IncQuintBoolArray = np.zeros((8,obs,5),dtype=bool)
-for j in range(5):
-    right_quint = IncQuint == j+1
-    IncQuintBoolArray[:,:,j] = right_quint
-    
-# Make boolean array of wealth quintiles for the data
-WealthQuint = np.tile(np.reshape(wealth_quint_data,(1,obs)),(8,1))
-WealthQuintBoolArray = np.zeros((8,obs,5),dtype=bool)
-for j in range(5):
-    right_quint = WealthQuint == j+1
-    WealthQuintBoolArray[:,:,j] = right_quint
-    
-# Make boolean array of health tertiles for the data
-HealthTert = np.tile(np.reshape(health_tert_data,(1,obs)),(8,1))
-HealthTertBoolArray = np.zeros((8,obs,3),dtype=bool)
-for j in range(3):
-    right_tert = HealthTert == j+1
-    HealthTertBoolArray[:,:,j] = right_tert
-    
-# Make a boolean array of sex for the data
-Sex = np.tile(np.reshape(sex_data,(1,obs)),(8,1))
-SexBoolArray = np.zeros((8,obs,2),dtype=bool)
-for j in range(2):
-    right_sex = Sex == j
-    SexBoolArray[:,:,j] = right_sex
-
-# Calculate median wealth by income quintile by age: 75
-# Calculate mean health status by income quintile by age: 75
-# Calculate mean IHS OOP medical spending by income quintile by age: 75
-WealthByIncAge = np.zeros((5,15))
-HealthByIncAge = np.zeros((5,15))
-OOPbyIncAge = np.zeros((5,15))
-IncAgeCellSize = np.zeros((5,15))
-for i in range(5):
-    for a in range(15):
-        these = np.logical_and(Useable,np.logical_and(AgeBoolArray[:,:,a],IncQuintBoolArray[:,:,i]))
-        WealthByIncAge[i,a] = np.median(w_data[these])
-        HealthByIncAge[i,a] = np.mean(h_data[these])
-        OOPbyIncAge[i,a] = np.nanmean(arsinh(m_data[these]))
-        IncAgeCellSize[i,a] = np.sum(these)
+# Loop over bootstrap runs; if this is the very last pass, use the real data instead
+for b in range(data_bootstrap_count+1):
+    # If this is not the last pass, then resample the data within each cohort
+    if b < data_bootstrap_count:
+        # Initialize arrays to hold this set of resampled data
+        w_data = np.zeros_like(w_data_orig)
+        h_data = np.zeros_like(h_data_orig)
+        m_data = np.zeros_like(m_data_orig)
+        first_ob_data = np.zeros_like(first_ob_data_orig)
+        typenum_data = np.zeros_like(typenum_data_orig)
+        cohort_data = np.zeros_like(cohort_data_orig)
+        inc_quint_data = np.zeros_like(inc_quint_data_orig)
+        wealth_quint_data = np.zeros_like(wealth_quint_data_orig)
+        health_tert_data = np.zeros_like(health_tert_data_orig)
+        sex_data = np.zeros_like(sex_data_orig)
         
-WealthNorm = np.sum(WealthByIncAge*IncAgeCellSize)/np.sum(IncAgeCellSize)
-HealthNorm = np.sum(HealthByIncAge*IncAgeCellSize)/np.sum(IncAgeCellSize)
+        # Resample the data within each cohort
+        for c in range(1,19):
+            # Get indices for resampling
+            THESE = cohort_data_orig == c
+            cohort_idx = np.where(THESE)[0]
+            cohort_N = np.sum(THESE)
+            draws = RNG.randint(cohort_N,size=cohort_N)
+            new_idx = cohort_idx[draws]
+            
+            # Fill in parts of the data arrays with resampled observations
+            w_data[:,THESE] = w_data_orig[:,new_idx]
+            h_data[:,THESE] = h_data_orig[:,new_idx]
+            m_data[:,THESE] = m_data_orig[:,new_idx]
+            first_ob_data[THESE] = first_ob_data_orig[new_idx]
+            typenum_data[THESE] = typenum_data_orig[new_idx]
+            cohort_data[THESE] = cohort_data_orig[new_idx]
+            inc_quint_data[THESE] = inc_quint_data_orig[new_idx]
+            wealth_quint_data[THESE] = wealth_quint_data_orig[new_idx]
+            health_tert_data[THESE] = health_tert_data_orig[new_idx]
+            sex_data[THESE] = sex_data_orig[new_idx]            
+        
+    else: # If this is the last pass, just load the data itself
+        w_data = w_data_orig
+        h_data = h_data_orig
+        m_data = m_data_orig
+        first_ob_data = first_ob_data_orig
+        typenum_data = typenum_data_orig
+        cohort_data = cohort_data_orig
+        inc_quint_data = inc_quint_data_orig
+        wealth_quint_data = wealth_quint_data_orig
+        health_tert_data = health_tert_data_orig
+        sex_data = sex_data_orig
 
-# Calculate median wealth by income quintile by wealth quintile by age: 375
-# Calculate mean health status by income quintile by wealth quintile by age: 375
-# Calculate mean IHS OOP medical spending by income quintile by wealth quintile by age: 375
-WealthByIncWealthAge = np.zeros((5,5,15))
-HealthByIncWealthAge = np.zeros((5,5,15))
-OOPbyIncWealthAge = np.zeros((5,5,15))
-IncWealthAgeCellSize = np.zeros((5,5,15))
-for i in range(5):
+    t0 = (first_ob_data-1996)/2
+    InitBoolArray = np.zeros((8,obs),dtype=bool)
+    InitBoolArray[t0,idx] = True
+    
+    # Get initial data states
+    w_init = w_data[t0,idx]
+    h_init = h_data[t0,idx]
+    
+    # Make boolean arrays of types (with and without cohorts)
+    N = 150
+    TypeBoolArray = np.zeros((N,obs),dtype=bool)
+    for n in range(N):
+        TypeBoolArray[n,:] = typenum_data == n+1
+    typenum_temp = np.mod(typenum_data - 1,10)
+    TypeBoolArraySmall = np.zeros((10,obs),dtype=bool)
+    for n in range(10):
+        TypeBoolArraySmall[n,:] = np.logical_and(typenum_temp == n,typenum_data <= 150)
+    
+    # Make a boolean array indicating when each agent is "born" in the data
+    born_t = np.maximum(t0 + 11 - cohort_data,0)
+    BornBoolArray = np.zeros((25,obs),dtype=bool)
+    BornBoolArray[born_t,idx] = True
+    
+    # Make a boolean array indicating which periods of life *could* be observed in the data for each agent
+    DataStartByCohort = np.concatenate([np.arange(10,0,-1), np.zeros(8,dtype=int)])
+    DataEndByCohort = np.arange(17,-1,-1)
+    InDataSpanArray = np.zeros((25,obs),dtype=bool)
+    for j in range(18):
+        c = j+1 # cohort number
+        these = cohort_data == c
+        N = np.sum(these)
+        temp_bool = np.zeros((25,1),dtype=bool)
+        temp_bool[DataStartByCohort[j]:DataEndByCohort[j]] = True
+        temp_bool_rep = np.tile(temp_bool,(1,N))
+        InDataSpanArray[:,these] = temp_bool_rep
+    
+    # Make an array of "ages" for each observation (plus boolean version)
+    turn65_t = cohort_data - 11
+    age_data = np.tile(np.reshape(np.arange(8),(8,1)),(1,obs)) - np.tile(np.reshape(turn65_t,(1,obs)),(8,1))
+    AgeBoolArray = np.zeros((8,obs,15),dtype=bool)
+    for j in range(15):
+        right_age = age_data == j+1
+        AgeBoolArray[:,:,j] = right_age
+        
+    # Make a boolean array of usable observations (for non-mortality moments)
+    BelowCohort16 = np.tile(np.reshape(cohort_data,(1,obs)),(8,1)) < 16
+    Alive = h_data > 0.
+    NotInit = np.logical_not(InitBoolArray)
+    Useable = np.logical_and(BelowCohort16,np.logical_and(Alive,NotInit))
+    
+    # Make a boolean array of usable observations (for mortality moments)
+    AliveLastPeriod = np.zeros_like(h_data,dtype=bool)
+    AliveLastPeriod[1:,:] = Alive[:-1,:]
+    ObsThisPeriod = np.logical_not(np.isnan(h_data))
+    DeadThisPeriod = h_data == 0.
+    MortUseable = np.logical_and(AliveLastPeriod,ObsThisPeriod)
+    JustDied = np.logical_and(AliveLastPeriod,DeadThisPeriod)
+    
+    # Make a boolean array of usable observations (for stdev health delta moments)
+    HealthDeltaUseable = np.zeros_like(h_data,dtype=bool)
+    HealthDeltaUseable[1:,:] = np.logical_and(AliveLastPeriod[1:,:],Alive[1:,:])
+    HealthDelta = np.zeros((8,obs))
+    HealthDelta[1:,:] = h_data[1:,:] - h_data[:-1,:]
+    
+    # Make boolean array of income quintiles for the data
+    IncQuint = np.tile(np.reshape(inc_quint_data,(1,obs)),(8,1))
+    IncQuintBoolArray = np.zeros((8,obs,5),dtype=bool)
     for j in range(5):
+        right_quint = IncQuint == j+1
+        IncQuintBoolArray[:,:,j] = right_quint
+        
+    # Make boolean array of wealth quintiles for the data
+    WealthQuint = np.tile(np.reshape(wealth_quint_data,(1,obs)),(8,1))
+    WealthQuintBoolArray = np.zeros((8,obs,5),dtype=bool)
+    for j in range(5):
+        right_quint = WealthQuint == j+1
+        WealthQuintBoolArray[:,:,j] = right_quint
+        
+    # Make boolean array of health tertiles for the data
+    HealthTert = np.tile(np.reshape(health_tert_data,(1,obs)),(8,1))
+    HealthTertBoolArray = np.zeros((8,obs,3),dtype=bool)
+    for j in range(3):
+        right_tert = HealthTert == j+1
+        HealthTertBoolArray[:,:,j] = right_tert
+        
+    # Make a boolean array of sex for the data
+    Sex = np.tile(np.reshape(sex_data,(1,obs)),(8,1))
+    SexBoolArray = np.zeros((8,obs,2),dtype=bool)
+    for j in range(2):
+        right_sex = Sex == j
+        SexBoolArray[:,:,j] = right_sex
+    
+    # Calculate median wealth by income quintile by age: 75
+    # Calculate mean health status by income quintile by age: 75
+    # Calculate mean IHS OOP medical spending by income quintile by age: 75
+    WealthByIncAge = np.zeros((5,15))
+    HealthByIncAge = np.zeros((5,15))
+    OOPbyIncAge = np.zeros((5,15))
+    IncAgeCellSize = np.zeros((5,15))
+    for i in range(5):
         for a in range(15):
-            these = np.logical_and(np.logical_and(Useable,np.logical_and(AgeBoolArray[:,:,a],IncQuintBoolArray[:,:,i])),WealthQuintBoolArray[:,:,j])
-            WealthByIncWealthAge[i,j,a] = np.median(w_data[these])
-            HealthByIncWealthAge[i,j,a] = np.mean(h_data[these])
-            OOPbyIncWealthAge[i,j,a] = np.nanmean(arsinh(m_data[these]))
-            IncWealthAgeCellSize[i,j,a] = np.sum(these)
-
-# Calculate mean health status by sex by health tertile by age: 90
-# Calculate mean IHS OOP medical spending by sex by health tertile by age: 90
-# Calculate mortality probability by sex by health tertile by age: 90
-HealthBySexHealthAge = np.zeros((2,3,15))
-OOPbySexHealthAge = np.zeros((2,3,15))
-MortBySexHealthAge = np.zeros((2,3,15))
-SexHealthAgeCellSize = np.zeros((2,3,15))
-SexHealthAgeCellSizeMort = np.zeros((2,3,15))
-for s in range(2):
+            these = np.logical_and(Useable,np.logical_and(AgeBoolArray[:,:,a],IncQuintBoolArray[:,:,i]))
+            WealthByIncAge[i,a] = np.median(w_data[these])
+            HealthByIncAge[i,a] = np.mean(h_data[these])
+            OOPbyIncAge[i,a] = np.nanmean(arsinh(m_data[these]))
+            IncAgeCellSize[i,a] = np.sum(these)
+            
+    WealthNorm = np.sum(WealthByIncAge*IncAgeCellSize)/np.sum(IncAgeCellSize)
+    HealthNorm = np.sum(HealthByIncAge*IncAgeCellSize)/np.sum(IncAgeCellSize)
+    
+    # Calculate median wealth by income quintile by wealth quintile by age: 375
+    # Calculate mean health status by income quintile by wealth quintile by age: 375
+    # Calculate mean IHS OOP medical spending by income quintile by wealth quintile by age: 375
+    WealthByIncWealthAge = np.zeros((5,5,15))
+    HealthByIncWealthAge = np.zeros((5,5,15))
+    OOPbyIncWealthAge = np.zeros((5,5,15))
+    IncWealthAgeCellSize = np.zeros((5,5,15))
+    for i in range(5):
+        for j in range(5):
+            for a in range(15):
+                these = np.logical_and(np.logical_and(Useable,np.logical_and(AgeBoolArray[:,:,a],IncQuintBoolArray[:,:,i])),WealthQuintBoolArray[:,:,j])
+                WealthByIncWealthAge[i,j,a] = np.median(w_data[these])
+                HealthByIncWealthAge[i,j,a] = np.mean(h_data[these])
+                OOPbyIncWealthAge[i,j,a] = np.nanmean(arsinh(m_data[these]))
+                IncWealthAgeCellSize[i,j,a] = np.sum(these)
+    
+    # Calculate mean health status by sex by health tertile by age: 90
+    # Calculate mean IHS OOP medical spending by sex by health tertile by age: 90
+    # Calculate mortality probability by sex by health tertile by age: 90
+    HealthBySexHealthAge = np.zeros((2,3,15))
+    OOPbySexHealthAge = np.zeros((2,3,15))
+    MortBySexHealthAge = np.zeros((2,3,15))
+    SexHealthAgeCellSize = np.zeros((2,3,15))
+    SexHealthAgeCellSizeMort = np.zeros((2,3,15))
+    for s in range(2):
+        for h in range(3):
+            for a in range(15):
+                these = np.logical_and(Useable,np.logical_and(SexBoolArray[:,:,s],np.logical_and(HealthTertBoolArray[:,:,h],AgeBoolArray[:,:,a])))
+                HealthBySexHealthAge[s,h,a] = np.mean(h_data[these])
+                OOPbySexHealthAge[s,h,a] = np.nanmean(arsinh(m_data[these]))
+                SexHealthAgeCellSize[s,h,a] = np.sum(these)
+                those = np.logical_and(MortUseable,np.logical_and(SexBoolArray[:,:,s],np.logical_and(HealthTertBoolArray[:,:,h],AgeBoolArray[:,:,a])))
+                DeathCount = float(np.sum(np.logical_and(those,JustDied)))
+                MortBySexHealthAge[s,h,a] = DeathCount/float(np.sum(those))
+                SexHealthAgeCellSizeMort[s,h,a] = np.sum(those)
+    
+    # Calculate mean OOP medical spending by age: 15
+    # Calculate stdev OOP medical spending by age: 15
+    # Calculate mortality probability by age: 15
+    # Calculate stdev delta health by age: 15
+    OOPbyAge = np.zeros(15)
+    StDevOOPbyAge = np.zeros(15)
+    MortByAge = np.zeros(15)
+    StDevDeltaHealthByAge = np.zeros(15)
+    AgeCellSize = np.zeros(15)
+    AgeCellSizeMort = np.zeros(15)
+    AgeCellSizeHealthDelta = np.zeros(15)
+    for a in range(15):
+        these = np.logical_and(Useable,AgeBoolArray[:,:,a])
+        OOPbyAge[a] = np.nanmean(arsinh(m_data[these]))
+        StDevOOPbyAge[a] = np.nanstd(arsinh(m_data[these]))
+        thise = np.logical_and(HealthDeltaUseable,AgeBoolArray[:,:,a])
+        StDevDeltaHealthByAge[a] = np.nanstd(HealthDelta[thise])
+        AgeCellSize[a] = np.sum(these)
+        AgeCellSizeHealthDelta[a] = np.sum(thise)
+        those = np.logical_and(MortUseable,AgeBoolArray[:,:,a])
+        DeathCount = float(np.sum(np.logical_and(those,JustDied)))
+        MortByAge[a] = DeathCount/float(np.sum(those))
+        AgeCellSizeMort[a] = np.sum(those)
+    
+    OOPnorm = np.dot(OOPbyAge,AgeCellSize)/np.sum(AgeCellSize)
+    StDevOOPnorm = np.dot(StDevOOPbyAge,AgeCellSize)/np.sum(AgeCellSize)
+    MortNorm = np.dot(MortByAge,AgeCellSize)/np.sum(AgeCellSize)
+    DeltaHealthNorm = np.dot(StDevDeltaHealthByAge,AgeCellSize)/np.sum(AgeCellSize)
+    
+    # Calculate stdev IHS OOP medical spending by health tertile by age: 45
+    # Calculate stdev delta health by health tertile by age: 45
+    StDevOOPbyHealthAge = np.zeros((3,15))
+    StDevDeltaHealthByHealthAge = np.zeros((3,15))
+    HealthAgeCellSize = np.zeros((3,15))
+    HealthAgeCellSizeHealthDelta = np.zeros((3,15))
     for h in range(3):
         for a in range(15):
-            these = np.logical_and(Useable,np.logical_and(SexBoolArray[:,:,s],np.logical_and(HealthTertBoolArray[:,:,h],AgeBoolArray[:,:,a])))
-            HealthBySexHealthAge[s,h,a] = np.mean(h_data[these])
-            OOPbySexHealthAge[s,h,a] = np.nanmean(arsinh(m_data[these]))
-            SexHealthAgeCellSize[s,h,a] = np.sum(these)
-            those = np.logical_and(MortUseable,np.logical_and(SexBoolArray[:,:,s],np.logical_and(HealthTertBoolArray[:,:,h],AgeBoolArray[:,:,a])))
-            DeathCount = float(np.sum(np.logical_and(those,JustDied)))
-            MortBySexHealthAge[s,h,a] = DeathCount/float(np.sum(those))
-            SexHealthAgeCellSizeMort[s,h,a] = np.sum(those)
-
-# Calculate mean OOP medical spending by age: 15
-# Calculate stdev OOP medical spending by age: 15
-# Calculate mortality probability by age: 15
-# Calculate stdev delta health by age: 15
-OOPbyAge = np.zeros(15)
-StDevOOPbyAge = np.zeros(15)
-MortByAge = np.zeros(15)
-StDevDeltaHealthByAge = np.zeros(15)
-AgeCellSize = np.zeros(15)
-AgeCellSizeMort = np.zeros(15)
-AgeCellSizeHealthDelta = np.zeros(15)
-for a in range(15):
-    these = np.logical_and(Useable,AgeBoolArray[:,:,a])
-    OOPbyAge[a] = np.nanmean(arsinh(m_data[these]))
-    StDevOOPbyAge[a] = np.nanstd(arsinh(m_data[these]))
-    thise = np.logical_and(HealthDeltaUseable,AgeBoolArray[:,:,a])
-    StDevDeltaHealthByAge[a] = np.nanstd(HealthDelta[thise])
-    AgeCellSize[a] = np.sum(these)
-    AgeCellSizeHealthDelta[a] = np.sum(thise)
-    those = np.logical_and(MortUseable,AgeBoolArray[:,:,a])
-    DeathCount = float(np.sum(np.logical_and(those,JustDied)))
-    MortByAge[a] = DeathCount/float(np.sum(those))
-    AgeCellSizeMort[a] = np.sum(those)
-
-OOPnorm = np.dot(OOPbyAge,AgeCellSize)/np.sum(AgeCellSize)
-StDevOOPnorm = np.dot(StDevOOPbyAge,AgeCellSize)/np.sum(AgeCellSize)
-MortNorm = np.dot(MortByAge,AgeCellSize)/np.sum(AgeCellSize)
-DeltaHealthNorm = np.dot(StDevDeltaHealthByAge,AgeCellSize)/np.sum(AgeCellSize)
-
-# Calculate stdev IHS OOP medical spending by health tertile by age: 45
-# Calculate stdev delta health by health tertile by age: 45
-StDevOOPbyHealthAge = np.zeros((3,15))
-StDevDeltaHealthByHealthAge = np.zeros((3,15))
-HealthAgeCellSize = np.zeros((3,15))
-HealthAgeCellSizeHealthDelta = np.zeros((3,15))
-for h in range(3):
-    for a in range(15):
-        these = np.logical_and(Useable,np.logical_and(HealthTertBoolArray[:,:,h],AgeBoolArray[:,:,a]))
-        StDevOOPbyHealthAge[h,a] = np.nanstd(arsinh(m_data[these]))
-        StDevDeltaHealthByHealthAge[h,a] = np.nan
-        HealthAgeCellSize[h,a] = np.sum(these)
-        thise = np.logical_and(HealthDeltaUseable,np.logical_and(HealthTertBoolArray[:,:,h],AgeBoolArray[:,:,a]))
-        StDevDeltaHealthByHealthAge[h,a] = np.nanstd(HealthDelta[thise])
-        HealthAgeCellSizeHealthDelta[h,a] = np.sum(thise)
+            these = np.logical_and(Useable,np.logical_and(HealthTertBoolArray[:,:,h],AgeBoolArray[:,:,a]))
+            StDevOOPbyHealthAge[h,a] = np.nanstd(arsinh(m_data[these]))
+            StDevDeltaHealthByHealthAge[h,a] = np.nan
+            HealthAgeCellSize[h,a] = np.sum(these)
+            thise = np.logical_and(HealthDeltaUseable,np.logical_and(HealthTertBoolArray[:,:,h],AgeBoolArray[:,:,a]))
+            StDevDeltaHealthByHealthAge[h,a] = np.nanstd(HealthDelta[thise])
+            HealthAgeCellSizeHealthDelta[h,a] = np.sum(thise)
+            
+    # Aggregate moments into a single vector
+    all_moments = np.concatenate([
+            OOPbyAge,
+            StDevOOPbyAge,
+            MortByAge,
+            StDevDeltaHealthByAge,
+            StDevOOPbyHealthAge.flatten(),
+            StDevDeltaHealthByHealthAge.flatten(),
+            HealthBySexHealthAge.flatten(),
+            OOPbySexHealthAge.flatten(),
+            MortBySexHealthAge.flatten(),
+            WealthByIncAge.flatten(),
+            HealthByIncAge.flatten(),
+            OOPbyIncAge.flatten(),
+            WealthByIncWealthAge.flatten(),
+            HealthByIncWealthAge.flatten(),
+            OOPbyIncWealthAge.flatten()
+            ])
         
-# Aggregate moments into a single vector
-all_moments = np.concatenate([
-        OOPbyAge,
-        StDevOOPbyAge,
-        MortByAge,
-        StDevDeltaHealthByAge,
-        StDevOOPbyHealthAge.flatten(),
-        StDevDeltaHealthByHealthAge.flatten(),
-        HealthBySexHealthAge.flatten(),
-        OOPbySexHealthAge.flatten(),
-        MortBySexHealthAge.flatten(),
-        WealthByIncAge.flatten(),
-        HealthByIncAge.flatten(),
-        OOPbyIncAge.flatten(),
-        WealthByIncWealthAge.flatten(),
-        HealthByIncWealthAge.flatten(),
-        OOPbyIncWealthAge.flatten()
-        ])
-    
-# Aggregate moment normalizers into a single vector
-normalizer = np.concatenate([
-        OOPnorm*np.ones(15),
-        StDevOOPnorm*np.ones(15),
-        MortNorm*np.ones(15),
-        DeltaHealthNorm*np.ones(15),
-        StDevOOPnorm*np.ones(45),
-        DeltaHealthNorm*np.ones(45),
-        HealthNorm*np.ones(90),
-        OOPnorm*np.ones(90),
-        MortNorm*np.ones(90),
-        WealthNorm*np.ones(75),
-        HealthNorm*np.ones(75),
-        OOPnorm*np.ones(75),
-        WealthNorm*np.ones(375),
-        HealthNorm*np.ones(375),
-        OOPnorm*np.ones(375)
-        ])
-    
-# Aggregate moment cell sizes into a single vector
-all_cell_sizes = np.concatenate([
-        AgeCellSize,
-        AgeCellSize,
-        AgeCellSizeMort,
-        AgeCellSizeHealthDelta,
-        HealthAgeCellSize.flatten(),
-        HealthAgeCellSizeHealthDelta.flatten(),
-        SexHealthAgeCellSize.flatten(),
-        SexHealthAgeCellSize.flatten(),
-        SexHealthAgeCellSizeMort.flatten(),
-        IncAgeCellSize.flatten(),
-        IncAgeCellSize.flatten(),
-        IncAgeCellSize.flatten(),        
-        IncWealthAgeCellSize.flatten(),
-        IncWealthAgeCellSize.flatten(),
-        IncWealthAgeCellSize.flatten()
-        ])
-    
-# Make moment masking array and apply it to the cell sizes
-moment_mask = np.concatenate([
-        np.ones(15)*moment_dummies[0],
-        np.ones(15)*moment_dummies[1],
-        np.ones(15)*moment_dummies[2],
-        np.ones(15)*moment_dummies[3],
-        np.ones(45)*moment_dummies[4],
-        np.ones(45)*moment_dummies[5],
-        np.ones(90)*moment_dummies[6],
-        np.ones(90)*moment_dummies[7],
-        np.ones(90)*moment_dummies[8],
-        np.ones(75)*moment_dummies[9],
-        np.ones(75)*moment_dummies[10],
-        np.ones(75)*moment_dummies[11],
-        np.ones(375)*moment_dummies[12],
-        np.ones(375)*moment_dummies[13],
-        np.ones(375)*moment_dummies[14],
-        ])
-all_cell_sizes *= moment_mask # Turn off some moments, as chosen at the top of this file
+    # Aggregate moment normalizers into a single vector
+    normalizer = np.concatenate([
+            OOPnorm*np.ones(15),
+            StDevOOPnorm*np.ones(15),
+            MortNorm*np.ones(15),
+            DeltaHealthNorm*np.ones(15),
+            StDevOOPnorm*np.ones(45),
+            DeltaHealthNorm*np.ones(45),
+            HealthNorm*np.ones(90),
+            OOPnorm*np.ones(90),
+            MortNorm*np.ones(90),
+            WealthNorm*np.ones(75),
+            HealthNorm*np.ones(75),
+            OOPnorm*np.ones(75),
+            WealthNorm*np.ones(375),
+            HealthNorm*np.ones(375),
+            OOPnorm*np.ones(375)
+            ])
+        
+    # Aggregate moment cell sizes into a single vector
+    all_cell_sizes = np.concatenate([
+            AgeCellSize,
+            AgeCellSize,
+            AgeCellSizeMort,
+            AgeCellSizeHealthDelta,
+            HealthAgeCellSize.flatten(),
+            HealthAgeCellSizeHealthDelta.flatten(),
+            SexHealthAgeCellSize.flatten(),
+            SexHealthAgeCellSize.flatten(),
+            SexHealthAgeCellSizeMort.flatten(),
+            IncAgeCellSize.flatten(),
+            IncAgeCellSize.flatten(),
+            IncAgeCellSize.flatten(),        
+            IncWealthAgeCellSize.flatten(),
+            IncWealthAgeCellSize.flatten(),
+            IncWealthAgeCellSize.flatten()
+            ])
+        
+    # Make moment masking array and apply it to the cell sizes
+    moment_mask = np.concatenate([
+            np.ones(15)*moment_dummies[0],
+            np.ones(15)*moment_dummies[1],
+            np.ones(15)*moment_dummies[2],
+            np.ones(15)*moment_dummies[3],
+            np.ones(45)*moment_dummies[4],
+            np.ones(45)*moment_dummies[5],
+            np.ones(90)*moment_dummies[6],
+            np.ones(90)*moment_dummies[7],
+            np.ones(90)*moment_dummies[8],
+            np.ones(75)*moment_dummies[9],
+            np.ones(75)*moment_dummies[10],
+            np.ones(75)*moment_dummies[11],
+            np.ones(375)*moment_dummies[12],
+            np.ones(375)*moment_dummies[13],
+            np.ones(375)*moment_dummies[14],
+            ])
+    all_cell_sizes *= moment_mask # Turn off some moments, as chosen at the top of this file
         
         
 # Load in the absolute timepath of the relative price of care: 1977 to 2011
