@@ -7,8 +7,10 @@ import sys
 import os
 import csv
 import numpy as np
+import scipy as sp
 sys.path.insert(0,'../')
 sys.path.insert(0,'./Data/')
+from HARKutilities import getPercentiles
 
 # Choose how many times to bootstrap the data to calculate standard errors for data moments.
 # If this is zero, the module will try to read the CSV file ./Data/MomentWeights.txt to load
@@ -149,7 +151,7 @@ inc_quint_data_orig[inc_quint_data_orig==0] = 5
 # Combine the data by year
 w_data_orig = np.vstack((w0_data,w1_data,w2_data,w3_data,w4_data,w5_data,w6_data,w7_data))
 h_data_orig = np.vstack((h0_data,h1_data,h2_data,h3_data,h4_data,h5_data,h6_data,h7_data))
-m_data_orig = np.vstack((m0_data,m1_data,m2_data,m3_data,m4_data,m5_data,m6_data,m7_data))*10000
+m_data_orig = np.vstack((m0_data,m1_data,m2_data,m3_data,m4_data,m5_data,m6_data,m7_data))
 idx = np.arange(obs)
 
 # Load the income profiles into memory
@@ -179,6 +181,7 @@ for j in range(10):
 
 # Initialize an array of bootstrapped data moments
 BootstrappedMoments = np.zeros((data_bootstrap_count,1770)) + np.nan
+BootstrapValidBool = np.zeros(data_bootstrap_count,dtype=bool)
 
 # Loop over bootstrap runs; if this is the very last pass, use the real data instead
 for b in range(data_bootstrap_count+1):
@@ -439,7 +442,7 @@ for b in range(data_bootstrap_count+1):
             OOPbyIncWealthAge.flatten()
             ])
         
-    # Aggregate moment normalizers into a single vector
+    # Aggregate moment normalizers into a single vector DELETE THIS
     normalizer = np.concatenate([
             OOPnorm*np.ones(15),
             StDevOOPnorm*np.ones(15),
@@ -457,46 +460,120 @@ for b in range(data_bootstrap_count+1):
             HealthNorm*np.ones(375),
             OOPnorm*np.ones(375)
             ])
+    
+    # If this is not the last loop, store the moments for this loop in the array
+    if b < data_bootstrap_count:
+        if np.any(np.isnan(all_moments)):
+            BootstrapValidBool[b] = False
+            valid_word = 'invalid'
+        else:
+            BootstrappedMoments[b,:] = all_moments
+            BootstrapValidBool[b] = True
+            valid_word = 'valid'
+        print('Finished data bootstrap run ' + str(b+1) + ' of ' + str(data_bootstrap_count) + ', ' + valid_word)
+    
+# Aggregate moment cell sizes into a single vector
+all_cell_sizes = np.concatenate([
+        AgeCellSize,
+        AgeCellSize,
+        AgeCellSizeMort,
+        AgeCellSizeHealthDelta,
+        HealthAgeCellSize.flatten(),
+        HealthAgeCellSizeHealthDelta.flatten(),
+        SexHealthAgeCellSize.flatten(),
+        SexHealthAgeCellSize.flatten(),
+        SexHealthAgeCellSizeMort.flatten(),
+        IncAgeCellSize.flatten(),
+        IncAgeCellSize.flatten(),
+        IncAgeCellSize.flatten(),        
+        IncWealthAgeCellSize.flatten(),
+        IncWealthAgeCellSize.flatten(),
+        IncWealthAgeCellSize.flatten()
+        ])
+    
+# Make moment masking array and apply it to the cell sizes
+moment_mask = np.concatenate([
+        np.ones(15)*moment_dummies[0],
+        np.ones(15)*moment_dummies[1],
+        np.ones(15)*moment_dummies[2],
+        np.ones(15)*moment_dummies[3],
+        np.ones(45)*moment_dummies[4],
+        np.ones(45)*moment_dummies[5],
+        np.ones(90)*moment_dummies[6],
+        np.ones(90)*moment_dummies[7],
+        np.ones(90)*moment_dummies[8],
+        np.ones(75)*moment_dummies[9],
+        np.ones(75)*moment_dummies[10],
+        np.ones(75)*moment_dummies[11],
+        np.ones(375)*moment_dummies[12],
+        np.ones(375)*moment_dummies[13],
+        np.ones(375)*moment_dummies[14],
+        ])
+all_cell_sizes *= moment_mask # Turn off some moments, as chosen at the top of this file
+
+# If the data moments were bootstrapped, calculate the optimal weighting matrix and save it to a file.
+# Otherwise, try to read the weighting matrix from that file; if it doesn't exist, use the identity matrix.
+if data_bootstrap_count > 0:
+    # Calculate the covariance matrix of data moments
+    BootstrappedMoments_valid = BootstrappedMoments[BootstrapValidBool,:]
+    N = np.sum(BootstrapValidBool)
+    VarVec = np.var(BootstrappedMoments_valid,axis=0)
+    CovMatrix = np.cov(BootstrappedMoments_valid.transpose())
+    print(str(N) + ' of ' + str(data_bootstrap_count) + ' bootstrap runs were valid.')
+    moment_valid = VarVec > 1e-6 # Discard moments with zero or nearly zero variance
+    moment_valid[645:675] = False # Turn off wealth moments for bottom two wealth quintiles of bottom income quintile
+    moment_valid[720:735] = False # Turn off wealth moments for bottom wealth quintile of second income quintile
+    moment_valid[1405:1410] = False # Turn off OOP moments for bottom wealth quintile of bottom income quintile after age 85
+    valid_moment_N = np.sum(moment_valid)
+    print(str(valid_moment_N) + ' of ' + str(moment_valid.size) + ' data moments were useable.')
+    
+    # For any moments with zero variation, temporarily remove them before inverting the covariance matrix,
+    # then re-insert rows and columns of zeros after inverting.  These moments won't be used by the estimator,
+    # even though *we are very confident in the data moments*.  The excluded moments are median wealth of
+    # the poorest wealth-income groups, who always have zero assets.  The estimated model hits these moments
+    # anyway, as the almost-poorest groups will have very little wealth, and the poorest have even less (zero).
+    
+    # Define moment groups for creating diagonal blocks of the weighting matrix
+    moment_cuts = [0,15,30,45,60,105,150,195,240,285,330,375,420,495,570,645,720,795,870,945,1020,1095,1170,1245,1320,1395,1470,1545,1620,1695,1770]
+    weight_block_list = []
+    
+    # Loop through each block of moments and find the weighting matrix for that block
+    for j in range(len(moment_cuts)-1):
+        bot = moment_cuts[j]
+        top = moment_cuts[j+1]
+        which = np.zeros(1770,dtype=bool)
+        which[bot:top] = True
+        which = np.logical_and(which,moment_valid)
+        CovMatrix_temp = CovMatrix[which,:][:,which]
+        weight_block_list.append(np.linalg.inv(CovMatrix_temp))
+    
+    # Combine the blocks of weights into a diagonal matrix and re-insert rows and columns of zeros for omitted moments
+    weighting_matrix_small = sp.linalg.block_diag(*weight_block_list)
+    weighting_matrix_mid = np.zeros((1770,valid_moment_N))
+    weighting_matrix_mid[moment_valid,:] = weighting_matrix_small
+    weighting_matrix = np.zeros((1770,1770))
+    weighting_matrix[:,moment_valid] = weighting_matrix_mid
+    
+    # Record the weighting matrix in a CSV file so we don't have to bootstrap the data every time
+    with open('./Data/MomentWeights.txt','wb') as f:
+        my_writer = csv.writer(f, delimiter = '\t')
+        for i in range(weighting_matrix.shape[0]):
+            my_writer.writerow(weighting_matrix[i,:])
+        f.close()
         
-    # Aggregate moment cell sizes into a single vector
-    all_cell_sizes = np.concatenate([
-            AgeCellSize,
-            AgeCellSize,
-            AgeCellSizeMort,
-            AgeCellSizeHealthDelta,
-            HealthAgeCellSize.flatten(),
-            HealthAgeCellSizeHealthDelta.flatten(),
-            SexHealthAgeCellSize.flatten(),
-            SexHealthAgeCellSize.flatten(),
-            SexHealthAgeCellSizeMort.flatten(),
-            IncAgeCellSize.flatten(),
-            IncAgeCellSize.flatten(),
-            IncAgeCellSize.flatten(),        
-            IncWealthAgeCellSize.flatten(),
-            IncWealthAgeCellSize.flatten(),
-            IncWealthAgeCellSize.flatten()
-            ])
-        
-    # Make moment masking array and apply it to the cell sizes
-    moment_mask = np.concatenate([
-            np.ones(15)*moment_dummies[0],
-            np.ones(15)*moment_dummies[1],
-            np.ones(15)*moment_dummies[2],
-            np.ones(15)*moment_dummies[3],
-            np.ones(45)*moment_dummies[4],
-            np.ones(45)*moment_dummies[5],
-            np.ones(90)*moment_dummies[6],
-            np.ones(90)*moment_dummies[7],
-            np.ones(90)*moment_dummies[8],
-            np.ones(75)*moment_dummies[9],
-            np.ones(75)*moment_dummies[10],
-            np.ones(75)*moment_dummies[11],
-            np.ones(375)*moment_dummies[12],
-            np.ones(375)*moment_dummies[13],
-            np.ones(375)*moment_dummies[14],
-            ])
-    all_cell_sizes *= moment_mask # Turn off some moments, as chosen at the top of this file
-        
+else: # Try to read the weighting matrix from a CSV file if it wasn't just created
+    try:
+        infile = open('./Data/MomentWeights.txt','r')
+        my_reader = csv.reader(infile,delimiter='\t')
+        moment_weight_data = list(my_reader)
+        infile.close()
+        weighting_matrix = np.zeros((1770,1770))
+        for i in range(1770):
+            for j in range(1770):
+                weighting_matrix[i,j] = float(moment_weight_data[i][j])
+    except:
+        weighting_matrix = np.eye(1770)
+  
         
 # Load in the absolute timepath of the relative price of care: 1977 to 2011
 Years = np.arange(1977,2058)

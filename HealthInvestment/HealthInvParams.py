@@ -135,41 +135,42 @@ basic_estimation_dict.update(grid_size_params)
 test_param_vec = np.array([
     2.0,                # 0 CRRA
     0.826851467639,     # 1 DiscFac
-    1.52649308788,      # 2 MedCurve
-    0.109687622088,     # 3 LifeUtility
+    1.61467857653,      # 2 MedCurve
+    0.108634976015,     # 3 LifeUtility
     -0.5,               # 4 MargUtilityShift
     0.371107323164,     # 5 Cfloor
     0.492413649548,     # 6 Bequest0
     1.57686798194,      # 7 Bequest1
-    -0.0785331680203,   # 8 MedShkMean0
-    -0.179174901047,    # 9 MedShkMeanSex
-    0.233140060659,     # 10 MedShkMeanAge
-    -0.00327496935981,  # 11 MedShkMeanAgeSq
-    -1.053612049971,    # 12 MedShkMeanHealth
-    -5.11456041573,     # 13 MedShkMeanHealthSq
-    2.28683496837,      # 14 MedShkStd0
-    -0.292126838546,    # 15 MedShkStd1
-    0.0491991254583,    # 16 HealthNext0
-    -0.000409970806445, # 17 HealthNextSex
-    -0.000454293512626, # 18 HealthNextAge
-    -0.000219906029484, # 19 HealthNextAgeSq
-    0.714996998705,     # 20 HealthNextHealth
-    0.172276892235,     # 21 HealthNextHealthSq
+    -0.112694124256,    # 8 MedShkMean0
+    -0.198201913461,    # 9 MedShkMeanSex
+    0.19798180554,      # 10 MedShkMeanAge
+    -0.00293794063228,  # 11 MedShkMeanAgeSq
+    -1.24778695517,     # 12 MedShkMeanHealth
+    -5.94936805916,     # 13 MedShkMeanHealthSq
+    2.66595809316,      # 14 MedShkStd0
+    -0.144867544691,    # 15 MedShkStd1
+    0.0394819454178,    # 16 HealthNext0
+    -0.000506207893457, # 17 HealthNextSex
+    -0.000522961191253, # 18 HealthNextAge
+    -0.000219433030873, # 19 HealthNextAgeSq
+    0.741517521301,     # 20 HealthNextHealth
+    0.18404212873,      # 21 HealthNextHealthSq
     0.148786822625,     # 22 HealthShkStd0
     -0.0418279671933,   # 23 HealthShkStd1
-    0.0348324832821,    # 24 HealthProd0
-    0.034114963062,     # 25 HealthProd1
+    0.0281299353421,    # 24 HealthProd0
+    0.0151610231235,    # 25 HealthProd1
     0.000,              # 26 HealthProd2
-    -0.608488105176,    # 27 Mortality0
-    0.339804961109,     # 28 MortalitySex
-    0.00258657146343,   # 29 MortalityAge
-    0.00600519638657,   # 30 MortalityAgeSq
-    -1.95066486517,     # 31 MortalityHealth
-    -0.064134709729    # 32 MortalityHealthSq
+    -0.539882852295,    # 27 Mortality0
+    0.365419129352,     # 28 MortalitySex
+    0.00242469472788,   # 29 MortalityAge
+    0.00607028513364,   # 30 MortalityAgeSq
+    -2.2270847466,      # 31 MortalityHealth
+    -0.0918590331007    # 32 MortalityHealthSq
     ])
 
 # 0.930017960426,     # 0 CRRA
-#    0.0311610231235,    # 25 HealthProd1
+#    
+#     1.46860778151e-05,  # 25 HealthProd1
 
 
 # Make a list of parameter names corresponding to their position in the vector above
