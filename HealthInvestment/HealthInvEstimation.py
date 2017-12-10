@@ -384,25 +384,31 @@ def calcStdErrs(params,use_cohorts,which,eps):
     '''
     # Initialize an array of numeric derivatives of moment differences
     N = np.sum(which)
-    MomentDerivativeArray = np.zeros(N,1770)
+    MomentDerivativeArray = np.zeros((N,1770))
+    
+    # Make a dictionary of parameters
+    base_param_dict = convertVecToDict(params)
     
     # Calculate the vector of moment differences for the estimated parameters
-    TypeList = processSimulatedTypes(params,use_cohorts)
+    TypeList = processSimulatedTypes(base_param_dict,use_cohorts)
     SimulatedMoments = calcSimulatedMoments(TypeList,False)
     BaseMomentDifferences = (SimulatedMoments - DataMoments)
+    print('Found moment differences for base parameter vector')
     
     # Loop through the parameters, perturbing each one and calculating moment derivatives
     n = 0
     for i in range(33):
         if which[i]:
-            params_now = copy(params)
+            params_now = copy(base_param_dict)
             this_eps = params[i]*eps
-            params_now[i] += this_eps
+            this_param = params[i] + this_eps
+            params_now[Params.param_names[i]] = this_param
             TypeList = processSimulatedTypes(params_now,use_cohorts)
             SimulatedMoments = calcSimulatedMoments(TypeList,False)
             MomentDifferences = (SimulatedMoments - DataMoments)*MomentMask
             MomentDerivativeArray[n,:] = (MomentDifferences - BaseMomentDifferences)/this_eps
             n += 1
+            print('Finished perturbing parameter ' + str(n) + ' of ' + str(N))
             
     # Calculate standard errors by finding the variance-covariance matrix for the parameters
     scale_fac = 1. + 1./Params.basic_estimation_dict['DataToSimRepFactor']
@@ -442,30 +448,42 @@ def objectiveFunction(params,use_cohorts,return_as_list):
     if return_as_list:
         return SimulatedMoments
     else:
-        MomentDifferences = (SimulatedMoments - DataMoments)/Normalizer
-        MomentDifferencesSq = MomentDifferences**2
-        weighted_moment_sum = np.dot(MomentDifferencesSq,CellSizes)
-        # MomentDifferences = np.reshape((SimulatedMoments - DataMoments)*MomentMask,(1770,1))
-        # weighted_moment_sum = np.dot(np.dot(MomentDifferences.transpose(),MomentWeights),MomentDifferences)
+        MomentDifferences = np.reshape((SimulatedMoments - DataMoments)*MomentMask,(1770,1))
+        weighted_moment_sum = np.dot(np.dot(MomentDifferences.transpose(),MomentWeights),MomentDifferences)[0,0]
+        print(weighted_moment_sum)
         return weighted_moment_sum
 
 
-def objectiveFunctionWrapper(param_vec):
+def writeParamsToFile(param_vec,filename):
     '''
-    Wrapper funtion around the objective function so that it can be used with
-    optimization routines.  Takes a single 1D array as input, returns a single float.
+    Store the current parameter files in a txt file so they can be recovered in
+    case of a computer crash (etc).
     
     Parameters
     ----------
     param_vec : np.array
-        1D array of structural parameters to be estimated.  Should have size 33.
+        Size 33 array of structural parameters.
+    filename : str
+        Name of file in which to write the current parameters.
         
     Returns
     -------
-    weighted_moment_sum : float
-        Weighted sum of squared moment differences between data and simulation.
+    None
     '''
-    # Make a dictionary with structural parameters for testing
+    write_str = 'current_param_vec = np.array([ \n'
+    for i in range(param_vec.size):
+        write_str += '    ' + str(param_vec[i]) + ',  # ' + str(i) + ' ' + Params.param_names[i] + '\n'
+    write_str += ']) \n'
+    with open('./Data/' + filename,'wb') as f:
+        f.write(write_str)
+        f.close()
+        
+        
+def convertVecToDict(param_vec):
+    '''
+    Converts a 33 length vector of parameters to a dictionary that can be used
+    by the estimator or standard error calculator.
+    '''
     struct_params = {
         'CRRA' : param_vec[0],
         'DiscFac' : param_vec[1],
@@ -491,8 +509,8 @@ def objectiveFunctionWrapper(param_vec):
         'HealthNextHealthSq' : param_vec[21],
         'HealthShkStd0' : param_vec[22],
         'HealthShkStd1' : param_vec[23],
-        'HealthProd0' : param_vec[24],
-        'HealthProd1' : param_vec[25],
+        'HealthProd0' : np.exp(param_vec[24]),
+        'HealthProd1' : np.exp(param_vec[25]),
         'HealthProd2' : param_vec[26],
         'Mortality0' : param_vec[27],
         'MortalitySex' : param_vec[28],
@@ -501,13 +519,38 @@ def objectiveFunctionWrapper(param_vec):
         'MortalityHealth' : param_vec[31],
         'MortalityHealthSq' : param_vec[32]
     }
-    these_params = copy(Params.basic_estimation_dict)
-    these_params.update(struct_params)
+    param_dict = copy(Params.basic_estimation_dict)
+    param_dict.update(struct_params)
+    return param_dict
+
+
+def objectiveFunctionWrapper(param_vec):
+    '''
+    Wrapper funtion around the objective function so that it can be used with
+    optimization routines.  Takes a single 1D array as input, returns a single float.
+    
+    Parameters
+    ----------
+    param_vec : np.array
+        1D array of structural parameters to be estimated.  Should have size 33.
+        
+    Returns
+    -------
+    weighted_moment_sum : float
+        Weighted sum of squared moment differences between data and simulation.
+    '''
+    # Make a dictionary with structural parameters for testing
+    these_params = convertVecToDict(param_vec)
     
     # Run the objective function with the newly created dictionary
     use_cohorts = Data.use_cohorts
-    weighted_moment_sum = objectiveFunction(these_params,use_cohorts,False)
-    print(weighted_moment_sum)
+    weighted_moment_sum = objectiveFunction(these_params,use_cohorts,True)
+    
+    # Write the current parameters to a file if a certain number of function calls have happened
+    Params.func_call_count += 1
+    if np.mod(Params.func_call_count,Params.store_freq) == 0:
+        writeParamsToFile(param_vec,'ParameterStatus.txt')
+    
     return weighted_moment_sum
 
 
@@ -700,12 +743,23 @@ if __name__ == '__main__':
     
 
 
-    # Estimate some (or all) of the model parameters
-    which_indices = np.array([2,16,17,18,19,20,21,24,25,27,28,29,30,31,32])
-    which_bool = np.zeros(33,dtype=bool)
-    which_bool[which_indices] = True
-    estimated_params = minimizeNelderMead(objectiveFunctionWrapper,Params.test_param_vec,verbose=True,which_vars=which_bool)
-    for i in which_indices.tolist():
-        print(Params.param_names[i] + ' = ' + str(estimated_params[i]))
-    
-    
+#    # Estimate some (or all) of the model parameters
+#    which_indices = np.array([2,16,17,18,19,20,21,24,25,27,28,29,30,31,32])
+#    which_bool = np.zeros(33,dtype=bool)
+#    which_bool[which_indices] = True
+#    estimated_params = minimizeNelderMead(objectiveFunctionWrapper,Params.test_param_vec,verbose=True,which_vars=which_bool)
+#    for i in which_indices.tolist():
+#        print(Params.param_names[i] + ' = ' + str(estimated_params[i]))
+#    
+
+
+
+#    # Calculate standard errors for some or all parameters
+#    which_indices = np.array([27,28,29,30,31,32])
+#    which_bool = np.zeros(33,dtype=bool)
+#    which_bool[which_indices] = True
+#    standard_errors = calcStdErrs(Params.test_param_vec,Data.use_cohorts,which_bool,eps=0.001)
+#    for n in range(which_indices.size):
+#        i = which_indices[n]
+#        print(Params.param_names[i] + ' = ' + str(standard_errors[n]))
+        
