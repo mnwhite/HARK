@@ -384,25 +384,31 @@ def calcStdErrs(params,use_cohorts,which,eps):
     '''
     # Initialize an array of numeric derivatives of moment differences
     N = np.sum(which)
-    MomentDerivativeArray = np.zeros(N,1770)
+    MomentDerivativeArray = np.zeros((N,1770))
+    
+    # Make a dictionary of parameters
+    base_param_dict = convertVecToDict(params)
     
     # Calculate the vector of moment differences for the estimated parameters
-    TypeList = processSimulatedTypes(params,use_cohorts)
+    TypeList = processSimulatedTypes(base_param_dict,use_cohorts)
     SimulatedMoments = calcSimulatedMoments(TypeList,False)
     BaseMomentDifferences = (SimulatedMoments - DataMoments)
+    print('Found moment differences for base parameter vector')
     
     # Loop through the parameters, perturbing each one and calculating moment derivatives
     n = 0
     for i in range(33):
         if which[i]:
-            params_now = copy(params)
+            params_now = copy(base_param_dict)
             this_eps = params[i]*eps
-            params_now[i] += this_eps
+            this_param = params[i] + this_eps
+            params_now[Params.param_names[i]] = this_param
             TypeList = processSimulatedTypes(params_now,use_cohorts)
             SimulatedMoments = calcSimulatedMoments(TypeList,False)
             MomentDifferences = (SimulatedMoments - DataMoments)*MomentMask
             MomentDerivativeArray[n,:] = (MomentDifferences - BaseMomentDifferences)/this_eps
             n += 1
+            print('Finished perturbing parameter ' + str(n) + ' of ' + str(N))
             
     # Calculate standard errors by finding the variance-covariance matrix for the parameters
     scale_fac = 1. + 1./Params.basic_estimation_dict['DataToSimRepFactor']
@@ -442,30 +448,42 @@ def objectiveFunction(params,use_cohorts,return_as_list):
     if return_as_list:
         return SimulatedMoments
     else:
-        MomentDifferences = (SimulatedMoments - DataMoments)/Normalizer
-        MomentDifferencesSq = MomentDifferences**2
-        weighted_moment_sum = np.dot(MomentDifferencesSq,CellSizes)
-        # MomentDifferences = np.reshape((SimulatedMoments - DataMoments)*MomentMask,(1770,1))
-        # weighted_moment_sum = np.dot(np.dot(MomentDifferences.transpose(),MomentWeights),MomentDifferences)
+        MomentDifferences = np.reshape((SimulatedMoments - DataMoments)*MomentMask,(1770,1))
+        weighted_moment_sum = np.dot(np.dot(MomentDifferences.transpose(),MomentWeights),MomentDifferences)[0,0]
+        print(weighted_moment_sum)
         return weighted_moment_sum
 
 
-def objectiveFunctionWrapper(param_vec):
+def writeParamsToFile(param_vec,filename):
     '''
-    Wrapper funtion around the objective function so that it can be used with
-    optimization routines.  Takes a single 1D array as input, returns a single float.
+    Store the current parameter files in a txt file so they can be recovered in
+    case of a computer crash (etc).
     
     Parameters
     ----------
     param_vec : np.array
-        1D array of structural parameters to be estimated.  Should have size 33.
+        Size 33 array of structural parameters.
+    filename : str
+        Name of file in which to write the current parameters.
         
     Returns
     -------
-    weighted_moment_sum : float
-        Weighted sum of squared moment differences between data and simulation.
+    None
     '''
-    # Make a dictionary with structural parameters for testing
+    write_str = 'current_param_vec = np.array([ \n'
+    for i in range(param_vec.size):
+        write_str += '    ' + str(param_vec[i]) + ',  # ' + str(i) + ' ' + Params.param_names[i] + '\n'
+    write_str += ']) \n'
+    with open('./Data/' + filename,'wb') as f:
+        f.write(write_str)
+        f.close()
+        
+        
+def convertVecToDict(param_vec):
+    '''
+    Converts a 33 length vector of parameters to a dictionary that can be used
+    by the estimator or standard error calculator.
+    '''
     struct_params = {
         'CRRA' : param_vec[0],
         'DiscFac' : param_vec[1],
@@ -491,8 +509,8 @@ def objectiveFunctionWrapper(param_vec):
         'HealthNextHealthSq' : param_vec[21],
         'HealthShkStd0' : param_vec[22],
         'HealthShkStd1' : param_vec[23],
-        'HealthProd0' : param_vec[24],
-        'HealthProd1' : param_vec[25],
+        'HealthProd0' : np.exp(param_vec[24]),
+        'HealthProd1' : np.exp(param_vec[25]),
         'HealthProd2' : param_vec[26],
         'Mortality0' : param_vec[27],
         'MortalitySex' : param_vec[28],
@@ -501,22 +519,48 @@ def objectiveFunctionWrapper(param_vec):
         'MortalityHealth' : param_vec[31],
         'MortalityHealthSq' : param_vec[32]
     }
-    these_params = copy(Params.basic_estimation_dict)
-    these_params.update(struct_params)
+    param_dict = copy(Params.basic_estimation_dict)
+    param_dict.update(struct_params)
+    return param_dict
+
+
+def objectiveFunctionWrapper(param_vec):
+    '''
+    Wrapper funtion around the objective function so that it can be used with
+    optimization routines.  Takes a single 1D array as input, returns a single float.
+    
+    Parameters
+    ----------
+    param_vec : np.array
+        1D array of structural parameters to be estimated.  Should have size 33.
+        
+    Returns
+    -------
+    weighted_moment_sum : float
+        Weighted sum of squared moment differences between data and simulation.
+    '''
+    # Make a dictionary with structural parameters for testing
+    these_params = convertVecToDict(param_vec)
     
     # Run the objective function with the newly created dictionary
     use_cohorts = Data.use_cohorts
-    weighted_moment_sum = objectiveFunction(these_params,use_cohorts,False)
-    print(weighted_moment_sum)
+    weighted_moment_sum = objectiveFunction(these_params,use_cohorts,True)
+    
+    # Write the current parameters to a file if a certain number of function calls have happened
+    Params.func_call_count += 1
+    if np.mod(Params.func_call_count,Params.store_freq) == 0:
+        writeParamsToFile(param_vec,'ParameterStatus.txt')
+    
     return weighted_moment_sum
 
 
 
 if __name__ == '__main__':
 
-#    MyTypes = makeMultiTypeSimple(Params.test_params)
+#    param_dict = convertVecToDict(Params.test_param_vec)
+#    MyTypes = makeMultiTypeSimple(param_dict)
 #    t_start = clock()
-#    MyTypes[0].estimationAction()
+#    MyTypes[4].estimationAction()
 #    t_end = clock()
 #    print('Processing one agent type took ' + str(t_end-t_start) + ' seconds.')
     
@@ -538,113 +582,113 @@ if __name__ == '__main__':
 
 
 
-#    t_start = clock()
-#    X = objectiveFunctionWrapper(Params.test_param_vec)
-#    t_end = clock()
-#    print('One objective function evaluation took ' + str(t_end-t_start) + ' seconds.')
-#    
-#    # Plot model fit of mean out of pocket medical spending by age
-#    plt.plot(X[0])
-#    plt.plot(Data.OOPbyAge,'.k')
-#    plt.ylabel('Mean OOP medical spending')
-#    plt.show()
-#    
-#    # Plot model fit of mean out of pocket medical spending by age-health for females
-#    plt.plot(X[7][0,:,:].transpose())
-#    for h in range(3):
-#        plt.plot(Data.OOPbySexHealthAge[0,h,:],'--')
-#    plt.ylabel('Mean OOP medical spending, women')
-#    plt.show()
-#    
-#    # Plot model fit of mean out of pocket medical spending by age-health for males
-#    plt.plot(X[7][1,:,:].transpose())
-#    for h in range(3):
-#        plt.plot(Data.OOPbySexHealthAge[1,h,:],'--')
-#    plt.ylabel('Mean OOP medical spending, men')
-#    plt.show()
-#    
-#    # Plot model fit of mean out of pocket medical spending by age-income
-#    plt.plot(X[11].transpose())
-#    plt.plot(Data.OOPbyIncAge.transpose(),'.')
-#    plt.ylabel('Mean OOP medical spending by income quintile')
-#    plt.show()
-#
-#    # Plot model fit of stdev out of pocket medical spending by age
-#    plt.plot(X[1])
-#    plt.plot(Data.StDevOOPbyAge,'.k')
-#    plt.ylabel('StDev OOP medical spending')
-#    plt.show()
-#    
-#    # Plot model fit of stdev out of pocket medical spending by age and health
-#    plt.plot(X[4].transpose())
-#    for h in range(3):
-#        plt.plot(Data.StDevOOPbyHealthAge[h,:],'--')
-#    plt.ylabel('StDev OOP medical spending')
-#    plt.show()
-#    
-#    # Plot model fit of mortality by age
-#    plt.plot(X[2])
-#    plt.plot(Data.MortByAge,'.k')
-#    plt.ylabel('Mortality probability')
-#    plt.show()
-#    
-#    # Plot model fit of mortality by age and health for females
-#    plt.plot(X[8][0,:,:].transpose())
-#    for h in range(3):
-#        plt.plot(Data.MortBySexHealthAge[0,h,:],'.')
-#    plt.ylabel('Mortality probability, women')
-#    plt.show()
-#    
-#    # Plot model fit of mortality by age and health for males
-#    plt.plot(X[8][1,:,:].transpose())
-#    for h in range(3):
-#        plt.plot(Data.MortBySexHealthAge[1,h,:],'.')
-#    plt.ylabel('Mortality probability, men')
-#    plt.show()
-#
-#    # Plot model fit of wealth by age and income quintile
-#    plt.plot(X[9].transpose())
-#    for i in range(5):
-#        plt.plot(Data.WealthByIncAge[i,:],'.')
-#    plt.ylabel('Median wealth profiles')
-#    plt.show()
-#    
-#    # Plot model fit of wealth by age and wealth quintile (for one income quintile at a time)
-#    names = ['lowest','second','third','fourth','highest']
-#    for i in range(5):
-#        plt.plot(X[12][i,:,:].transpose())
-#        for j in range(5):
-#            plt.plot(Data.WealthByIncWealthAge[i,j,:],'.')
-#        plt.ylabel('Median wealth profiles for ' + names[i] + ' income quintile')
-#        plt.show()
-#    
-#    # Plot model fit of mean health by health, sex, and age
-#    plt.plot(X[6][0,:,:].transpose())
-#    plt.plot(Data.HealthBySexHealthAge[0,:,:].transpose(),'.k')
-#    plt.ylabel('Health profiles by health tertile, women')
-#    plt.show()
-#    plt.plot(X[6][1,:,:].transpose())
-#    plt.plot(Data.HealthBySexHealthAge[1,:,:].transpose(),'.k')
-#    plt.ylabel('Health profiles by health tertile, men')
-#    plt.show()
-#    
-#    # Plot model fit of mean health by income and age
-#    plt.plot(X[10].transpose())
-#    plt.plot(Data.HealthByIncAge.transpose(),'--')
-#    plt.ylabel('Health profiles by income quintile')
-#    plt.show()
-#    
-#    # Plot model fit of standard deviation of change in health by age
-#    plt.plot(X[3])
-#    plt.plot(Data.StDevDeltaHealthByAge,'.k')
-#    plt.ylabel('Standard deviation of change in health')
-#    plt.show()
-#    
-#    # Plot model fit of standard deviation of change in health by age and health
-#    plt.plot(X[5].transpose())
-#    plt.plot(Data.StDevDeltaHealthByHealthAge.transpose(),'.')
-#    plt.ylabel('Standard deviation of change in health')
-#    plt.show()
+    t_start = clock()
+    X = objectiveFunctionWrapper(Params.test_param_vec)
+    t_end = clock()
+    print('One objective function evaluation took ' + str(t_end-t_start) + ' seconds.')
+    
+    # Plot model fit of mean out of pocket medical spending by age
+    plt.plot(X[0])
+    plt.plot(Data.OOPbyAge,'.k')
+    plt.ylabel('Mean OOP medical spending')
+    plt.show()
+    
+    # Plot model fit of mean out of pocket medical spending by age-health for females
+    plt.plot(X[7][0,:,:].transpose())
+    for h in range(3):
+        plt.plot(Data.OOPbySexHealthAge[0,h,:],'--')
+    plt.ylabel('Mean OOP medical spending, women')
+    plt.show()
+    
+    # Plot model fit of mean out of pocket medical spending by age-health for males
+    plt.plot(X[7][1,:,:].transpose())
+    for h in range(3):
+        plt.plot(Data.OOPbySexHealthAge[1,h,:],'--')
+    plt.ylabel('Mean OOP medical spending, men')
+    plt.show()
+    
+    # Plot model fit of mean out of pocket medical spending by age-income
+    plt.plot(X[11].transpose())
+    plt.plot(Data.OOPbyIncAge.transpose(),'.')
+    plt.ylabel('Mean OOP medical spending by income quintile')
+    plt.show()
+
+    # Plot model fit of stdev out of pocket medical spending by age
+    plt.plot(X[1])
+    plt.plot(Data.StDevOOPbyAge,'.k')
+    plt.ylabel('StDev OOP medical spending')
+    plt.show()
+    
+    # Plot model fit of stdev out of pocket medical spending by age and health
+    plt.plot(X[4].transpose())
+    for h in range(3):
+        plt.plot(Data.StDevOOPbyHealthAge[h,:],'--')
+    plt.ylabel('StDev OOP medical spending')
+    plt.show()
+    
+    # Plot model fit of mortality by age
+    plt.plot(X[2])
+    plt.plot(Data.MortByAge,'.k')
+    plt.ylabel('Mortality probability')
+    plt.show()
+    
+    # Plot model fit of mortality by age and health for females
+    plt.plot(X[8][0,:,:].transpose())
+    for h in range(3):
+        plt.plot(Data.MortBySexHealthAge[0,h,:],'.')
+    plt.ylabel('Mortality probability, women')
+    plt.show()
+    
+    # Plot model fit of mortality by age and health for males
+    plt.plot(X[8][1,:,:].transpose())
+    for h in range(3):
+        plt.plot(Data.MortBySexHealthAge[1,h,:],'.')
+    plt.ylabel('Mortality probability, men')
+    plt.show()
+
+    # Plot model fit of wealth by age and income quintile
+    plt.plot(X[9].transpose())
+    for i in range(5):
+        plt.plot(Data.WealthByIncAge[i,:],'.')
+    plt.ylabel('Median wealth profiles')
+    plt.show()
+    
+    # Plot model fit of wealth by age and wealth quintile (for one income quintile at a time)
+    names = ['lowest','second','third','fourth','highest']
+    for i in range(5):
+        plt.plot(X[12][i,:,:].transpose())
+        for j in range(5):
+            plt.plot(Data.WealthByIncWealthAge[i,j,:],'.')
+        plt.ylabel('Median wealth profiles for ' + names[i] + ' income quintile')
+        plt.show()
+    
+    # Plot model fit of mean health by health, sex, and age
+    plt.plot(X[6][0,:,:].transpose())
+    plt.plot(Data.HealthBySexHealthAge[0,:,:].transpose(),'.k')
+    plt.ylabel('Health profiles by health tertile, women')
+    plt.show()
+    plt.plot(X[6][1,:,:].transpose())
+    plt.plot(Data.HealthBySexHealthAge[1,:,:].transpose(),'.k')
+    plt.ylabel('Health profiles by health tertile, men')
+    plt.show()
+    
+    # Plot model fit of mean health by income and age
+    plt.plot(X[10].transpose())
+    plt.plot(Data.HealthByIncAge.transpose(),'--')
+    plt.ylabel('Health profiles by income quintile')
+    plt.show()
+    
+    # Plot model fit of standard deviation of change in health by age
+    plt.plot(X[3])
+    plt.plot(Data.StDevDeltaHealthByAge,'.k')
+    plt.ylabel('Standard deviation of change in health')
+    plt.show()
+    
+    # Plot model fit of standard deviation of change in health by age and health
+    plt.plot(X[5].transpose())
+    plt.plot(Data.StDevDeltaHealthByHealthAge.transpose(),'.')
+    plt.ylabel('Standard deviation of change in health')
+    plt.show()
     
 
 
@@ -700,12 +744,23 @@ if __name__ == '__main__':
     
 
 
-    # Estimate some (or all) of the model parameters
-    which_indices = np.array([2,16,17,18,19,20,21,24,25,27,28,29,30,31,32])
-    which_bool = np.zeros(33,dtype=bool)
-    which_bool[which_indices] = True
-    estimated_params = minimizeNelderMead(objectiveFunctionWrapper,Params.test_param_vec,verbose=True,which_vars=which_bool)
-    for i in which_indices.tolist():
-        print(Params.param_names[i] + ' = ' + str(estimated_params[i]))
-    
-    
+#    # Estimate some (or all) of the model parameters
+#    which_indices = np.array([2,16,17,18,19,20,21,24,25,27,28,29,30,31,32])
+#    which_bool = np.zeros(33,dtype=bool)
+#    which_bool[which_indices] = True
+#    estimated_params = minimizeNelderMead(objectiveFunctionWrapper,Params.test_param_vec,verbose=True,which_vars=which_bool)
+#    for i in which_indices.tolist():
+#        print(Params.param_names[i] + ' = ' + str(estimated_params[i]))
+#    
+
+
+
+#    # Calculate standard errors for some or all parameters
+#    which_indices = np.array([27,28,29,30,31,32])
+#    which_bool = np.zeros(33,dtype=bool)
+#    which_bool[which_indices] = True
+#    standard_errors = calcStdErrs(Params.test_param_vec,Data.use_cohorts,which_bool,eps=0.001)
+#    for n in range(which_indices.size):
+#        i = which_indices[n]
+#        print(Params.param_names[i] + ' = ' + str(standard_errors[n]))
+        

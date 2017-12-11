@@ -8,7 +8,7 @@ import os
 import numpy as np
 import opencl4py as cl
 #from copy import copy
-os.environ["PYOPENCL_CTX"] = "1:1" # This is where you choose a device number
+os.environ["PYOPENCL_CTX"] = "0:3" # This is where you choose a device number
 sys.path.insert(0, os.path.abspath('../'))
 sys.path.insert(0,'../../')
 sys.path.insert(0, os.path.abspath('./'))

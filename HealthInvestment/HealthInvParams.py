@@ -157,8 +157,8 @@ test_param_vec = np.array([
     0.18404212873,      # 21 HealthNextHealthSq
     0.148786822625,     # 22 HealthShkStd0
     -0.0418279671933,   # 23 HealthShkStd1
-    0.0281299353421,    # 24 HealthProd0
-    0.0151610231235,    # 25 HealthProd1
+    -3.57092095502194,  # 24 HealthProd0 (in log)
+    -4.18902741268762,  # 25 HealthProd1 (in log)
     0.000,              # 26 HealthProd2
     -0.539882852295,    # 27 Mortality0
     0.365419129352,     # 28 MortalitySex
@@ -172,6 +172,9 @@ test_param_vec = np.array([
 #    
 #     1.46860778151e-05,  # 25 HealthProd1
 
+# These are only used by the estimation to decide when to write parameters to disk
+func_call_count = 0
+store_freq = 50
 
 # Make a list of parameter names corresponding to their position in the vector above
 param_names = [

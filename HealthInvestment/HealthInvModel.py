@@ -12,7 +12,7 @@ import numpy as np
 from scipy.stats import norm
 from scipy.optimize import brentq
 from HARKcore import NullFunc, Solution, HARKobject, AgentType
-from HARKinterpolation import ConstantFunction, LinearInterp, BilinearInterp, TrilinearInterp, LinearInterpOnInterp1D
+from HARKinterpolation import ConstantFunction, LinearInterp, BilinearInterp, TrilinearInterp, LinearInterpOnInterp1D, UpperEnvelope, LowerEnvelope
 from HARKutilities import makeGridExpMult, CRRAutility, CRRAutilityP, CRRAutilityP_inv, CRRAutility_inv
 from HARKsimulation import drawNormal
 from ConsIndShockModel import IndShockConsumerType, ValueFunc
@@ -909,20 +909,26 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         if not self.time_flow:
             self.timeFwd()
             
+        # Define boundaries of premiums and coinsurance rates
+        PremiumMin = ConstantFunction(0.01)
+        PremiumMax = ConstantFunction(10.) # This would never happen
+        CopayMin = ConstantFunction(0.10)
+        CopayMax = ConstantFunction(1.0) # Shouldn't happen
+            
         PremiumFunc = []
         CopayFunc = []
         for t in range(self.T_cycle):
-            Age = t*1
+            Age = t*2
             y = self.IncomeNow[t]
             p0 = self.Premium0 + self.Sex*self.PremiumSex + self.PremiumAge*Age + self.PremiumAgeSq*Age**2 + self.PremiumInc*y + self.PremiumIncSq*y**2 + self.PremiumIncCu*y**3
             p1 = self.PremiumHealth + self.PremiumHealthAge*Age + self.PremiumHealthAgeSq*Age**2 + self.PremiumHealthInc*y + self.PremiumHealthIncSq*y**2
             p2 = self.PremiumHealthSq + self.PremiumHealthSqAge*Age + self.PremiumHealthSqAgeSq*Age**2 + self.PremiumHealthSqInc*y + self.PremiumHealthSqIncSq*y**2
-            PremiumFunc.append(QuadraticFunction(p0,p1,p2))
+            PremiumFunc.append(LowerEnvelope(UpperEnvelope(QuadraticFunction(p0,p1,p2),PremiumMin),PremiumMax))
             
             c0 = self.Copay0 + self.Sex*self.CopaySex + self.CopayAge*Age + self.CopayAgeSq*Age**2 + self.CopayInc*y + self.CopayIncSq*y**2 + self.CopayIncCu*y**3
             c1 = self.CopayHealth + self.CopayHealthAge*Age + self.CopayHealthAgeSq*Age**2 + self.CopayHealthInc*y + self.CopayHealthIncSq*y**2
             c2 = self.CopayHealthSq + self.CopayHealthSqAge*Age + self.CopayHealthSqAgeSq*Age**2 + self.CopayHealthSqInc*y + self.CopayHealthSqIncSq*y**2
-            CopayFunc.append(QuadraticFunction(c0,c1,c2))
+            CopayFunc.append(LowerEnvelope(UpperEnvelope(QuadraticFunction(c0,c1,c2),CopayMin),CopayMax))
             
         self.PremiumFunc = PremiumFunc
         self.CopayFunc = CopayFunc
@@ -1257,27 +1263,6 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         self.HlvlNow[activate] = self.HlvlInit[activate]
         self.CumLivPrb[activate] = 1.0
 
-    
-#    def simDeath(self):
-#        '''
-#        Kills agents based on their probit mortality function.
-#        '''
-#        these = self.ActiveNow
-#        t = self.t_sim
-#        N = np.sum(these)
-#        
-#        MortShkNow = drawNormal(N,seed=self.RNG.randint(0,2**31-1))
-#        if t > 0: # Draw on LivPrbFunc from *previous* age into this age
-#            CritShk = self.LivPrbFunc[t-1](self.HlvlNow[these])
-#        else: # Shouldn't be any agents yet, but just in case...
-#            CritShk = np.ones(N) - np.inf
-#        kill = MortShkNow < CritShk
-#        just_died = np.zeros(self.AgentCount,dtype=bool)
-#        just_died[these] = kill
-#        
-#        self.hLvlNow[just_died] = 0.0
-#        self.ActiveNow[just_died] = False
-#        self.DiedNow[just_died] = True
 
     def simDeath(self):
         '''
