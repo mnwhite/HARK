@@ -308,7 +308,7 @@ def makebFromxFunc(xLvlGrid,MedShkGrid,CRRA,MedCurve):
 
 
 def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeNow,Rfree,Cfloor,LifeUtility,
-                          MargUtilityShift,Bequest0,Bequest1,MedPrice,aXtraGrid,bLvlGrid,Hgrid,
+                          MargUtilityShift,Bequest0,Bequest1,MedPrice,aXtraGrid,bLvlGrid,Hcount,
                           hLvlGrid,HealthProdFunc,MargHealthProdInvFunc,HealthShkStd0,HealthShkStd1,
                           MedShkCount,ExpHealthNextFunc,ExpHealthNextInvFunc,LivPrbFunc,Gfunc,
                           Dfunc,DpFunc,CritShkFunc,cEffFunc,bFromxFunc,PremiumFunc,CopayFunc,
@@ -349,8 +349,8 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
         Exogenous grid of end-of-period assets for use in the EGM.
     bLvlGrid : np.array
         Exogenous grid of beginning-of-period bank balances for use in the JDfix step.
-    Hgrid : np.array
-        Exogenous grid of post-investment expected health levels for use in the EGM.
+    Hcount : int
+        Number of exogenous gridpoints in the post-health state grid.
     hLvlGrid : np.array
         Exogenous grid of beginning-of-period health levels for use in the JDfix step.
     MedShkCount : int
@@ -400,12 +400,22 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
         Solution to this period's health investment problem.
     '''
     # Define utility functions
+    if CRRA == 0.0:
+        u0 = 0.
+    else: # Shifter so that u(1) = 0 for all CRRA values
+        u0 = 1./(1.-CRRA)
     u = lambda C : CRRAutility(C,gam=CRRA)
     uP = lambda C : CRRAutilityP(C,gam=CRRA)
-    uinv = lambda C : CRRAutility_inv(C,gam=CRRA)
-    uPinv = lambda C : CRRAutilityP_inv(C,gam=CRRA)
+    uinv = lambda U : CRRAutility_inv(U,gam=CRRA)
+    uPinv = lambda Up : CRRAutilityP_inv(Up,gam=CRRA)
     BequestMotive = lambda a : Bequest1*CRRAutility(a + Bequest0,gam=CRRA)
     BequestMotiveP = lambda a : Bequest1*CRRAutilityP(a + Bequest0,gam=CRRA)
+    
+    # Make a grid of post-state health, making sure there are no levels of health
+    # that would never be reached by the EGM procedure
+    Hmin = np.minimum(0.0,ExpHealthNextFunc(0.0)-0.01) # Span the bottom
+    Hmax = np.maximum(1.0,ExpHealthNextFunc(1.0)+0.01) # Span the top
+    Hgrid = np.linspace(Hmin,Hmax,num=Hcount)
 
     # Unpack next period's solution
     vFuncNext = solution_next.vFunc
@@ -415,7 +425,7 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
         vLimNext = vFuncNext.vLim
     else: # This only happens in terminal period, when vFuncNext is a constant function
         vLimNext = 0.0
-    vLimNow = DiscFac*vLimNext + LifeUtility
+    vLimNow = DiscFac*vLimNext + LifeUtility - u0
     
     # Make arrays of end-of-period assets and post-investment health
     aCount = aXtraGrid.size
@@ -548,26 +558,8 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
     xLvlArrayBig = Dfunc(cEffArrayBig,MedShkArrayAdj)
     xLvlArrayBig[ShkZero] = cEffArrayBig[ShkZero]
     bLvlArrayBig = aLvlArrayBig + xLvlArrayBig + MedPrice*CopayArrayBig*iLvlArrayBig + PremiumArrayBig
-    vArrayBig = u(cEffArrayBig) + LifeUtility + EndOfPrdvBig
+    vArrayBig = u(cEffArrayBig) - u0 + LifeUtility + EndOfPrdvBig
     dvdhArrayBig = ExpHealthNextFunc.der(hLvlArrayBig)*EndOfPrddvdHBig
-    
-#    for j in range(ShkCount):
-#        plt.plot(bLvlArrayBig[:,10,j],xLvlArrayBig[:,10,j])
-#    plt.xlim(0.,1600.)
-#    plt.ylim(0.,1600.)
-#    plt.show()
-#    
-#    for j in range(ShkCount):
-#        plt.plot(bLvlArrayBig[:,10,j],cEffArrayBig[:,10,j])
-#    plt.xlim(0.,3000.)
-#    plt.ylim(0.,3000.)
-#    plt.show()
-    
-#    print('dvda',np.sum(np.isnan(EndOfPrddvdaBig)),np.sum(np.isinf(EndOfPrddvdaBig)))
-#    print('MedShk',np.sum(np.isnan(MedShkArrayAdj)),np.sum(np.isinf(MedShkArrayAdj)))
-#    print('iLvl',np.sum(np.isnan(iLvlArrayBig)),np.sum(np.isinf(iLvlArrayBig)))
-#    print('xLvl',np.sum(np.isnan(xLvlArrayBig)),np.sum(np.isinf(xLvlArrayBig)))
-#    print('bLvl',np.sum(np.isnan(bLvlArrayBig)),np.sum(np.isinf(bLvlArrayBig)))
     
     # Make an exogenous grid of bLvl and MedShk values where individual is constrained
     bCnstCount = 16
@@ -624,7 +616,7 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
     xLvlArrayCnst = xLvlNow
     hLvlArrayCnst = hNow
     iLvlArrayCnst = iNow
-    vArrayCnst = u(cEffArrayCnst) + LifeUtility + np.tile(np.reshape(EndOfPrdvBig[0,:,:],(1,Hcount,ShkCount)),(bCnstCount,1,1))
+    vArrayCnst = u(cEffArrayCnst) - u0 + LifeUtility + np.tile(np.reshape(EndOfPrdvBig[0,:,:],(1,Hcount,ShkCount)),(bCnstCount,1,1))
     dvdhArrayCnst = ExpHealthNextFunc.der(hLvlArrayCnst)*EndOfPrddvdHCnst
     
 #    print('iCnst',np.sum(np.isnan(iLvlArrayCnst)),np.sum(np.isinf(iLvlArrayCnst)))
@@ -739,7 +731,7 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
     EndOfPrddvdhFunc_no_assets = LinearInterp(Hgrid,EndOfPrddvdH[0,:])
     Hgrid_temp = ExpHealthNextFunc(hLvlGrid)
     dHdh_temp = ExpHealthNextFunc.der(hLvlGrid)
-    vFloorArray = np.tile(np.reshape(u(Cfloor) + LifeUtility + EndOfPrdvFunc_no_assets(Hgrid_temp),(1,hLvlCount)),(bLvlCount,1)) + DiscFac*vLimNext
+    vFloorArray = np.tile(np.reshape(u(Cfloor) - u0 + LifeUtility + EndOfPrdvFunc_no_assets(Hgrid_temp),(1,hLvlCount)),(bLvlCount,1)) + DiscFac*vLimNext
     dvdhFloorArray = np.tile(np.reshape(dHdh_temp*EndOfPrddvdhFunc_no_assets(Hgrid_temp),(1,hLvlCount)),(bLvlCount,1))
     
     # Find where each shock for integration falls on the MedShkGridDense
@@ -918,7 +910,7 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         PremiumFunc = []
         CopayFunc = []
         for t in range(self.T_cycle):
-            Age = t*2
+            Age = t*1
             y = self.IncomeNow[t]
             p0 = self.Premium0 + self.Sex*self.PremiumSex + self.PremiumAge*Age + self.PremiumAgeSq*Age**2 + self.PremiumInc*y + self.PremiumIncSq*y**2 + self.PremiumIncCu*y**3
             p1 = self.PremiumHealth + self.PremiumHealthAge*Age + self.PremiumHealthAgeSq*Age**2 + self.PremiumHealthInc*y + self.PremiumHealthIncSq*y**2
@@ -967,7 +959,7 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
             bLvlGrid.append(bNrmGrid*self.IncomeNow[t] + self.IncomeNow[t])
         self.bLvlGrid = bLvlGrid
         
-        self.addToTimeInv('bNrmGrid','hLvlGrid','Hgrid')
+        self.addToTimeInv('bNrmGrid','hLvlGrid','Hgrid','Hcount')
         self.addToTimeVary('bLvlGrid')
 
         

@@ -399,16 +399,17 @@ def calcStdErrs(params,use_cohorts,which,eps):
     n = 0
     for i in range(33):
         if which[i]:
-            params_now = copy(base_param_dict)
+            params_now = copy(params)
             this_eps = params[i]*eps
             this_param = params[i] + this_eps
-            params_now[Params.param_names[i]] = this_param
-            TypeList = processSimulatedTypes(params_now,use_cohorts)
+            params_now[i] = this_param
+            this_param_dict = convertVecToDict(params_now)
+            TypeList = processSimulatedTypes(this_param_dict,use_cohorts)
             SimulatedMoments = calcSimulatedMoments(TypeList,False)
             MomentDifferences = (SimulatedMoments - DataMoments)*MomentMask
             MomentDerivativeArray[n,:] = (MomentDifferences - BaseMomentDifferences)/this_eps
             n += 1
-            print('Finished perturbing parameter ' + str(n) + ' of ' + str(N))
+            print('Finished perturbing parameter ' + str(n) + ' of ' + str(N) + ', NaN count = ' + str(np.sum(np.isnan(MomentDerivativeArray[n-1,:]))))
             
     # Calculate standard errors by finding the variance-covariance matrix for the parameters
     scale_fac = 1. + 1./Params.basic_estimation_dict['DataToSimRepFactor']
@@ -560,7 +561,7 @@ if __name__ == '__main__':
 #    param_dict = convertVecToDict(Params.test_param_vec)
 #    MyTypes = makeMultiTypeSimple(param_dict)
 #    t_start = clock()
-#    MyTypes[4].estimationAction()
+#    MyTypes[0].estimationAction()
 #    t_end = clock()
 #    print('Processing one agent type took ' + str(t_end-t_start) + ' seconds.')
     
@@ -678,6 +679,15 @@ if __name__ == '__main__':
     plt.ylabel('Health profiles by income quintile')
     plt.show()
     
+    ## Plot model fit of mean health by age and wealth quintile (for one income quintile at a time)
+    #names = ['lowest','second','third','fourth','highest']
+    #for i in range(5):
+    #    plt.plot(X[13][i,:,:].transpose())
+    #    for j in range(5):
+    #        plt.plot(Data.HealthByIncWealthAge[i,j,:],'.')
+    #    plt.ylabel('Health profiles for ' + names[i] + ' income quintile')
+    #    plt.show()
+    
     # Plot model fit of standard deviation of change in health by age
     plt.plot(X[3])
     plt.plot(Data.StDevDeltaHealthByAge,'.k')
@@ -745,7 +755,7 @@ if __name__ == '__main__':
 
 
 #    # Estimate some (or all) of the model parameters
-#    which_indices = np.array([2,16,17,18,19,20,21,24,25,27,28,29,30,31,32])
+#    which_indices = np.array([0,1,5,6,7])
 #    which_bool = np.zeros(33,dtype=bool)
 #    which_bool[which_indices] = True
 #    estimated_params = minimizeNelderMead(objectiveFunctionWrapper,Params.test_param_vec,verbose=True,which_vars=which_bool)
@@ -756,11 +766,11 @@ if __name__ == '__main__':
 
 
 #    # Calculate standard errors for some or all parameters
-#    which_indices = np.array([27,28,29,30,31,32])
+#    which_indices = np.array([16,17,18,19,20,21,22,23,27,28,29,30,31,32])
 #    which_bool = np.zeros(33,dtype=bool)
 #    which_bool[which_indices] = True
-#    standard_errors = calcStdErrs(Params.test_param_vec,Data.use_cohorts,which_bool,eps=0.001)
+#    standard_errors = calcStdErrs(Params.test_param_vec,Data.use_cohorts,which_bool,eps=0.01)
 #    for n in range(which_indices.size):
 #        i = which_indices[n]
 #        print(Params.param_names[i] + ' = ' + str(standard_errors[n]))
-        
+#        

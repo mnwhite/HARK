@@ -133,14 +133,14 @@ basic_estimation_dict.update(grid_size_params)
 
 # Make a test parameter vector
 test_param_vec = np.array([
-    2.0,                # 0 CRRA
-    0.826851467639,     # 1 DiscFac
+    0.986282156309,     # 0 CRRA
+    0.878414963277,     # 1 DiscFac
     1.61467857653,      # 2 MedCurve
-    0.108634976015,     # 3 LifeUtility
+    -0.902113128594,    # 3 LifeUtility
     -0.5,               # 4 MargUtilityShift
-    0.371107323164,     # 5 Cfloor
-    0.492413649548,     # 6 Bequest0
-    1.57686798194,      # 7 Bequest1
+    0.140850661283,     # 5 Cfloor
+    7.4755462386,       # 6 Bequest0
+    2.15748515385,      # 7 Bequest1
     -0.112694124256,    # 8 MedShkMean0
     -0.198201913461,    # 9 MedShkMeanSex
     0.19798180554,      # 10 MedShkMeanAge
@@ -149,28 +149,37 @@ test_param_vec = np.array([
     -5.94936805916,     # 13 MedShkMeanHealthSq
     2.66595809316,      # 14 MedShkStd0
     -0.144867544691,    # 15 MedShkStd1
-    0.0394819454178,    # 16 HealthNext0
-    -0.000506207893457, # 17 HealthNextSex
-    -0.000522961191253, # 18 HealthNextAge
-    -0.000219433030873, # 19 HealthNextAgeSq
-    0.741517521301,     # 20 HealthNextHealth
-    0.18404212873,      # 21 HealthNextHealthSq
-    0.148786822625,     # 22 HealthShkStd0
-    -0.0418279671933,   # 23 HealthShkStd1
-    -3.57092095502194,  # 24 HealthProd0 (in log)
-    -4.18902741268762,  # 25 HealthProd1 (in log)
+    0.0163381242443,    # 16 HealthNext0
+    -0.00396380623316,  # 17 HealthNextSex
+    -0.000638834972427, # 18 HealthNextAge
+    -0.000290561156297, # 19 HealthNextAgeSq
+    0.873979878446,     # 20 HealthNextHealth
+    0.0806898912141,    # 21 HealthNextHealthSq
+    0.170054257328,     # 22 HealthShkStd0
+    -0.0791852964486,   # 23 HealthShkStd1
+    -4.70222862043,     # 24 HealthProd0 (in log)
+    -np.inf,            # 25 HealthProd1 (in log)
     0.000,              # 26 HealthProd2
-    -0.539882852295,    # 27 Mortality0
-    0.365419129352,     # 28 MortalitySex
-    0.00242469472788,   # 29 MortalityAge
-    0.00607028513364,   # 30 MortalityAgeSq
-    -2.2270847466,      # 31 MortalityHealth
-    -0.0918590331007    # 32 MortalityHealthSq
+    -0.49554640989,     # 27 Mortality0
+    0.338606078662,     # 28 MortalitySex
+    -0.00189140591818,  # 29 MortalityAge
+    0.00614760053852,   # 30 MortalityAgeSq
+    -2.61134057329,     # 31 MortalityHealth
+    0.730883566197      # 32 MortalityHealthSq
     ])
 
-# 0.930017960426,     # 0 CRRA
-#    
-#     1.46860778151e-05,  # 25 HealthProd1
+#   1.0030272606,       # 0 CRRA
+
+#    2.0,                # 0 CRRA
+#    0.826851467639,     # 1 DiscFac
+#    1.61467857653,      # 2 MedCurve
+#    0.0978868714061-1.0,# 3 LifeUtility
+#    -0.5,               # 4 MargUtilityShift
+#    0.371107323164,     # 5 Cfloor
+#    0.492413649548,     # 6 Bequest0
+#    1.57686798194,      # 7 Bequest1
+
+#    -3.09286007811,     # 25 HealthProd1 (in log)
 
 # These are only used by the estimation to decide when to write parameters to disk
 func_call_count = 0

@@ -8,9 +8,9 @@ import os
 import csv
 import numpy as np
 import scipy as sp
+import statsmodels.api as sm
 sys.path.insert(0,'../')
 sys.path.insert(0,'./Data/')
-from HARKutilities import getPercentiles
 
 # Choose how many times to bootstrap the data to calculate standard errors for data moments.
 # If this is zero, the module will try to read the CSV file ./Data/MomentWeights.txt to load
@@ -295,6 +295,33 @@ for b in range(data_bootstrap_count+1):
     HealthDeltaUseable[1:,:] = np.logical_and(AliveLastPeriod[1:,:],Alive[1:,:])
     HealthDelta = np.zeros((8,obs))
     HealthDelta[1:,:] = h_data[1:,:] - h_data[:-1,:]
+    
+    # Make flattened arrays of age, health, sex, and income and wealth quintiles
+    Temp = np.logical_and(HealthDeltaUseable[1:,:],BelowCohort16[1:,:])
+    HealthFlat = h_data[0:7,:][Temp]
+    hNextFlat = h_data[1:,:][Temp]
+    HealthSqFlat = HealthFlat**2
+    AgeFlat = age_data[0:7,:][Temp]
+    AgeSqFlat = AgeFlat**2
+    SexFlat = np.tile(np.reshape(sex_data,(1,obs)),(7,1))[Temp]
+    IQflat = np.tile(np.reshape(inc_quint_data,(1,obs)),(7,1))[Temp]
+    WQflat = np.tile(np.reshape(wealth_quint_data,(1,obs)),(7,1))[Temp]
+    
+    # Run a basic regression to predict health next period
+    regressors = np.transpose(np.vstack([np.ones_like(HealthFlat),SexFlat,HealthFlat,HealthSqFlat,AgeFlat,AgeSqFlat]))
+    simple_model = sm.OLS(hNextFlat,regressors)
+    simple_results = simple_model.fit()
+    hResiduals = simple_results.resid
+    
+    # Calculate average residual by income and wealth quintile
+    AvgResidualByIncWealth = np.zeros((5,5))
+    for i in range(5):
+        right_inc = IQflat == i+1
+        for j in range(5):
+            right_wealth = WQflat == j+1
+            these = np.logical_and(right_inc,right_wealth)
+            AvgResidualByIncWealth[i,j] = np.mean(hResiduals[these])
+    AvgResidualByIncWealth += -AvgResidualByIncWealth[0,0]
     
     # Make boolean array of income quintiles for the data
     IncQuint = np.tile(np.reshape(inc_quint_data,(1,obs)),(8,1))
