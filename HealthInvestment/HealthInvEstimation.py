@@ -765,12 +765,12 @@ if __name__ == '__main__':
 
 
 
-    # Calculate standard errors for some or all parameters
-    which_indices = np.array([0,1,2,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,27,28,29,30,31,32])
-    which_bool = np.zeros(33,dtype=bool)
-    which_bool[which_indices] = True
-    standard_errors = calcStdErrs(Params.test_param_vec,Data.use_cohorts,which_bool,eps=0.001)
-    for n in range(which_indices.size):
-        i = which_indices[n]
-        print(Params.param_names[i] + ' = ' + str(standard_errors[n]))
-        
+#    # Calculate standard errors for some or all parameters
+#    which_indices = np.array([0,1,2,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,27,28,29,30,31,32])
+#    which_bool = np.zeros(33,dtype=bool)
+#    which_bool[which_indices] = True
+#    standard_errors = calcStdErrs(Params.test_param_vec,Data.use_cohorts,which_bool,eps=0.001)
+#    for n in range(which_indices.size):
+#        i = which_indices[n]
+#        print(Params.param_names[i] + ' = ' + str(standard_errors[n]))
+#        

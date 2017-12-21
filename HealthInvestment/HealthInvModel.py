@@ -400,21 +400,22 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
         Solution to this period's health investment problem.
     '''
     # Define utility functions
-    if CRRA == 0.0:
-        u0 = 0.
-    else: # Shifter so that u(1) = 0 for all CRRA values
-        u0 = 1./(1.-CRRA)
+#    if CRRA == 0.0:
+#        u0 = 0.
+#    else: # Shifter so that u(1) = 0 for all CRRA values
+#        u0 = 1./(1.-CRRA)
     u = lambda C : CRRAutility(C,gam=CRRA)
     uP = lambda C : CRRAutilityP(C,gam=CRRA)
     uinv = lambda U : CRRAutility_inv(U,gam=CRRA)
     uPinv = lambda Up : CRRAutilityP_inv(Up,gam=CRRA)
-    BequestMotive = lambda a : Bequest1*CRRAutility(a + Bequest0,gam=CRRA)
+    BequestMotive = lambda a : 0.001*Bequest1*CRRAutility(a + Bequest0,gam=CRRA)
     BequestMotiveP = lambda a : Bequest1*CRRAutilityP(a + Bequest0,gam=CRRA)
+    u0 = -u(LifeUtility)
     
     # Make a grid of post-state health, making sure there are no levels of health
     # that would never be reached by the EGM procedure
     Hmin = np.minimum(0.0,ExpHealthNextFunc(0.0)-0.01) # Span the bottom
-    Hmax = np.maximum(1.0,ExpHealthNextFunc(1.0)+0.01) # Span the top
+    Hmax = np.maximum(1.0,ExpHealthNextFunc(1.0)+HealthProdFunc(100.,1.0)+0.01) # Span the top
     Hgrid = np.linspace(Hmin,Hmax,num=Hcount)
 
     # Unpack next period's solution
@@ -425,7 +426,7 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
         vLimNext = vFuncNext.vLim
     else: # This only happens in terminal period, when vFuncNext is a constant function
         vLimNext = 0.0
-    vLimNow = DiscFac*vLimNext + LifeUtility - u0
+    vLimNow = DiscFac*vLimNext + u0
     
     # Make arrays of end-of-period assets and post-investment health
     aCount = aXtraGrid.size
@@ -503,6 +504,12 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
     MargValueRatio = EndOfPrddvda/EndOfPrddvdH
     MargValueRatioAdj = np.maximum(MargValueRatio*MedPrice,0.0)
     
+    # Store end-of-period marginal value functions
+    dvdaNvrs = uPinv(EndOfPrddvda)
+    dvdaNvrsFunc = BilinearInterp(dvdaNvrs,aLvlGrid,Hgrid)
+    dvdaFunc = MargValueFunc2D(dvdaNvrsFunc,CRRA)
+    dvdHfunc = BilinearInterp(EndOfPrddvdH,aLvlGrid,Hgrid)
+    
     # Use a fixed point loop to find optimal health investment (unconstrained)
     tol = 0.00001
     LoopCount = 0
@@ -558,7 +565,7 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
     xLvlArrayBig = Dfunc(cEffArrayBig,MedShkArrayAdj)
     xLvlArrayBig[ShkZero] = cEffArrayBig[ShkZero]
     bLvlArrayBig = aLvlArrayBig + xLvlArrayBig + MedPrice*CopayArrayBig*iLvlArrayBig + PremiumArrayBig
-    vArrayBig = u(cEffArrayBig) - u0 + LifeUtility + EndOfPrdvBig
+    vArrayBig = u(cEffArrayBig) + u0 + EndOfPrdvBig
     dvdhArrayBig = ExpHealthNextFunc.der(hLvlArrayBig)*EndOfPrddvdHBig
     
     # Make an exogenous grid of bLvl and MedShk values where individual is constrained
@@ -616,7 +623,7 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
     xLvlArrayCnst = xLvlNow
     hLvlArrayCnst = hNow
     iLvlArrayCnst = iNow
-    vArrayCnst = u(cEffArrayCnst) - u0 + LifeUtility + np.tile(np.reshape(EndOfPrdvBig[0,:,:],(1,Hcount,ShkCount)),(bCnstCount,1,1))
+    vArrayCnst = u(cEffArrayCnst) + u0 + np.tile(np.reshape(EndOfPrdvBig[0,:,:],(1,Hcount,ShkCount)),(bCnstCount,1,1))
     dvdhArrayCnst = ExpHealthNextFunc.der(hLvlArrayCnst)*EndOfPrddvdHCnst
     
 #    print('iCnst',np.sum(np.isnan(iLvlArrayCnst)),np.sum(np.isinf(iLvlArrayCnst)))
@@ -731,7 +738,7 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
     EndOfPrddvdhFunc_no_assets = LinearInterp(Hgrid,EndOfPrddvdH[0,:])
     Hgrid_temp = ExpHealthNextFunc(hLvlGrid)
     dHdh_temp = ExpHealthNextFunc.der(hLvlGrid)
-    vFloorArray = np.tile(np.reshape(u(Cfloor) - u0 + LifeUtility + EndOfPrdvFunc_no_assets(Hgrid_temp),(1,hLvlCount)),(bLvlCount,1)) + DiscFac*vLimNext
+    vFloorArray = np.tile(np.reshape(u(Cfloor) + u0 + EndOfPrdvFunc_no_assets(Hgrid_temp),(1,hLvlCount)),(bLvlCount,1)) + DiscFac*vLimNext
     dvdhFloorArray = np.tile(np.reshape(dHdh_temp*EndOfPrddvdhFunc_no_assets(Hgrid_temp),(1,hLvlCount)),(bLvlCount,1))
     
     # Find where each shock for integration falls on the MedShkGridDense
@@ -779,6 +786,8 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
     
     # Package and return the solution object
     solution_now = HealthInvestmentSolution(PolicyFuncNow,vFuncNow,dvdbFuncNow,dvdhFuncNow)
+    solution_now.dvdaFunc = dvdaFunc
+    solution_now.dvdHfunc = dvdHfunc
 #    solution_now.dvdhFuncAlt = dvdhFuncNowAlt
     return solution_now
     
@@ -1165,7 +1174,7 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         self.addToTimeVary('MedPrice')
         
         
-    def takeVaryingMedPrice(self,MedPriceHistory,t0):
+    def makeVaryingMedPrice(self,MedPriceHistory,t0):
         '''
         Method to generate a time-varying sequence of MedPrice values based on an
         absolute time history of MedPrice and an initial period t0.
@@ -1306,9 +1315,6 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         hShkNow, and MedShkBase.
         '''
         hLvlNow = np.maximum(np.minimum(self.HlvlNow + self.hShkNow,1.0),0.001)
-        #just_died = hLvlNow == 0.
-        #self.ActiveNow[just_died] = False
-        #self.DiedNow[just_died] = True
         hLvlNow[self.HlvlNow == 0.] = np.nan
         self.hLvlNow = hLvlNow
         

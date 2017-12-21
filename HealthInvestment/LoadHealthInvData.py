@@ -182,6 +182,7 @@ for j in range(10):
 # Initialize an array of bootstrapped data moments
 BootstrappedMoments = np.zeros((data_bootstrap_count,1770)) + np.nan
 BootstrapValidBool = np.zeros(data_bootstrap_count,dtype=bool)
+BootstrappedResiduals = np.zeros((data_bootstrap_count,22)) + np.nan
 
 # Loop over bootstrap runs; if this is the very last pass, use the real data instead
 for b in range(data_bootstrap_count+1):
@@ -282,6 +283,30 @@ for b in range(data_bootstrap_count+1):
     NotInit = np.logical_not(InitBoolArray)
     Useable = np.logical_and(BelowCohort16,np.logical_and(Alive,NotInit))
     
+    # Make data objects for the health production pre-estimation
+    UseableAlt = np.logical_and(BelowCohort16,Alive)
+    inc_quint_data_rep = np.tile(np.reshape(inc_quint_data,(1,obs)),(8,1))
+    wealth_quint_data_rep = np.tile(np.reshape(wealth_quint_data,(1,obs)),(8,1))
+    sex_data_rep = np.tile(np.reshape(sex_data,(1,obs)),(8,1))
+    WealthArraysBySexIncAge = []
+    HealthArraysBySexIncAge = []
+    WealthQuintArraysBySexIncAge = []
+    for s in range(2):
+        for i in range(5):
+            j = i+1
+            TempHealth = []
+            TempWealth = []
+            TempQuint = []
+            these = np.logical_and(UseableAlt,np.logical_and(inc_quint_data_rep==j,sex_data_rep==s))
+            for a in range(15):
+                those = np.logical_and(these,age_data==a)
+                TempHealth.append(h_data[those])
+                TempWealth.append(w_data[those])
+                TempQuint.append(wealth_quint_data_rep[those])
+            WealthArraysBySexIncAge.append(TempWealth)
+            HealthArraysBySexIncAge.append(TempHealth)
+            WealthQuintArraysBySexIncAge.append(TempQuint)
+              
     # Make a boolean array of usable observations (for mortality moments)
     AliveLastPeriod = np.zeros_like(h_data,dtype=bool)
     AliveLastPeriod[1:,:] = Alive[:-1,:]
@@ -321,7 +346,7 @@ for b in range(data_bootstrap_count+1):
             right_wealth = WQflat == j+1
             these = np.logical_and(right_inc,right_wealth)
             AvgResidualByIncWealth[i,j] = np.mean(hResiduals[these])
-    AvgResidualByIncWealth += -AvgResidualByIncWealth[0,0]
+    AvgResidualByIncWealth += -np.mean(AvgResidualByIncWealth[0,0:3])
     
     # Make boolean array of income quintiles for the data
     IncQuint = np.tile(np.reshape(inc_quint_data,(1,obs)),(8,1))
@@ -490,6 +515,7 @@ for b in range(data_bootstrap_count+1):
     
     # If this is not the last loop, store the moments for this loop in the array
     if b < data_bootstrap_count:
+        BootstrappedResiduals[b,:] = AvgResidualByIncWealth.flatten()[3:]
         if np.any(np.isnan(all_moments)):
             BootstrapValidBool[b] = False
             valid_word = 'invalid'
@@ -580,6 +606,10 @@ if data_bootstrap_count > 0:
     weighting_matrix_mid[moment_valid,:] = weighting_matrix_small
     weighting_matrix = np.zeros((1770,1770))
     weighting_matrix[:,moment_valid] = weighting_matrix_mid
+    
+    CovMatrixR = np.cov(BootstrappedResiduals.transpose())
+    W = np.zeros((25,25))
+    W[3:,3:] = np.linalg.inv(CovMatrixR)
     
     # Record the weighting matrix in a CSV file so we don't have to bootstrap the data every time
     with open('./Data/MomentWeights.txt','wb') as f:
