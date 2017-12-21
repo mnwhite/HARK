@@ -149,7 +149,7 @@ test_param_vec = np.array([
     1.77510262466,      # 13 MedShkMeanHealthSq
     2.71593990024,      # 14 MedShkStd0
     -0.0603166861082,   # 15 MedShkStd1
-    0.0163381242443,    # 16 HealthNext0
+    0.001,              # 16 HealthNext0
     -0.00396380623316,  # 17 HealthNextSex
     -0.000638834972427, # 18 HealthNextAge
     -0.000290561156297, # 19 HealthNextAgeSq
@@ -168,18 +168,7 @@ test_param_vec = np.array([
     0.730883566197      # 32 MortalityHealthSq
     ])
 
-#   1.0030272606,       # 0 CRRA
-
-#    2.0,                # 0 CRRA
-#    0.826851467639,     # 1 DiscFac
-#    1.61467857653,      # 2 MedCurve
-#    0.0978868714061-1.0,# 3 LifeUtility
-#    -0.5,               # 4 MargUtilityShift
-#    0.371107323164,     # 5 Cfloor
-#    0.492413649548,     # 6 Bequest0
-#    1.57686798194,      # 7 Bequest1
-
-#    -3.09286007811,     # 25 HealthProd1 (in log)
+#    0.0163381242443,    # 16 HealthNext0
 
 # These are only used by the estimation to decide when to write parameters to disk
 func_call_count = 0
