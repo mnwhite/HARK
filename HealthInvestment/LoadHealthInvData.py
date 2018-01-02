@@ -15,7 +15,7 @@ sys.path.insert(0,'./Data/')
 # Choose how many times to bootstrap the data to calculate standard errors for data moments.
 # If this is zero, the module will try to read the CSV file ./Data/MomentWeights.txt to load
 # the weighting matrix.  If this is non-zero, the moment weights will be created and saved.
-data_bootstrap_count = 0
+data_bootstrap_count = 1000
 
 # Choose whether to use cohorts in simulation (True) or aggregate into only 10 types (False)
 use_cohorts = False
@@ -182,7 +182,7 @@ for j in range(10):
 # Initialize an array of bootstrapped data moments
 BootstrappedMoments = np.zeros((data_bootstrap_count,1770)) + np.nan
 BootstrapValidBool = np.zeros(data_bootstrap_count,dtype=bool)
-BootstrappedResiduals = np.zeros((data_bootstrap_count,22)) + np.nan
+BootstrappedResiduals = np.zeros((data_bootstrap_count,26)) + np.nan
 
 # Loop over bootstrap runs; if this is the very last pass, use the real data instead
 for b in range(data_bootstrap_count+1):
@@ -276,6 +276,7 @@ for b in range(data_bootstrap_count+1):
     for j in range(15):
         right_age = age_data == j+1
         AgeBoolArray[:,:,j] = right_age
+    NotTooOld = (age_data < 14)[:7,:]
         
     # Make a boolean array of usable observations (for non-mortality moments)
     BelowCohort16 = np.tile(np.reshape(cohort_data,(1,obs)),(8,1)) < 16
@@ -390,6 +391,8 @@ for b in range(data_bootstrap_count+1):
             HealthByIncAge[i,a] = np.mean(h_data[these])
             OOPbyIncAge[i,a] = np.nanmean(arsinh(m_data[these]))
             IncAgeCellSize[i,a] = np.sum(these)
+    OOPdiffByIncAge = OOPbyIncAge[1:,:] - np.tile(OOPbyIncAge[0,:],(4,1))
+    OOPdiffByInc = np.mean(OOPdiffByIncAge,axis=1)*0.5
             
     WealthNorm = np.sum(WealthByIncAge*IncAgeCellSize)/np.sum(IncAgeCellSize)
     HealthNorm = np.sum(HealthByIncAge*IncAgeCellSize)/np.sum(IncAgeCellSize)
@@ -513,9 +516,11 @@ for b in range(data_bootstrap_count+1):
             OOPnorm*np.ones(375)
             ])
     
+    HealthProdPreEstMoments = np.concatenate([AvgResidualByIncWealth.flatten(),OOPdiffByInc])
+    
     # If this is not the last loop, store the moments for this loop in the array
     if b < data_bootstrap_count:
-        BootstrappedResiduals[b,:] = AvgResidualByIncWealth.flatten()[3:]
+        BootstrappedResiduals[b,:] = np.concatenate([AvgResidualByIncWealth.flatten()[3:],OOPdiffByInc])
         if np.any(np.isnan(all_moments)):
             BootstrapValidBool[b] = False
             valid_word = 'invalid'
@@ -607,8 +612,9 @@ if data_bootstrap_count > 0:
     weighting_matrix = np.zeros((1770,1770))
     weighting_matrix[:,moment_valid] = weighting_matrix_mid
     
+    # Make a weighting matrix for the health production pre-estimation moments
     CovMatrixR = np.cov(BootstrappedResiduals.transpose())
-    W = np.zeros((25,25))
+    W = np.zeros((29,29))
     W[3:,3:] = np.linalg.inv(CovMatrixR)
     
     # Record the weighting matrix in a CSV file so we don't have to bootstrap the data every time
@@ -617,6 +623,13 @@ if data_bootstrap_count > 0:
         for i in range(weighting_matrix.shape[0]):
             my_writer.writerow(weighting_matrix[i,:])
         f.close()
+     
+    with open('./Data/PreEstWeights.txt','wb') as f:
+        my_writer = csv.writer(f, delimiter = '\t')
+        for i in range(W.shape[0]):
+            my_writer.writerow(W[i,:])
+        f.close()
+    
         
 else: # Try to read the weighting matrix from a CSV file if it wasn't just created
     try:
@@ -628,8 +641,18 @@ else: # Try to read the weighting matrix from a CSV file if it wasn't just creat
         for i in range(1770):
             for j in range(1770):
                 weighting_matrix[i,j] = float(moment_weight_data[i][j])
+                
+        infile = open('./Data/PreEstWeights.txt','r')
+        my_reader = csv.reader(infile,delimiter='\t')
+        preest_weight_data = list(my_reader)
+        infile.close()
+        W = np.zeros((29,29))
+        for i in range(29):
+            for j in range(29):
+                W[i,j] = float(preest_weight_data[i][j])
     except:
         weighting_matrix = np.eye(1770)
+        W = np.eye(25)
   
         
 # Load in the absolute timepath of the relative price of care: 1977 to 2011

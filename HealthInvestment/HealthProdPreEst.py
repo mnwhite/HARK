@@ -71,7 +71,7 @@ class PreEstimationAgentType(EstimationAgentType):
         
         aLvlNow = bLvlNow - PremiumNow - xLvlNow - CopayNow*self.MedPrice[t]*iLvlNow
         aLvlNow = np.maximum(aLvlNow,0.0) # Fixes those who go negative due to Cfloor help
-        HlvlNow = self.ExpHealthNextFunc[t](hLvlNow) + self.HealthProdFunc(iLvlNow,hLvlNow)
+        HlvlNow = self.ExpHealthNextFunc[t](hLvlNow) + self.HealthProdFunc(iLvlNow)
         self.aLvlNow = aLvlNow
         self.HlvlNow = HlvlNow
         self.CopayNow = CopayNow
@@ -80,11 +80,12 @@ class PreEstimationAgentType(EstimationAgentType):
     def makeFOCvalues(self):
         '''
         Calculates the ratio of end-of-period marginal values (times coinsurance rate)
-        and stores it as attributes of self.
+        and stores it as attributes of self.  Also stores coinsurance rates in same way.
         '''
         DrawsPerAgent = 50
         
         RatioAdjByWealthQuint = [np.zeros(0),np.zeros(0),np.zeros(0),np.zeros(0),np.zeros(0)]
+        CopayByWealthQuint = [np.zeros(0),np.zeros(0),np.zeros(0),np.zeros(0),np.zeros(0)]
         for t in range(15):
             self.t_sim = t
             Hprev = self.HealthArraysByAge[t]
@@ -99,14 +100,17 @@ class PreEstimationAgentType(EstimationAgentType):
             a = self.aLvlNow
             dvda = self.solution[t].dvdaFunc(a,H)
             dvdH = self.solution[t].dvdHfunc(a,H)
-            RatioAdj = dvda/dvdH*self.MedPrice[t]*self.CopayNow
+            Copay = self.MedPrice[t]*self.CopayNow
+            RatioAdj = dvda/dvdH*Copay
             
             for i in range(5):
                 j = i+1
                 these = self.WealthQuintArraysByAge[t] == j
                 RatioAdjByWealthQuint[i] = np.concatenate((RatioAdjByWealthQuint[i],RatioAdj[these,:].flatten()))
+                CopayByWealthQuint[i] = np.concatenate((CopayByWealthQuint[i],Copay[these,:].flatten()))
                 
         self.RatioAdjByWealthQuint = RatioAdjByWealthQuint
+        self.CopayByWealthQuint = CopayByWealthQuint
         
         
 def makeMultiTypePreEst(params):
@@ -149,7 +153,8 @@ def makeMultiTypePreEst(params):
 def makeMargValueRatiosByQuintile(params):
     '''
     Generate a nested list of (adjusted) marginal value ratios by income and wealth
-    quintile, for use in the health production pre-estimation
+    quintile, for use in the health production pre-estimation.  Also return coinsurance
+    rates in same format.
     
     Parameters
     ----------
@@ -166,58 +171,80 @@ def makeMargValueRatiosByQuintile(params):
     multiThreadCommands(type_list,['estimationAction()'],num_jobs=5)
     
     RatioAdjByIncWealthQuint = [[],[],[],[],[]]
+    CopayByIncWealthQuint = [[],[],[],[],[]]
     for i in range(5):
         for j in range(5):
             RatioAdjByIncWealthQuint[i].append(np.concatenate((type_list[i].RatioAdjByWealthQuint[j],type_list[i+5].RatioAdjByWealthQuint[j])))
+            CopayByIncWealthQuint[i].append(np.concatenate((type_list[i].CopayByWealthQuint[j],type_list[i+5].CopayByWealthQuint[j])))
     
-    return RatioAdjByIncWealthQuint
+    return RatioAdjByIncWealthQuint, CopayByIncWealthQuint
     
 
-def calcHealthProdByQuintile(HealthProd0,HealthProd1,RatioAdj):
+def calcSimulatedMoments(p0,p1,p2,RatioAdj,Copay):
     '''
-    Calculate average health produced given health production parameters and
+    Calculate average health produced and out-of-pocket cost of health investment
+    (less bottom income quintile's value) given health production pre-parameters and
     a nested list of (adjusted) marginal value ratios.
     '''
-    HealthProdFunc = lambda i : HealthProd1*i**HealthProd0
+    HealthProd0 = p0
+    tempx = np.exp(p1) # Slope of health production function at iLvl=0
+    tempy = -np.exp(p1+p2) # Curvature of health prod at iLvl=0
+    HealthProd2 = tempx/tempy*(HealthProd0-1.)
+    HealthProd1 = tempx/HealthProd0*HealthProd2**(1.-HealthProd0)
+    
+    HealthProdFunc = lambda i : HealthProd1*((i+HealthProd2)**HealthProd0 - HealthProd2**HealthProd0)
     MargHealthProdInvFunc = lambda x : (x/(HealthProd0*HealthProd1))**(1./(HealthProd0-1.))
     
     HealthProdByQuintile = np.zeros((5,5))
+    OOPbyInc = np.zeros(5)
     for i in range(5):
+        HealthInv_i = np.zeros(0)
         for j in range(5):
             RatioAdj_ij = np.maximum(RatioAdj[i][j],0.0)
-            HealthInv_ij = MargHealthProdInvFunc(RatioAdj_ij)
+            HealthInv_ij = np.maximum(MargHealthProdInvFunc(RatioAdj_ij),0.0)
             HealthInv_ij[RatioAdj_ij == 0.] = 0.
+            HealthInv_i = np.concatenate([HealthInv_i,HealthInv_ij])
             HealthProd_ij = HealthProdFunc(HealthInv_ij)
             HealthProdByQuintile[i,j] = np.mean(HealthProd_ij)
+        Copay_i = np.concatenate(Copay[i])
+        OOPbyInc[i] = np.mean(Copay_i*HealthInv_i)
+        
+    OOPdiffByInc = OOPbyInc[1:] - OOPbyInc[0]
+    SimulatedMoments = np.concatenate([HealthProdByQuintile.flatten(),OOPdiffByInc])
     
-    return HealthProdByQuintile
+    return SimulatedMoments
 
 
 def optimizeHealthProdParams(LifeUtility):
     '''
-    Find the optimal HealthProd0 and HealthProd1 given a value of LifeUtility
-    by minimizing the distance between simulated and empirical "average health
-    produced".  Returns those parameters and the (upward scaled) distance.
+    Find the optimal HealthProd0,1,2 given a value of LifeUtility by minimizing
+    the distance between simulated and empirical "average health produced" and
+    OOP cost of health investment.  Returns those parameters and the distance.
     '''
     param_vec = Params.test_param_vec
     param_vec[3] = LifeUtility
-    RatioAdjList = makeMargValueRatiosByQuintile(param_vec)
-    #temp_f = lambda x : np.sum((100*(calcHealthProdByQuintile(np.exp(x[0]),np.exp(x[1]),RatioAdjList) - Data.AvgResidualByIncWealth))**2)
+    RatioAdjList, CopayList = makeMargValueRatiosByQuintile(param_vec)
+    
     def temp_f(x):
-        SimMoments = calcHealthProdByQuintile(np.exp(x[0]),np.exp(x[1]),RatioAdjList)
-        MomentDiff = np.reshape(SimMoments - Data.AvgResidualByIncWealth,(25,1))
+        SimMoments = calcSimulatedMoments(x[0],x[1],x[2],RatioAdjList,CopayList)
+        MomentDiff = np.reshape(SimMoments - Data.HealthProdPreEstMoments,(29,1))
         WeightedMomentSum = np.dot(MomentDiff.transpose(),np.dot(Data.W,MomentDiff))[0,0]
+        print(WeightedMomentSum)
         return WeightedMomentSum
         
-    guess = np.array([-3.5,-3.5])
+    guess = np.array([0.2,-1.0,4.0])
     opt_params = minimizeNelderMead(temp_f,guess)
     f_opt = temp_f(opt_params)
-    #print(calcHealthProdByQuintile(np.exp(opt_params[0]),np.exp(opt_params[1]),RatioAdjList))
+    
+    X = calcSimulatedMoments(opt_params[0],opt_params[1],opt_params[2],RatioAdjList,CopayList)
+    print(np.reshape(X[:25],(5,5)))
+    print(X[25:])
     
     HealthProd0 = opt_params[0]
     HealthProd1 = opt_params[1]
+    HealthProd2 = opt_params[2]
     
-    return HealthProd0, HealthProd1, f_opt
+    return HealthProd0, HealthProd1, HealthProd2, f_opt
 
 
 def makeContourPlot(LifeUtility):
@@ -227,10 +254,10 @@ def makeContourPlot(LifeUtility):
     param_vec = Params.test_param_vec
     param_vec[3] = LifeUtility
     RatioAdjList = makeMargValueRatiosByQuintile(param_vec)    
-    #temp_f = lambda x : np.sum(((calcHealthProdByQuintile(np.exp(x[0]),np.exp(x[1]),RatioAdjList) - Data.AvgResidualByIncWealth))**2)
+    
     def temp_f(x):
-        SimMoments = calcHealthProdByQuintile(np.exp(x[0]),np.exp(x[1]),RatioAdjList)
-        MomentDiff = np.reshape(SimMoments - Data.AvgResidualByIncWealth,(25,1))
+        SimMoments = calcSimulatedMoments(x[0],x[1],x[2],RatioAdjList)
+        MomentDiff = np.reshape(SimMoments - Data.AvgResidualByIncWealth.flatten(),(29,1))
         WeightedMomentSum = np.dot(MomentDiff.transpose(),np.dot(Data.W,MomentDiff))[0,0]
         return WeightedMomentSum
     
@@ -275,26 +302,28 @@ if __name__ == '__main__':
 #    print('Making the ratio arrays took ' + str(t_end-t_start) + ' seconds.')
 
 #    t_start = clock()
-#    HealthProd0, HealthProd1, f_opt = optimizeHealthProdParams(2.14)
+#    HealthProd0, HealthProd1, HealthProd2, f_opt = optimizeHealthProdParams(1.5)
 #    t_end = clock()
 #    print('Optimizing health production parameters for one LifeUtility took ' + str(t_end-t_start) + ' seconds.')
-#    print(HealthProd0, HealthProd1, f_opt)
+#    print(HealthProd0, HealthProd1, HealthProd2, f_opt)
 
 #    makeContourPlot(3.0)
 
     N = 50
-    LifeUtilityVec = np.linspace(2.0,2.5,num=N)
+    LifeUtilityVec = np.linspace(1.5,4.5,num=N)
     HealthProd0Vec = np.zeros_like(LifeUtilityVec)
-    HealthProd1Vec = np.zeros_like(LifeUtilityVec)
+    InitSlopeVec   = np.zeros_like(LifeUtilityVec)
+    InitCurveVec = np.zeros_like(LifeUtilityVec)
     DistanceVec = np.zeros_like(LifeUtilityVec)
     t_start = clock()
     for j in range(N):
         LifeUtility = LifeUtilityVec[j]
-        HealthProd0, HealthProd1, f_opt = optimizeHealthProdParams(LifeUtility)
+        HealthProd0, InitSlope, InitCurve, f_opt = optimizeHealthProdParams(LifeUtility)
         HealthProd0Vec[j] = HealthProd0
-        HealthProd1Vec[j] = HealthProd1
+        InitSlopeVec[j] = InitSlope
+        InitCurveVec[j] = InitCurve
         DistanceVec[j] = f_opt
-        print(LifeUtility, HealthProd0, HealthProd1, f_opt)
+        print(LifeUtility, HealthProd0, InitSlope, InitCurve, f_opt)
     t_end = clock()
     print('Optimizing health production parameters for ' + str(N) + ' LifeUtility values took ' + str(t_end-t_start) + ' seconds.')
         
@@ -308,8 +337,13 @@ if __name__ == '__main__':
     plt.ylabel('HealthProd0')
     plt.show()
     
-    plt.plot(LifeUtilityVec,HealthProd1Vec)
+    plt.plot(LifeUtilityVec,InitSlopeVec)
     plt.xlabel('LifeUtility')
-    plt.ylabel('HealthProd1')
+    plt.ylabel('InitSlope')
+    plt.show()
+    
+    plt.plot(LifeUtilityVec,InitCurveVec)
+    plt.xlabel('LifeUtility')
+    plt.ylabel('InitCurve')
     plt.show()
     

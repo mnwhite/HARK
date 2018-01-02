@@ -356,10 +356,10 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
     MedShkCount : int
         Number of non-zero medical need shocks to use in EGM step.
     HealthProdFunc : function
-        Additional health produced as a function of hLvl and iLvl.
+        Additional health produced as a function of iLvl.
     MargHealthProdInvFunc : function
-        Inverse of marginal health produced function.  Takes a marginal health produced
-        and an hLvl, returns an iLvl with that marginal productivity.
+        Inverse of marginal health produced function.  Takes a marginal health produced,
+        returns an iLvl with that marginal productivity.
     HealthShkStd0 : float
         Standard deviation of health shocks when in perfect health.
     HealthShkStd1 : float
@@ -415,7 +415,7 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
     # Make a grid of post-state health, making sure there are no levels of health
     # that would never be reached by the EGM procedure
     Hmin = np.minimum(0.0,ExpHealthNextFunc(0.0)-0.01) # Span the bottom
-    Hmax = np.maximum(1.0,ExpHealthNextFunc(1.0)+HealthProdFunc(100.,1.0)+0.01) # Span the top
+    Hmax = np.maximum(1.0,ExpHealthNextFunc(1.0)+HealthProdFunc(100.)+0.01) # Span the top
     Hgrid = np.linspace(Hmin,Hmax,num=Hcount)
 
     # Unpack next period's solution
@@ -524,10 +524,10 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
         H = Harray[these]
         hGuess = hNow[these].flatten()
         CopayGuess = CopayFunc(hGuess)
-        iGuess = MargHealthProdInvFunc(CopayGuess*Ratio,hGuess)
+        iGuess = np.maximum(MargHealthProdInvFunc(CopayGuess*Ratio),0.0)
         iGuess[np.isinf(Ratio)] = 0.0
         iGuess[Ratio == 0.] = 0.0
-        hGuessNew = ExpHealthNextInvFunc(H - HealthProdFunc(iGuess,hGuess))
+        hGuessNew = ExpHealthNextInvFunc(H - HealthProdFunc(iGuess))
         diff[these] = np.abs(hGuess - hGuessNew)
         hNow[these] = hGuessNew
         iNow[these] = iGuess
@@ -600,8 +600,9 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
         EffPrice = EffPriceNow[these]
         dvdC = uP(cEff)/DpFunc(cEff,MedShk*EffPrice)
         ImpliedMargHealthProd = dvdC*EffPrice/EndOfPrddvdHNow
-        iGuess = MargHealthProdInvFunc(ImpliedMargHealthProd,hGuess)
-        hGuessNew = ExpHealthNextInvFunc(H - HealthProdFunc(iGuess,hGuess))
+        iGuess = np.maximum(MargHealthProdInvFunc(ImpliedMargHealthProd),0.0)
+        iGuess[np.isinf(ImpliedMargHealthProd)] = 0.0
+        hGuessNew = ExpHealthNextInvFunc(H - HealthProdFunc(iGuess))
         EffPrice = MedPrice*CopayFunc(hGuessNew)
         Premium = PremiumFunc(hGuessNew)
         xLvl = bLvl - Premium - iGuess*EffPrice
@@ -1114,11 +1115,11 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         Defines the time-invariant attributes HealthProdFunc, HealthProdInvFunc,
         MargHealthProdFunc, and MargHealthProdInvFunc.
         '''
-        # Define the (inverse) health production function
-        self.HealthProdFunc = lambda i,h : (self.HealthProd1 + h*self.HealthProd2)*i**self.HealthProd0
-        self.HealthProdInvFunc = lambda x,h : (x/(self.HealthProd1 + h*self.HealthProd2))**(1./self.HealthProd0)
-        self.MargHealthProdFunc = lambda i,h : self.HealthProd0*(self.HealthProd1 + h*self.HealthProd2)*i**(self.HealthProd0-1.)
-        self.MargHealthProdInvFunc = lambda x,h : (x/(self.HealthProd0*(self.HealthProd1 + h*self.HealthProd2)))**(1./(self.HealthProd0-1.))
+        # Define the (marginal )(inverse) health production function
+        self.HealthProdFunc = lambda i : self.HealthProd1*((i+self.HealthProd2)**self.HealthProd0 - self.HealthProd2**self.HealthProd0)
+        self.MargHealthProdFunc = lambda i : self.HealthProd0*self.HealthProd1*(i+self.HealthProd2)**(self.HealthProd0-1.)
+        self.HealthProdInvFunc = lambda x : (x/self.HealthProd1 + self.HealthProd2**self.HealthProd0)**(1./self.HealthProd0) - self.HealthProd2
+        self.MargHealthProdInvFunc = lambda x : (x/(self.HealthProd0*self.HealthProd1))**(1./(self.HealthProd0-1.)) - self.HealthProd2
         self.addToTimeInv('HealthProdFunc','HealthProdInvFunc','MargHealthProdFunc','MargHealthProdInvFunc')
         
         
@@ -1391,7 +1392,7 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         t = self.t_sim
         aLvlNow = self.bLvlNow - self.PremiumNow - self.xLvlNow - self.CopayNow*self.MedPrice[t]*self.iLvlNow
         aLvlNow = np.maximum(aLvlNow,0.0) # Fixes those who go negative due to Cfloor help
-        HlvlNow = self.ExpHealthNextFunc[t](self.hLvlNow) + self.HealthProdFunc(self.iLvlNow,self.hLvlNow)
+        HlvlNow = self.ExpHealthNextFunc[t](self.hLvlNow) + self.HealthProdFunc(self.iLvlNow)
         self.aLvlNow = aLvlNow
         self.HlvlNow = HlvlNow
         
