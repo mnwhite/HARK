@@ -22,19 +22,19 @@ use_cohorts = False
 
 # Choose which moments will actually be used
 moment_dummies = np.array([
-        False, # OOPbyAge
+        True,  # OOPbyAge
         False, # StDevOOPbyAge
         False, # MortByAge
         False, # StDevDeltaHealthByAge
         False, # StDevOOPbyHealthAge
         False, # StDevDeltaHealthByHealthAge
         False, # HealthBySexHealthAge
-        False, # OOPbySexHealthAge
+        True,  # OOPbySexHealthAge
         False, # MortBySexHealthAge
-        True,  # WealthByIncAge
+        False, # WealthByIncAge
         False, # HealthByIncAge
         False, # OOPbyIncAge
-        True,  # WealthByIncWealthAge
+        False, # WealthByIncWealthAge
         False, # HealthByIncWealthAge
         False, # OOPbyIncWealthAge
         ])
@@ -496,25 +496,6 @@ for b in range(data_bootstrap_count+1):
             HealthByIncWealthAge.flatten(),
             OOPbyIncWealthAge.flatten()
             ])
-        
-    # Aggregate moment normalizers into a single vector DELETE THIS
-    normalizer = np.concatenate([
-            OOPnorm*np.ones(15),
-            StDevOOPnorm*np.ones(15),
-            MortNorm*np.ones(15),
-            DeltaHealthNorm*np.ones(15),
-            StDevOOPnorm*np.ones(45),
-            DeltaHealthNorm*np.ones(45),
-            HealthNorm*np.ones(90),
-            OOPnorm*np.ones(90),
-            MortNorm*np.ones(90),
-            WealthNorm*np.ones(75),
-            HealthNorm*np.ones(75),
-            OOPnorm*np.ones(75),
-            WealthNorm*np.ones(375),
-            HealthNorm*np.ones(375),
-            OOPnorm*np.ones(375)
-            ])
     
     HealthProdPreEstMoments = np.concatenate([AvgResidualByIncWealth.flatten(),OOPdiffByInc])
     
@@ -530,26 +511,7 @@ for b in range(data_bootstrap_count+1):
             valid_word = 'valid'
         print('Finished data bootstrap run ' + str(b+1) + ' of ' + str(data_bootstrap_count) + ', ' + valid_word)
     
-# Aggregate moment cell sizes into a single vector
-all_cell_sizes = np.concatenate([
-        AgeCellSize,
-        AgeCellSize,
-        AgeCellSizeMort,
-        AgeCellSizeHealthDelta,
-        HealthAgeCellSize.flatten(),
-        HealthAgeCellSizeHealthDelta.flatten(),
-        SexHealthAgeCellSize.flatten(),
-        SexHealthAgeCellSize.flatten(),
-        SexHealthAgeCellSizeMort.flatten(),
-        IncAgeCellSize.flatten(),
-        IncAgeCellSize.flatten(),
-        IncAgeCellSize.flatten(),        
-        IncWealthAgeCellSize.flatten(),
-        IncWealthAgeCellSize.flatten(),
-        IncWealthAgeCellSize.flatten()
-        ])
-    
-# Make moment masking array and apply it to the cell sizes
+# Make moment masking array
 moment_mask = np.concatenate([
         np.ones(15)*moment_dummies[0],
         np.ones(15)*moment_dummies[1],
@@ -567,7 +529,6 @@ moment_mask = np.concatenate([
         np.ones(375)*moment_dummies[13],
         np.ones(375)*moment_dummies[14],
         ])
-all_cell_sizes *= moment_mask # Turn off some moments, as chosen at the top of this file
 
 # If the data moments were bootstrapped, calculate the optimal weighting matrix and save it to a file.
 # Otherwise, try to read the weighting matrix from that file; if it doesn't exist, use the identity matrix.
@@ -592,7 +553,24 @@ if data_bootstrap_count > 0:
     # anyway, as the almost-poorest groups will have very little wealth, and the poorest have even less (zero).
     
     # Define moment groups for creating diagonal blocks of the weighting matrix
-    moment_cuts = [0,15,30,45,60,105,150,195,240,285,330,375,420,495,570,645,720,795,870,945,1020,1095,1170,1245,1320,1395,1470,1545,1620,1695,1770]
+    moment_cuts = [0,15,30,45, # age moments
+                   60,105, # health age moments
+                   150,195,240,285,330,375, # health sex age moments
+                   420,495,570, # health income age moments
+                   645,720,795,870,945, # income wealth age moments: wealth
+                   1020,1095,1170,1245,1320, # income wealth age moments: health
+                   1395,1470,1545,1620,1695, # income wealth age moments: OOP
+                   1770] # end
+                   
+    # This vector indicates whether each block of moments should use the inverse of
+    # the variance-covariance submatrix (True) or simply the inverse of the variance
+    # elements as a diagonal matrix (False).  It is here to experiment with whether
+    # moment covariances for mean OOP spending are driving estimation results.
+    use_cov = np.ones(30,dtype=bool) 
+    #use_cov[0] = False  # OOP by age
+    #use_cov[8] = False  # OOP by health-age, women
+    #use_cov[9] = False  # OOP by health-age, men
+    #use_cov[14] = False # OOP by income-age
     weight_block_list = []
     
     # Loop through each block of moments and find the weighting matrix for that block
@@ -603,7 +581,10 @@ if data_bootstrap_count > 0:
         which[bot:top] = True
         which = np.logical_and(which,moment_valid)
         CovMatrix_temp = CovMatrix[which,:][:,which]
-        weight_block_list.append(np.linalg.inv(CovMatrix_temp))
+        if use_cov[j]:
+            weight_block_list.append(np.linalg.inv(CovMatrix_temp))
+        else:
+            weight_block_list.append(np.diag(np.diag(CovMatrix_temp)**(-1)))
     
     # Combine the blocks of weights into a diagonal matrix and re-insert rows and columns of zeros for omitted moments
     weighting_matrix_small = sp.linalg.block_diag(*weight_block_list)
