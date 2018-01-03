@@ -28,13 +28,13 @@ moment_dummies = np.array([
         False, # StDevDeltaHealthByAge
         False, # StDevOOPbyHealthAge
         False, # StDevDeltaHealthByHealthAge
-        True,  # HealthBySexHealthAge
+        False, # HealthBySexHealthAge
         False, # OOPbySexHealthAge
         False, # MortBySexHealthAge
-        False, # WealthByIncAge
-        True,  # HealthByIncAge
+        True,  # WealthByIncAge
+        False, # HealthByIncAge
         False, # OOPbyIncAge
-        False, # WealthByIncWealthAge
+        True,  # WealthByIncWealthAge
         False, # HealthByIncWealthAge
         False, # OOPbyIncWealthAge
         ])

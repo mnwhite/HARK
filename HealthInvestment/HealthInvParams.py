@@ -149,23 +149,23 @@ test_param_vec = np.array([
     1.77510262466,      # 13 MedShkMeanHealthSq
     2.71593990024,      # 14 MedShkStd0
     -0.0603166861082,   # 15 MedShkStd1
-    0.002,              # 16 HealthNext0
-    -0.00396380623316,  # 17 HealthNextSex
-    -0.000638834972427, # 18 HealthNextAge
-    -0.000290561156297, # 19 HealthNextAgeSq
-    0.873979878446,     # 20 HealthNextHealth
-    0.0806898912141,    # 21 HealthNextHealthSq
-    0.170054257328,     # 22 HealthShkStd0
-    -0.0791852964486,   # 23 HealthShkStd1
+    0.00244998661936,   # 16 HealthNext0
+    -0.00621033190084,  # 17 HealthNextSex
+    -0.000511267049571, # 18 HealthNextAge
+    -0.000300015727788, # 19 HealthNextAgeSq
+    0.875424020755,     # 20 HealthNextHealth
+    0.076030428306,     # 21 HealthNextHealthSq
+    0.171362803854,     # 22 HealthShkStd0
+    -0.0815936727664,   # 23 HealthShkStd1
     -0.735,             # 24 HealthProd0
     -0.749,             # 25 HealthProd1 (log initial slope)
     3.676,              # 26 HealthProd2 (log initial curvature)
-    -0.49554640989,     # 27 Mortality0
-    0.338606078662,     # 28 MortalitySex
-    -0.00189140591818,  # 29 MortalityAge
-    0.00614760053852,   # 30 MortalityAgeSq
-    -2.61134057329,     # 31 MortalityHealth
-    0.730883566197      # 32 MortalityHealthSq
+    -0.453985167386,    # 27 Mortality0
+    0.348441450154,     # 28 MortalitySex
+    -0.00150882762257,  # 29 MortalityAge
+    0.00602468541845,   # 30 MortalityAgeSq
+    -2.73536744446,     # 31 MortalityHealth
+    0.77982315275       # 32 MortalityHealthSq
     ])
 
 #    0.0163381242443,    # 16 HealthNext0
