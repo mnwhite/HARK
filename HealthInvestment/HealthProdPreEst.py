@@ -229,16 +229,16 @@ def optimizeHealthProdParams(LifeUtility):
         SimMoments = calcSimulatedMoments(x[0],x[1],x[2],RatioAdjList,CopayList)
         MomentDiff = np.reshape(SimMoments - Data.HealthProdPreEstMoments,(29,1))
         WeightedMomentSum = np.dot(MomentDiff.transpose(),np.dot(Data.W,MomentDiff))[0,0]
-        print(WeightedMomentSum)
+        #print(WeightedMomentSum)
         return WeightedMomentSum
         
     guess = np.array([0.2,-1.0,4.0])
     opt_params = minimizeNelderMead(temp_f,guess)
     f_opt = temp_f(opt_params)
     
-    X = calcSimulatedMoments(opt_params[0],opt_params[1],opt_params[2],RatioAdjList,CopayList)
-    print(np.reshape(X[:25],(5,5)))
-    print(X[25:])
+    #X = calcSimulatedMoments(opt_params[0],opt_params[1],opt_params[2],RatioAdjList,CopayList)
+    #print(np.reshape(X[:25],(5,5)))
+    #print(X[25:])
     
     HealthProd0 = opt_params[0]
     HealthProd1 = opt_params[1]
@@ -310,7 +310,7 @@ if __name__ == '__main__':
 #    makeContourPlot(3.0)
 
     N = 50
-    LifeUtilityVec = np.linspace(1.5,4.5,num=N)
+    LifeUtilityVec = np.linspace(2.1,2.65,num=N)
     HealthProd0Vec = np.zeros_like(LifeUtilityVec)
     InitSlopeVec   = np.zeros_like(LifeUtilityVec)
     InitCurveVec = np.zeros_like(LifeUtilityVec)

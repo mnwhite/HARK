@@ -136,7 +136,7 @@ test_param_vec = np.array([
     0.986282156309,     # 0 CRRA
     0.889145326143,     # 1 DiscFac
     1.74000477361,      # 2 MedCurve
-    0.5,                # 3 LifeUtility
+    2.335,              # 3 LifeUtility
     -0.5,               # 4 MargUtilityShift
     0.136535220024,     # 5 Cfloor
     7.49251475136,      # 6 Bequest0
@@ -149,7 +149,7 @@ test_param_vec = np.array([
     1.77510262466,      # 13 MedShkMeanHealthSq
     2.71593990024,      # 14 MedShkStd0
     -0.0603166861082,   # 15 MedShkStd1
-    0.0163381242443,    # 16 HealthNext0
+    0.002,              # 16 HealthNext0
     -0.00396380623316,  # 17 HealthNextSex
     -0.000638834972427, # 18 HealthNextAge
     -0.000290561156297, # 19 HealthNextAgeSq
@@ -157,9 +157,9 @@ test_param_vec = np.array([
     0.0806898912141,    # 21 HealthNextHealthSq
     0.170054257328,     # 22 HealthShkStd0
     -0.0791852964486,   # 23 HealthShkStd1
-    -2.0,               # 24 HealthProd0
-    -np.inf,            # 25 HealthProd1 (actually initial slope)
-    4.24,               # 26 HealthProd2 (actually initial curvature)
+    -0.735,             # 24 HealthProd0
+    -0.749,             # 25 HealthProd1 (log initial slope)
+    3.676,              # 26 HealthProd2 (log initial curvature)
     -0.49554640989,     # 27 Mortality0
     0.338606078662,     # 28 MortalitySex
     -0.00189140591818,  # 29 MortalityAge

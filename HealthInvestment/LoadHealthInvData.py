@@ -15,7 +15,7 @@ sys.path.insert(0,'./Data/')
 # Choose how many times to bootstrap the data to calculate standard errors for data moments.
 # If this is zero, the module will try to read the CSV file ./Data/MomentWeights.txt to load
 # the weighting matrix.  If this is non-zero, the moment weights will be created and saved.
-data_bootstrap_count = 1000
+data_bootstrap_count = 0
 
 # Choose whether to use cohorts in simulation (True) or aggregate into only 10 types (False)
 use_cohorts = False

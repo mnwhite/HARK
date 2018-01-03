@@ -717,7 +717,7 @@ if __name__ == '__main__':
 #    # Test model identification by perturbing one parameter at a time
 #    param_i = 16
 #    param_min = -0.01
-#    param_max = 0.02
+#    param_max = 0.01
 #    N = 30
 #    perturb_vec = np.linspace(param_min,param_max,num=N)
 #    fit_vec = np.zeros(N) + np.nan
