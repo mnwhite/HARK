@@ -23,6 +23,7 @@ DataMoments = Data.all_moments
 MomentWeights = Data.weighting_matrix
 MomentMask = Data.moment_mask
 
+
 class EstimationAgentType(HealthInvestmentConsumerType):
     '''
     A very small modification of HealthInvestmentConsumerType that readies it
@@ -290,7 +291,9 @@ def calcSimulatedMoments(type_list,return_as_list):
         WeightSum = np.sum(Weight)
         MeanOOP = np.dot(OOP,Weight)/WeightSum
         OOPbyAge[t] = MeanOOP
-        OOPsqDevFromMean = (OOP - MeanOOP)**2
+        LogOOP = np.log(OOP+0.01)
+        MeanLogOOP = np.dot(LogOOP,Weight/WeightSum)
+        OOPsqDevFromMean = (LogOOP - MeanLogOOP)**2
         StDevOOPbyAge[t] = np.sqrt(np.dot(OOPsqDevFromMean,Weight)/WeightSum)
         Mort = MortHist[t+1,THESE]
         MortByAge[t] = np.dot(Mort,Weight)/WeightSum
@@ -306,8 +309,9 @@ def calcSimulatedMoments(type_list,return_as_list):
             OOP = OOPhist[t,these]
             Weight = WeightHist[t+1,these]
             WeightSum = np.sum(Weight)
-            MeanOOP = np.dot(OOP,Weight)/WeightSum
-            OOPsqDevFromMean = (OOP - MeanOOP)**2
+            LogOOP = np.log(OOP+0.01)
+            MeanLogOOP = np.dot(LogOOP,Weight)/WeightSum
+            OOPsqDevFromMean = (LogOOP - MeanLogOOP)**2
             StDevOOPbyHealthAge[h,t] = np.sqrt(np.dot(OOPsqDevFromMean,Weight)/WeightSum)
             HealthChange = DeltaHealth[t,these]
             MeanHealthChange = np.dot(HealthChange,Weight)/WeightSum
@@ -630,10 +634,10 @@ if __name__ == '__main__':
 
 
 
-    t_start = clock()
-    X = objectiveFunctionWrapper(Params.test_param_vec)
-    t_end = clock()
-    print('One objective function evaluation took ' + str(t_end-t_start) + ' seconds.')
+#    t_start = clock()
+#    X = objectiveFunctionWrapper(Params.test_param_vec)
+#    t_end = clock()
+#    print('One objective function evaluation took ' + str(t_end-t_start) + ' seconds.')
     
 #    # Plot model fit of mean out of pocket medical spending by age
 #    plt.plot(X[0])
@@ -673,7 +677,7 @@ if __name__ == '__main__':
 #        plt.plot(Data.StDevOOPbyHealthAge[h,:],'--')
 #    plt.ylabel('StDev OOP medical spending')
 #    plt.show()
-#    
+    
 #    # Plot model fit of mortality by age
 #    plt.plot(X[2])
 #    plt.plot(Data.MortByAge,'.k')
@@ -808,14 +812,14 @@ if __name__ == '__main__':
     
 
 
-#    # Estimate some (or all) of the model parameters
-#    which_indices = np.array([0,1,5,6,7])
-#    which_bool = np.zeros(33,dtype=bool)
-#    which_bool[which_indices] = True
-#    estimated_params = minimizeNelderMead(objectiveFunctionWrapper,Params.test_param_vec,verbose=True,which_vars=which_bool)
-#    for i in which_indices.tolist():
-#        print(Params.param_names[i] + ' = ' + str(estimated_params[i]))
-#    
+    # Estimate some (or all) of the model parameters
+    which_indices = np.array([8,9,10,11,12,13,14,15])
+    which_bool = np.zeros(33,dtype=bool)
+    which_bool[which_indices] = True
+    estimated_params = minimizeNelderMead(objectiveFunctionWrapper,Params.test_param_vec,verbose=True,which_vars=which_bool)
+    for i in which_indices.tolist():
+        print(Params.param_names[i] + ' = ' + str(estimated_params[i]))
+    
 
 
 

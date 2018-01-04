@@ -1657,8 +1657,7 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
             plt.plot(B,dvdh)
         plt.xlabel('Market resources bLvl')
         plt.ylabel('Marginal value dvdh')
-        plt.show()        
-    
+        plt.show()
         
         
 if __name__ == '__main__':
