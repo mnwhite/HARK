@@ -135,20 +135,20 @@ basic_estimation_dict.update(grid_size_params)
 test_param_vec = np.array([
     0.986282156309,     # 0 CRRA
     0.889145326143,     # 1 DiscFac
-    1.74000477361,      # 2 MedCurve
+    7.97752047064,      # 2 MedCurve
     2.335,              # 3 LifeUtility
-    -0.5,               # 4 MargUtilityShift
+    -0.5,               # 4 UNUSED
     0.136535220024,     # 5 Cfloor
     7.49251475136,      # 6 Bequest0
     2.29160750023,      # 7 Bequest1
-    0.164084821402,     # 8 MedShkMean0
-    -0.159193839563,    # 9 MedShkMeanSex
-    0.318884421303,     # 10 MedShkMeanAge
-    -0.00535768145077,  # 11 MedShkMeanAgeSq
-    -9.7322531067,      # 12 MedShkMeanHealth
-    1.3239940539,       # 13 MedShkMeanHealthSq
-    2.69810064193,      # 14 MedShkStd0
-    -0.0632317087909,   # 15 MedShkStd1
+    -2.52872627132,     # 8 MedShkMean0
+    0.003638507901,     # 9 MedShkMeanSex
+    0.3647775542,       # 10 MedShkMeanAge
+    -0.0131374250303,   # 11 MedShkMeanAgeSq
+    2.00837795562,      # 12 MedShkMeanHealth
+    -12.4577968489,     # 13 MedShkMeanHealthSq
+    2.41416465118,      # 14 MedShkStd0
+   -0.0198137464459,    # 15 MedShkStd1
     0.00244998661936,   # 16 HealthNext0
     -0.00621033190084,  # 17 HealthNextSex
     -0.000511267049571, # 18 HealthNextAge
@@ -168,11 +168,23 @@ test_param_vec = np.array([
     0.77982315275       # 32 MortalityHealthSq
     ])
 
-#    0.0163381242443,    # 16 HealthNext0
-#    0.001,              # 16 HealthNext0
+#    -3.00637699064,     # 8 MedShkMean0
+#    0.0,                # 9 MedShkMeanSex
+#    0.4262673245449,    # 10 MedShkMeanAge
+#    -0.01274697107697,  # 11 MedShkMeanAgeSq
+#    -4.51477104024,     # 12 MedShkMeanHealth
+#    -4.89691087572,     # 13 MedShkMeanHealthSq
+#    2.68127496465,      # 14 MedShkStd0
+#   -0.335361912058,     # 15 MedShkStd1
 
-#    -1.60,              # 24 HealthProd0 (in log)
-#    -3.60,              # 25 HealthProd1 (in log)
+#    -1.24842459001,     # 8 MedShkMean0
+#    -0.482188456811,    # 9 MedShkMeanSex
+#    -0.000227245006561, # 10 MedShkMeanAge
+#    0.0200625405561,    # 11 MedShkMeanAgeSq
+#    -12.7421295292,     # 12 MedShkMeanHealth
+#    7.3383982911,       # 13 MedShkMeanHealthSq
+#    4.00255365322,      # 14 MedShkStd0
+#    0.0365890971513,    # 15 MedShkStd1
 
 # These are only used by the estimation to decide when to write parameters to disk
 func_call_count = 0

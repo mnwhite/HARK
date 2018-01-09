@@ -268,9 +268,31 @@ def calcSimulatedMoments(type_list,return_as_list):
     
     # Regress health next on sex, health, and age
     regressors = np.transpose(np.vstack([const_reg,s_reg,h_reg,hSq_reg,a_reg,aSq_reg]))
-    simple_model = WLS(hNext_reg,regressors,weights=weight_reg)
-    simple_results = simple_model.fit()
-    hResiduals = simple_results.resid
+    health_model = WLS(hNext_reg,regressors,weights=weight_reg)
+    health_results = health_model.fit()
+    hResiduals = health_results.resid
+    
+    # Regress log OOP on sex, health, and age
+    logOOP_reg = np.log(OOPhist[THESE]+0.01)
+    IQ2nd_reg = (IQ_reg == 2).astype(float)
+    IQ3rd_reg = (IQ_reg == 3).astype(float)
+    IQ4th_reg = (IQ_reg == 4).astype(float)
+    IQ5th_reg = (IQ_reg == 5).astype(float)
+    WQ2nd_reg = (WQ_reg == 2).astype(float)
+    WQ3rd_reg = (WQ_reg == 3).astype(float)
+    WQ4th_reg = (WQ_reg == 4).astype(float)
+    WQ5th_reg = (WQ_reg == 5).astype(float)
+    regressors = np.transpose(np.vstack([const_reg,s_reg,h_reg,hSq_reg,a_reg,aSq_reg,IQ2nd_reg,IQ3rd_reg,IQ4th_reg,IQ5th_reg,WQ2nd_reg,WQ3rd_reg,WQ4th_reg,WQ5th_reg]))
+    OOP_model = WLS(logOOP_reg,regressors,weights=weight_reg)
+    OOP_results = OOP_model.fit()
+    
+    mResidSq = OOP_results.resid**2
+    resid_regressors = np.transpose(np.vstack([np.ones_like(h_reg),h_reg]))
+    resid_model = WLS(mResidSq,resid_regressors,weights=weight_reg)
+    resid_results = resid_model.fit()
+    OOPcoeffs = np.concatenate([OOP_results.params,resid_results.params])
+    
+    #OOPcoeffs = np.concatenate([OOP_results.params, [OOP_results.mse_resid,0.]])
     
     # Calculate average residual by income and wealth quintile
     AvgResidualByIncWealth = np.zeros((5,5))
@@ -291,7 +313,7 @@ def calcSimulatedMoments(type_list,return_as_list):
         WeightSum = np.sum(Weight)
         MeanOOP = np.dot(OOP,Weight)/WeightSum
         OOPbyAge[t] = MeanOOP
-        LogOOP = np.log(OOP+0.01)
+        LogOOP = (OOP+0.00)
         MeanLogOOP = np.dot(LogOOP,Weight/WeightSum)
         OOPsqDevFromMean = (LogOOP - MeanLogOOP)**2
         StDevOOPbyAge[t] = np.sqrt(np.dot(OOPsqDevFromMean,Weight)/WeightSum)
@@ -309,7 +331,7 @@ def calcSimulatedMoments(type_list,return_as_list):
             OOP = OOPhist[t,these]
             Weight = WeightHist[t+1,these]
             WeightSum = np.sum(Weight)
-            LogOOP = np.log(OOP+0.01)
+            LogOOP = (OOP+0.00)
             MeanLogOOP = np.dot(LogOOP,Weight)/WeightSum
             OOPsqDevFromMean = (LogOOP - MeanLogOOP)**2
             StDevOOPbyHealthAge[h,t] = np.sqrt(np.dot(OOPsqDevFromMean,Weight)/WeightSum)
@@ -376,7 +398,8 @@ def calcSimulatedMoments(type_list,return_as_list):
                 WealthByIncWealthAge,
                 HealthByIncWealthAge,
                 OOPbyIncWealthAge,
-                AvgResidualByIncWealth
+                AvgResidualByIncWealth,
+                OOPcoeffs
                 ]
     else: 
         all_moments = np.concatenate([
@@ -395,7 +418,8 @@ def calcSimulatedMoments(type_list,return_as_list):
                 WealthByIncWealthAge.flatten(),
                 HealthByIncWealthAge.flatten(),
                 OOPbyIncWealthAge.flatten(),
-                AvgResidualByIncWealth.flatten()
+                AvgResidualByIncWealth.flatten(),
+                OOPcoeffs
                 ])
     return all_moments
 
@@ -424,7 +448,7 @@ def calcStdErrs(params,use_cohorts,which,eps):
     '''
     # Initialize an array of numeric derivatives of moment differences
     N = np.sum(which)
-    MomentDerivativeArray = np.zeros((N,1795))
+    MomentDerivativeArray = np.zeros((N,1811))
     
     # Make a dictionary of parameters
     base_param_dict = convertVecToDict(params)
@@ -489,7 +513,7 @@ def objectiveFunction(params,use_cohorts,return_as_list):
     if return_as_list:
         return SimulatedMoments
     else:
-        MomentDifferences = np.reshape((SimulatedMoments - DataMoments)*MomentMask,(1795,1))
+        MomentDifferences = np.reshape((SimulatedMoments - DataMoments)*MomentMask,(1811,1))
         weighted_moment_sum = np.dot(np.dot(MomentDifferences.transpose(),MomentWeights),MomentDifferences)[0,0]
         print(weighted_moment_sum)
         return weighted_moment_sum
@@ -634,11 +658,17 @@ if __name__ == '__main__':
 
 
 
-#    t_start = clock()
-#    X = objectiveFunctionWrapper(Params.test_param_vec)
-#    t_end = clock()
-#    print('One objective function evaluation took ' + str(t_end-t_start) + ' seconds.')
+    t_start = clock()
+    X = objectiveFunctionWrapper(Params.test_param_vec)
+    t_end = clock()
+    print('One objective function evaluation took ' + str(t_end-t_start) + ' seconds.')
     
+#    # Print a table of coefficients
+#    coeff_names = ['OOP_const','OOP_sex  ','OOP_health','OOP_healthSq','OOP_age  ','OOP_ageSq','OOP_IQ2nd','OOP_IQ3rd','OOP_IQ4th','OOP_IQ5th','OOP_WQ2nd','OOP_WQ3rd','OOP_WQ4th','OOP_WQ5th','residSq_const','residSq_health']
+#    print('Coeff name\tData\t\tSim')
+#    for i in range(16):
+#        print(coeff_names[i] + '\t' + str(Data.OOPcoeffs[i]) + '\t' + str(X[16][i]))
+#    
 #    # Plot model fit of mean out of pocket medical spending by age
 #    plt.plot(X[0])
 #    plt.plot(Data.OOPbyAge,'.k')
@@ -669,6 +699,7 @@ if __name__ == '__main__':
 #    plt.plot(X[1])
 #    plt.plot(Data.StDevOOPbyAge,'.k')
 #    plt.ylabel('StDev OOP medical spending')
+#    plt.ylim([0.,2.])
 #    plt.show()
 #    
 #    # Plot model fit of stdev out of pocket medical spending by age and health
@@ -676,8 +707,9 @@ if __name__ == '__main__':
 #    for h in range(3):
 #        plt.plot(Data.StDevOOPbyHealthAge[h,:],'--')
 #    plt.ylabel('StDev OOP medical spending')
+#    plt.ylim([0.,2.])
 #    plt.show()
-    
+#    
 #    # Plot model fit of mortality by age
 #    plt.plot(X[2])
 #    plt.plot(Data.MortByAge,'.k')
@@ -813,7 +845,7 @@ if __name__ == '__main__':
 
 
     # Estimate some (or all) of the model parameters
-    which_indices = np.array([8,9,10,11,12,13,14,15])
+    which_indices = np.array([0,1,5,6,7])
     which_bool = np.zeros(33,dtype=bool)
     which_bool[which_indices] = True
     estimated_params = minimizeNelderMead(objectiveFunctionWrapper,Params.test_param_vec,verbose=True,which_vars=which_bool)
