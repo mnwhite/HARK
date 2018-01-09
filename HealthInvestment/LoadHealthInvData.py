@@ -11,7 +11,6 @@ import scipy as sp
 import statsmodels.api as sm
 sys.path.insert(0,'../')
 sys.path.insert(0,'./Data/')
-import matplotlib.pyplot as plt
 
 # Choose how many times to bootstrap the data to calculate standard errors for data moments.
 # If this is zero, the module will try to read the CSV file ./Data/MomentWeights.txt to load
@@ -21,31 +20,24 @@ data_bootstrap_count = 0
 # Choose whether to use cohorts in simulation (True) or aggregate into only 10 types (False)
 use_cohorts = False
 
-# Choose whether to exclude moments above age 91; small cell sizes and only having
-# earlier cohorts at these ages means that medical spending does weird stuff late
-exclude_very_old = False
-
 # Choose which moments will actually be used
 moment_dummies = np.array([
-        False, # OOPbyAge
-        False, # StDevOOPbyAge
+        True,  # OOPbyAge
+        True,  # StDevOOPbyAge
         False, # MortByAge
         False, # StDevDeltaHealthByAge
-        False, # StDevOOPbyHealthAge
+        True,  # StDevOOPbyHealthAge
         False, # StDevDeltaHealthByHealthAge
         False, # HealthBySexHealthAge
-        False, # OOPbySexHealthAge
+        True,  # OOPbySexHealthAge
         False, # MortBySexHealthAge
         False, # WealthByIncAge
         False, # HealthByIncAge
-        True,  # OOPbyIncAge
+        False, # OOPbyIncAge
         False, # WealthByIncWealthAge
         False, # HealthByIncWealthAge
-        True,  # OOPbyIncWealthAge
+        False, # OOPbyIncWealthAge
         False, # AvgHealthResidualByIncWealth
-        False, # Log OOP coeffs for sex, health, age
-        False, # Log OOP coeffs for income quint and wealth quint
-        False  # Log OOP residual coeffs
         ])
 
 # Make a random number generator for the data bootstrap
@@ -186,7 +178,7 @@ for j in range(10):
     MaxWealthSmall[j] = np.max(MaxWealth[these])
 
 # Initialize an array of bootstrapped data moments
-BootstrappedMoments = np.zeros((data_bootstrap_count,1811)) + np.nan
+BootstrappedMoments = np.zeros((data_bootstrap_count,1795)) + np.nan
 BootstrapValidBool = np.zeros(data_bootstrap_count,dtype=bool)
 BootstrappedResiduals = np.zeros((data_bootstrap_count,26)) + np.nan
 
@@ -341,9 +333,9 @@ for b in range(data_bootstrap_count+1):
     
     # Run a basic regression to predict health next period
     regressors = np.transpose(np.vstack([np.ones_like(HealthFlat),SexFlat,HealthFlat,HealthSqFlat,AgeFlat,AgeSqFlat]))
-    health_model = sm.OLS(hNextFlat,regressors)
-    health_results = health_model.fit()
-    hResiduals = health_results.resid
+    simple_model = sm.OLS(hNextFlat,regressors)
+    simple_results = simple_model.fit()
+    hResiduals = simple_results.resid
     
     # Calculate average residual by income and wealth quintile
     AvgResidualByIncWealth = np.zeros((5,5))
@@ -354,36 +346,6 @@ for b in range(data_bootstrap_count+1):
             these = np.logical_and(right_inc,right_wealth)
             AvgResidualByIncWealth[i,j] = np.mean(hResiduals[these])
     AvgResidualByIncWealth += -np.mean(AvgResidualByIncWealth[0,0:3])
-    
-    # Run a basic regression to predict OOP medical spending
-    Temp2 = np.logical_and(np.logical_and(Useable,np.logical_not(np.isnan(m_data))),m_data>=0.)
-    LogOOPflat = np.log(m_data[Temp2]+0.01)
-    HealthFlat = h_data[Temp2]
-    HealthSqFlat = HealthFlat**2
-    AgeFlat = age_data[Temp2]
-    AgeSqFlat = AgeFlat**2
-    SexFlat = np.tile(np.reshape(sex_data,(1,obs)),(8,1))[Temp2]
-    IQflat = np.tile(np.reshape(inc_quint_data,(1,obs)),(8,1))[Temp2]
-    IQ2nd = (IQflat == 2).astype(float)
-    IQ3rd = (IQflat == 3).astype(float)
-    IQ4th = (IQflat == 4).astype(float)
-    IQ5th = (IQflat == 5).astype(float)
-    WQflat = np.tile(np.reshape(wealth_quint_data,(1,obs)),(8,1))[Temp2]
-    WQ2nd = (WQflat == 2).astype(float)
-    WQ3rd = (WQflat == 3).astype(float)
-    WQ4th = (WQflat == 4).astype(float)
-    WQ5th = (WQflat == 5).astype(float)
-    regressors = np.transpose(np.vstack([np.ones_like(HealthFlat),SexFlat,HealthFlat,HealthSqFlat,AgeFlat,AgeSqFlat,IQ2nd,IQ3rd,IQ4th,IQ5th,WQ2nd,WQ3rd,WQ4th,WQ5th]))
-    OOP_model = sm.OLS(LogOOPflat,regressors)
-    OOP_results = OOP_model.fit()
-    
-    mResidSq = OOP_results.resid**2
-    resid_regressors = np.transpose(np.vstack([np.ones_like(HealthFlat),HealthFlat]))
-    resid_model = sm.OLS(mResidSq,resid_regressors)
-    resid_results = resid_model.fit()
-    OOPcoeffs = np.concatenate([OOP_results.params,resid_results.params])
-    
-    #OOPcoeffs = np.concatenate([OOP_results.params, [OOP_results.mse_resid,0.]])
     
     # Make boolean array of income quintiles for the data
     IncQuint = np.tile(np.reshape(inc_quint_data,(1,obs)),(8,1))
@@ -483,7 +445,7 @@ for b in range(data_bootstrap_count+1):
     for a in range(15):
         these = np.logical_and(Useable,AgeBoolArray[:,:,a])
         OOPbyAge[a] = np.nanmean(m_data[these])
-        StDevOOPbyAge[a] = np.nanstd((m_data[these]+0.00))
+        StDevOOPbyAge[a] = np.nanstd(np.log(m_data[these]+0.01))
         thise = np.logical_and(HealthDeltaUseable,AgeBoolArray[:,:,a])
         StDevDeltaHealthByAge[a] = np.nanstd(HealthDelta[thise])
         AgeCellSize[a] = np.sum(these)
@@ -507,7 +469,7 @@ for b in range(data_bootstrap_count+1):
     for h in range(3):
         for a in range(15):
             these = np.logical_and(Useable,np.logical_and(HealthTertBoolArray[:,:,h],AgeBoolArray[:,:,a]))
-            StDevOOPbyHealthAge[h,a] = np.nanstd((m_data[these]+0.00))
+            StDevOOPbyHealthAge[h,a] = np.nanstd(np.log(m_data[these]+0.01))
             StDevDeltaHealthByHealthAge[h,a] = np.nan
             HealthAgeCellSize[h,a] = np.sum(these)
             thise = np.logical_and(HealthDeltaUseable,np.logical_and(HealthTertBoolArray[:,:,h],AgeBoolArray[:,:,a]))
@@ -531,8 +493,7 @@ for b in range(data_bootstrap_count+1):
             WealthByIncWealthAge.flatten(),
             HealthByIncWealthAge.flatten(),
             OOPbyIncWealthAge.flatten(),
-            AvgResidualByIncWealth.flatten(),
-            OOPcoeffs
+            AvgResidualByIncWealth.flatten()
             ])
     
     HealthProdPreEstMoments = np.concatenate([AvgResidualByIncWealth.flatten(),OOPdiffByInc])
@@ -566,18 +527,8 @@ moment_mask = np.concatenate([
         np.ones(375)*moment_dummies[12],
         np.ones(375)*moment_dummies[13],
         np.ones(375)*moment_dummies[14],
-        np.ones(25)*moment_dummies[15],
-        np.ones(6)*moment_dummies[16],
-        np.ones(8)*moment_dummies[17],
-        np.ones(2)*moment_dummies[18],
+        np.ones(25)*moment_dummies[15]
         ])
-moment_mask[101] = 0. # OOPstdev goes crazy at one age
-moment_mask[26] = 0.  # OOPstdev goes crazy at one age
-    
-# Modify the moment mask if we exclude very old moments
-if exclude_very_old:
-    very_old_moments = np.concatenate([np.mod(np.arange(1770),15) >= 13, np.zeros(41,dtype=bool)])
-    moment_mask[very_old_moments] = 0.
 
 # If the data moments were bootstrapped, calculate the optimal weighting matrix and save it to a file.
 # Otherwise, try to read the weighting matrix from that file; if it doesn't exist, use the identity matrix.
@@ -589,7 +540,6 @@ if data_bootstrap_count > 0:
     CovMatrix = np.cov(BootstrappedMoments_valid.transpose())
     print(str(N) + ' of ' + str(data_bootstrap_count) + ' bootstrap runs were valid.')
     moment_valid = VarVec > 1e-6 # Discard moments with zero or nearly zero variance
-    moment_valid[1800] = True # Log OOP age sq moment just barely doesn't qualify (because it's tiny), turn it back on
     moment_valid[645:675] = False # Turn off wealth moments for bottom two wealth quintiles of bottom income quintile
     moment_valid[720:735] = False # Turn off wealth moments for bottom wealth quintile of second income quintile
     moment_valid[1405:1410] = False # Turn off OOP moments for bottom wealth quintile of bottom income quintile after age 85
@@ -612,14 +562,13 @@ if data_bootstrap_count > 0:
                    1020,1095,1170,1245,1320, # income wealth age moments: health
                    1395,1470,1545,1620,1695, # income wealth age moments: OOP
                    1770, # health residual moments
-                   1795, # log OOP coefficients
-                   1811] # end
+                   1795] # end
                    
     # This vector indicates whether each block of moments should use the inverse of
     # the variance-covariance submatrix (True) or simply the inverse of the variance
     # elements as a diagonal matrix (False).  It is here to experiment with whether
     # moment covariances for mean OOP spending are driving estimation results.
-    use_cov = np.ones(32,dtype=bool) 
+    use_cov = np.ones(31,dtype=bool) 
     #use_cov[0] = False  # OOP by age
     #use_cov[8] = False  # OOP by health-age, women
     #use_cov[9] = False  # OOP by health-age, men
@@ -630,7 +579,7 @@ if data_bootstrap_count > 0:
     for j in range(len(moment_cuts)-1):
         bot = moment_cuts[j]
         top = moment_cuts[j+1]
-        which = np.zeros(1811,dtype=bool)
+        which = np.zeros(1795,dtype=bool)
         which[bot:top] = True
         which = np.logical_and(which,moment_valid)
         CovMatrix_temp = CovMatrix[which,:][:,which]
@@ -641,9 +590,9 @@ if data_bootstrap_count > 0:
     
     # Combine the blocks of weights into a diagonal matrix and re-insert rows and columns of zeros for omitted moments
     weighting_matrix_small = sp.linalg.block_diag(*weight_block_list)
-    weighting_matrix_mid = np.zeros((1811,valid_moment_N))
+    weighting_matrix_mid = np.zeros((1795,valid_moment_N))
     weighting_matrix_mid[moment_valid,:] = weighting_matrix_small
-    weighting_matrix = np.zeros((1811,1811))
+    weighting_matrix = np.zeros((1795,1795))
     weighting_matrix[:,moment_valid] = weighting_matrix_mid
     
     # Make a weighting matrix for the health production pre-estimation moments
@@ -671,9 +620,9 @@ else: # Try to read the weighting matrix from a CSV file if it wasn't just creat
         my_reader = csv.reader(infile,delimiter='\t')
         moment_weight_data = list(my_reader)
         infile.close()
-        weighting_matrix = np.zeros((1811,1811))
-        for i in range(1811):
-            for j in range(1811):
+        weighting_matrix = np.zeros((1795,1795))
+        for i in range(1795):
+            for j in range(1795):
                 weighting_matrix[i,j] = float(moment_weight_data[i][j])
                 
         infile = open('./Data/PreEstWeights.txt','r')
@@ -685,7 +634,7 @@ else: # Try to read the weighting matrix from a CSV file if it wasn't just creat
             for j in range(29):
                 W[i,j] = float(preest_weight_data[i][j])
     except:
-        weighting_matrix = np.eye(1811)
+        weighting_matrix = np.eye(1795)
         W = np.eye(25)
   
         

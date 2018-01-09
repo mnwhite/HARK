@@ -828,17 +828,11 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         if not self.time_flow:
             self.timeFwd()
             
-        SlopeAtAge95 = self.MedShkMeanAge + 2*15*self.MedShkMeanAgeSq
-        ValAtAge95 = self.MedShkMean0 + self.Sex*self.MedShkMeanSex + self.MedShkMeanAge*15 + self.MedShkMeanAgeSq*15**2
-            
         MedShkMeanFunc = []
         MedShkStdFunc = QuadraticFunction(self.MedShkStd0,self.MedShkStd1,0.0)
         for t in range(self.T_cycle):
             Age = t*1
-            if Age < 15:
-                beta0 = self.MedShkMean0 + self.Sex*self.MedShkMeanSex + self.MedShkMeanAge*Age + self.MedShkMeanAgeSq*Age**2
-            else:
-                beta0 = ValAtAge95 + (Age-15)*SlopeAtAge95
+            beta0 = self.MedShkMean0 + self.Sex*self.MedShkMeanSex + self.MedShkMeanAge*Age + self.MedShkMeanAgeSq*Age**2
             beta1 = self.MedShkMeanHealth
             beta2 = self.MedShkMeanHealthSq
             MedShkMeanFunc.append(QuadraticFunction(beta0,beta1,beta2))
