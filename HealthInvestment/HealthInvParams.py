@@ -80,7 +80,7 @@ other_exog_params = {
     'Rfree' : 1.04,
     'Sex' : 0.0,
     'cycles' : 1,
-    'DataToSimRepFactor' : 50
+    'DataToSimRepFactor' : 100
 }
 
 # Make a dictionary with structural parameters for testing
@@ -141,14 +141,14 @@ test_param_vec = np.array([
     0.136535220024,     # 5 Cfloor
     7.49251475136,      # 6 Bequest0
     2.29160750023,      # 7 Bequest1
-    0.164084821402,     # 8 MedShkMean0
-    -0.159193839563,    # 9 MedShkMeanSex
-    0.318884421303,     # 10 MedShkMeanAge
-    -0.00535768145077,  # 11 MedShkMeanAgeSq
-    -9.7322531067,      # 12 MedShkMeanHealth
-    1.3239940539,       # 13 MedShkMeanHealthSq
-    2.69810064193,      # 14 MedShkStd0
-    -0.0632317087909,   # 15 MedShkStd1
+    0.0718333405867,    # 8 MedShkMean0
+    0.196233326869,     # 9 MedShkMeanSex
+    0.287511255612,     # 10 MedShkMeanAge
+    -0.00905188245257,  # 11 MedShkMeanAgeSq
+    -7.67558372995,     # 12 MedShkMeanHealth
+    1.77510262466,      # 13 MedShkMeanHealthSq
+    2.71593990024,      # 14 MedShkStd0
+    -0.0603166861082,   # 15 MedShkStd1
     0.00244998661936,   # 16 HealthNext0
     -0.00621033190084,  # 17 HealthNextSex
     -0.000511267049571, # 18 HealthNextAge
