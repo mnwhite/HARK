@@ -1,19 +1,19 @@
 current_param_vec = np.array([ 
-    0.899501436961,  # 0 CRRA
-    0.89940524666,  # 1 DiscFac
+    0.715686273598,  # 0 CRRA
+    0.92952654482,  # 1 DiscFac
     1.74000477361,  # 2 MedCurve
     2.335,  # 3 LifeUtility
     -0.5,  # 4 MargUtilityShift
-    0.154164764775,  # 5 Cfloor
-    7.81377382498,  # 6 Bequest0
-    2.59863944192,  # 7 Bequest1
-    0.0718333405867,  # 8 MedShkMean0
-    0.196233326869,  # 9 MedShkMeanSex
-    0.287511255612,  # 10 MedShkMeanAge
-    -0.00905188245257,  # 11 MedShkMeanAgeSq
-    -7.67558372995,  # 12 MedShkMeanHealth
-    1.77510262466,  # 13 MedShkMeanHealthSq
-    2.71593990024,  # 14 MedShkStd0
+    0.166169971597,  # 5 Cfloor
+    8.0045879884,  # 6 Bequest0
+    2.48494204503,  # 7 Bequest1
+    0.0772310335412,  # 8 MedShkMean0
+    0.16652801147,  # 9 MedShkMeanSex
+    0.370535660537,  # 10 MedShkMeanAge
+    -0.00861917153388,  # 11 MedShkMeanAgeSq
+    -9.83115656266,  # 12 MedShkMeanHealth
+    1.24808859422,  # 13 MedShkMeanHealthSq
+    2.61502353777,  # 14 MedShkStd0
     -0.0603166861082,  # 15 MedShkStd1
     0.00244998661936,  # 16 HealthNext0
     -0.00621033190084,  # 17 HealthNextSex

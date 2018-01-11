@@ -80,7 +80,7 @@ other_exog_params = {
     'Rfree' : 1.04,
     'Sex' : 0.0,
     'cycles' : 1,
-    'DataToSimRepFactor' : 100
+    'DataToSimRepFactor' : 50
 }
 
 # Make a dictionary with structural parameters for testing
@@ -133,21 +133,21 @@ basic_estimation_dict.update(grid_size_params)
 
 # Make a test parameter vector
 test_param_vec = np.array([
-    0.986282156309,     # 0 CRRA
-    0.889145326143,     # 1 DiscFac
+    0.715686273598,     # 0 CRRA
+    0.92952654482,      # 1 DiscFac
     1.74000477361,      # 2 MedCurve
     2.335,              # 3 LifeUtility
     -0.5,               # 4 MargUtilityShift
-    0.136535220024,     # 5 Cfloor
-    7.49251475136,      # 6 Bequest0
-    2.29160750023,      # 7 Bequest1
-    0.0718333405867,    # 8 MedShkMean0
-    0.196233326869,     # 9 MedShkMeanSex
-    0.287511255612,     # 10 MedShkMeanAge
-    -0.00905188245257,  # 11 MedShkMeanAgeSq
-    -7.67558372995,     # 12 MedShkMeanHealth
-    1.77510262466,      # 13 MedShkMeanHealthSq
-    2.71593990024,      # 14 MedShkStd0
+    0.166169971597,     # 5 Cfloor
+    8.0045879884,       # 6 Bequest0
+    2.48494204503,      # 7 Bequest1
+    0.0772310335412,    # 8 MedShkMean0
+    0.16652801147,      # 9 MedShkMeanSex
+    0.370535660537,     # 10 MedShkMeanAge
+    -0.00861917153388,  # 11 MedShkMeanAgeSq
+    -9.83115656266,     # 12 MedShkMeanHealth
+    1.24808859422,      # 13 MedShkMeanHealthSq
+    2.61502353777,      # 14 MedShkStd0
     -0.0603166861082,   # 15 MedShkStd1
     0.00244998661936,   # 16 HealthNext0
     -0.00621033190084,  # 17 HealthNextSex
@@ -168,15 +168,25 @@ test_param_vec = np.array([
     0.77982315275       # 32 MortalityHealthSq
     ])
 
-#    0.0163381242443,    # 16 HealthNext0
-#    0.001,              # 16 HealthNext0
 
-#    -1.60,              # 24 HealthProd0 (in log)
-#    -3.60,              # 25 HealthProd1 (in log)
+#    0.986282156309,     # 0 CRRA
+#    0.889145326143,     # 1 DiscFac
+#    0.136535220024,     # 5 Cfloor
+#    7.49251475136,      # 6 Bequest0
+#    2.29160750023,      # 7 Bequest1
+#    0.0718333405867,    # 8 MedShkMean0
+#    0.196233326869,     # 9 MedShkMeanSex
+#    0.287511255612,     # 10 MedShkMeanAge
+#    -0.00905188245257,  # 11 MedShkMeanAgeSq
+#    -7.67558372995,     # 12 MedShkMeanHealth
+#    1.77510262466,      # 13 MedShkMeanHealthSq
+#    2.71593990024,      # 14 MedShkStd0
+
+
 
 # These are only used by the estimation to decide when to write parameters to disk
 func_call_count = 0
-store_freq = 50
+store_freq = 10
 
 # Make a list of parameter names corresponding to their position in the vector above
 param_names = [
