@@ -80,7 +80,7 @@ other_exog_params = {
     'Rfree' : 1.04,
     'Sex' : 0.0,
     'cycles' : 1,
-    'DataToSimRepFactor' : 50
+    'DataToSimRepFactor' : 150
 }
 
 # Make a dictionary with structural parameters for testing
