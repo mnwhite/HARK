@@ -80,6 +80,8 @@ other_exog_params = {
     'Rfree' : 1.04,
     'Sex' : 0.0,
     'cycles' : 1,
+    'Subsidy0' : 1.,
+    'Subsidy1' : 0.,
     'DataToSimRepFactor' : 50
 }
 
