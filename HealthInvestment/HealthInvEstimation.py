@@ -652,11 +652,11 @@ if __name__ == '__main__':
 
 
     # Choose what kind of work to do:
-    test_obj_func = True
-    plot_model_fit = True
+    test_obj_func = False
+    plot_model_fit = False
     perturb_one_param = False
     perturb_two_params = False
-    estimate_model = False
+    estimate_model = True
     calc_std_errs = False
 
 
@@ -848,7 +848,7 @@ if __name__ == '__main__':
 
     if estimate_model:
         # Estimate some (or all) of the model parameters
-        which_indices = np.array([3,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32])
+        which_indices = np.array([0,1,5,6,7])
         which_bool = np.zeros(33,dtype=bool)
         which_bool[which_indices] = True
         estimated_params = minimizeNelderMead(objectiveFunctionWrapper,Params.test_param_vec,verbose=True,which_vars=which_bool)
@@ -859,7 +859,7 @@ if __name__ == '__main__':
 
     if calc_std_errs:
         # Calculate standard errors for some or all parameters
-        which_indices = np.array([16,17,18,19,20,21,22,23,27,28,29,30,31,32])
+        which_indices = np.array([3,24,25,26])
         which_bool = np.zeros(33,dtype=bool)
         which_bool[which_indices] = True
         standard_errors = calcStdErrs(Params.test_param_vec,Data.use_cohorts,which_bool,eps=0.001)

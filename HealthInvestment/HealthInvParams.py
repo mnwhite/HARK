@@ -80,7 +80,7 @@ other_exog_params = {
     'Rfree' : 1.04,
     'Sex' : 0.0,
     'cycles' : 1,
-    'DataToSimRepFactor' : 150
+    'DataToSimRepFactor' : 50
 }
 
 # Make a dictionary with structural parameters for testing
@@ -135,37 +135,37 @@ basic_estimation_dict.update(grid_size_params)
 test_param_vec = np.array([
     0.715686273598,     # 0 CRRA
     0.92952654482,      # 1 DiscFac
-    1.74000477361,      # 2 MedCurve
-    2.335,              # 3 LifeUtility
+    2.00310357418,      # 2 MedCurve
+    1.90751224964,      # 3 LifeUtility
     -0.5,               # 4 MargUtilityShift
     0.166169971597,     # 5 Cfloor
     8.0045879884,       # 6 Bequest0
     2.48494204503,      # 7 Bequest1
-    0.0772310335412,    # 8 MedShkMean0
+    0.0801703563968,    # 8 MedShkMean0
     0.16652801147,      # 9 MedShkMeanSex
     0.370535660537,     # 10 MedShkMeanAge
     -0.00861917153388,  # 11 MedShkMeanAgeSq
     -9.83115656266,     # 12 MedShkMeanHealth
     1.24808859422,      # 13 MedShkMeanHealthSq
-    2.61502353777,      # 14 MedShkStd0
+    2.54305312697,      # 14 MedShkStd0
     -0.0603166861082,   # 15 MedShkStd1
-    0.00244998661936,   # 16 HealthNext0
-    -0.00621033190084,  # 17 HealthNextSex
-    -0.000511267049571, # 18 HealthNextAge
-    -0.000300015727788, # 19 HealthNextAgeSq
-    0.875424020755,     # 20 HealthNextHealth
-    0.076030428306,     # 21 HealthNextHealthSq
+    0.00200645478208,   # 16 HealthNext0
+    -0.00595990812472,  # 17 HealthNextSex
+    -0.000554692968756, # 18 HealthNextAge
+    -0.000304552778425, # 19 HealthNextAgeSq
+    0.875036503866,     # 20 HealthNextHealth
+    0.0704631813835,    # 21 HealthNextHealthSq
     0.171362803854,     # 22 HealthShkStd0
     -0.0815936727664,   # 23 HealthShkStd1
-    -0.735,             # 24 HealthProd0
-    -0.749,             # 25 HealthProd1 (log initial slope)
-    3.676,              # 26 HealthProd2 (log initial curvature)
-    -0.453985167386,    # 27 Mortality0
-    0.348441450154,     # 28 MortalitySex
-    -0.00150882762257,  # 29 MortalityAge
-    0.00602468541845,   # 30 MortalityAgeSq
-    -2.73536744446,     # 31 MortalityHealth
-    0.77982315275       # 32 MortalityHealthSq
+    -65.6588576794,     # 24 HealthProd0
+    -1.60421917644,     # 25 HealthProd1 (log initial slope)
+    1.99431883222,      # 26 HealthProd2 (log initial curvature)
+    -0.483807046955,    # 27 Mortality0
+    0.337303833306,     # 28 MortalitySex
+    -0.00121241532858,  # 29 MortalityAge
+    0.00612325994812,   # 30 MortalityAgeSq
+    -2.69366761301,     # 31 MortalityHealth
+    0.825368523725,     # 32 MortalityHealthSq
     ])
 
 
