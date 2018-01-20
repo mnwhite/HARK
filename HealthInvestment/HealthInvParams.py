@@ -133,14 +133,14 @@ basic_estimation_dict.update(grid_size_params)
 
 # Make a test parameter vector
 test_param_vec = np.array([
-    0.715686273598,     # 0 CRRA
-    0.92952654482,      # 1 DiscFac
+    0.722052995574,     # 0 CRRA
+    0.927061311007,     # 1 DiscFac
     2.00310357418,      # 2 MedCurve
     1.90751224964,      # 3 LifeUtility
     -0.5,               # 4 MargUtilityShift
-    0.166169971597,     # 5 Cfloor
-    8.0045879884,       # 6 Bequest0
-    2.48494204503,      # 7 Bequest1
+    0.16112103716,      # 5 Cfloor
+    8.12922971358,      # 6 Bequest0
+    2.55623474865,      # 7 Bequest1
     0.0801703563968,    # 8 MedShkMean0
     0.16652801147,      # 9 MedShkMeanSex
     0.370535660537,     # 10 MedShkMeanAge
@@ -168,19 +168,9 @@ test_param_vec = np.array([
     0.825368523725,     # 32 MortalityHealthSq
     ])
 
-
-#    0.986282156309,     # 0 CRRA
-#    0.889145326143,     # 1 DiscFac
-#    0.136535220024,     # 5 Cfloor
-#    7.49251475136,      # 6 Bequest0
-#    2.29160750023,      # 7 Bequest1
-#    0.0718333405867,    # 8 MedShkMean0
-#    0.196233326869,     # 9 MedShkMeanSex
-#    0.287511255612,     # 10 MedShkMeanAge
-#    -0.00905188245257,  # 11 MedShkMeanAgeSq
-#    -7.67558372995,     # 12 MedShkMeanHealth
-#    1.77510262466,      # 13 MedShkMeanHealthSq
-#    2.71593990024,      # 14 MedShkStd0
+#     8.12922971358,      # 6 Bequest0
+#     2.55623474865,      # 7 Bequest1
+#    -1.60421917644,     # 25 HealthProd1 (log initial slope)
 
 
 

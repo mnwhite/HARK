@@ -400,10 +400,6 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
         Solution to this period's health investment problem.
     '''
     # Define utility functions
-#    if CRRA == 0.0:
-#        u0 = 0.
-#    else: # Shifter so that u(1) = 0 for all CRRA values
-#        u0 = 1./(1.-CRRA)
     u = lambda C : CRRAutility(C,gam=CRRA)
     uP = lambda C : CRRAutilityP(C,gam=CRRA)
     uinv = lambda U : CRRAutility_inv(U,gam=CRRA)
@@ -542,8 +538,11 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
     LogMedShkGrid = np.linspace(LogMedShkMin,LogMedShkMax,MedShkCount)
     MedShkGrid = np.insert(np.exp(LogMedShkGrid),0,0.0)
     ShkCount = MedShkGrid.size
-    LogMedShkGridDense = np.linspace(LogMedShkMin,LogMedShkMax,MedShkCount*2)
-    ShkGridDense = np.insert(np.exp(LogMedShkGridDense),0,0.0)
+    LogMedShkGridDense = np.insert(np.linspace(LogMedShkMin,LogMedShkMax-0.1,MedShkCount*3),0,-np.inf)
+    ShkGridDense = np.exp(LogMedShkGridDense)
+    
+    #print(MedShkGrid[:5])
+    #print(ShkGridDense[:5])
     
     # Make 3D arrays of states, health investment, insurance terms, and (marginal) values
     MedShkArrayBig = np.tile(np.reshape(MedShkGrid,(1,1,ShkCount)),(aCount,Hcount,1))
@@ -567,6 +566,17 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
     bLvlArrayBig = aLvlArrayBig + xLvlArrayBig + MedPrice*CopayArrayBig*iLvlArrayBig + PremiumArrayBig
     vArrayBig = u(cEffArrayBig) + u0 + EndOfPrdvBig
     dvdhArrayBig = ExpHealthNextFunc.der(hLvlArrayBig)*EndOfPrddvdHBig
+    
+#    print(bLvlArrayBig.shape)
+#    for j in range(ShkCount):
+#       plt.plot(bLvlArrayBig[:,12,j],xLvlArrayBig[:,12,j])
+#    #plt.ylim(0.,200.)
+#    #plt.xlim(0.,200.)
+#    plt.show()
+    
+#    print('iBig',np.sum(np.isnan(iLvlArrayBig)),np.sum(np.isinf(iLvlArrayBig)),np.sum(np.logical_not(np.isreal(iLvlArrayBig))),np.sum(iLvlArrayBig < 0.))
+#    print('xBig',np.sum(np.isnan(xLvlArrayBig)),np.sum(np.isinf(xLvlArrayBig)),np.sum(np.logical_not(np.isreal(xLvlArrayBig))),np.sum(xLvlArrayBig < 0.))
+#    print('vBig',np.sum(np.isnan(vArrayBig)),np.sum(np.isinf(vArrayBig)),np.sum(np.logical_not(np.isreal(vArrayBig))),np.sum(vArrayBig < 0.))
     
     # Make an exogenous grid of bLvl and MedShk values where individual is constrained
     bCnstCount = 16
@@ -594,11 +604,13 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
         cEff = cEffNow[these]
         bLvl = bLvlArrayCnst[these]
         MedShk = MedShkArrayCnst[these]
+        ShkZero = MedShk == 0.
         H = HarrayCnst[these]
         hGuess = hNow[these]
         EndOfPrddvdHNow = EndOfPrddvdHCnstAdj[these]
         EffPrice = EffPriceNow[these]
         dvdC = uP(cEff)/DpFunc(cEff,MedShk*EffPrice)
+        dvdC[ShkZero] = uP(cEff[ShkZero])
         ImpliedMargHealthProd = dvdC*EffPrice/EndOfPrddvdHNow
         iGuess = np.maximum(MargHealthProdInvFunc(ImpliedMargHealthProd),0.0)
         iGuess[np.isinf(ImpliedMargHealthProd)] = 0.0
@@ -607,7 +619,7 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
         Premium = PremiumFunc(hGuessNew)
         xLvl = bLvl - Premium - iGuess*EffPrice
         cEff = cEffFunc(xLvl,MedShk*EffPrice)
-        ShkZero = MedShk == 0.
+        xLvl[ShkZero] = bLvl[ShkZero]
         cEff[ShkZero] = xLvl[ShkZero]
         diff[these] = np.abs(hGuessNew - hGuess)
         hNow[these] = hGuessNew
@@ -641,6 +653,12 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
     dvdhArrayAll = np.concatenate((dvdhArrayCnst,dvdhArrayBig),axis=0)
     vNvrsArrayAll = uinv(vArrayAll - vLimNow)
     
+#    for j in range(ShkCount):
+#        plt.plot(bLvlArrayAll[:,1,j],xLvlArrayAll[:,1,j])
+#    plt.ylim(0.,10.)
+#    plt.xlim(0.,10.)
+#    plt.show()
+    
     # Apply the Jorgensen-Druedahl convexity fix and construct expenditure and investment functions
 #    t_start = clock()
     xLvlArray, iLvlArray, vNvrsArray, dvdhArray = ConvexityFixer(bLvlArrayAll,hLvlArrayAll,MedShkArrayAll,
@@ -650,16 +668,39 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
     xFuncNow = TrilinearInterp(xLvlArray,bLvlGrid,hLvlGrid,ShkGridDense)
     iFuncNow = TrilinearInterp(iLvlArray,bLvlGrid,hLvlGrid,ShkGridDense)
     PolicyFuncNow = HealthInvestmentPolicyFunc(xFuncNow,iFuncNow,bFromxFunc,CopayFunc)
-    
-    # Find the critical shock where the consumption floor begins to bind
     bLvlCount = bLvlGrid.size
     hLvlCount = hLvlGrid.size
     ShkCount  = MedShkGrid.size
+    
+    # Make an array of values that are attained if we hit the Cfloor this period
+    EndOfPrdvFunc_no_assets = ValueFunc(LinearInterp(Hgrid,uinv(EndOfPrdv[0,:]-DiscFac*vLimNext)),CRRA)
+    EndOfPrddvdhFunc_no_assets = LinearInterp(Hgrid,EndOfPrddvdH[0,:])
+    Hgrid_temp = ExpHealthNextFunc(hLvlGrid)
+    dHdh_temp = ExpHealthNextFunc.der(hLvlGrid)
+    vFloorArray = np.tile(np.reshape(u(Cfloor) + u0 + EndOfPrdvFunc_no_assets(Hgrid_temp),(1,hLvlCount)),(bLvlCount,1)) + DiscFac*vLimNext
+    dvdhFloorArray = np.tile(np.reshape(dHdh_temp*EndOfPrddvdhFunc_no_assets(Hgrid_temp),(1,hLvlCount)),(bLvlCount,1))
+    
+    
     bLvlArray_temp = np.tile(np.reshape(bLvlGrid,(bLvlCount,1)),(1,hLvlCount))
     hLvlArray_temp = np.tile(np.reshape(hLvlGrid,(1,hLvlCount)),(bLvlCount,1))
     #MedShkMax = np.tile(np.reshape(np.exp(MedShkMeanFunc(hLvlGrid) + 5.0*MedShkStdFunc(hLvlGrid)),(1,hLvlCount)),(bLvlCount,1))
     MedShkMax = np.exp(MedShkMeanFunc(0.0) + 5.0*MedShkStdFunc(0.0))*np.ones_like(bLvlArray_temp)
     CritShkArray = 1e-8*np.ones_like(bLvlArray_temp) # Current guess of critical shock for each (bLvl,hLvl)
+    #print(np.log(MedShkMax[0,0]))
+    
+    # Alternate procedure for finding approximate CritShk
+    vNvrsFloorArray = uinv(vFloorArray - vLimNow)
+    vNvrsFloorArray_tiled = np.tile(np.reshape(vNvrsFloorArray,(bLvlCount,hLvlCount,1)),(1,1,ShkGridDense.size))
+    CritIdx = np.minimum(np.sum(vNvrsArray > vNvrsFloorArray_tiled, axis=2),ShkGridDense.size-1)
+    bIdx  = np.tile(np.reshape(np.arange(bLvlCount),(bLvlCount,1)),(1,hLvlCount))
+    hIdx  = np.tile(np.reshape(np.arange(hLvlCount),(1,hLvlCount)),(bLvlCount,1))
+    vNvrsLo = vNvrsArray[bIdx,hIdx,CritIdx-1]
+    vNvrsHi = vNvrsArray[bIdx,hIdx,CritIdx]
+    alpha = (vNvrsFloorArray - vNvrsLo)/(vNvrsHi - vNvrsLo)
+    CritShkArray = np.exp((1.-alpha)*LogMedShkGridDense[CritIdx-1] + alpha*LogMedShkGridDense[CritIdx])
+    CritShkArray = np.minimum(CritShkArray,MedShkMax)
+    
+    # Find the critical shock where the consumption floor begins to bind
     DiffArray = np.ones_like(bLvlArray_temp) # Relative change in crit shock guess this iteration
     Unresolved = np.ones_like(bLvlArray_temp,dtype=bool) # Indicator for which points are still unresolved
     UnresolvedCount = Unresolved.size # Number of points whose CritShk has not been found
@@ -690,28 +731,32 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
     
 #    for j in range(ShkGridDense.size):
 #        plt.plot(bLvlGrid,vNvrsArray[:,3,j])
-#    plt.ylim(0.,25.)
-#    plt.xlim(0.,25.)
+#    plt.ylim(0.,200.)
+#    plt.xlim(0.,200.)
 #    plt.show()
-    
+#    
 #    for j in range(ShkGridDense.size):
-#        plt.plot(bLvlGrid,xLvlArray[:,20,j])
-#    plt.ylim(0.,1600.)
+#        plt.plot(bLvlGrid,xLvlArray[:,3,j])
+#    plt.xlim(0.,200.)
+#    plt.ylim(0.,200.)
 #    plt.show()
     
 #    for j in range(hLvlGrid.size):
-#        plt.plot(bLvlGrid,vNvrsArray[:,j,20])
-#    plt.ylim(-10.,2000.)
+#        plt.plot(bLvlGrid,dvdhArray[:,3,j])
+#    plt.xlim(0,200.)
 #    plt.show()
     
     MedShkMeanArray = np.tile(np.reshape(MedShkMeanFunc(hLvlGrid),(1,hLvlCount,1)),(bLvlCount,1,MedShkCount))
     MedShkStdArray = np.tile(np.reshape(MedShkStdFunc(hLvlGrid),(1,hLvlCount,1)),(bLvlCount,1,MedShkCount))
-#    DevArray = np.tile(np.reshape(np.linspace(0.,8.,MedShkCount),(1,1,MedShkCount)),(bLvlCount,hLvlCount,1))
-#    LogMedShkArray = np.tile(np.reshape(LogCritShkArray,(bLvlCount,hLvlCount,1)),(1,1,MedShkCount)) - DevArray*MedShkStdArray
     LogMedShkLowerArray = MedShkMeanArray - 3.0*MedShkStdArray
     FracArray = np.tile(np.reshape(np.linspace(0.0,0.95,MedShkCount),(1,1,MedShkCount)),(bLvlCount,hLvlCount,1))
     LogMedShkArray = LogMedShkLowerArray + FracArray*(np.tile(np.reshape(LogCritShkArray,(bLvlCount,hLvlCount,1)),(1,1,MedShkCount)) - LogMedShkLowerArray)
     MedShkValArray = np.exp(LogMedShkArray)
+    
+#    for j in range(hLvlGrid.size):
+#        plt.plot(bLvlGrid,LogMedShkLowerArray[:,j,0])
+#    plt.xlim(0.,200.)
+#    plt.show()
     
     # Calculate probabilities of all of the medical shocks
     zArray = (LogMedShkArray - MedShkMeanArray)/MedShkStdArray
@@ -720,6 +765,11 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
     SumPrbArray = np.sum(BasePrbArray,axis=2)
     AdjArray = np.tile(np.reshape((1.0-CritShkPrbArray)/SumPrbArray,(bLvlCount,hLvlCount,1)),(1,1,MedShkCount))
     MedShkPrbArray = BasePrbArray*AdjArray
+    
+#    for j in range(hLvlGrid.size):
+#        plt.plot(bLvlGrid,CritShkPrbArray[:,j])
+#    plt.xlim(0.,200.)
+#    plt.show()
     
     # Calculate the change in probabilities of the medical shocks as h increases slightly
     h_eps = 0.0001
@@ -734,14 +784,6 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
     dMedShkPrbdhArray = (MedShkPrbArrayAlt - MedShkPrbArray)/h_eps
     dCritShkPrbdhArray = (CritShkPrbArrayAlt - CritShkPrbArray)/h_eps
     
-    # Make an array of values that are attained if we hit the Cfloor this period
-    EndOfPrdvFunc_no_assets = ValueFunc(LinearInterp(Hgrid,uinv(EndOfPrdv[0,:]-DiscFac*vLimNext)),CRRA)
-    EndOfPrddvdhFunc_no_assets = LinearInterp(Hgrid,EndOfPrddvdH[0,:])
-    Hgrid_temp = ExpHealthNextFunc(hLvlGrid)
-    dHdh_temp = ExpHealthNextFunc.der(hLvlGrid)
-    vFloorArray = np.tile(np.reshape(u(Cfloor) + u0 + EndOfPrdvFunc_no_assets(Hgrid_temp),(1,hLvlCount)),(bLvlCount,1)) + DiscFac*vLimNext
-    dvdhFloorArray = np.tile(np.reshape(dHdh_temp*EndOfPrddvdhFunc_no_assets(Hgrid_temp),(1,hLvlCount)),(bLvlCount,1))
-    
     # Find where each shock for integration falls on the MedShkGridDense
     IdxHi = np.minimum(np.searchsorted(ShkGridDense,MedShkValArray),ShkGridDense.size-1)
     IdxLo = IdxHi - 1
@@ -752,11 +794,18 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
     bIdx  = np.tile(np.reshape(np.arange(bLvlCount),(bLvlCount,1,1)),(1,hLvlCount,MedShkCount))
     hIdx  = np.tile(np.reshape(np.arange(hLvlCount),(1,hLvlCount,1)),(bLvlCount,1,MedShkCount))
     
+#    for j in range(hLvlGrid.size):
+#        plt.plot(bLvlGrid,IdxHi[:,j,10])
+#    plt.xlim(0.,200.)
+#    plt.show()
+    
     # Integrate value according to the shock probabilities
     vNvrs_temp = alpha_comp*vNvrsArray[bIdx,hIdx,IdxLo] + alpha*vNvrsArray[bIdx,hIdx,IdxHi]
     v_temp = u(vNvrs_temp) + vLimNow
     ValueArrayFlat = np.sum(v_temp*MedShkPrbArray,axis=2) + CritShkPrbArray*vFloorArray
     vNvrsArrayFlat = uinv(ValueArrayFlat - vLimNow)
+    
+#    print(np.min(v_temp),np.max(v_temp))
     
     # Integrate marginal value of bank balances according to the shock probabilities
     x_temp = alpha_comp*xLvlArray[bIdx,hIdx,IdxLo] + alpha*xLvlArray[bIdx,hIdx,IdxHi]
@@ -966,7 +1015,8 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         
         bLvlGrid = []
         for t in range(self.T_cycle):
-            bLvlGrid.append(bNrmGrid*self.IncomeNow[t] + self.IncomeNow[t])
+            bLvlGrid.append(makeGridExpMult(ming=self.IncomeNow[t], maxg=self.aXtraMax*self.IncomeNow[t], ng=self.bNrmCount+1, timestonest=self.aXtraNestFac))
+            #bLvlGrid.append(bNrmGrid*self.IncomeNow[t] + self.IncomeNow[t])
         self.bLvlGrid = bLvlGrid
         
         self.addToTimeInv('bNrmGrid','hLvlGrid','Hgrid','Hcount')
@@ -1136,7 +1186,7 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         None
         '''
         self.ConvexityFixer = JDfixer(self.aXtraGrid.size+16,self.Hgrid.size,self.MedShkCount+1,
-                                      self.bNrmGrid.size,self.hLvlGrid.size,self.MedShkCount*2+1)
+                                      self.bNrmGrid.size,self.hLvlGrid.size,self.MedShkCount*3+1)
         self.addToTimeInv('ConvexityFixer')
         
         

@@ -242,8 +242,9 @@ __kernel void doJorgensenDruedahlFix3D(
     int InBot;
         
     /* Loop over bLvl-hLvl data sectors for this kData */
-    double4 Low = (double4)(-0.05,-0.05,-0.05,-0.05);
-    double4 High = (double4)(1.05,1.05,1.05,1.05);
+    double tol = 0.01;
+    double4 Low = (double4)(-tol,-tol,-tol,-tol);
+    double4 High = (double4)(1.0+tol,1.0+tol,1.0+tol,1.0+tol);
     int hAndShkDataDim = hLvlDataDim*MedShkDataDim;
     for (iData=0; iData < (bLvlDataDim-1); iData++) {
         for (jData=0; jData < (hLvlDataDim-1); jData++) {

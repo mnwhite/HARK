@@ -1,12 +1,12 @@
 current_param_vec = np.array([ 
-    0.722080360961,  # 0 CRRA
-    0.927004482282,  # 1 DiscFac
+    0.722052995574,  # 0 CRRA
+    0.927061311007,  # 1 DiscFac
     2.00310357418,  # 2 MedCurve
     1.90751224964,  # 3 LifeUtility
     -0.5,  # 4 MargUtilityShift
-    0.161103307948,  # 5 Cfloor
-    8.12878882247,  # 6 Bequest0
-    2.55693231782,  # 7 Bequest1
+    0.16112103716,  # 5 Cfloor
+    8.12922971358,  # 6 Bequest0
+    2.55623474865,  # 7 Bequest1
     0.0801703563968,  # 8 MedShkMean0
     0.16652801147,  # 9 MedShkMeanSex
     0.370535660537,  # 10 MedShkMeanAge

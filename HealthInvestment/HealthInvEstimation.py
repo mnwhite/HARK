@@ -35,10 +35,10 @@ class EstimationAgentType(HealthInvestmentConsumerType):
         '''
         self.update()
         self.solve()
-        self.repSimData()
-        self.initializeSim()
-        self.simulate()
-        self.delSolution()
+        #self.repSimData()
+        #self.initializeSim()
+        #self.simulate()
+        #self.delSolution()
         
         
     def repSimData(self):
@@ -627,12 +627,20 @@ def objectiveFunctionWrapper(param_vec):
 
 if __name__ == '__main__':
 
-#    param_dict = convertVecToDict(Params.test_param_vec)
-#    MyTypes = makeMultiTypeSimple(param_dict)
-#    t_start = clock()
-#    MyTypes[0].estimationAction()
-#    t_end = clock()
-#    print('Processing one agent type took ' + str(t_end-t_start) + ' seconds.')
+    param_dict = convertVecToDict(Params.test_param_vec)
+    MyTypes = makeMultiTypeSimple(param_dict)
+    t_start = clock()
+    MyTypes[9].estimationAction()
+    t_end = clock()
+    print('Processing one agent type took ' + str(t_end-t_start) + ' seconds.')
+    
+    t=0
+    bMax = 200.
+    MyTypes[9].plotxFuncByHealth(t,MedShk=0.1,bMax=bMax)
+    MyTypes[9].plotxFuncByMedShk(t,hLvl=0.9,bMax=bMax)
+    MyTypes[9].plotiFuncByHealth(t,MedShk=0.1,bMax=bMax)
+    MyTypes[9].plotvFuncByHealth(t,bMax=bMax)
+    MyTypes[9].plotdvdbFuncByHealth(t,bMax=bMax)
     
 #    t_start = clock()
 #    MyTypes = processSimulatedTypes(Params.test_params,False)
@@ -656,7 +664,7 @@ if __name__ == '__main__':
     plot_model_fit = False
     perturb_one_param = False
     perturb_two_params = False
-    estimate_model = True
+    estimate_model = False
     calc_std_errs = False
 
 

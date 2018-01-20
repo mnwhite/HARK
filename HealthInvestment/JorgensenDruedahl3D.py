@@ -141,6 +141,41 @@ class JDfixer(object):
         iLvlArray = np.reshape(iLvlOut,(self.bGridDenseSize,self.hGridDenseSize,self.ShkGridDenseSize))
         vNvrsArray = np.reshape(ValueOut,(self.bGridDenseSize,self.hGridDenseSize,self.ShkGridDenseSize))
         dvdhArray = np.reshape(dvdhOut,(self.bGridDenseSize,self.hGridDenseSize,self.ShkGridDenseSize))
+        
+        # Perform "error correction" on the output to fill in state points that are (somehow) missing
+        for j in range(self.hGridDenseSize):
+            for k in range(self.ShkGridDenseSize):
+                errors = np.where(vNvrsArray[:,j,k] == bad_value)[0].tolist()
+                #print(j,k,errors)
+                while len(errors) > 0:
+                    bot = errors[0]
+                    i = 0
+                    go = True
+                    while go:
+                        i += 1
+                        errors.pop(0)
+                        if len(errors) == 0:
+                            go = False
+                            continue
+                        if errors[0] > bot + i:
+                            go = False
+                    top = bot + i
+                    if top == self.bGridDenseSize:
+                        lo = bot-2
+                        hi = bot-1
+                    else:
+                        lo = bot-1
+                        hi = top
+                    bLo = bGridDense[lo]
+                    bHi = bGridDense[hi]
+                    alpha = (bGridDense[bot:top] - bLo)/(bHi - bLo)
+                    alpha_comp = 1. - alpha
+                    #print(bot,top,lo,hi,alpha)
+                    vNvrsArray[bot:top,j,k] = alpha_comp*vNvrsArray[lo,j,k] + alpha*vNvrsArray[hi,j,k]
+                    xLvlArray[bot:top,j,k] = alpha_comp*xLvlArray[lo,j,k] + alpha*xLvlArray[hi,j,k]
+                    iLvlArray[bot:top,j,k] = alpha_comp*iLvlArray[lo,j,k] + alpha*iLvlArray[hi,j,k]
+                    dvdhArray[bot:top,j,k] = alpha_comp*dvdhArray[lo,j,k] + alpha*dvdhArray[hi,j,k]
+                        
     
         # Return results of the Jorgensen-Druedahl fix
         return xLvlArray, iLvlArray, vNvrsArray, dvdhArray
