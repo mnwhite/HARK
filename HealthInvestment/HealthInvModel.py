@@ -688,17 +688,17 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
     CritShkArray = 1e-8*np.ones_like(bLvlArray_temp) # Current guess of critical shock for each (bLvl,hLvl)
     #print(np.log(MedShkMax[0,0]))
     
-    # Alternate procedure for finding approximate CritShk
-    vNvrsFloorArray = uinv(vFloorArray - vLimNow)
-    vNvrsFloorArray_tiled = np.tile(np.reshape(vNvrsFloorArray,(bLvlCount,hLvlCount,1)),(1,1,ShkGridDense.size))
-    CritIdx = np.minimum(np.sum(vNvrsArray > vNvrsFloorArray_tiled, axis=2),ShkGridDense.size-1)
-    bIdx  = np.tile(np.reshape(np.arange(bLvlCount),(bLvlCount,1)),(1,hLvlCount))
-    hIdx  = np.tile(np.reshape(np.arange(hLvlCount),(1,hLvlCount)),(bLvlCount,1))
-    vNvrsLo = vNvrsArray[bIdx,hIdx,CritIdx-1]
-    vNvrsHi = vNvrsArray[bIdx,hIdx,CritIdx]
-    alpha = (vNvrsFloorArray - vNvrsLo)/(vNvrsHi - vNvrsLo)
-    CritShkArray = np.exp((1.-alpha)*LogMedShkGridDense[CritIdx-1] + alpha*LogMedShkGridDense[CritIdx])
-    CritShkArray = np.minimum(CritShkArray,MedShkMax)
+#    # Alternate procedure for finding approximate CritShk
+#    vNvrsFloorArray = uinv(vFloorArray - vLimNow)
+#    vNvrsFloorArray_tiled = np.tile(np.reshape(vNvrsFloorArray,(bLvlCount,hLvlCount,1)),(1,1,ShkGridDense.size))
+#    CritIdx = np.minimum(np.sum(vNvrsArray > vNvrsFloorArray_tiled, axis=2),ShkGridDense.size-1)
+#    bIdx  = np.tile(np.reshape(np.arange(bLvlCount),(bLvlCount,1)),(1,hLvlCount))
+#    hIdx  = np.tile(np.reshape(np.arange(hLvlCount),(1,hLvlCount)),(bLvlCount,1))
+#    vNvrsLo = vNvrsArray[bIdx,hIdx,CritIdx-1]
+#    vNvrsHi = vNvrsArray[bIdx,hIdx,CritIdx]
+#    alpha = (vNvrsFloorArray - vNvrsLo)/(vNvrsHi - vNvrsLo)
+#    CritShkArray = np.exp((1.-alpha)*LogMedShkGridDense[CritIdx-1] + alpha*LogMedShkGridDense[CritIdx])
+#    CritShkArray = np.maximum(np.minimum(CritShkArray,MedShkMax),0.01)
     
     # Find the critical shock where the consumption floor begins to bind
     DiffArray = np.ones_like(bLvlArray_temp) # Relative change in crit shock guess this iteration

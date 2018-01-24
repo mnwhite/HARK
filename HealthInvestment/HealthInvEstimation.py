@@ -35,10 +35,10 @@ class EstimationAgentType(HealthInvestmentConsumerType):
         '''
         self.update()
         self.solve()
-        #self.repSimData()
-        #self.initializeSim()
-        #self.simulate()
-        #self.delSolution()
+        self.repSimData()
+        self.initializeSim()
+        self.simulate()
+        self.delSolution()
         
         
     def repSimData(self):
@@ -267,14 +267,18 @@ def calcSimulatedMoments(type_list,return_as_list):
     weight_reg = WeightNext[THESE]
     del WeightNext
     
-    # Make an array of inc-wealth quintile indicators
+    # Make arrayw of inc-wealth quintile indicators
+    IQbool_reg = np.zeros((5,OOP_reg.size))
+    for i in range(5):
+        IQbool_reg[i,:] = IQ_reg == i+1
+    WQbool_reg = np.zeros((5,OOP_reg.size))
+    for j in range(5):
+        WQbool_reg[j,:] = WQ_reg == j+1
     IWQbool_reg = np.zeros((25,h_reg.size))
     k = 0
     for i in range(5):
-        right_inc = IQ_reg == i+1
         for j in range(5):
-            right_wealth = WQ_reg == j+1
-            these = np.logical_and(right_inc,right_wealth)
+            these = np.logical_and(IQbool_reg[i,:],WQbool_reg[j,:])
             IWQbool_reg[k,these] = 1.0
             k += 1
     
@@ -285,10 +289,11 @@ def calcSimulatedMoments(type_list,return_as_list):
     AvgHealthResidualByIncWealth = np.reshape(np.concatenate([[0.,0.,0.],health_results.params[-22:]]),(5,5))
     
     # Regress OOP on sex, health, age, and quintile dummies
-    regressors = np.transpose(np.vstack([const_reg,s_reg,h_reg,hSq_reg,a_reg,aSq_reg,IWQbool_reg[3:,:]]))
+    regressors = np.transpose(np.vstack([const_reg,s_reg,h_reg,hSq_reg,a_reg,aSq_reg,IQbool_reg[1:,:],WQbool_reg[1:,:]]))
     OOP_model = WLS(OOP_reg,regressors,weights=weight_reg)
     OOP_results = OOP_model.fit()
-    AvgOOPResidualByIncWealth = np.reshape(np.concatenate([[0.,0.,0.],OOP_results.params[-22:]]),(5,5))
+    AvgOOPResidualByIncWealth = np.reshape(np.concatenate([[0.],OOP_results.params[6:10],[0.],OOP_results.params[10:]]),(2,5))
+    #AvgOOPResidualByIncWealth = np.reshape(np.concatenate([[0.,0.,0.],OOP_results.params[-22:]]),(5,5))
 
 #    # Calculate average residual by income and wealth quintile
 #    hResiduals = simple_results.resid    
@@ -627,20 +632,20 @@ def objectiveFunctionWrapper(param_vec):
 
 if __name__ == '__main__':
 
-    param_dict = convertVecToDict(Params.test_param_vec)
-    MyTypes = makeMultiTypeSimple(param_dict)
-    t_start = clock()
-    MyTypes[9].estimationAction()
-    t_end = clock()
-    print('Processing one agent type took ' + str(t_end-t_start) + ' seconds.')
-    
-    t=0
-    bMax = 200.
-    MyTypes[9].plotxFuncByHealth(t,MedShk=0.1,bMax=bMax)
-    MyTypes[9].plotxFuncByMedShk(t,hLvl=0.9,bMax=bMax)
-    MyTypes[9].plotiFuncByHealth(t,MedShk=0.1,bMax=bMax)
-    MyTypes[9].plotvFuncByHealth(t,bMax=bMax)
-    MyTypes[9].plotdvdbFuncByHealth(t,bMax=bMax)
+#    param_dict = convertVecToDict(Params.test_param_vec)
+#    MyTypes = makeMultiTypeSimple(param_dict)
+#    t_start = clock()
+#    MyTypes[0].estimationAction()
+#    t_end = clock()
+#    print('Processing one agent type took ' + str(t_end-t_start) + ' seconds.')
+#    
+#    t=0
+#    bMax = 200.
+#    MyTypes[0].plotxFuncByHealth(t,MedShk=0.1,bMax=bMax)
+#    MyTypes[0].plotxFuncByMedShk(t,hLvl=0.9,bMax=bMax)
+#    MyTypes[0].plotiFuncByHealth(t,MedShk=0.1,bMax=bMax)
+#    MyTypes[0].plotvFuncByHealth(t,bMax=bMax)
+#    MyTypes[0].plotdvdbFuncByHealth(t,bMax=bMax)
     
 #    t_start = clock()
 #    MyTypes = processSimulatedTypes(Params.test_params,False)
@@ -660,8 +665,8 @@ if __name__ == '__main__':
 
 
     # Choose what kind of work to do:
-    test_obj_func = False
-    plot_model_fit = False
+    test_obj_func = True
+    plot_model_fit = True
     perturb_one_param = False
     perturb_two_params = False
     estimate_model = False
@@ -856,7 +861,7 @@ if __name__ == '__main__':
 
     if estimate_model:
         # Estimate some (or all) of the model parameters
-        which_indices = np.array([0,1,5,6,7])
+        which_indices = np.array([3,24,25,26])
         which_bool = np.zeros(33,dtype=bool)
         which_bool[which_indices] = True
         estimated_params = minimizeNelderMead(objectiveFunctionWrapper,Params.test_param_vec,verbose=True,which_vars=which_bool)
@@ -867,7 +872,7 @@ if __name__ == '__main__':
 
     if calc_std_errs:
         # Calculate standard errors for some or all parameters
-        which_indices = np.array([3,24,25,26])
+        which_indices = np.array([0,1,5,6,7])
         which_bool = np.zeros(33,dtype=bool)
         which_bool[which_indices] = True
         standard_errors = calcStdErrs(Params.test_param_vec,Data.use_cohorts,which_bool,eps=0.001)
