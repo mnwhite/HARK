@@ -157,9 +157,9 @@ test_param_vec = np.array([
     0.0855360621444,    # 21 HealthNextHealthSq
     0.170406887863,     # 22 HealthShkStd0
     -0.0797839238549,   # 23 HealthShkStd1
-    -73.8460301235,     # 24 HealthProd0
-    -1.92191203403,     # 25 HealthProd1 (log initial slope)
-    1.67989170316,      # 26 HealthProd2 (log initial curvature)
+    -16.0,              # 24 LogJerk
+    -1.92191203403,     # 25 LogSlope
+    1.67989170316,      # 26 LogCurve
     -0.377797275225,    # 27 Mortality0
     0.347593344004,     # 28 MortalitySex
     -0.00304274075965,  # 29 MortalityAge

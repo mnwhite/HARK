@@ -1443,9 +1443,11 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         aLvlNow = self.bLvlNow - self.PremiumNow - self.xLvlNow - self.CopayNow*self.MedPrice[t]*self.iLvlNow
         aLvlNow = np.maximum(aLvlNow,0.0) # Fixes those who go negative due to Cfloor help
         HlvlNow = self.ExpHealthNextFunc[t](self.hLvlNow) + self.HealthProdFunc(self.iLvlNow)
+        RatioNow = np.maximum(self.MedPrice[t]*self.CopayNow*self.solution[t].dvdaFunc(aLvlNow,HlvlNow)/self.solution[t].dvdHfunc(aLvlNow,HlvlNow),0.0)
+        
         self.aLvlNow = aLvlNow
         self.HlvlNow = HlvlNow
-        
+        self.RatioNow = RatioNow
         self.TotalMedNow = self.MedPrice[t]*(self.MedLvlNow + self.iLvlNow)
         self.OOPmedNow = self.TotalMedNow*self.CopayNow
 
