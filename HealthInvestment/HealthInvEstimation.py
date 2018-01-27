@@ -317,11 +317,11 @@ def calcSimulatedMoments(type_list,return_as_list):
     AvgHealthResidualByIncWealth = np.reshape(np.concatenate([[0.,0.,0.],health_results.params[-22:]]),(5,5))
     
     # Regress OOP on sex, health, age, and quintile dummies
-    regressors = np.transpose(np.vstack([const_reg,s_reg,h_reg,hSq_reg,a_reg,aSq_reg,IQbool_reg[1:,:],WQbool_reg[1:,:]]))
+    #regressors = np.transpose(np.vstack([const_reg,s_reg,h_reg,hSq_reg,a_reg,aSq_reg,IQbool_reg[1:,:],WQbool_reg[1:,:]]))
     OOP_model = WLS(OOP_reg,regressors,weights=weight_reg)
     OOP_results = OOP_model.fit()
-    AvgOOPResidualByIncWealth = np.reshape(np.concatenate([[0.],OOP_results.params[6:10],[0.],OOP_results.params[10:]]),(2,5))
-    #AvgOOPResidualByIncWealth = np.reshape(np.concatenate([[0.,0.,0.],OOP_results.params[-22:]]),(5,5))
+    #AvgOOPResidualByIncWealth = np.reshape(np.concatenate([[0.],OOP_results.params[6:10],[0.],OOP_results.params[10:]]),(2,5))
+    AvgOOPResidualByIncWealth = np.reshape(np.concatenate([[0.,0.,0.],OOP_results.params[-22:]]),(5,5))
     
     # Loop through ages, sexes, quintiles, and health to fill in simulated moments
     for t in range(15):
@@ -525,12 +525,13 @@ def pseudoEstHealthProdParams(type_list,return_as_list):
             k += 1
             
     # Define regressors for the OOP model
-    regressors = np.transpose(np.vstack([const_reg,s_reg,h_reg,hSq_reg,a_reg,aSq_reg,IQbool_reg[1:,:],WQbool_reg[1:,:]]))
+    #regressors = np.transpose(np.vstack([const_reg,s_reg,h_reg,hSq_reg,a_reg,aSq_reg,IQbool_reg[1:,:],WQbool_reg[1:,:]]))
+    regressors = np.transpose(np.vstack([const_reg,s_reg,h_reg,hSq_reg,a_reg,aSq_reg,IWQbool_reg[3:,:]]))
     
     # Define data moments and data weights
-    TempDataMoments = DataMoments[-35:]
-    TempWeights = MomentWeights[-35:,-35:]
-    TempMask = MomentMask[-35:]
+    TempDataMoments = DataMoments[-50:]
+    TempWeights = MomentWeights[-50:,-50:]
+    TempMask = MomentMask[-50:]
             
     def makePseudoEstMoments(p0,p1,p2):
         '''
@@ -554,7 +555,8 @@ def pseudoEstHealthProdParams(type_list,return_as_list):
         # Regress OOP medical spending on sex, age, health, quintile dummies
         OOP_model = WLS(OOP_reg,regressors,weights=weight_reg)
         OOP_results = OOP_model.fit()
-        AvgOOPResidualByIncWealth = np.concatenate([[0.],OOP_results.params[6:10],[0.],OOP_results.params[10:]])
+        #AvgOOPResidualByIncWealth = np.concatenate([[0.],OOP_results.params[6:10],[0.],OOP_results.params[10:]])
+        AvgOOPResidualByIncWealth = np.concatenate([[0.,0.,0.],OOP_results.params[-22:]])
         
         # Calculate average health produced by income-wealth quintile
         AvgHealthResidualByIncWealth = np.zeros(25)
@@ -574,9 +576,9 @@ def pseudoEstHealthProdParams(type_list,return_as_list):
         are calculated as health produced.
         '''
         SimMoments = makePseudoEstMoments(p0,p1,p2)
-        MomentDifferences = np.reshape((SimMoments - TempDataMoments)*TempMask,(35,1))
+        MomentDifferences = np.reshape((SimMoments - TempDataMoments)*TempMask,(50,1))
         weighted_moment_sum = np.dot(np.dot(MomentDifferences.transpose(),TempWeights),MomentDifferences)[0,0]
-        print(weighted_moment_sum)
+        #print(weighted_moment_sum)
         return weighted_moment_sum
     
     # Run the health production parameter pseudo-estimation
@@ -586,7 +588,7 @@ def pseudoEstHealthProdParams(type_list,return_as_list):
     print(opt_params)
     opt_moments = makePseudoEstMoments(opt_params[0],opt_params[1],opt_params[2])
     if return_as_list:
-        opt_moments = [np.reshape(opt_moments[0:25],(5,5)),np.reshape(opt_moments[25:],(2,5))]
+        opt_moments = [np.reshape(opt_moments[0:25],(5,5)),np.reshape(opt_moments[25:],(5,5))]
     return opt_moments
 
 
@@ -676,13 +678,13 @@ def objectiveFunction(params,use_cohorts,return_as_list):
     TypeList = processSimulatedTypes(params,use_cohorts)
     SimulatedMoments = calcSimulatedMoments(TypeList,return_as_list)
     
-    if True:
+    if False:
         HealthProdMoments = pseudoEstHealthProdParams(TypeList,return_as_list)
         if return_as_list:
             SimulatedMoments[-2] = HealthProdMoments[0]
             SimulatedMoments[-1] = HealthProdMoments[1]
         else:
-            SimulatedMoments[-35:] = HealthProdMoments
+            SimulatedMoments[-50:] = HealthProdMoments
     
     if return_as_list:
         return SimulatedMoments
@@ -813,14 +815,15 @@ if __name__ == '__main__':
 #    MyTypes[0].estimationAction()
 #    t_end = clock()
 #    print('Processing one agent type took ' + str(t_end-t_start) + ' seconds.')
-#
+
 #    t=0
-#    bMax = 200.
+#    bMax = 50.
 #    MyTypes[0].plotxFuncByHealth(t,MedShk=0.1,bMax=bMax)
 #    MyTypes[0].plotxFuncByMedShk(t,hLvl=0.9,bMax=bMax)
 #    MyTypes[0].plotiFuncByHealth(t,MedShk=0.1,bMax=bMax)
 #    MyTypes[0].plotvFuncByHealth(t,bMax=bMax)
 #    MyTypes[0].plotdvdbFuncByHealth(t,bMax=bMax)
+#    MyTypes[0].plotdvdhFuncByHealth(t,bMax=bMax)
     
 #    t_start = clock()
 #    MyTypes = processSimulatedTypes(Params.test_params,False)
@@ -840,12 +843,12 @@ if __name__ == '__main__':
 
 
     # Choose what kind of work to do:
-    test_obj_func = True
-    plot_model_fit = True
+    test_obj_func = False
+    plot_model_fit = False
     perturb_one_param = False
     perturb_two_params = False
     estimate_model = False
-    calc_std_errs = False
+    calc_std_errs = True
 
 
     if test_obj_func:
@@ -985,10 +988,10 @@ if __name__ == '__main__':
 
     if perturb_one_param:
         # Test model identification by perturbing one parameter at a time
-        param_i = 10
-        param_min = 0.2
-        param_max = 0.6
-        N = 30
+        param_i = 3
+        param_min = 1.5
+        param_max = 2.0
+        N = 51
         perturb_vec = np.linspace(param_min,param_max,num=N)
         fit_vec = np.zeros(N) + np.nan
         for j in range(N):
@@ -1036,7 +1039,7 @@ if __name__ == '__main__':
 
     if estimate_model:
         # Estimate some (or all) of the model parameters
-        which_indices = np.array([3,24,25,26])
+        which_indices = np.array([16,17,18,19,20,21,22,23,27,28,29,30,31,32])
         which_bool = np.zeros(33,dtype=bool)
         which_bool[which_indices] = True
         estimated_params = minimizeNelderMead(objectiveFunctionWrapper,Params.test_param_vec,verbose=True,which_vars=which_bool)
@@ -1047,7 +1050,7 @@ if __name__ == '__main__':
 
     if calc_std_errs:
         # Calculate standard errors for some or all parameters
-        which_indices = np.array([0,1,5,6,7])
+        which_indices = np.array([16,17,18,19,20,21,22,23,27,28,29,30,31,32])
         which_bool = np.zeros(33,dtype=bool)
         which_bool[which_indices] = True
         standard_errors = calcStdErrs(Params.test_param_vec,Data.use_cohorts,which_bool,eps=0.001)

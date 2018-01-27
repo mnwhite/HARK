@@ -24,21 +24,21 @@ use_cohorts = False
 moment_dummies = np.array([
         False, # OOPbyAge
         False, # StDevOOPbyAge
-        False, # MortByAge
-        False, # StDevDeltaHealthByAge
+        True,  # MortByAge
+        True,  # StDevDeltaHealthByAge
         False, # StDevOOPbyHealthAge
-        False, # StDevDeltaHealthByHealthAge
-        False, # HealthBySexHealthAge
+        True,  # StDevDeltaHealthByHealthAge
+        True,  # HealthBySexHealthAge
         False, # OOPbySexHealthAge
-        False, # MortBySexHealthAge
+        True,  # MortBySexHealthAge
         False, # WealthByIncAge
-        False, # HealthByIncAge
+        True,  # HealthByIncAge
         False, # OOPbyIncAge
         False, # WealthByIncWealthAge
         False, # HealthByIncWealthAge
         False, # OOPbyIncWealthAge
-        True,  # AvgHealthResidualByIncWealth
-        True,  # AvgOOPResidualByIncWealth
+        False, # AvgHealthResidualByIncWealth
+        False, # AvgOOPResidualByIncWealth
         ])
 
 # Make a random number generator for the data bootstrap
@@ -182,7 +182,7 @@ for j in range(10):
     MaxWealthSmall[j] = np.max(MaxWealth[these])
 
 # Initialize an array of bootstrapped data moments
-moment_count = 1805
+moment_count = 1820
 BootstrappedMoments = np.zeros((data_bootstrap_count,moment_count)) + np.nan
 BootstrapValidBool = np.zeros(data_bootstrap_count,dtype=bool)
 BootstrappedResiduals = np.zeros((data_bootstrap_count,26)) + np.nan
@@ -385,12 +385,12 @@ for b in range(data_bootstrap_count+1):
         WQboolFlat[j,:] = WQflat == j+1
     
     # Run a basic regression to predict OOP medical spending
-    regressors = np.transpose(np.vstack([np.ones_like(HealthFlat),SexFlat,HealthFlat,HealthSqFlat,AgeFlat,AgeSqFlat,IQboolFlat[1:,:],WQboolFlat[1:,:]]))
-    #regressors = np.transpose(np.vstack([np.ones_like(HealthFlat),SexFlat,HealthFlat,HealthSqFlat,AgeFlat,AgeSqFlat,IWQboolFlat[3:,:]]))
+    #regressors = np.transpose(np.vstack([np.ones_like(HealthFlat),SexFlat,HealthFlat,HealthSqFlat,AgeFlat,AgeSqFlat,IQboolFlat[1:,:],WQboolFlat[1:,:]]))
+    regressors = np.transpose(np.vstack([np.ones_like(HealthFlat),SexFlat,HealthFlat,HealthSqFlat,AgeFlat,AgeSqFlat,IWQboolFlat[3:,:]]))
     OOP_model = sm.OLS(OOPflat,regressors)
     OOP_results = OOP_model.fit()
-    AvgOOPResidualByIncWealth = np.reshape(np.concatenate([[0.],OOP_results.params[6:10],[0.],OOP_results.params[10:]]),(2,5))
-    #AvgOOPResidualByIncWealth = np.reshape(np.concatenate([[0.,0.,0.],OOP_results.params[-22:]]),(5,5))
+    #AvgOOPResidualByIncWealth = np.reshape(np.concatenate([[0.],OOP_results.params[6:10],[0.],OOP_results.params[10:]]),(2,5))
+    AvgOOPResidualByIncWealth = np.reshape(np.concatenate([[0.,0.,0.],OOP_results.params[-22:]]),(5,5))
     #print(OOP_results.summary())
     
     
@@ -576,7 +576,7 @@ moment_mask = np.concatenate([
         np.ones(375)*moment_dummies[13],
         np.ones(375)*moment_dummies[14],
         np.ones(25)*moment_dummies[15],
-        np.ones(10)*moment_dummies[16]
+        np.ones(25)*moment_dummies[16]
         ])
 
 # If the data moments were bootstrapped, calculate the optimal weighting matrix and save it to a file.
@@ -593,9 +593,9 @@ if data_bootstrap_count > 0:
     moment_valid[720:735] = False # Turn off wealth moments for bottom wealth quintile of second income quintile
     moment_valid[1405:1410] = False # Turn off OOP moments for bottom wealth quintile of bottom income quintile after age 85
     moment_valid[1770:1773] = False # Turn off health residual moments for bottom three wealth quintiles of bottom income quintile
-    #moment_valid[1795:1798] = False # Turn off OOP residual moments for bottom three wealth quintiles of bottom income quintile
-    moment_valid[1795] = False
-    moment_valid[1800] = False
+    moment_valid[1795:1798] = False # Turn off OOP residual moments for bottom three wealth quintiles of bottom income quintile
+    #moment_valid[1795] = False
+    #moment_valid[1800] = False
     valid_moment_N = np.sum(moment_valid)
     print(str(valid_moment_N) + ' of ' + str(moment_valid.size) + ' data moments were useable.')
     

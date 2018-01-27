@@ -1400,6 +1400,7 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         MedShkNow = self.MedShkNow[these]
         cLvlNow, MedLvlNow, iLvlNow, xLvlNow = self.solution[t].PolicyFunc(bLvlNow,hLvlNow,MedShkNow)
         iLvlNow = np.maximum(iLvlNow,0.)
+        OOPmedNow = self.MedPrice[t]*(iLvlNow+MedLvlNow)*CopayNow
         
         MedPriceEff = self.MedPrice[t]*CopayNow
         MedShkEff = MedShkNow*MedPriceEff
@@ -1412,6 +1413,7 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         q = np.exp(-cShareTrans)
         cLvlNow[BelowCfloor] = xLvlNow[BelowCfloor]/(1.+q)
         MedLvlNow[BelowCfloor] = xLvlNow[BelowCfloor]*q/(1.+q)
+        OOPmedNow[BelowCfloor] = np.maximum(bLvlNow[BelowCfloor] - cLvlNow[BelowCfloor],0.0)
         
         if ~hasattr(self,'cLvlNow'):
             self.cLvlNow = np.zeros(self.AgentCount)
@@ -1420,6 +1422,7 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
             self.xLvlNow = np.zeros(self.AgentCount)
             self.PremiumNow = np.zeros(self.AgentCount)
             self.CopayNow = np.zeros(self.AgentCount)
+            self.OOPmedNow = np.zeros(self.AgentCount)
             
         self.PremiumNow[these] = PremiumNow
         self.CopayNow[these] = CopayNow
@@ -1427,12 +1430,15 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         self.MedLvlNow[these] = MedLvlNow
         self.iLvlNow[these] = iLvlNow
         self.xLvlNow[these] = xLvlNow
+        self.OOPmedNow[these] = OOPmedNow
         self.PremiumNow[not_these] = np.nan
         self.CopayNow[not_these] = np.nan
         self.cLvlNow[not_these] = np.nan
         self.MedLvlNow[not_these] = np.nan
         self.iLvlNow[not_these] = np.nan
         self.xLvlNow[not_these] = np.nan
+        self.OOPmedNow[not_these] = np.nan
+        
         
         
     def getPostStates(self):
@@ -1449,7 +1455,7 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         self.HlvlNow = HlvlNow
         self.RatioNow = RatioNow
         self.TotalMedNow = self.MedPrice[t]*(self.MedLvlNow + self.iLvlNow)
-        self.OOPmedNow = self.TotalMedNow*self.CopayNow
+        
 
     
     def plotxFuncByHealth(self,t,MedShk,bMin=None,bMax=20.0,hSet=None):
