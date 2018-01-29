@@ -648,7 +648,7 @@ def calcStdErrs(params,use_cohorts,which,eps):
     ParamCovMatrix = np.linalg.inv(np.dot(MomentDerivativeArray,np.dot(MomentWeights,MomentDerivativeArray.transpose())))
     ParamCovMatrix *= scale_fac
     StdErrVec = np.sqrt(np.diag(ParamCovMatrix))
-    return StdErrVec
+    return StdErrVec, ParamCovMatrix
 
 
 def objectiveFunction(params,use_cohorts,return_as_list):
@@ -843,12 +843,12 @@ if __name__ == '__main__':
 
 
     # Choose what kind of work to do:
-    test_obj_func = False
-    plot_model_fit = False
+    test_obj_func = True
+    plot_model_fit = True
     perturb_one_param = False
     perturb_two_params = False
     estimate_model = False
-    calc_std_errs = True
+    calc_std_errs = False
 
 
     if test_obj_func:
@@ -1039,7 +1039,7 @@ if __name__ == '__main__':
 
     if estimate_model:
         # Estimate some (or all) of the model parameters
-        which_indices = np.array([16,17,18,19,20,21,22,23,27,28,29,30,31,32])
+        which_indices = np.array([0,1,2,3,5,6,7,8,9,10,11,12,13,14,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32])
         which_bool = np.zeros(33,dtype=bool)
         which_bool[which_indices] = True
         estimated_params = minimizeNelderMead(objectiveFunctionWrapper,Params.test_param_vec,verbose=True,which_vars=which_bool)
@@ -1050,10 +1050,10 @@ if __name__ == '__main__':
 
     if calc_std_errs:
         # Calculate standard errors for some or all parameters
-        which_indices = np.array([16,17,18,19,20,21,22,23,27,28,29,30,31,32])
+        which_indices = np.array([24,25,26])
         which_bool = np.zeros(33,dtype=bool)
         which_bool[which_indices] = True
-        standard_errors = calcStdErrs(Params.test_param_vec,Data.use_cohorts,which_bool,eps=0.001)
+        standard_errors, cov_matrix = calcStdErrs(Params.test_param_vec,Data.use_cohorts,which_bool,eps=0.001)
         for n in range(which_indices.size):
             i = which_indices[n]
             print(Params.param_names[i] + ' = ' + str(standard_errors[n]))
