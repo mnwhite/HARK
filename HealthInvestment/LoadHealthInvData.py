@@ -22,23 +22,23 @@ use_cohorts = False
 
 # Choose which moments will actually be used
 moment_dummies = np.array([
-        False, # OOPbyAge
-        False, # StDevOOPbyAge
-        False, # MortByAge
-        False, # StDevDeltaHealthByAge
+        True,  # OOPbyAge
+        True,  # StDevOOPbyAge
+        True,  # MortByAge
+        True,  # StDevDeltaHealthByAge
         False, # StDevOOPbyHealthAge
-        False, # StDevDeltaHealthByHealthAge
-        False, # HealthBySexHealthAge
-        False, # OOPbySexHealthAge
-        False, # MortBySexHealthAge
+        True,  # StDevDeltaHealthByHealthAge
+        True,  # HealthBySexHealthAge
+        True,  # OOPbySexHealthAge
+        True,  # MortBySexHealthAge
         True,  # WealthByIncAge
-        False, # HealthByIncAge
+        True,  # HealthByIncAge
         False, # OOPbyIncAge
         True,  # WealthByIncWealthAge
         False, # HealthByIncWealthAge
         False, # OOPbyIncWealthAge
-        False, # AvgHealthResidualByIncWealth
-        False, # AvgOOPResidualByIncWealth
+        True,  # AvgHealthResidualByIncWealth
+        True,  # AvgOOPResidualByIncWealth
         ])
 
 # Make a random number generator for the data bootstrap
@@ -351,7 +351,6 @@ for b in range(data_bootstrap_count+1):
     regressors = np.transpose(np.vstack([np.ones_like(HealthFlat),SexFlat,HealthFlat,HealthSqFlat,AgeFlat,AgeSqFlat,IWQboolFlat[3:,:]]))
     health_model = sm.OLS(hNextFlat,regressors)
     health_results = health_model.fit()
-#    hResiduals = health_results.resid
     AvgHealthResidualByIncWealth = np.reshape(np.concatenate([[0.,0.,0.],health_results.params[-22:]]),(5,5))
     #print(health_results.summary())
     
@@ -377,13 +376,23 @@ for b in range(data_bootstrap_count+1):
             IWQboolFlat[k,these] = 1.0
             k += 1
 
+    # Make flat arrays with income and wealth indicators, separately
+    IQboolFlat = np.zeros((5,OOPflat.size))
+    for i in range(5):
+        IQboolFlat[i,:] = IQflat == i+1
+    WQboolFlat = np.zeros((5,OOPflat.size))
+    for j in range(5):
+        WQboolFlat[j,:] = WQflat == j+1
+    
     # Run a basic regression to predict OOP medical spending
+    #regressors = np.transpose(np.vstack([np.ones_like(HealthFlat),SexFlat,HealthFlat,HealthSqFlat,AgeFlat,AgeSqFlat,IQboolFlat[1:,:],WQboolFlat[1:,:]]))
     regressors = np.transpose(np.vstack([np.ones_like(HealthFlat),SexFlat,HealthFlat,HealthSqFlat,AgeFlat,AgeSqFlat,IWQboolFlat[3:,:]]))
     OOP_model = sm.OLS(OOPflat,regressors)
     OOP_results = OOP_model.fit()
-#    mResiduals = OOP_results.resid
+    #AvgOOPResidualByIncWealth = np.reshape(np.concatenate([[0.],OOP_results.params[6:10],[0.],OOP_results.params[10:]]),(2,5))
     AvgOOPResidualByIncWealth = np.reshape(np.concatenate([[0.,0.,0.],OOP_results.params[-22:]]),(5,5))
     #print(OOP_results.summary())
+    
     
     # Make boolean array of income quintiles for the data
     IncQuint = np.tile(np.reshape(inc_quint_data,(1,obs)),(8,1))
@@ -585,6 +594,8 @@ if data_bootstrap_count > 0:
     moment_valid[1405:1410] = False # Turn off OOP moments for bottom wealth quintile of bottom income quintile after age 85
     moment_valid[1770:1773] = False # Turn off health residual moments for bottom three wealth quintiles of bottom income quintile
     moment_valid[1795:1798] = False # Turn off OOP residual moments for bottom three wealth quintiles of bottom income quintile
+    #moment_valid[1795] = False
+    #moment_valid[1800] = False
     valid_moment_N = np.sum(moment_valid)
     print(str(valid_moment_N) + ' of ' + str(moment_valid.size) + ' data moments were useable.')
     
