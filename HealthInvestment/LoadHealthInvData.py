@@ -22,19 +22,19 @@ use_cohorts = False
 
 # Choose which moments will actually be used
 moment_dummies = np.array([
-        True,  # OOPbyAge
-        True,  # StDevOOPbyAge
-        True,  # MortByAge
-        True,  # StDevDeltaHealthByAge
+        False, # OOPbyAge
+        False, # StDevOOPbyAge
+        False, # MortByAge
+        False, # StDevDeltaHealthByAge
         False, # StDevOOPbyHealthAge
-        True,  # StDevDeltaHealthByHealthAge
-        True,  # HealthBySexHealthAge
-        True,  # OOPbySexHealthAge
-        True,  # MortBySexHealthAge
-        True,  # WealthByIncAge
-        True,  # HealthByIncAge
+        False, # StDevDeltaHealthByHealthAge
+        False, # HealthBySexHealthAge
+        False, # OOPbySexHealthAge
+        False, # MortBySexHealthAge
+        False, # WealthByIncAge
+        False, # HealthByIncAge
         False, # OOPbyIncAge
-        True,  # WealthByIncWealthAge
+        False, # WealthByIncWealthAge
         False, # HealthByIncWealthAge
         False, # OOPbyIncWealthAge
         True,  # AvgHealthResidualByIncWealth
@@ -516,6 +516,7 @@ for b in range(data_bootstrap_count+1):
     for h in range(3):
         for a in range(15):
             these = np.logical_and(Useable,np.logical_and(HealthTertBoolArray[:,:,h],AgeBoolArray[:,:,a]))
+            OOPbySexHealthAge[0,h,a] = np.nanmean(arsinh(m_data[these]))
             StDevOOPbyHealthAge[h,a] = np.nanstd(arsinh(m_data[these]))
             StDevDeltaHealthByHealthAge[h,a] = np.nan
             HealthAgeCellSize[h,a] = np.sum(these)
@@ -567,7 +568,8 @@ moment_mask = np.concatenate([
         np.ones(45)*moment_dummies[4],
         np.ones(45)*moment_dummies[5],
         np.ones(90)*moment_dummies[6],
-        np.ones(90)*moment_dummies[7],
+        np.ones(45)*moment_dummies[7], # OOPbySexHealthAge[0,:,:] now has data for all
+        np.zeros(45), # Don't use these moments ever
         np.ones(90)*moment_dummies[8],
         np.ones(75)*moment_dummies[9],
         np.ones(75)*moment_dummies[10],

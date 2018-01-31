@@ -1,6 +1,7 @@
 '''
 This module has functions for making LaTeX code for various tables.
 '''
+import numpy as np
 
 param_names = [
     'CRRA',
@@ -75,8 +76,8 @@ param_tex = [
     ]
 
 param_desc = [
-    'Intertemporal discount factor (biennial)',
     'Coefficient of relative risk aversion',
+    'Intertemporal discount factor (biennial)',
     'Curvature of returns to mitigative care',
     'Utility level shifter: $u(\\lambda)=0$',
     'Marginal utility shifter for health',
@@ -109,3 +110,57 @@ param_desc = [
     'Health coefficient, mortality probit',
     'Health sq coefficient, mortality probit'
     ]
+
+
+
+def paramStr(value):
+    '''
+    Format a parameter value as a string.
+    '''
+    n = int(np.floor(np.log(np.abs(value))/np.log(10.)))
+    if n < -2:
+        temp = value/10.**n
+        out = "{:.2f}".format(temp) + "$e^" + str(n) + "$"
+    else:
+        out = "{:.3f}".format(value)
+    return out
+
+
+def makeParamTable(filename,values,which,stderrs=None):
+    '''
+    Make a txt file with tex code for the parameter table, including standard errors.
+    
+    Parameters
+    ----------
+    values : np.array
+        Vector of parameter values.
+    which : np.array
+        Integer array of which parameter indices those values represent.
+    stderrs : np.array
+        Vector of standard errors.
+        
+    Returns
+    -------
+    None
+    '''
+    output =  '\\begin{center} \n'
+    output += '\begin{tabular}{cccl} \n'
+    output += '\\hline \\hline \n'
+    output += 'Parameter & Estimate & Std Err & Description \n'
+    output += '\\ \\hline \n'
+    for j in range(which.size):
+        i = which[j]
+        if stderrs is None:
+            se = '(-)'
+        else:
+            se = '(' + paramStr(stderrs[j]) + ')'
+        output += '\\ $' + param_tex[i] + '$ & ' + paramStr(values[j]) + ' & ' + se + ' & ' + param_desc[i] + '\n'
+    output += '\\ \\hline \\hline \n'
+    output += '\\end{tabular} \n'
+    output += '\\end{center} \n'
+    
+    with open('./Data/' + filename + '.txt.','w') as f:
+        f.write(output)
+        f.close()
+        
+        

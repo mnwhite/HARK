@@ -16,6 +16,7 @@ from HARKutilities import getPercentiles
 from HealthInvModel import HealthInvestmentConsumerType
 import LoadHealthInvData as Data
 import HealthInvParams as Params
+from MakeTables import makeParamTable
 import matplotlib.pyplot as plt
 
 # Import objects from the data loading module
@@ -349,6 +350,7 @@ def calcSimulatedMoments(type_list,return_as_list):
             Weight = WeightHist[t+1,these]
             WeightSum = np.sum(Weight)
             MeanOOP = np.dot(OOP,Weight)/WeightSum
+            OOPbySexHealthAge[0,h,t] = MeanOOP
             OOPsqDevFromMean = (OOP - MeanOOP)**2
             StDevOOPbyHealthAge[h,t] = np.sqrt(np.dot(OOPsqDevFromMean,Weight)/WeightSum)
             HealthChange = DeltaHealth[t,these]
@@ -365,8 +367,8 @@ def calcSimulatedMoments(type_list,return_as_list):
                 Mort = MortHist[t+1,those]
                 Weight = WeightHist[t+1,those]
                 WeightSum = np.sum(Weight)
-                MeanOOP = np.dot(OOP,Weight)/WeightSum
-                OOPbySexHealthAge[s,h,t] = MeanOOP
+                #MeanOOP = np.dot(OOP,Weight)/WeightSum
+                #OOPbySexHealthAge[s,h,t] = MeanOOP
                 HealthBySexHealthAge[s,h,t] = np.dot(Health,Weight)/WeightSum
                 MortBySexHealthAge[s,h,t] = np.dot(Mort,Weight)/WeightSum
                 
@@ -578,7 +580,7 @@ def pseudoEstHealthProdParams(type_list,return_as_list):
         SimMoments = makePseudoEstMoments(p0,p1,p2)
         MomentDifferences = np.reshape((SimMoments - TempDataMoments)*TempMask,(50,1))
         weighted_moment_sum = np.dot(np.dot(MomentDifferences.transpose(),TempWeights),MomentDifferences)[0,0]
-        #print(weighted_moment_sum)
+        print(weighted_moment_sum)
         return weighted_moment_sum
     
     # Run the health production parameter pseudo-estimation
@@ -843,11 +845,11 @@ if __name__ == '__main__':
 
 
     # Choose what kind of work to do:
-    test_obj_func = True
-    plot_model_fit = True
+    test_obj_func = False
+    plot_model_fit = False
     perturb_one_param = False
     perturb_two_params = False
-    estimate_model = False
+    estimate_model = True
     calc_std_errs = False
 
 
@@ -864,19 +866,19 @@ if __name__ == '__main__':
         plt.ylabel('Mean OOP medical spending')
         plt.show()
         
-        # Plot model fit of mean out of pocket medical spending by age-health for females
+        # Plot model fit of mean out of pocket medical spending by age-health for all
         plt.plot(X[7][0,:,:].transpose())
         for h in range(3):
             plt.plot(Data.OOPbySexHealthAge[0,h,:],'--')
-        plt.ylabel('Mean OOP medical spending, women')
+        plt.ylabel('Mean OOP medical spending by health tertile')
         plt.show()
         
-        # Plot model fit of mean out of pocket medical spending by age-health for males
-        plt.plot(X[7][1,:,:].transpose())
-        for h in range(3):
-            plt.plot(Data.OOPbySexHealthAge[1,h,:],'--')
-        plt.ylabel('Mean OOP medical spending, men')
-        plt.show()
+        ## Plot model fit of mean out of pocket medical spending by age-health for males
+        #plt.plot(X[7][1,:,:].transpose())
+        #for h in range(3):
+        #    plt.plot(Data.OOPbySexHealthAge[1,h,:],'--')
+        #plt.ylabel('Mean OOP medical spending, men')
+        #plt.show()
         
         # Plot model fit of "OOP coefficient" by wealth and income
         plt.plot(X[16].transpose())
@@ -988,10 +990,10 @@ if __name__ == '__main__':
 
     if perturb_one_param:
         # Test model identification by perturbing one parameter at a time
-        param_i = 3
-        param_min = 1.5
-        param_max = 2.0
-        N = 51
+        param_i = 12
+        param_min = -10.5
+        param_max = -9.
+        N = 21
         perturb_vec = np.linspace(param_min,param_max,num=N)
         fit_vec = np.zeros(N) + np.nan
         for j in range(N):
@@ -1039,7 +1041,7 @@ if __name__ == '__main__':
 
     if estimate_model:
         # Estimate some (or all) of the model parameters
-        which_indices = np.array([0,1,2,3,5,6,7,8,9,10,11,12,13,14,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32])
+        which_indices = np.array([3,24,25,26])
         which_bool = np.zeros(33,dtype=bool)
         which_bool[which_indices] = True
         estimated_params = minimizeNelderMead(objectiveFunctionWrapper,Params.test_param_vec,verbose=True,which_vars=which_bool)
@@ -1050,11 +1052,13 @@ if __name__ == '__main__':
 
     if calc_std_errs:
         # Calculate standard errors for some or all parameters
-        which_indices = np.array([24,25,26])
+        which_indices = np.array([0,1,5,6,7])
         which_bool = np.zeros(33,dtype=bool)
         which_bool[which_indices] = True
         standard_errors, cov_matrix = calcStdErrs(Params.test_param_vec,Data.use_cohorts,which_bool,eps=0.001)
         for n in range(which_indices.size):
             i = which_indices[n]
             print(Params.param_names[i] + ' = ' + str(standard_errors[n]))
+        makeParamTable('EstimatedParameters',Params.test_param_vec,which_indices,stderrs=standard_errors)
+        
         
