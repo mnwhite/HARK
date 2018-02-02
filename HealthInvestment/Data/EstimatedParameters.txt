@@ -3,11 +3,37 @@
 \hline \hline 
 Parameter & Estimate & Std Err & Description 
 \ \hline 
-\ $\rho$ & 0.732 & (1.37$e^-3$) & Coefficient of relative risk aversion
-\ $\beta$ & 0.919 & (2.79$e^-3$) & Intertemporal discount factor (biennial)
-\ $\underline{C}$ & 2.064 & (3.01$e^-3$) & Effective consumption floor (\$10,000)
-\ $\omega_0$ & 1.632 & (0.100) & Bequest motive shifter (\$10,000)
-\ $\omega_1$ & -0.500 & (0.048) & Bequest motive scaler
+\ $\rho$ & 0.731 & (9.51$e^-4$) & Coefficient of relative risk aversion
+\ $\beta$ & 0.921 & (2.54$e^-3$) & Intertemporal discount factor (biennial)
+\ $\nu$ & 2.058 & (0.046) & Curvature of returns to mitigative care
+\ $\lambda$ & 1.721 & (0.103) & Utility level shifter: $u(\lambda)=0$
+\ $\underline{C}$ & 0.137 & (3.12$e^-3$) & Effective consumption floor (\$10,000)
+\ $\omega_0$ & 10.805 & (0.316) & Bequest motive shifter (\$10,000)
+\ $\omega_1$ & 2.589 & (0.047) & Bequest motive scaler
+\ $\mu_0$ & 0.298 & (8.05$e^-3$) & Constant, mean of log medical need shock
+\ $\mu_{a1}$ & 0.330 & (2.62$e^-3$) & Age coefficient, mean of log medical need shock
+\ $\mu_{a2}$ & -7.78$e^-3$ & (1.88$e^-4$) & Age sq coefficient, mean of log medical need shock
+\ $\mu_{h1}$ & -8.679 & (0.067) & Health coefficient, mean of log medical need shock
+\ $\mu_{h2}$ & 1.510 & (0.032) & Health sq coefficient, mean of log medical need shock
+\ $\sigma_0$ & 1.768 & (3.05$e^-3$) & Constant, stdev of log medical need shock
+\ $\sigma_h$ & 0.273 & (0.011) & Health coefficient, stdev of log medical need shock
+\ $\gamma_0$ & -1.86$e^-3$ & (1.04$e^-3$) & Constant, expected next period health
+\ $\gamma_s$ & -6.79$e^-3$ & (1.83$e^-3$) & Sex coefficient, expected next period health
+\ $\gamma_{a1}$ & -3.38$e^-4$ & (1.93$e^-4$) & Age coefficient, expected next period health
+\ $\gamma_{a2}$ & -3.33$e^-4$ & (1.49$e^-5$) & Age sq coefficient, expected next period health
+\ $\gamma_{h1}$ & 0.871 & (2.75$e^-3$) & Health coefficient, expected next period health
+\ $\gamma_{h2}$ & 0.088 & (1.12$e^-3$) & Health sq coefficient, expected next period health
+\ $\varsigma_0$ & 0.170 & (3.16$e^-3$) & Constant, stdev of health shock
+\ $\varsigma_h$ & -0.079 & (6.05$e^-3$) & Health coefficient, stdev of health shock
+\ $\hat{\kappa}_0$ & -17.379 & (11.308) & Transformed third derivative of health production at $i=0$
+\ $\hat{\kappa}_1$ & -1.626 & (0.102) & Transformed first derivative of health production at $i=0$
+\ $\hat{\kappa}_2$ & 2.134 & (0.056) & Transformed second derivative of health production at $i=0$
+\ $\theta_0$ & -0.375 & (0.023) & Constant, mortality probit
+\ $\theta_s$ & 0.359 & (0.025) & Sex coefficient, mortality probit
+\ $\theta_{a1}$ & -2.62$e^-3$ & (1.55$e^-3$) & Age coefficient, mortality probit
+\ $\theta_{a2}$ & 6.32$e^-3$ & (1.72$e^-4$) & Age sq coefficient, mortality probit
+\ $\theta_{h1}$ & -3.279 & (0.104) & Health coefficient, mortality probit
+\ $\theta_{h2}$ & 1.380 & (0.134) & Health sq coefficient, mortality probit
 \ \hline \hline 
 \end{tabular} 
 \end{center} 
