@@ -312,7 +312,7 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
                           hLvlGrid,HealthProdFunc,MargHealthProdInvFunc,HealthShkStd0,HealthShkStd1,
                           MedShkCount,ExpHealthNextFunc,ExpHealthNextInvFunc,LivPrbFunc,Gfunc,
                           Dfunc,DpFunc,CritShkFunc,cEffFunc,bFromxFunc,PremiumFunc,CopayFunc,
-                          MedShkMeanFunc,MedShkStdFunc,ConvexityFixer):
+                          MedShkMeanFunc,MedShkStdFunc,ConvexityFixer,SubsidyFunc):
     '''
     Solves the one period problem in the health investment model.
     
@@ -393,6 +393,8 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
         Stdev of log medical need shock as a function of health.
     ConvexityFixer : JDfixer
         Instance of JDfixer that transforms irregular data grids onto exog grids.
+    SubsidyFunc : function
+        Function that gives health investment subsidy as a function of health.
         
     Returns
     -------
@@ -523,6 +525,8 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
         iGuess = np.maximum(MargHealthProdInvFunc(CopayGuess*Ratio),0.0)
         iGuess[np.isinf(Ratio)] = 0.0
         iGuess[Ratio == 0.] = 0.0
+        temp = np.logical_and(Ratio > 0., np.logical_not(np.isinf(Ratio)))
+        iGuess[temp] = np.maximum(iGuess[temp], SubsidyFunc(hGuess[temp])/MedPrice) # If i is good but not using all subsidy, use it all
         hGuessNew = ExpHealthNextInvFunc(H - HealthProdFunc(iGuess))
         diff[these] = np.abs(hGuess - hGuessNew)
         hNow[these] = hGuessNew
@@ -563,7 +567,8 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
     cEffArrayBig[ShkZero] = EndOfPrddvdaNvrs[ShkZero]
     xLvlArrayBig = Dfunc(cEffArrayBig,MedShkArrayAdj)
     xLvlArrayBig[ShkZero] = cEffArrayBig[ShkZero]
-    bLvlArrayBig = aLvlArrayBig + xLvlArrayBig + MedPrice*CopayArrayBig*iLvlArrayBig + PremiumArrayBig
+    iCostArrayBig = CopayArrayBig*np.maximum(MedPrice*iLvlArrayBig - SubsidyFunc(hLvlArrayBig), 0.0)
+    bLvlArrayBig = aLvlArrayBig + xLvlArrayBig + iCostArrayBig + PremiumArrayBig
     vArrayBig = u(cEffArrayBig) + u0 + EndOfPrdvBig
     dvdhArrayBig = ExpHealthNextFunc.der(hLvlArrayBig)*EndOfPrddvdHBig
     
@@ -614,10 +619,15 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
         ImpliedMargHealthProd = dvdC*EffPrice/EndOfPrddvdHNow
         iGuess = np.maximum(MargHealthProdInvFunc(ImpliedMargHealthProd),0.0)
         iGuess[np.isinf(ImpliedMargHealthProd)] = 0.0
+        temp = ImpliedMargHealthProd > 0. # These states will use all of their subsidy
+        Subsidy = SubsidyFunc(hGuess)
+        iGuess[temp] = np.maximum(iGuess[temp],Subsidy[temp]/MedPrice)
         hGuessNew = ExpHealthNextInvFunc(H - HealthProdFunc(iGuess))
-        EffPrice = MedPrice*CopayFunc(hGuessNew)
+        Copay = CopayFunc(hGuessNew)
+        EffPrice = MedPrice*Copay
         Premium = PremiumFunc(hGuessNew)
-        xLvl = bLvl - Premium - iGuess*EffPrice
+        iCost = Copay*np.maximum(iGuess*MedPrice - Subsidy, 0.0)
+        xLvl = bLvl - Premium - iCost
         cEff = cEffFunc(xLvl,MedShk*EffPrice)
         xLvl[ShkZero] = bLvl[ShkZero]
         cEff[ShkZero] = xLvl[ShkZero]
@@ -1173,6 +1183,23 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         self.addToTimeInv('HealthProdFunc','HealthProdInvFunc','MargHealthProdFunc','MargHealthProdInvFunc')
         
         
+    def updateSubsidyFunc(self):
+        '''
+        Defines the time-invariant attribute SubsidyFunc.  This version makes a
+        linear function of health using primitive parameters Subsidy0 and Subsidy1.
+        
+        Parameters
+        ----------
+        None
+        
+        Returns
+        -------
+        None
+        '''
+        self.SubsidyFunc = LinearInterp([0.0, 1.0], [self.Subsidy0, self.Subsidy0 + self.Subsidy1], lower_extrap=True)
+        self.addToTimeInv('SubsidyFunc')
+        
+        
     def updateConvexityFixer(self):
         '''
         Creates the time-invariant attribute ConvexityFixer as an instance of JDfix.
@@ -1273,6 +1300,7 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         self.updateHealthProdFuncs()
         self.updateSolutionTerminal()
         self.updateFirstOrderConditionFuncs()
+        self.updateSubsidyFunc()
         self.updateConvexityFixer()
         
         
@@ -1394,15 +1422,15 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         
         PremiumNow = self.PremiumFunc[t](self.hLvlNow[these])
         CopayNow = self.CopayFunc[t](self.hLvlNow[these])
+        MedPrice = self.MedPrice[t]
         
         bLvlNow = self.bLvlNow[these]
         hLvlNow = self.hLvlNow[these]
         MedShkNow = self.MedShkNow[these]
         cLvlNow, MedLvlNow, iLvlNow, xLvlNow = self.solution[t].PolicyFunc(bLvlNow,hLvlNow,MedShkNow)
         iLvlNow = np.maximum(iLvlNow,0.)
-        OOPmedNow = self.MedPrice[t]*(iLvlNow+MedLvlNow)*CopayNow
         
-        MedPriceEff = self.MedPrice[t]*CopayNow
+        MedPriceEff = MedPrice*CopayNow
         MedShkEff = MedShkNow*MedPriceEff
         cEffNow = (1. - np.exp(-MedLvlNow/(MedShkEff)))*cLvlNow
         BelowCfloor = cEffNow < self.Cfloor
@@ -1413,6 +1441,12 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         q = np.exp(-cShareTrans)
         cLvlNow[BelowCfloor] = xLvlNow[BelowCfloor]/(1.+q)
         MedLvlNow[BelowCfloor] = xLvlNow[BelowCfloor]*q/(1.+q)
+        
+        SubsidyMax = self.SubsidyFunc(hLvlNow)
+        iCostFull = MedPrice*iLvlNow
+        iCostNow = CopayNow*np.maximum(iCostFull - SubsidyMax,0.0)
+        SubsidyNow = np.minimum(iCostFull,SubsidyMax)
+        OOPmedNow = MedPrice*MedLvlNow*CopayNow + iCostNow
         OOPmedNow[BelowCfloor] = np.maximum(bLvlNow[BelowCfloor] - cLvlNow[BelowCfloor],0.0)
         
         if ~hasattr(self,'cLvlNow'):
@@ -1423,6 +1457,7 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
             self.PremiumNow = np.zeros(self.AgentCount)
             self.CopayNow = np.zeros(self.AgentCount)
             self.OOPmedNow = np.zeros(self.AgentCount)
+            self.SubsidyNow = np.zeros(self.AgentCount)
             
         self.PremiumNow[these] = PremiumNow
         self.CopayNow[these] = CopayNow
@@ -1431,6 +1466,7 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         self.iLvlNow[these] = iLvlNow
         self.xLvlNow[these] = xLvlNow
         self.OOPmedNow[these] = OOPmedNow
+        self.SubsidyNow[these] = SubsidyNow
         self.PremiumNow[not_these] = np.nan
         self.CopayNow[not_these] = np.nan
         self.cLvlNow[not_these] = np.nan
@@ -1438,6 +1474,7 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         self.iLvlNow[not_these] = np.nan
         self.xLvlNow[not_these] = np.nan
         self.OOPmedNow[not_these] = np.nan
+        self.SubsidyNow[not_these] = np.nan
         
         
         
@@ -1446,7 +1483,7 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         Calculates post states aLvlNow and HlvlNow.
         '''
         t = self.t_sim
-        aLvlNow = self.bLvlNow - self.PremiumNow - self.xLvlNow - self.CopayNow*self.MedPrice[t]*self.iLvlNow
+        aLvlNow = self.bLvlNow - self.PremiumNow - self.cLvlNow - self.OOPmedNow
         aLvlNow = np.maximum(aLvlNow,0.0) # Fixes those who go negative due to Cfloor help
         HlvlNow = self.ExpHealthNextFunc[t](self.hLvlNow) + self.HealthProdFunc(self.iLvlNow)
         RatioNow = np.maximum(self.MedPrice[t]*self.CopayNow*self.solution[t].dvdaFunc(aLvlNow,HlvlNow)/self.solution[t].dvdHfunc(aLvlNow,HlvlNow),0.0)

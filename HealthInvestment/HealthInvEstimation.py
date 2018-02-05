@@ -811,21 +811,22 @@ def objectiveFunctionWrapper(param_vec):
 
 if __name__ == '__main__':
 
+#    i=4
 #    param_dict = convertVecToDict(Params.test_param_vec)
 #    MyTypes = makeMultiTypeSimple(param_dict)
 #    t_start = clock()
-#    MyTypes[0].estimationAction()
+#    MyTypes[i].estimationAction()
 #    t_end = clock()
 #    print('Processing one agent type took ' + str(t_end-t_start) + ' seconds.')
-
+#
 #    t=0
 #    bMax = 50.
-#    MyTypes[0].plotxFuncByHealth(t,MedShk=0.1,bMax=bMax)
-#    MyTypes[0].plotxFuncByMedShk(t,hLvl=0.9,bMax=bMax)
-#    MyTypes[0].plotiFuncByHealth(t,MedShk=0.1,bMax=bMax)
-#    MyTypes[0].plotvFuncByHealth(t,bMax=bMax)
-#    MyTypes[0].plotdvdbFuncByHealth(t,bMax=bMax)
-#    MyTypes[0].plotdvdhFuncByHealth(t,bMax=bMax)
+#    MyTypes[i].plotxFuncByHealth(t,MedShk=0.1,bMax=bMax)
+#    MyTypes[i].plotxFuncByMedShk(t,hLvl=0.9,bMax=bMax)
+#    MyTypes[i].plotiFuncByHealth(t,MedShk=0.1,bMax=bMax)
+#    MyTypes[i].plotvFuncByHealth(t,bMax=bMax)
+#    MyTypes[i].plotdvdbFuncByHealth(t,bMax=bMax)
+#    MyTypes[i].plotdvdhFuncByHealth(t,bMax=bMax)
     
 #    t_start = clock()
 #    MyTypes = processSimulatedTypes(Params.test_params,False)
@@ -845,12 +846,12 @@ if __name__ == '__main__':
 
 
     # Choose what kind of work to do:
-    test_obj_func = False
-    plot_model_fit = False
+    test_obj_func = True
+    plot_model_fit = True
     perturb_one_param = False
     perturb_two_params = False
     estimate_model = False
-    calc_std_errs = True
+    calc_std_errs = False
 
 
     if test_obj_func:

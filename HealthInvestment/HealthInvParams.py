@@ -78,6 +78,8 @@ other_exog_params = {
     'IncomeAgeQu' : 0.0,
     'MedPrice0' : 1.0,
     'Rfree' : 1.04,
+    'Subsidy0' : 0.0,
+    'Subsidy1' : 0.0,
     'Sex' : 0.0,
     'cycles' : 1,
     'DataToSimRepFactor' : 50
