@@ -811,7 +811,7 @@ def objectiveFunctionWrapper(param_vec):
 
 if __name__ == '__main__':
 
-#    i=4
+#    i=0
 #    param_dict = convertVecToDict(Params.test_param_vec)
 #    MyTypes = makeMultiTypeSimple(param_dict)
 #    t_start = clock()
@@ -827,6 +827,10 @@ if __name__ == '__main__':
 #    MyTypes[i].plotvFuncByHealth(t,bMax=bMax)
 #    MyTypes[i].plotdvdbFuncByHealth(t,bMax=bMax)
 #    MyTypes[i].plotdvdhFuncByHealth(t,bMax=bMax)
+#    MyTypes[i].plotExpectedMedFuncByHealth(t,bMax=bMax)
+#    MyTypes[i].plotExpectedMedFuncByWealth(t)
+#    MyTypes[i].plotExpectedLifeFuncByHealth(t,bMax=bMax)
+    
     
 #    t_start = clock()
 #    MyTypes = processSimulatedTypes(Params.test_params,False)
