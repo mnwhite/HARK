@@ -854,6 +854,7 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
         # Calculate expected total & OOP lifetime medical care, life expectancy, and ordinary Medicare payments on the exogenous grid of states
         bLvlArray_temp = np.tile(np.reshape(bLvlGrid,(bLvlCount,1,1)),(1,hLvlCount,MedShkCount))
         hLvlArray_temp = np.tile(np.reshape(hLvlGrid,(1,hLvlCount,1)),(bLvlCount,1,MedShkCount))
+        Premium_temp = np.tile(np.reshape(PremiumFunc(hLvlGrid),(1,hLvlCount,1)),(bLvlCount,1,MedShkCount))
         zBase = np.linspace(-3.0,5.0,MedShkCount)
         zArray_temp = np.tile(np.reshape(zBase,(1,1,MedShkCount)),(bLvlCount,hLvlCount,1))
         MedShkArray_temp = np.exp(MedShkMeanArray + MedShkStdArray*zArray_temp)
@@ -871,7 +872,7 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
         iLvl_temp[AboveCritShk] = 0.0
         Subsidy_temp = np.minimum(iLvl_temp*MedPrice,SubsidyMax)
         aLvlArray_temp = np.zeros_like(bLvlArray_temp)
-        aLvlArray_temp[BelowCritShk] = np.maximum(bLvlArray_temp[BelowCritShk] - x_temp[BelowCritShk] - iLvl_temp[BelowCritShk]*EffPrice_temp[BelowCritShk] + Subsidy_temp[BelowCritShk],0.0)
+        aLvlArray_temp[BelowCritShk] = np.maximum(bLvlArray_temp[BelowCritShk] - Premium_temp[BelowCritShk] - x_temp[BelowCritShk] - iLvl_temp[BelowCritShk]*EffPrice_temp[BelowCritShk] + Subsidy_temp[BelowCritShk],0.0)
         HlvlArray_temp = ExpHealthNextFunc(hLvlArray_temp) + HealthProdFunc(iLvl_temp)
         FutureMed_temp = FutureMedFunc(aLvlArray_temp,HlvlArray_temp)
         FutureLife_temp = FutureLifeFunc(aLvlArray_temp,HlvlArray_temp)
@@ -902,7 +903,7 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
         i_temp = np.maximum(i_temp, 0.0)
         SubsidyMax = np.tile(np.reshape(SubsidyFunc(hLvlGrid),(1,hLvlCount,1)),(bLvlCount,1,MedShkCount))
         Subsidy_temp = np.minimum(i_temp*MedPrice,SubsidyMax)
-        a_temp = np.maximum(bLvlArray_temp - x_temp - EffPrice_temp*i_temp + Subsidy_temp, 0.0)
+        a_temp = np.maximum(bLvlArray_temp - Premium_temp - x_temp - EffPrice_temp*i_temp + Subsidy_temp, 0.0)
         H_temp = ExpHealthNextFunc(hLvlArray_temp) + HealthProdFunc(i_temp)
         SubsidyPDV_temp = Subsidy_temp + FutureSubsidyFunc(a_temp,H_temp)
         SubsidyPDVarray = np.sum(SubsidyPDV_temp*MedShkPrbArray,axis=2)
@@ -922,7 +923,7 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
         ProbAdj = np.tile(np.reshape(CritShkPrbArray/np.sum(ProbBase,axis=2),(bLvlCount,hLvlCount,1)),(1,1,extra_N))
         ProbArray_temp = ProbBase*ProbAdj
         xLvl_temp = Dfunc(Cfloor*np.ones_like(MedShkArray_temp),MedShkArray_temp*EffPrice_temp[:,:,:extra_N])
-        Welfare_temp = np.maximum(xLvl_temp - bLvlArray_temp[:,:,:extra_N], 0.0)
+        Welfare_temp = np.maximum(xLvl_temp - (bLvlArray_temp[:,:,:extra_N] - Premium_temp[:,:,:extra_N]), 0.0)
         FutureWelfare_temp = np.tile(np.reshape(FutureWelfareFunc(np.zeros_like(hLvlGrid),ExpHealthNextFunc(hLvlGrid)),(1,hLvlCount,1)),(bLvlCount,1,extra_N))
         WelfarePDV_part2 = np.sum((Welfare_temp + FutureWelfare_temp)*ProbArray_temp,axis=2) # contribution if positive welfare this period
         WelfarePDVarray = WelfarePDV_part1 + WelfarePDV_part2
@@ -1520,19 +1521,20 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         cEffNow = (1. - np.exp(-MedLvlNow/(MedShkEff)))*cLvlNow
         BelowCfloor = cEffNow < self.Cfloor
         
-        xLvlNow[BelowCfloor] = self.Dfunc(self.Cfloor*np.ones_like(MedShkEff[BelowCfloor]),MedPrice*MedShkNow[BelowCfloor])
+        xLvlNow[BelowCfloor] = self.Dfunc(self.Cfloor*np.ones_like(MedShkEff[BelowCfloor]),MedShkEff[BelowCfloor])
         iLvlNow[BelowCfloor] = 0.0
-        cShareTrans = self.bFromxFunc(xLvlNow[BelowCfloor],MedPrice*MedShkNow[BelowCfloor])
+        cShareTrans = self.bFromxFunc(xLvlNow[BelowCfloor],MedShkEff[BelowCfloor])
         q = np.exp(-cShareTrans)
         cLvlNow[BelowCfloor] = xLvlNow[BelowCfloor]/(1.+q)
-        MedLvlNow[BelowCfloor] = xLvlNow[BelowCfloor]*q/(1.+q)
+        MedShare = q/(1.+q)
+        MedLvlNow[BelowCfloor] = xLvlNow[BelowCfloor]*MedShare
         
         SubsidyMax = self.SubsidyFunc(hLvlNow)
         iCostFull = MedPrice*iLvlNow
         iCostNow = CopayNow*np.maximum(iCostFull - SubsidyMax,0.0)
         SubsidyNow = np.minimum(iCostFull,SubsidyMax)
         OOPmedNow = MedPrice*MedLvlNow*CopayNow + iCostNow
-        OOPmedNow[BelowCfloor] = np.maximum(bLvlNow[BelowCfloor] - cLvlNow[BelowCfloor],0.0)
+        OOPmedNow[BelowCfloor] = (bLvlNow[BelowCfloor] - PremiumNow[BelowCfloor])*MedShare
         
         if ~hasattr(self,'cLvlNow'):
             self.cLvlNow = np.zeros(self.AgentCount)
