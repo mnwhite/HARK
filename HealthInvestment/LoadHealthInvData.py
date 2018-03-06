@@ -245,14 +245,16 @@ for b in range(data_bootstrap_count+1):
     h_init = h_data[t0,idx]
     
     # Make boolean arrays of types (with and without cohorts)
-    N = 150
+    N = 180
     TypeBoolArray = np.zeros((N,obs),dtype=bool)
     for n in range(N):
         TypeBoolArray[n,:] = typenum_data == n+1
     typenum_temp = np.mod(typenum_data - 1,10)
     TypeBoolArraySmall = np.zeros((10,obs),dtype=bool)
+    TypeBoolArrayCounterfactual = np.zeros((10,obs),dtype=bool)
     for n in range(10):
         TypeBoolArraySmall[n,:] = np.logical_and(typenum_temp == n,typenum_data <= 150)
+        TypeBoolArrayCounterfactual[n,:] = np.logical_and(typenum_temp == n,typenum_data > 150)
     
     # Make a boolean array indicating when each agent is "born" in the data
     born_t = np.maximum(t0 + 11 - cohort_data,0)
