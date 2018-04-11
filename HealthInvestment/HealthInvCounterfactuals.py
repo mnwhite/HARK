@@ -10,8 +10,9 @@ from time import clock
 from copy import copy
 import numpy as np
 import LoadHealthInvData as Data
-from HARKcore import HARKobject
 from HARKutilities import getPercentiles
+from HARKcore import HARKobject
+from HARKparallel import multiThreadCommands
 from HealthInvEstimation import convertVecToDict, EstimationAgentType
 
 # Define a class for representing counterfactual subsidy policies
@@ -47,6 +48,67 @@ class SubsidyPolicy(HARKobject):
                 setattr(Agents[i],name,getattr(self,name)[i])
                 
                 
+# Define an agent class for the policy experiments, adding a few methods
+class CounterfactualAgentType(EstimationAgentType):
+    '''
+    A class for representing agents in the Ounce of Prevention project, for the
+    purpose of running counterfactual policy experiments.  Slightly extends the
+    class EstimationAgentType, adding methods for counterfactuals.
+    '''
+    
+    def runBaselineAction(self):
+        '''
+        Run methods for extracting relevant data from the baseline scenario.
+        '''
+        self.update()
+        self.solve()
+        self.repSimData()
+        self.t_ageInit = self.BornBoolArray # other end of hacky fix
+        self.evalExpectationFuncs()
+        self.delSolution()
+        
+    def evalExpectationFuncs(self):
+        '''
+        Creates arrays with lifetime PDVs of several variables, from the perspective
+        of the HRS subjects in 2010.  Stores arrays as attributes of self.
+        '''
+        # Initialize arrays that will be stored as attributes
+        TotalMedPDVarray = np.nan*np.zeros(self.AgentCount)
+        OOPmedPDVarray = np.nan*np.zeros(self.AgentCount)
+        ExpectedLifeArray = np.nan*np.zeros(self.AgentCount)
+        MedicarePDVarray = np.nan*np.zeros(self.AgentCount)
+        SubsidyPDVarray = np.nan*np.zeros(self.AgentCount)
+        WelfarePDVarray = np.nan*np.zeros(self.AgentCount)
+        GovtPDVarray = np.nan*np.zeros(self.AgentCount)
+        ValueArray = np.nan*np.zeros(self.AgentCount)
+        
+        # Loop through the three cohorts that are used in the counterfactual
+        self.initializeSim()
+        for t in range(3):
+            # Select the agents with the correct starting age
+            these = self.t_ageInit == t
+            self.t_age = t
+            self.t_sim = t
+            self.ActiveNow[:] = False
+            self.ActiveNow[these] = True
+            
+            # Advance the simulated agents into this period by simulating health shocks
+            self.getShocks()
+            self.getStates()
+            
+            # Evaluate the PDV functions (and value function), storing in the arrays
+            bLvl = self.bLvlNow[these]
+            hLvl = self.hLvlNow[these]
+            TotalMedPDVarray[these] = self.solution[t].TotalMedPDVfunc(bLvl,hLvl)
+            OOPmedPDVarray[these] = self.solution[t].OOPmedPDVfunc(bLvl,hLvl)
+            ExpectedLifeArray[these] = self.solution[t].ExpectedLifeFunc(bLvl,hLvl)
+            MedicarePDVarray[these] = self.solution[t].MedicarePDVfunc(bLvl,hLvl)
+            SubsidyPDVarray[these] = self.solution[t].SubsidyPDVfunc(bLvl,hLvl)
+            WelfarePDVarray[these] = self.solution[t].WelfarePDVfunc(bLvl,hLvl)
+            GovtPDVarray[these] = self.solution[t].GovtPDVfunc(bLvl,hLvl)
+            ValueArray[these] = self.solution[t].vFunc(bLvl,hLvl)
+            
+                
 def makeMultiTypeCounterfactual(params):
     '''
     Create 10 instances of the estimation agent type by splitting respondents
@@ -67,7 +129,7 @@ def makeMultiTypeCounterfactual(params):
     for n in range(10):
         temp_dict = copy(params)
         temp_dict['Sex'] = n >= 5 # males are 5,6,7,8,9
-        ThisType = EstimationAgentType(**temp_dict)
+        ThisType = CounterfactualAgentType(**temp_dict)
         ThisType.IncomeNow = Data.IncomeArraySmall[n,:].tolist()
         ThisType.IncomeNext = Data.IncomeArraySmall[n,1:].tolist() + [1.]
         ThisType.addToTimeVary('IncomeNow','IncomeNext')
@@ -75,12 +137,16 @@ def makeMultiTypeCounterfactual(params):
         ThisType.CohortNum = np.nan
         ThisType.IncQuint = np.mod(n,5)+1
         
-        these = Data.TypeBoolArrayEstimation[n,:]
+        these = Data.TypeBoolArrayCounterfactual[n,:]
         ThisType.DataAgentCount = np.sum(these)
         ThisType.WealthQuint = Data.wealth_quint_data[these]
         ThisType.HealthTert = Data.health_tert_data[these]
-        ThisType.aLvlInit = Data.w_init[these] # These need to switch to 2010 data
-        ThisType.HlvlInit = Data.h_init[these]
+        ThisType.aLvlInit = Data.w7_data[these]
+        ThisType.HlvlInit = Data.h7_data[these]
+        ThisType.t_ageInit = Data.age_in_2010[these]
+        ThisType.BornBoolArray = ThisType.t_ageInit # hacky workaround
+        ThisType.InDataSpanArray = np.zeros(10) # irrelevant
+        ThisType.CalcExpectationFuncs = True
         ThisType.track_vars = ['OOPmedNow','hLvlNow','aLvlNow','CumLivPrb','DiePrbNow','RatioNow','MedLvlNow','CopayNow']
         ThisType.seed = n
         
@@ -88,6 +154,12 @@ def makeMultiTypeCounterfactual(params):
         
     return type_list
                 
+
+
+def calcSubpopStats(type_list):
+    '''
+    Calculate overall population averages and subpopulation averages for a 
+    '''
                 
                 
 # Define a function for running a set of counterfactuals
@@ -108,11 +180,27 @@ def runCounterfactuals(name,Parameters,Policies):
     -------
     TBD
     '''
-    # Make the agent types and have them create extra functions during solution
+    # Make the agent types
     param_dict = convertVecToDict(Parameters)
     Agents = makeMultiTypeCounterfactual(param_dict)
-    for agent in Agents:
-        agent(CalcExpectationFuncs = True)
+    
+    # Solve the baseline model and get arrays of outcome variables and demographics
+    multiThreadCommands(Agents,'runBaselineAction()')
+    TotalMedBaseline, OOPmedBaseline, ExpectedLifeBaseline, MedicareBaseline, SubsidyBaseline, WelfareBaseline, GovtBaseline = calcSubpopStats(Agents)
+    
+    HealthTert = np.concatenate([this_type.HealthTert for this_type in Agents])
+    WealthQuint = np.concatenate([this_type.WealthQuint for this_type in Agents])
+    IncQuint = np.concatenate([this_type.IncQuintLong for this_type in Agents])
+    Sex = np.concatenate([this_type.SexLong for this_type in Agents])
+    TotalMedPDVarray = np.nan*np.zeros(self.AgentCount)
+    OOPmedPDVarray = np.nan*np.zeros(self.AgentCount)
+    ExpectedLifeArray = np.nan*np.zeros(self.AgentCount)
+    MedicarePDVarray = np.nan*np.zeros(self.AgentCount)
+    SubsidyPDVarray = np.nan*np.zeros(self.AgentCount)
+    WelfarePDVarray = np.nan*np.zeros(self.AgentCount)
+    GovtPDVarray = np.nan*np.zeros(self.AgentCount)
+    ValueArray = np.nan*np.zeros(self.AgentCount)
+    
             
             
 
