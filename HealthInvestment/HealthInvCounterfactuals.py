@@ -6,15 +6,61 @@ import sys
 import os
 sys.path.insert(0,'../')
 
-from time import clock
-from copy import copy
+from copy import copy, deepcopy
 import numpy as np
-import LoadHealthInvData as Data
 from HARKutilities import getPercentiles
 from HARKcore import HARKobject
-from HARKparallel import multiThreadCommands
+from HARKparallel import multiThreadCommands, multiThreadCommandsFake
 from HealthInvEstimation import convertVecToDict, EstimationAgentType
+import LoadHealthInvData as Data
 
+# Define a class to hold subpopulation means
+class MyMeans(HARKobject):
+    '''
+    Class for storing subpopulation means of an outcome variable of interest.
+    Stores overall mean and by income quintile, by wealth quintile, by health
+    quarter, by income-wealth, and by income-health.
+    '''
+    def __init__(self,data,wealth,income,health):
+        self.overall = np.mean(data)
+        self.byIncome = np.zeros(5)
+        self.byWealth = np.zeros(5)
+        self.byHealth = np.zeros(4)
+        self.byIncWealth = np.zeros((5,5))
+        self.byIncHealth = np.zeros((5,4))
+        
+        for i in range(5):
+            these = income == i+1
+            self.byIncome[i] = np.mean(data[these])
+            for j in range(5):
+                those = np.logical_and(these, wealth == j+1)
+                self.byIncWealth[i,j] = np.mean(data[those])
+            for h in range(4):
+                those = np.logical_and(these, health == h+1)
+                self.byIncHealth[i,h] = np.mean(data[those])
+        for j in range(5):
+            these = wealth == j+1
+            self.byWealth[j] = np.mean(data[these])
+        for h in range(4):
+            these = health == h+1
+            self.byHealth[h] = np.mean(data[these])
+            
+    
+    def subtract(self,other):
+        '''
+        Find the difference between the means in this instance and another MyMeans,
+        returning a new instance of MyMeans
+        '''
+        result = deepcopy(self)
+        result.overall = self.overall - other.overall
+        result.byIncome = self.byIncome - other.byIncome
+        result.byWealth = self.byWealth - other.byWealth
+        result.byHealth = self.byHealth - other.byHealth
+        result.byIncWealth = self.byIncWealth - other.byIncWealth
+        result.byIncHealth = self.byIncHealth - other.byIncHealth
+        return result
+        
+            
 # Define a class for representing counterfactual subsidy policies
 class SubsidyPolicy(HARKobject):
     '''
@@ -43,9 +89,9 @@ class SubsidyPolicy(HARKobject):
         -------
         None
         '''
-        for name in self.policy:
+        for name in self.policy_attributes:
             for i in range(len(Agents)):
-                setattr(Agents[i],name,getattr(self,name)[i])
+                setattr(Agents[i],name,getattr(self,name))
                 
                 
 # Define an agent class for the policy experiments, adding a few methods
@@ -63,24 +109,36 @@ class CounterfactualAgentType(EstimationAgentType):
         self.update()
         self.solve()
         self.repSimData()
-        self.t_ageInit = self.BornBoolArray # other end of hacky fix
+        self.t_ageInit = self.BornBoolArray.flatten() # other end of hacky fix
         self.evalExpectationFuncs()
         self.delSolution()
+        
+        
+    def runCounterfactualAction(self):
+        '''
+        Run methods for extracting relevant data for a counterfactual scenario.
+        '''
+        self.update()
+        self.solve()
+        self.evalExpectationFuncs()
+        self.findWTP() # NEED TO WRITE
+        self.delSolution()
+        
         
     def evalExpectationFuncs(self):
         '''
         Creates arrays with lifetime PDVs of several variables, from the perspective
         of the HRS subjects in 2010.  Stores arrays as attributes of self.
         '''
-        # Initialize arrays that will be stored as attributes
-        TotalMedPDVarray = np.nan*np.zeros(self.AgentCount)
-        OOPmedPDVarray = np.nan*np.zeros(self.AgentCount)
-        ExpectedLifeArray = np.nan*np.zeros(self.AgentCount)
-        MedicarePDVarray = np.nan*np.zeros(self.AgentCount)
-        SubsidyPDVarray = np.nan*np.zeros(self.AgentCount)
-        WelfarePDVarray = np.nan*np.zeros(self.AgentCount)
-        GovtPDVarray = np.nan*np.zeros(self.AgentCount)
-        ValueArray = np.nan*np.zeros(self.AgentCount)
+        # Initialize arrays, stored as attributes
+        self.TotalMedPDVarray = np.nan*np.zeros(self.AgentCount)
+        self.OOPmedPDVarray = np.nan*np.zeros(self.AgentCount)
+        self.ExpectedLifeArray = np.nan*np.zeros(self.AgentCount)
+        self.MedicarePDVarray = np.nan*np.zeros(self.AgentCount)
+        self.SubsidyPDVarray = np.nan*np.zeros(self.AgentCount)
+        self.WelfarePDVarray = np.nan*np.zeros(self.AgentCount)
+        self.GovtPDVarray = np.nan*np.zeros(self.AgentCount)
+        self.ValueArray = np.nan*np.zeros(self.AgentCount)
         
         # Loop through the three cohorts that are used in the counterfactual
         self.initializeSim()
@@ -93,20 +151,29 @@ class CounterfactualAgentType(EstimationAgentType):
             self.ActiveNow[these] = True
             
             # Advance the simulated agents into this period by simulating health shocks
+            self.aLvlNow[these] = self.aLvlInit[these]
+            self.HlvlNow[these] = self.HlvlInit[these]
             self.getShocks()
             self.getStates()
             
             # Evaluate the PDV functions (and value function), storing in the arrays
             bLvl = self.bLvlNow[these]
             hLvl = self.hLvlNow[these]
-            TotalMedPDVarray[these] = self.solution[t].TotalMedPDVfunc(bLvl,hLvl)
-            OOPmedPDVarray[these] = self.solution[t].OOPmedPDVfunc(bLvl,hLvl)
-            ExpectedLifeArray[these] = self.solution[t].ExpectedLifeFunc(bLvl,hLvl)
-            MedicarePDVarray[these] = self.solution[t].MedicarePDVfunc(bLvl,hLvl)
-            SubsidyPDVarray[these] = self.solution[t].SubsidyPDVfunc(bLvl,hLvl)
-            WelfarePDVarray[these] = self.solution[t].WelfarePDVfunc(bLvl,hLvl)
-            GovtPDVarray[these] = self.solution[t].GovtPDVfunc(bLvl,hLvl)
-            ValueArray[these] = self.solution[t].vFunc(bLvl,hLvl)
+            self.TotalMedPDVarray[these] = self.solution[t].TotalMedPDVfunc(bLvl,hLvl)
+            self.OOPmedPDVarray[these] = self.solution[t].OOPmedPDVfunc(bLvl,hLvl)
+            self.ExpectedLifeArray[these] = self.solution[t].ExpectedLifeFunc(bLvl,hLvl)
+            self.MedicarePDVarray[these] = self.solution[t].MedicarePDVfunc(bLvl,hLvl)
+            self.SubsidyPDVarray[these] = self.solution[t].SubsidyPDVfunc(bLvl,hLvl)
+            self.WelfarePDVarray[these] = self.solution[t].WelfarePDVfunc(bLvl,hLvl)
+            self.GovtPDVarray[these] = self.solution[t].GovtPDVfunc(bLvl,hLvl)
+            self.ValueArray[these] = self.solution[t].vFunc(bLvl,hLvl)
+            
+            
+    def findWTP(self):
+        '''
+        Calculate willingness-to-pay for this policy for each agent.
+        '''
+        pass
             
                 
 def makeMultiTypeCounterfactual(params):
@@ -136,6 +203,7 @@ def makeMultiTypeCounterfactual(params):
         ThisType.makeConstantMedPrice()
         ThisType.CohortNum = np.nan
         ThisType.IncQuint = np.mod(n,5)+1
+        ThisType.DataToSimRepFactor = 1
         
         these = Data.TypeBoolArrayCounterfactual[n,:]
         ThisType.DataAgentCount = np.sum(these)
@@ -156,10 +224,50 @@ def makeMultiTypeCounterfactual(params):
                 
 
 
-def calcSubpopStats(type_list):
+def calcSubpopMeans(type_list):
     '''
-    Calculate overall population averages and subpopulation averages for a 
+    Calculate overall population averages and subpopulation averages for several
+    outcome variables in the Ounce of Prevention project.
+    
+    Parameters
+    ----------
+    type_list : [CounterfactualType]
+        List of types used in the counterfactual experiment, which have already
+        has their evalExpectationFuncs method executed.
+        
+    Returns
+    -------
+    SubpopMeans : [MyMeans]
+        List of seven MyStats objects, each of which has attributes with overall
+        average, average by income quintile, average by wealth quintile, average
+        by health quarter, average by income-wealth, and average by income-health.
+        Order: TotalMed, OOPmed, ExpectedLife, Medicare, Subsidy, Welfare, Govt.
     '''
+    # Get wealth, income, and health data
+    WealthQuint = np.concatenate([this_type.WealthQuint for this_type in type_list])
+    IncQuint = np.concatenate([this_type.IncQuintLong for this_type in type_list])
+    HealthQuarter = (np.ceil(np.concatenate([this_type.hLvlNow for this_type in type_list])*4.)).astype(int)
+    
+    # Get outcome data
+    TotalMedPDVarray = np.concatenate([this_type.TotalMedPDVarray for this_type in type_list])
+    OOPmedPDVarray = np.concatenate([this_type.OOPmedPDVarray for this_type in type_list])
+    ExpectedLifeArray = np.concatenate([this_type.ExpectedLifeArray for this_type in type_list])
+    MedicarePDVarray = np.concatenate([this_type.MedicarePDVarray for this_type in type_list])
+    SubsidyPDVarray = np.concatenate([this_type.SubsidyPDVarray for this_type in type_list])
+    WelfarePDVarray = np.concatenate([this_type.WelfarePDVarray for this_type in type_list])
+    GovtPDVarray = np.concatenate([this_type.GovtPDVarray for this_type in type_list])
+    
+    # Make and return MyMeans objects
+    TotalMedMeans = MyMeans(TotalMedPDVarray,WealthQuint,IncQuint,HealthQuarter)
+    OOPmedMeans = MyMeans(OOPmedPDVarray,WealthQuint,IncQuint,HealthQuarter)
+    ExpectedLifeMeans = MyMeans(ExpectedLifeArray,WealthQuint,IncQuint,HealthQuarter)
+    MedicareMeans = MyMeans(MedicarePDVarray,WealthQuint,IncQuint,HealthQuarter)
+    SubsidyMeans = MyMeans(SubsidyPDVarray,WealthQuint,IncQuint,HealthQuarter)
+    WelfareMeans = MyMeans(WelfarePDVarray,WealthQuint,IncQuint,HealthQuarter)
+    GovtMeans = MyMeans(GovtPDVarray,WealthQuint,IncQuint,HealthQuarter)
+    SubpopMeans = [TotalMedMeans, OOPmedMeans, ExpectedLifeMeans, MedicareMeans, SubsidyMeans, WelfareMeans, GovtMeans]
+    return SubpopMeans
+    #return [TotalMedPDVarray, OOPmedPDVarray, ExpectedLifeArray, MedicarePDVarray, SubsidyPDVarray, WelfarePDVarray, GovtPDVarray]
                 
                 
 # Define a function for running a set of counterfactuals
@@ -184,25 +292,64 @@ def runCounterfactuals(name,Parameters,Policies):
     param_dict = convertVecToDict(Parameters)
     Agents = makeMultiTypeCounterfactual(param_dict)
     
-    # Solve the baseline model and get arrays of outcome variables and demographics
-    multiThreadCommands(Agents,'runBaselineAction()')
-    TotalMedBaseline, OOPmedBaseline, ExpectedLifeBaseline, MedicareBaseline, SubsidyBaseline, WelfareBaseline, GovtBaseline = calcSubpopStats(Agents)
-    
-    HealthTert = np.concatenate([this_type.HealthTert for this_type in Agents])
-    WealthQuint = np.concatenate([this_type.WealthQuint for this_type in Agents])
-    IncQuint = np.concatenate([this_type.IncQuintLong for this_type in Agents])
-    Sex = np.concatenate([this_type.SexLong for this_type in Agents])
-    TotalMedPDVarray = np.nan*np.zeros(self.AgentCount)
-    OOPmedPDVarray = np.nan*np.zeros(self.AgentCount)
-    ExpectedLifeArray = np.nan*np.zeros(self.AgentCount)
-    MedicarePDVarray = np.nan*np.zeros(self.AgentCount)
-    SubsidyPDVarray = np.nan*np.zeros(self.AgentCount)
-    WelfarePDVarray = np.nan*np.zeros(self.AgentCount)
-    GovtPDVarray = np.nan*np.zeros(self.AgentCount)
-    ValueArray = np.nan*np.zeros(self.AgentCount)
-    
+    # Solve the baseline model and get arrays of outcome variables
+    multiThreadCommands(Agents,['runBaselineAction()'],num_jobs=5)
+    TotalMedBaseline, OOPmedBaseline, ExpectedLifeBaseline, MedicareBaseline, SubsidyBaseline, WelfareBaseline, GovtBaseline = calcSubpopMeans(Agents)
+    for this_type in Agents:
+        this_type.ValueBaseline = copy(this_type.ValueArray)
+        
+    #return [TotalMedBaseline, OOPmedBaseline, ExpectedLifeBaseline, MedicareBaseline, SubsidyBaseline, WelfareBaseline, GovtBaseline]
+        
+    # Loop through the policies, executing the counterfactuals and storing results.
+    N = len(Policies)
+    TotalMedDiffs = np.zeros(N)
+    OOPmedDiffs = np.zeros(N)
+    ExpectedLifeDiffs = np.zeros(N)
+    MedicareDiffs = np.zeros(N)
+    SubsidyDiffs = np.zeros(N)
+    WelfareDiffs = np.zeros(N)
+    GovtDiffs = np.zeros(N)
+    for n in range(N):
+        # Enact the policy for all of the agents
+        this_policy = Policies[n]
+        this_policy.enactPolicy(Agents)
+        
+        # Run the counterfactual and get arrays of outcome variables
+        multiThreadCommands(Agents,['runCounterfactualAction()'],num_jobs=5)
+        TotalMedCounterfactual, OOPmedCounterfactual, ExpectedLifeCounterfactual, MedicareCounterfactual, SubsidyCounterfactual, WelfareCounterfactual, GovtCounterfactual = calcSubpopMeans(Agents)
+        
+        # Calculate differences and store overall means in the arrays
+        TotalMedDiff = TotalMedCounterfactual.subtract(TotalMedBaseline)
+        OOPmedDiff = OOPmedCounterfactual.subtract(OOPmedBaseline)
+        ExpectedLifeDiff = ExpectedLifeCounterfactual.subtract(ExpectedLifeBaseline)
+        MedicareDiff = MedicareCounterfactual.subtract(MedicareBaseline)
+        SubsidyDiff = SubsidyCounterfactual.subtract(SubsidyBaseline)
+        WelfareDiff = WelfareCounterfactual.subtract(WelfareBaseline)
+        GovtDiff = GovtCounterfactual.subtract(GovtBaseline)
+        TotalMedDiffs[n] = TotalMedDiff.overall
+        OOPmedDiffs[n] = OOPmedDiff.overall
+        ExpectedLifeDiffs[n] = ExpectedLifeDiff.overall
+        MedicareDiffs[n] = MedicareDiff.overall
+        SubsidyDiffs[n] = SubsidyDiff.overall
+        WelfareDiffs[n] = WelfareDiff.overall
+        GovtDiffs[n] = GovtDiff.overall
+        
+    # If there is only one counterfactual policy, return the full set of mean-diffs.
+    # If there is more than one, return vectors of overall mean-diffs.
+    if len(Policies) > 1:
+        return [TotalMedDiffs, OOPmedDiffs, ExpectedLifeDiffs, MedicareDiffs, SubsidyDiffs, WelfareDiffs, GovtDiffs]
+    else:
+        return [TotalMedDiff, OOPmedDiff, ExpectedLifeDiff, MedicareDiff, SubsidyDiff, WelfareDiff, GovtDiff]
             
             
 
 if __name__ == '__main__':
-    pass
+    import HealthInvParams as Params
+    from time import clock
+    
+    TestPolicy = SubsidyPolicy(Subsidy0=0.05,Subsidy1=0.1)
+    t_start = clock()
+    Out = runCounterfactuals('blah',Params.test_param_vec,[TestPolicy])
+    t_end = clock()
+    print('That took ' + str(t_end-t_start) + ' seconds.')
+    

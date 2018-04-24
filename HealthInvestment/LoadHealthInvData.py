@@ -253,8 +253,8 @@ for b in range(data_bootstrap_count+1):
     TypeBoolArraySmall = np.zeros((10,obs),dtype=bool)
     TypeBoolArrayCounterfactual = np.zeros((10,obs),dtype=bool)
     data_exists_2010 = np.logical_and(np.logical_not(np.isnan(w7_data)), np.logical_not(np.isnan(h7_data)))
-    data_exists_2010 = h7_data > 0.
-    counterfactual_valid = np.logical_and(data_exists_2010, data_exists_2010)
+    alive_2010 = h7_data > 0.
+    counterfactual_valid = np.logical_and(data_exists_2010, alive_2010)
     age_in_2010 = 18 - cohort_data
     for n in range(10):
         TypeBoolArraySmall[n,:] = np.logical_and(typenum_temp == n, typenum_data <= 150)
