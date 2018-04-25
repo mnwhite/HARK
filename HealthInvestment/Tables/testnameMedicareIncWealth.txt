@@ -1,0 +1,15 @@
+\begin{table} \caption{Change in PDV of Medicare Costs by Income and Wealth, Test Policy} \label{table:TestMedicareIH}
+\centering 
+\begin{tabular}{l c c c c c} 
+\hline \hline 
+Income & \multicolumn{5}{c}{Wealth Quintile} \\ 
+Quintile & Bottom & Second & Third & Fourth & Top \\ 
+\hline 
+Bottom & \$16 & \$12 & \$23 & \$192 & \$288 \\ 
+Second & \$571 & \$398 & \$429 & \$404 & \$210 \\ 
+Third  & \$273 & \$208 & \$185 & \$136 & \$105 \\ 
+Fourth & \$75 & \$98 & \$69 & \$88 & \$79 \\ 
+Top    & \$77 & \$64 & \$74 & \$87 & \$58 \\ 
+\hline \hline 
+\end{tabular} 
+\end{table} 

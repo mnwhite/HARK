@@ -1,0 +1,15 @@
+\begin{table} \caption{PDV of Direct Subsidy Expenses by Income and Wealth, Test Policy} \label{table:TestSubsidyIH}
+\centering 
+\begin{tabular}{l c c c c c} 
+\hline \hline 
+Income & \multicolumn{5}{c}{Wealth Quintile} \\ 
+Quintile & Bottom & Second & Third & Fourth & Top \\ 
+\hline 
+Bottom & \$56 & \$44 & \$80 & \$572 & \$1737 \\ 
+Second & \$1885 & \$1659 & \$1805 & \$2294 & \$2849 \\ 
+Third  & \$2441 & \$2947 & \$2820 & \$2830 & \$3121 \\ 
+Fourth & \$2821 & \$2688 & \$3172 & \$3272 & \$3430 \\ 
+Top    & \$3098 & \$3138 & \$3401 & \$3352 & \$3216 \\ 
+\hline \hline 
+\end{tabular} 
+\end{table} 

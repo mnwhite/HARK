@@ -320,7 +320,8 @@ def runCounterfactuals(name,Parameters,Policies):
         
         # Calculate differences and store overall means in the arrays
         TotalMedDiff = TotalMedCounterfactual.subtract(TotalMedBaseline)
-        OOPmedDiff = OOPmedCounterfactual.subtract(OOPmedBaseline)
+        #OOPmedDiff = OOPmedCounterfactual.subtract(OOPmedBaseline)
+        OOPmedDiff = OOPmedBaseline.subtract(OOPmedCounterfactual)
         ExpectedLifeDiff = ExpectedLifeCounterfactual.subtract(ExpectedLifeBaseline)
         MedicareDiff = MedicareCounterfactual.subtract(MedicareBaseline)
         SubsidyDiff = SubsidyCounterfactual.subtract(SubsidyBaseline)
@@ -346,10 +347,23 @@ def runCounterfactuals(name,Parameters,Policies):
 if __name__ == '__main__':
     import HealthInvParams as Params
     from time import clock
+    from MakeTables import makeCounterfactualSummaryTables
+    from MakeFigures import makeCounterfactualFigures
     
-    TestPolicy = SubsidyPolicy(Subsidy0=0.05,Subsidy1=0.1)
+#    TestPolicy = SubsidyPolicy(Subsidy0=0.05,Subsidy1=0.0)
+#    t_start = clock()
+#    Out = runCounterfactuals('blah',Params.test_param_vec,[TestPolicy])
+#    t_end = clock()
+#    print('That took ' + str(t_end-t_start) + ' seconds.')
+#    makeCounterfactualSummaryTables(Out,'Test Policy','testname','Test')
+
+    PolicyList = []
+    SubsidyVec = np.linspace(0,0.1,6)
+    for x in SubsidyVec:
+        PolicyList.append(SubsidyPolicy(Subsidy0=x,Subsidy1=0.0))
     t_start = clock()
-    Out = runCounterfactuals('blah',Params.test_param_vec,[TestPolicy])
+    Out = runCounterfactuals('blah',Params.test_param_vec,PolicyList)
     t_end = clock()
     print('That took ' + str(t_end-t_start) + ' seconds.')
+    makeCounterfactualFigures(Out,SubsidyVec*10000,'Subsidy',' Test Scenario', 'Test')
     

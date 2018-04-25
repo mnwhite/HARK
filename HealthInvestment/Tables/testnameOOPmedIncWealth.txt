@@ -1,0 +1,15 @@
+\begin{table} \caption{Change in PDV of Out of Pocket Medical Expenses by Income and Wealth, Test Policy} \label{table:TestOOPmedIH}
+\centering 
+\begin{tabular}{l c c c c c} 
+\hline \hline 
+Income & \multicolumn{5}{c}{Wealth Quintile} \\ 
+Quintile & Bottom & Second & Third & Fourth & Top \\ 
+\hline 
+Bottom & \$-12 & \$-9 & \$-17 & \$-222 & \$-1191 \\ 
+Second & \$-977 & \$-923 & \$-1025 & \$-1613 & \$-2559 \\ 
+Third  & \$-2124 & \$-2728 & \$-2640 & \$-2720 & \$-3047 \\ 
+Fourth & \$-2773 & \$-2634 & \$-3130 & \$-3230 & \$-3398 \\ 
+Top    & \$-3082 & \$-3125 & \$-3395 & \$-3353 & \$-3235 \\ 
+\hline \hline 
+\end{tabular} 
+\end{table} 

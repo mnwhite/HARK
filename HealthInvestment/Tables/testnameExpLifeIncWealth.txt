@@ -1,0 +1,15 @@
+\begin{table} \caption{Change in Remaining Life Expectancy (Years) by Income and Wealth, Test Policy} \label{table:TestExpLifeIH}
+\centering 
+\begin{tabular}{l c c c c c} 
+\hline \hline 
+Income & \multicolumn{5}{c}{Wealth Quintile} \\ 
+Quintile & Bottom & Second & Third & Fourth & Top \\ 
+\hline 
+Bottom & 0.01 & 0.01 & 0.01 & 0.09 & 0.11 \\ 
+Second & 0.23 & 0.15 & 0.16 & 0.13 & 0.04 \\ 
+Third  & 0.05 & 0.03 & 0.02 & 0.01 & 0.01 \\ 
+Fourth & 0.01 & 0.01 & 0.00 & 0.00 & 0.00 \\ 
+Top    & 0.00 & 0.00 & 0.00 & 0.00 & 0.00 \\ 
+\hline \hline 
+\end{tabular} 
+\end{table} 

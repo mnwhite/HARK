@@ -164,3 +164,126 @@ def makeParamTable(filename,values,which,stderrs=None):
         f.close()
         
         
+def makeCounterfactualSummaryTablesOneVar(means,var_name,spec_name,file_name,label,convert_dollars=True):
+    '''
+    Make two tables showing decomposed means of a simulation outcome variable:
+    income-wealth and income-health.  Saves to txt files in the /Tables directory.
+    
+    Parameters
+    ----------
+    means : MyMeans
+        Object containing overall and decomposed outcomes.
+    var_name : str
+        Name of the variable of interest as it should appear in the table.
+    spec_name : str
+        Name of the counterfactual policy as it should appear in the table.
+    file_name : str
+        Name of the file to be saved; .txt extension will be added automatically.
+    label : str
+        LaTeX label for the table.
+    convert_dollars : bool
+        Whether to convert values in means to $10k of dollars.
+        
+    Returns
+    -------
+    None
+    '''
+    if convert_dollars:
+        f = lambda x : '\$' + str(int(np.round(x*10000)))
+    else:
+        f = lambda x : "{:.2f}".format(x)
+    
+    # Make the income-health table
+    IH = means.byIncHealth
+    I = means.byIncome
+    H = means.byHealth
+    O = means.overall
+    table1 = '\\begin{table} \\caption{' + var_name + ' by Income and Wealth, ' + spec_name + '} \\label{table:' + label + 'IH}\n'
+    table1 += '\\centering \n'
+    table1 += '\\begin{tabular}{l c c c c c} \n'
+    table1 += '\\hline \\hline \n'
+    table1 += 'Income & \multicolumn{5}{c}{Range of Health $h$} \\\\ \n'
+    table1 += 'Quintile & All & $(0,0.25]$ & $(0.25,0.5]$ & $(0.5,0.75]$ & $(0.75,1.0]$ \\\\ \n'
+    table1 += '\\hline \n'
+    table1 += 'Bottom & ' + f(I[0]) + ' & ' + f(IH[0][0]) + ' & ' + f(IH[0][1]) + ' & ' + f(IH[0][2]) + ' & ' + f(IH[0][3]) + ' \\\\ \n'
+    table1 += 'Second & ' + f(I[1]) + ' & ' + f(IH[1][0]) + ' & ' + f(IH[1][1]) + ' & ' + f(IH[1][2]) + ' & ' + f(IH[1][3]) + ' \\\\ \n'
+    table1 += 'Third  & ' + f(I[2]) + ' & ' + f(IH[2][0]) + ' & ' + f(IH[2][1]) + ' & ' + f(IH[2][2]) + ' & ' + f(IH[2][3]) + ' \\\\ \n'
+    table1 += 'Fourth & ' + f(I[3]) + ' & ' + f(IH[3][0]) + ' & ' + f(IH[3][1]) + ' & ' + f(IH[3][2]) + ' & ' + f(IH[3][3]) + ' \\\\ \n'
+    table1 += 'Top    & ' + f(I[4]) + ' & ' + f(IH[4][0]) + ' & ' + f(IH[4][1]) + ' & ' + f(IH[4][2]) + ' & ' + f(IH[4][3]) + ' \\\\ \n'
+    table1 += '\\hline \n'
+    table1 += 'All    & ' + f(O) + ' & ' + f(H[0]) + ' & ' + f(H[1]) + ' & ' + f(H[2]) + ' & ' + f(H[3]) + ' \\\\ \n'
+    table1 += '\\hline \\hline \n'
+    table1 += '\\end{tabular} \n'
+    table1 += '\\end{table} \n'
+    g = open('./Tables/' + file_name + 'IncHealth.txt','w')
+    g.write(table1)
+    g.close()
+    
+    # Make the income-wealth table
+    IW = means.byIncWealth
+    table2 =  '\\begin{table} \\caption{' + var_name + ' by Income and Wealth, ' + spec_name + '} \\label{table:' + label + 'IH}\n'
+    table2 += '\\centering \n'
+    table2 += '\\begin{tabular}{l c c c c c} \n'
+    table2 += '\\hline \\hline \n'
+    table2 += 'Income & \multicolumn{5}{c}{Wealth Quintile} \\\\ \n'
+    table2 += 'Quintile & Bottom & Second & Third & Fourth & Top \\\\ \n'
+    table2 += '\\hline \n'
+    table2 += 'Bottom & ' + f(IW[0][0]) + ' & ' + f(IW[0][1]) + ' & ' + f(IW[0][2]) + ' & ' + f(IW[0][3]) + ' & ' + f(IW[0][4]) + ' \\\\ \n'
+    table2 += 'Second & ' + f(IW[1][0]) + ' & ' + f(IW[1][1]) + ' & ' + f(IW[1][2]) + ' & ' + f(IW[1][3]) + ' & ' + f(IW[1][4]) + ' \\\\ \n'
+    table2 += 'Third  & ' + f(IW[2][0]) + ' & ' + f(IW[2][1]) + ' & ' + f(IW[2][2]) + ' & ' + f(IW[2][3]) + ' & ' + f(IW[2][4]) + ' \\\\ \n'
+    table2 += 'Fourth & ' + f(IW[3][0]) + ' & ' + f(IW[3][1]) + ' & ' + f(IW[3][2]) + ' & ' + f(IW[3][3]) + ' & ' + f(IW[3][4]) + ' \\\\ \n'
+    table2 += 'Top    & ' + f(IW[4][0]) + ' & ' + f(IW[4][1]) + ' & ' + f(IW[4][2]) + ' & ' + f(IW[4][3]) + ' & ' + f(IW[4][4]) + ' \\\\ \n'
+    table2 += '\\hline \\hline \n'
+    table2 += '\\end{tabular} \n'
+    table2 += '\\end{table} \n'
+    g = open('./Tables/' + file_name + 'IncWealth.txt','w')
+    g.write(table2)
+    g.close()
+    
+        
+def makeCounterfactualSummaryTables(means,spec_name,file_base,label):
+    '''
+    Make two tables showing decomposed means of a simulation outcome variable:
+    income-wealth and income-health.  Saves to txt files in the /Tables directory.
+    
+    Parameters
+    ----------
+    means : [MyMeans]
+        Objects containing overall and decomposed outcomes.  Order: TotalMed, OOPmed,
+        ExpectedLife, Medicare, Subsidy, Welfare, Govt.
+    spec_name : str
+        Name of the counterfactual policy as it should appear in the table.
+    file_base : str
+        Base name of the file to be saved; .txt extension will be added automatically.
+    label : str
+        LaTeX label base for the table.
+        
+    Returns
+    -------
+    None
+    '''
+    var_names = ['Change in PDV of Total Medical Expenses',
+                 'Change in PDV of Out of Pocket Medical Expenses',
+                 'Change in Remaining Life Expectancy (Years)',
+                 'Change in PDV of Medicare Costs',
+                 'PDV of Direct Subsidy Expenses',
+                 'Change in PDV of Welfare Payments',
+                 'Change in PDV of Total Government Expenses']
+    var_codes = ['TotalMed',
+                 'OOPmed',
+                 'ExpLife',
+                 'Medicare',
+                 'Subsidy',
+                 'Welfare',
+                 'Govt']
+    convert = [True,
+               True,
+               False,
+               True,
+               True,
+               True,
+               True]
+    
+    for i in range(7):
+        makeCounterfactualSummaryTablesOneVar(means[i],var_names[i],spec_name,file_base + var_codes[i],label + var_codes[i],convert[i])
+          
