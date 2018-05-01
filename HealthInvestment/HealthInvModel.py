@@ -589,18 +589,7 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,MedCurve,IncomeNext,IncomeN
     bLvlArrayBig = aLvlArrayBig + xLvlArrayBig + iCostArrayBig + PremiumArrayBig
     vArrayBig = u(cEffArrayBig) + u0 + EndOfPrdvBig
     dvdhArrayBig = ExpHealthNextFunc.der(hLvlArrayBig)*EndOfPrddvdHBig
-    
-#    print(bLvlArrayBig.shape)
-#    for j in range(ShkCount):
-#       plt.plot(bLvlArrayBig[:,12,j],xLvlArrayBig[:,12,j])
-#    #plt.ylim(0.,200.)
-#    #plt.xlim(0.,200.)
-#    plt.show()
-    
-#    print('iBig',np.sum(np.isnan(iLvlArrayBig)),np.sum(np.isinf(iLvlArrayBig)),np.sum(np.logical_not(np.isreal(iLvlArrayBig))),np.sum(iLvlArrayBig < 0.))
-#    print('xBig',np.sum(np.isnan(xLvlArrayBig)),np.sum(np.isinf(xLvlArrayBig)),np.sum(np.logical_not(np.isreal(xLvlArrayBig))),np.sum(xLvlArrayBig < 0.))
-#    print('vBig',np.sum(np.isnan(vArrayBig)),np.sum(np.isinf(vArrayBig)),np.sum(np.logical_not(np.isreal(vArrayBig))),np.sum(vArrayBig < 0.))
-    
+       
     # Make an exogenous grid of bLvl and MedShk values where individual is constrained
     bCnstCount = 16
     PremiumTemp = PremiumFunc(hLvlArrayBig[0,:,:]) # Decent candidate for lower bound of bLvl
@@ -1567,7 +1556,8 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         
     def getPostStates(self):
         '''
-        Calculates post states aLvlNow and HlvlNow.
+        Calculates post states aLvlNow and HlvlNow.  Also optionally calculates some
+        "socially optimal" values.
         '''
         t = self.t_sim
         aLvlNow = self.bLvlNow - self.PremiumNow - self.cLvlNow - self.OOPmedNow
@@ -1580,6 +1570,22 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         self.RatioNow = RatioNow
         self.TotalMedNow = self.MedPrice[t]*(self.MedLvlNow + self.iLvlNow)
         
+        if self.CalcSocialOptimum and self.CalcExpectationFuncs: # This is False during solution and most counterfactuals
+            # Extract and rename needed objects for easy reference
+            fp_inv = self.MargHealthProdInvFunc
+            fp   = self.MargHealthProdFunc
+            p_L  = self.LifePrice   # "value" of a year of life
+            pi   = self.MedPrice[t] # price of unit of care
+            iLvl = self.iLvlNow     # actual health investment this period
+            dvda = self.solution[t].dvdaFunc(self.aLvlNow,self.HlvlNow)
+            dvdH = self.solution[t].dvdHfunc(self.aLvlNow,self.HlvlNow)
+            dLdH = self.solution[t].ExpectedLifeFunc.derivativeY(self.aLvlNow,self.HlvlNow) # marginal life expectancy from post-health
+            dOdH = self.solution[t].TotalMedPDVfunc.derivativeY(self.aLvlNow,self.HlvlNow) # marginal PDV lifetime medical expenses from post-health
+            
+            # Calculate "socially optimal" values
+            self.iLvlSocOpt = fp_inv(pi/(p_L*dLdH - dOdH)) # "socially optimal" health investment
+            self.LifePriceSocOpt = pi/(fp(iLvl)*dLdH) + dOdH/dLdH # "value" of life year that *would* make actual health investment "socially optimal"
+            self.CopaySocOpt = dvdH/(dvda*(p_L*dLdH - dOdH)) # coinsurance rate that *would have* made agent choose "socially optimal" health investment  
 
     
     def plotxFuncByHealth(self,t,MedShk,bMin=None,bMax=20.0,hSet=None):

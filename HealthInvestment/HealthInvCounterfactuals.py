@@ -8,6 +8,7 @@ sys.path.insert(0,'../')
 
 from copy import copy, deepcopy
 import numpy as np
+from scipy.optimize import brentq
 from HARKutilities import getPercentiles
 from HARKcore import HARKobject
 from HARKparallel import multiThreadCommands, multiThreadCommandsFake
@@ -110,7 +111,9 @@ class CounterfactualAgentType(EstimationAgentType):
         self.solve()
         self.repSimData()
         self.t_ageInit = self.BornBoolArray.flatten() # other end of hacky fix
-        self.evalExpectationFuncs()
+        self.evalExpectationFuncs(False)
+        for t in range(3):
+            self.plotvFuncByHealth(t)
         self.delSolution()
         
         
@@ -120,12 +123,11 @@ class CounterfactualAgentType(EstimationAgentType):
         '''
         self.update()
         self.solve()
-        self.evalExpectationFuncs()
-        self.findWTP() # NEED TO WRITE
+        self.evalExpectationFuncs(True)
         self.delSolution()
         
         
-    def evalExpectationFuncs(self):
+    def evalExpectationFuncs(self,isCounterfactual):
         '''
         Creates arrays with lifetime PDVs of several variables, from the perspective
         of the HRS subjects in 2010.  Stores arrays as attributes of self.
@@ -139,6 +141,7 @@ class CounterfactualAgentType(EstimationAgentType):
         self.WelfarePDVarray = np.nan*np.zeros(self.AgentCount)
         self.GovtPDVarray = np.nan*np.zeros(self.AgentCount)
         self.ValueArray = np.nan*np.zeros(self.AgentCount)
+        self.WTParray = np.nan*np.zeros(self.AgentCount)
         
         # Loop through the three cohorts that are used in the counterfactual
         self.initializeSim()
@@ -167,13 +170,35 @@ class CounterfactualAgentType(EstimationAgentType):
             self.WelfarePDVarray[these] = self.solution[t].WelfarePDVfunc(bLvl,hLvl)
             self.GovtPDVarray[these] = self.solution[t].GovtPDVfunc(bLvl,hLvl)
             self.ValueArray[these] = self.solution[t].vFunc(bLvl,hLvl)
+            if isCounterfactual:
+                self.WTParray[these] = self.findWTP(t,these)
             
             
-    def findWTP(self):
+    def findWTP(self,t,these):
         '''
-        Calculate willingness-to-pay for this policy for each agent.
+        Calculate willingness-to-pay for this policy for each agent selected.
         '''
-        pass
+        # Lazy loop to calculate WTP; can be sped up later
+        WTParray = np.zeros(np.sum(these))
+        j = 0
+        for i in range(self.AgentCount):
+            if these[i]:
+                v = self.ValueBaseline[i]
+                b = self.bLvlNow[i]
+                h = self.hLvlNow[i]
+                f = lambda x : self.solution[t].vFunc(b - x, h*np.ones_like(x)) - v
+                X = np.linspace(0.,b,20)
+                fX = f(X)
+                real_test = np.logical_and(np.isreal(fX), np.logical_not(np.isnan(fX)))
+                bot = -1. # This should never happen, means someone is made $10k worse off by subsidy
+                top = np.max(X[real_test])
+                #print(i,b,h,top,f(bot),f(top))
+                try:
+                    WTParray[j] = brentq(f,bot,top)
+                except:
+                    WTParray[j] = 0.0
+                j += 1
+        return WTParray
             
                 
 def makeMultiTypeCounterfactual(params):
@@ -203,7 +228,7 @@ def makeMultiTypeCounterfactual(params):
         ThisType.makeConstantMedPrice()
         ThisType.CohortNum = np.nan
         ThisType.IncQuint = np.mod(n,5)+1
-        ThisType.DataToSimRepFactor = 1
+        ThisType.DataToSimRepFactor = 50
         
         these = Data.TypeBoolArrayCounterfactual[n,:]
         ThisType.DataAgentCount = np.sum(these)
@@ -293,7 +318,7 @@ def runCounterfactuals(name,Parameters,Policies):
     Agents = makeMultiTypeCounterfactual(param_dict)
     
     # Solve the baseline model and get arrays of outcome variables
-    multiThreadCommands(Agents,['runBaselineAction()'],num_jobs=5)
+    multiThreadCommandsFake(Agents,['runBaselineAction()'])
     TotalMedBaseline, OOPmedBaseline, ExpectedLifeBaseline, MedicareBaseline, SubsidyBaseline, WelfareBaseline, GovtBaseline = calcSubpopMeans(Agents)
     for this_type in Agents:
         this_type.ValueBaseline = copy(this_type.ValueArray)
@@ -337,6 +362,7 @@ def runCounterfactuals(name,Parameters,Policies):
         
     # If there is only one counterfactual policy, return the full set of mean-diffs.
     # If there is more than one, return vectors of overall mean-diffs.
+    return Agents
     if len(Policies) > 1:
         return [TotalMedDiffs, OOPmedDiffs, ExpectedLifeDiffs, MedicareDiffs, SubsidyDiffs, WelfareDiffs, GovtDiffs]
     else:
@@ -350,20 +376,20 @@ if __name__ == '__main__':
     from MakeTables import makeCounterfactualSummaryTables
     from MakeFigures import makeCounterfactualFigures
     
-#    TestPolicy = SubsidyPolicy(Subsidy0=0.05,Subsidy1=0.0)
-#    t_start = clock()
-#    Out = runCounterfactuals('blah',Params.test_param_vec,[TestPolicy])
-#    t_end = clock()
-#    print('That took ' + str(t_end-t_start) + ' seconds.')
-#    makeCounterfactualSummaryTables(Out,'Test Policy','testname','Test')
-
-    PolicyList = []
-    SubsidyVec = np.linspace(0,0.1,6)
-    for x in SubsidyVec:
-        PolicyList.append(SubsidyPolicy(Subsidy0=x,Subsidy1=0.0))
+    TestPolicy = SubsidyPolicy(Subsidy0=0.05,Subsidy1=0.0)
     t_start = clock()
-    Out = runCounterfactuals('blah',Params.test_param_vec,PolicyList)
+    Out = runCounterfactuals('blah',Params.test_param_vec,[TestPolicy])
     t_end = clock()
     print('That took ' + str(t_end-t_start) + ' seconds.')
-    makeCounterfactualFigures(Out,SubsidyVec*10000,'Subsidy',' Test Scenario', 'Test')
+#    makeCounterfactualSummaryTables(Out,'Test Policy','testname','Test')
+
+#    PolicyList = []
+#    SubsidyVec = np.linspace(0,0.1,6)
+#    for x in SubsidyVec:
+#        PolicyList.append(SubsidyPolicy(Subsidy0=x,Subsidy1=0.0))
+#    t_start = clock()
+#    Out = runCounterfactuals('blah',Params.test_param_vec,PolicyList)
+#    t_end = clock()
+#    print('That took ' + str(t_end-t_start) + ' seconds.')
+#    makeCounterfactualFigures(Out,SubsidyVec*10000,'Subsidy',' Test Scenario', 'Test')
     
