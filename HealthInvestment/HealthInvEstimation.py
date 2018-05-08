@@ -10,7 +10,7 @@ from time import clock
 from copy import copy
 import numpy as np
 from statsmodels.api import WLS
-from HARKparallel import multiThreadCommands
+from HARKparallel import multiThreadCommands, multiThreadCommandsFake
 from HARKestimation import minimizeNelderMead
 from HARKutilities import getPercentiles
 from HealthInvModel import HealthInvestmentConsumerType
@@ -811,7 +811,7 @@ def objectiveFunctionWrapper(param_vec):
 
 if __name__ == '__main__':
 
-#    i=0
+#    i=4
 #    param_dict = convertVecToDict(Params.test_param_vec)
 #    MyTypes = makeMultiTypeSimple(param_dict)
 #    t_start = clock()
@@ -824,6 +824,7 @@ if __name__ == '__main__':
 #    MyTypes[i].plotxFuncByHealth(t,MedShk=0.1,bMax=bMax)
 #    MyTypes[i].plotxFuncByMedShk(t,hLvl=0.9,bMax=bMax)
 #    MyTypes[i].plotiFuncByHealth(t,MedShk=0.1,bMax=bMax)
+#    MyTypes[i].plotiFuncByMedShk(t,hLvl=0.9,bMax=bMax)
 #    MyTypes[i].plotvFuncByHealth(t,bMax=bMax)
 #    MyTypes[i].plotdvdbFuncByHealth(t,bMax=bMax)
 #    MyTypes[i].plotdvdhFuncByHealth(t,bMax=bMax)
@@ -862,8 +863,8 @@ if __name__ == '__main__':
 
 
     # Choose what kind of work to do:
-    test_obj_func = True
-    plot_model_fit = True
+    test_obj_func = False
+    plot_model_fit = False
     perturb_one_param = False
     perturb_two_params = False
     estimate_model = False
@@ -1007,9 +1008,9 @@ if __name__ == '__main__':
 
     if perturb_one_param:
         # Test model identification by perturbing one parameter at a time
-        param_i = 12
-        param_min = -10.5
-        param_max = -9.
+        param_i = 11
+        param_min = -0.0078
+        param_max = 0.005
         N = 21
         perturb_vec = np.linspace(param_min,param_max,num=N)
         fit_vec = np.zeros(N) + np.nan
