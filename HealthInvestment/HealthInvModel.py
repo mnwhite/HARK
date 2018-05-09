@@ -715,18 +715,22 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,CRRAmed,IncomeNext,IncomeNo
             s = MedShkStdFunc(hLvlGrid[j])
             d0 = DevGridDense[CritIdx[i,j]-1]
             d1 = DevGridDense[CritIdx[i,j]]
-            LHS = lambda alpha : u((1.-alpha)*vNvrsArray[i,j,CritIdx[i,j]-1] + alpha*vNvrsArray[i,j,CritIdx[i,j]])
-            RHS = lambda alpha : C0 + C1*np.exp(m + s*((1.-alpha)*d0 + alpha*d1))**(1.-1./CRRAmed)
-            f = lambda alpha : LHS(alpha) - RHS(alpha)
             
-            # Solve the function for its zero on [0,1] and calculate CritDev
-#            print(i,j,CritIdx[i,j],f(0.),f(1.))
-#            plt.plot(vArray[i,j,:10])
-#            plt.plot(vFloorArray_tiled[i,j,:10])
-#            plt.show()
-#            plotFuncs([LHS,RHS],0.,1.)
-            alpha = brentq(f,0.,1.)
-            CritDevArray[i,j] = (1.-alpha)*d0 + alpha*d1
+            try:
+                # Solve a function for its zero on alpha in [0,1] and calculate CritDev
+                LHS = lambda alpha : u((1.-alpha)*vNvrsArray[i,j,CritIdx[i,j]-1] + alpha*vNvrsArray[i,j,CritIdx[i,j]])
+                RHS = lambda alpha : C0 + C1*np.exp(m + s*((1.-alpha)*d0 + alpha*d1))**(1.-1./CRRAmed)
+                f = lambda alpha : LHS(alpha) - RHS(alpha)
+                alpha = brentq(f,0.,1.)
+                CritDevArray[i,j] = (1.-alpha)*d0 + alpha*d1
+            except:
+                # If f(a) and f(b) have the same sign, then need to use slower method
+                vNvrsFunc_temp = LinearInterp(DevGridDense,vNvrsArray[i,j,:])
+                LHS = lambda x : u(vNvrsFunc_temp(x))
+                RHS = lambda x : C0 + C1*np.exp(m + s*x)**(1.-1./CRRAmed)
+                f = lambda x : LHS(x) - RHS(x)
+                CritDevArray[i,j] = brentq(f,-3.,5.)
+                
             
     # Make the CritDevFunc and calculate the probability of ending up at Cfloor
     CritDevFunc = BilinearInterp(CritDevArray,bLvlGrid,hLvlGrid)

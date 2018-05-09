@@ -145,14 +145,14 @@ test_param_vec = np.array([
     0.336599167191,     # 5 Cfloor
     10.8047369854,      # 6 Bequest0
     2.58934443495,      # 7 Bequest1
-    -4.297743200052,    # 8 MedShkMean0
+    -1.87578850312,     # 8 MedShkMean0
     0.0,                # 9 MedShkMeanSex
-    0.329770741385,     # 10 MedShkMeanAge
-    -0.001,             # 11 MedShkMeanAgeSq
-    -2.67907741105,     # 12 MedShkMeanHealth
-    0.51039528586,      # 13 MedShkMeanHealthSq
-    1.76818158888,      # 14 MedShkStd0
-    0.273494803013,     # 15 MedShkStd1
+    0.237872099393,     # 10 MedShkMeanAge
+    -0.00147405430091,  # 11 MedShkMeanAgeSq
+    -8.34060635656,     # 12 MedShkMeanHealth
+    -0.0568106909925,   # 13 MedShkMeanHealthSq
+    2.20893889295,      # 14 MedShkStd0
+    0.438043121528,     # 15 MedShkStd1
     -0.00185970986859,  # 16 HealthNext0
     -0.00679071185756,  # 17 HealthNextSex
     -0.000338387730515, # 18 HealthNextAge
