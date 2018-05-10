@@ -13,7 +13,7 @@ hCount = 2*(Hcount-1)+1
 bNrmCount = 2*aXtraCount
 MedShkCount = 24
 aXtraMin = 0.001
-aXtraMax = 200
+aXtraMax = 100
 aXtraNestFac = 3
 T_cycle = 25
 
@@ -140,9 +140,9 @@ test_param_vec = np.array([
     2.13059603618,      # 0 CRRA
     0.920706549175,     # 1 DiscFac
     6.05759692122,      # 2 MedCurve
-    1.02123766284,      # 3 LifeUtility
+    1.52123766284,      # 3 LifeUtility
     0.0,                # 4 MargUtilityShift
-    0.336599167191,     # 5 Cfloor
+    0.536599167191,     # 5 Cfloor
     10.8047369854,      # 6 Bequest0
     2.58934443495,      # 7 Bequest1
     -1.87578850312,     # 8 MedShkMean0

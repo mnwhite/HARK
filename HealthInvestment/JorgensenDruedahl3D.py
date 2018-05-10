@@ -97,7 +97,7 @@ class JDfixer(object):
         '''
         # Make arrays to hold the output
         # Consider turning bad_value into value from spending all b on x.
-        bad_value = 0.0
+        bad_value = -1e100
         even_worse_value = -1e10
         xLvlOut = np.tile(np.reshape(bGridDense,(self.bGridDenseSize,1,1)),(1,self.hGridDenseSize,self.ShkGridDenseSize)).flatten() # Spend all as a default
         iLvlOut = np.zeros_like(xLvlOut)

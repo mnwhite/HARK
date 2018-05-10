@@ -401,9 +401,9 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,CRRAmed,IncomeNext,IncomeNo
     # Define utility functions
     u = lambda C : CRRAutility(C,gam=CRRA)
     uP = lambda C : CRRAutilityP(C,gam=CRRA)
-    uinv = lambda U : CRRAutility_inv(U,gam=CRRA)
+#    uinv = lambda U : CRRAutility_inv(U,gam=CRRA)
     uPinv = lambda Up : CRRAutilityP_inv(Up,gam=CRRA)
-    BequestMotive = lambda a : 1.00*Bequest1*CRRAutility(a + Bequest0,gam=CRRA)
+    BequestMotive = lambda a : Bequest1*(CRRAutility(a + Bequest0,gam=CRRA) - CRRAutility(Bequest0,gam=CRRA))
     BequestMotiveP = lambda a : Bequest1*CRRAutilityP(a + Bequest0,gam=CRRA)
     u0 = -u(LifeUtility)
     uMed = lambda M : CRRAutility(M,gam=CRRAmed)
@@ -422,7 +422,7 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,CRRAmed,IncomeNext,IncomeNo
         vLimNext = vFuncNext.vLim
     else: # This only happens in terminal period, when vFuncNext is a constant function
         vLimNext = 0.0
-    vLimNow = DiscFac*vLimNext + u0
+#    vLimNow = DiscFac*vLimNext + u0
     
     # Make arrays of end-of-period assets and post-investment health
     aCount = aXtraGrid.size
@@ -444,6 +444,8 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,CRRAmed,IncomeNext,IncomeNo
     dvdbNext_tiled = np.tile(dvdbNext,(1,Hcount,1))
     BequestMotiveArray = np.tile(np.reshape(BequestMotive(aLvlGrid),(aCount,1)),(1,Hcount))
     BequestMotiveParray = np.tile(np.reshape(BequestMotiveP(aLvlGrid),(aCount,1)),(1,Hcount))
+    
+#    print(np.sum(np.isnan(dvdbNext)))
     
     # Calculate the probability of arriving at each future health state from each current post-health state
     Harray_temp = np.tile(np.reshape(Hgrid,(1,Hcount,1)),(1,1,hNextCount))
@@ -518,6 +520,10 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,CRRAmed,IncomeNext,IncomeNo
         FutureWelfareFunc = BilinearInterp(FutureWelfare,aLvlGrid,Hgrid)        
     
     # Store end-of-period marginal value functions
+    #EndOfPrdvNvrs = EndOfPrdv - DiscFac*vLimNext
+    #EndOfPrdvNvrsFunc = BilinearInterp(EndOfPrdvNvrs,aLvlGrid,Hgrid)
+    #EndOfPrdvFunc = ValueFunc2D(EndOfPrdvNvrsFunc,CRRA,vLim=DiscFac*vLimNext)
+    EndOfPrdvFunc = BilinearInterp(EndOfPrdv,aLvlGrid,Hgrid)
     dvdaNvrs = uPinv(EndOfPrddvda)
     dvdaNvrsFunc = BilinearInterp(dvdaNvrs,aLvlGrid,Hgrid)
     dvdaFunc = MargValueFunc2D(dvdaNvrsFunc,CRRA)
@@ -580,6 +586,9 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,CRRAmed,IncomeNext,IncomeNo
     bLvlArrayBig = aLvlArrayBig + xLvlArrayBig + iCostArrayBig + PremiumArrayBig
     vArrayBig = u(cLvlArrayBig) + uMed(MedLvlArrayBig/MedShkArrayBig) + u0 + EndOfPrdvBig
     dvdhArrayBig = ExpHealthNextFunc.der(hLvlArrayBig)*EndOfPrddvdHBig
+    
+#    print(np.sum(np.isnan(EndOfPrddvda)),np.sum(EndOfPrddvda <= 0.))
+#    print(np.sum(np.isnan(u(cLvlArrayBig))),np.sum(np.isnan(uMed(MedLvlArrayBig/MedShkArrayBig))),np.sum(np.isnan(EndOfPrdvBig)))
        
     # Make an exogenous grid of xLvl and MedShk values where individual is constrained.
     # The idea here is that when the individual is constrained by aLvl=0, both xLvl and
@@ -639,6 +648,7 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,CRRAmed,IncomeNext,IncomeNo
 #    print('iCnst',np.sum(np.isnan(iLvlArrayCnst)),np.sum(np.isinf(iLvlArrayCnst)))
 #    print('xCnst',np.sum(np.isnan(xLvlArrayCnst)),np.sum(np.isinf(xLvlArrayCnst)))
 #    print('vCnst',np.sum(np.isnan(vArrayCnst)),np.sum(np.isinf(vArrayCnst)))
+#    print('vMain',np.sum(np.isnan(vArrayBig)),np.sum(np.isinf(vArrayBig)))
     
     # Combine the constrained and unconstrained solutions into unified arrays
     bLvlArrayAll = np.concatenate((bLvlArrayCnst,bLvlArrayBig),axis=0)
@@ -649,7 +659,7 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,CRRAmed,IncomeNext,IncomeNo
     iLvlArrayAll = np.concatenate((iLvlArrayCnst,iLvlArrayBig),axis=0)
     vArrayAll = np.concatenate((vArrayCnst,vArrayBig),axis=0)
     dvdhArrayAll = np.concatenate((dvdhArrayCnst,dvdhArrayBig),axis=0)
-    vNvrsArrayAll = uinv(vArrayAll - vLimNow)
+#    vNvrsArrayAll = uinv(vArrayAll - vLimNow)
     
 #    for i in range(Hcount):
 #        plt.plot(DevArrayAll[0,i,:],bLvlArrayAll[0,i,:])
@@ -657,13 +667,13 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,CRRAmed,IncomeNext,IncomeNo
 #        #plt.ylim([0.,250.])
 #        plt.show()
         
-#    print(np.sum(np.isnan(vNvrsArrayAll)),np.sum(np.isinf(vNvrsArrayAll)))
+#    print(np.sum(np.isnan(vArrayBig)),np.sum(np.isnan(vArrayCnst)),np.sum(np.isnan(vArrayAll)))
 #    print(np.sum(np.isnan(xLvlArrayAll)),np.sum(np.isinf(xLvlArrayAll)))
     
     # Apply the Jorgensen-Druedahl convexity fix and construct expenditure and investment functions
 #    t_start = clock()
     xLvlArray, iLvlArray, vNvrsArray, dvdhArray = ConvexityFixer(bLvlArrayAll,hLvlArrayAll,DevArrayAll,
-                                        vNvrsArrayAll,dvdhArrayAll,xLvlArrayAll,iLvlArrayAll,bLvlGrid,hLvlGrid,DevGridDense)
+                                        vArrayAll,dvdhArrayAll,xLvlArrayAll,iLvlArrayAll,bLvlGrid,hLvlGrid,DevGridDense)
 #    t_end = clock()
 #    print('JD fix took ' + str(t_end-t_start) + ' seconds.')
     xFuncNow = TrilinearInterp(xLvlArray,bLvlGrid,hLvlGrid,DevGridDense)
@@ -673,72 +683,95 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,CRRAmed,IncomeNext,IncomeNo
     hLvlCount = hLvlGrid.size
     ShkCount  = DevGridDense.size
     
+#    print(np.sum(np.isnan(vNvrsArray)))
+#    print(np.sum(np.isnan(xLvlArrayAll)),np.sum(np.isinf(xLvlArrayAll)))
+    
 #    for i in range(hLvlCount):
-#        plt.plot(bLvlGrid,vNvrsArray[:,i,:])
+#        plt.plot(bLvlGrid,xLvlArray[:,i,:])
 #        plt.show()
     
     # Make an array of values that are attained if we hit the Cfloor this period
     EffPrice_temp = np.tile(np.reshape(MedPrice*CopayFunc(hLvlGrid),(1,hLvlCount,1)),(1,1,ShkCount))
-    Dev_temp = np.tile(np.reshape(DevGridDense,(1,1,ShkCount)),(1,hLvlCount,1))
-    ShkMean_temp = np.tile(np.reshape(MedShkMeanFunc(hLvlGrid),(1,hLvlCount,1)),(1,1,ShkCount))
-    ShkStd_temp  = np.tile(np.reshape(MedShkStdFunc(hLvlGrid),(1,hLvlCount,1)),(1,1,ShkCount))
-    MedShk_temp  = np.tile(np.exp(ShkMean_temp + Dev_temp*ShkStd_temp),(bLvlCount,1,1))
+#    Dev_temp = np.tile(np.reshape(DevGridDense,(1,1,ShkCount)),(1,hLvlCount,1))
+#    ShkMean_temp = np.tile(np.reshape(MedShkMeanFunc(hLvlGrid),(1,hLvlCount,1)),(1,1,ShkCount))
+#    ShkStd_temp  = np.tile(np.reshape(MedShkStdFunc(hLvlGrid),(1,hLvlCount,1)),(1,1,ShkCount))
+#    MedShk_temp  = np.tile(np.exp(ShkMean_temp + Dev_temp*ShkStd_temp),(bLvlCount,1,1))
     H_temp       = ExpHealthNextFunc(hLvlGrid)
-    EndOfPrdvFunc_no_assets = ValueFunc(LinearInterp(Hgrid,uinv(EndOfPrdv[0,:]-DiscFac*vLimNext)),CRRA)
+    EndOfPrdvFunc_no_assets = LinearInterp(Hgrid,EndOfPrdv[0,:])
 #    EndOfPrddvdHfunc_no_assets = LinearInterp(Hgrid,uinv(EndOfPrddvdH[0,:]))
     EndOfPrdv_temp = np.tile(np.reshape(EndOfPrdvFunc_no_assets(H_temp),(1,hLvlCount,1)),(1,1,ShkCount)) + DiscFac*vLimNext
 #    EndOfPrddvdH_temp = np.tile(np.reshape(EndOfPrddvdHfunc_no_assets(H_temp),(1,hLvlCount,1)),(1,1,ShkCount))
-    vFloorArray  = u(Cfloor) + u0 + EndOfPrdv_temp + (EffPrice_temp*MedShk_temp[0,:,:])**(1.-1./CRRAmed)*Cfloor**(CRRA/CRRAmed - CRRA)/(1.-CRRAmed)
-    vFloorArray_tiled = np.tile(vFloorArray,(bLvlCount,1,1))
+#    vFloorArray  = u(Cfloor) + u0 + EndOfPrdv_temp + (EffPrice_temp*MedShk_temp[0,:,:])**(1.-1./CRRAmed)*Cfloor**(CRRA/CRRAmed - CRRA)/(1.-CRRAmed)
+#    vFloorArray_tiled = np.tile(vFloorArray,(bLvlCount,1,1))
     
     # Compare vFloor against vArray to find bounding indices for where Cfloor begins to bind
-    vArray = u(vNvrsArray) + vLimNow # TODO: verify this is decreasing in 3rd dim
-    Compare = vArray > vFloorArray_tiled
-    CritIdx = np.sum(Compare,axis=2) # Index below which we should find CritShk
-    Never_Cfloor = CritIdx == ShkCount # Critical shock happens higher than largest shock in grid (+5std)
-    Always_Cfloor = CritIdx == 0 # Critical shock happens lower than lowest shock in grid (-3std)
-    
-    # Find the CritDev where Cfloor begins to bind, between CritIdx and CritIdx-1
-    CritDevArray = np.zeros((bLvlCount,hLvlCount))
-    CritDevArray[Never_Cfloor]  = DevGridDense[-1]
-    CritDevArray[Always_Cfloor] = DevGridDense[0]
+#    vArray = u(vNvrsArray) + vLimNow
+#    Compare = vArray > vFloorArray_tiled
+#    CritIdx = np.sum(Compare,axis=2) # Index below which we should find CritShk
+#    Never_Cfloor = CritIdx == ShkCount # Critical shock happens higher than largest shock in grid (+5std)
+#    Always_Cfloor = CritIdx == 0 # Critical shock happens lower than lowest shock in grid (-3std)
+#    
+#    # Find the CritDev where Cfloor begins to bind, between CritIdx and CritIdx-1
+#    CritDevArray = np.zeros((bLvlCount,hLvlCount))
+#    CritDevArray[Never_Cfloor]  = DevGridDense[-1]
+#    CritDevArray[Always_Cfloor] = DevGridDense[0]
     C1_vec = (MedPrice*CopayFunc(hLvlGrid))**(1.-1./CRRAmed)*Cfloor**(CRRA/CRRAmed - CRRA)/(1.-CRRAmed)
-    for i in range(bLvlCount): # THIS NEEDS TO BE DELOOPED
-        for j in range(hLvlCount):
-            if Never_Cfloor[i,j] or Always_Cfloor[i,j]:
-                continue # Skip this (b,h) if Cfloor always or never binds
-            
-            # Otherwise, define a function that we want to zero to find CritDev
-            C0 = u(Cfloor) + u0 + EndOfPrdv_temp[0,j,0] - vLimNow
-            C1 = C1_vec[j]
-            m = MedShkMeanFunc(hLvlGrid[j])
-            s = MedShkStdFunc(hLvlGrid[j])
-            d0 = DevGridDense[CritIdx[i,j]-1]
-            d1 = DevGridDense[CritIdx[i,j]]
-            
-            try:
-                # Solve a function for its zero on alpha in [0,1] and calculate CritDev
-                LHS = lambda alpha : u((1.-alpha)*vNvrsArray[i,j,CritIdx[i,j]-1] + alpha*vNvrsArray[i,j,CritIdx[i,j]])
-                RHS = lambda alpha : C0 + C1*np.exp(m + s*((1.-alpha)*d0 + alpha*d1))**(1.-1./CRRAmed)
-                f = lambda alpha : LHS(alpha) - RHS(alpha)
-                alpha = brentq(f,0.,1.)
-                CritDevArray[i,j] = (1.-alpha)*d0 + alpha*d1
-            except:
-                # If f(a) and f(b) have the same sign, then need to use slower method
-                vNvrsFunc_temp = LinearInterp(DevGridDense,vNvrsArray[i,j,:])
-                LHS = lambda x : u(vNvrsFunc_temp(x))
-                RHS = lambda x : C0 + C1*np.exp(m + s*x)**(1.-1./CRRAmed)
-                f = lambda x : LHS(x) - RHS(x)
-                CritDevArray[i,j] = brentq(f,-3.,5.)
-                
-            
-    # Make the CritDevFunc and calculate the probability of ending up at Cfloor
+#    for i in range(bLvlCount): # THIS NEEDS TO BE DELOOPED
+#        for j in range(hLvlCount):
+#            if Never_Cfloor[i,j] or Always_Cfloor[i,j]:
+#                continue # Skip this (b,h) if Cfloor always or never binds
+#            
+#            # Otherwise, define a function that we want to zero to find CritDev
+#            C0 = u(Cfloor) + u0 + EndOfPrdv_temp[0,j,0] - vLimNow
+#            C1 = C1_vec[j]
+#            m = MedShkMeanFunc(hLvlGrid[j])
+#            s = MedShkStdFunc(hLvlGrid[j])
+#            d0 = DevGridDense[CritIdx[i,j]-1]
+#            d1 = DevGridDense[CritIdx[i,j]]
+#            
+#            try:
+#                # Solve a function for its zero on alpha in [0,1] and calculate CritDev
+#                LHS = lambda alpha : u((1.-alpha)*vNvrsArray[i,j,CritIdx[i,j]-1] + alpha*vNvrsArray[i,j,CritIdx[i,j]])
+#                RHS = lambda alpha : C0 + C1*np.exp(m + s*((1.-alpha)*d0 + alpha*d1))**(1.-1./CRRAmed)
+#                f = lambda alpha : LHS(alpha) - RHS(alpha)
+#                alpha = brentq(f,0.,1.)
+#                CritDevArray[i,j] = (1.-alpha)*d0 + alpha*d1
+#            except:
+#                # If f(a) and f(b) have the same sign, then need to use slower method
+#                vNvrsFunc_temp = LinearInterp(DevGridDense,vNvrsArray[i,j,:])
+#                LHS = lambda x : u(vNvrsFunc_temp(x))
+#                RHS = lambda x : C0 + C1*np.exp(m + s*x)**(1.-1./CRRAmed)
+#                f = lambda x : LHS(x) - RHS(x)
+#                CritDevArray[i,j] = brentq(f,-3.,5.)
+
+#    # Make the CritDevFunc and calculate the probability of ending up at Cfloor
+#    CritDevFunc = BilinearInterp(CritDevArray,bLvlGrid,hLvlGrid)
+#    CritShkPrbArray = norm.sf(CritDevArray)
+#    CritShkPrbArray[Never_Cfloor] = 0.
+#    CritShkPrbArray[Always_Cfloor] = 1.
+#    plt.plot(bLvlGrid,CritDevArray)
+#    plt.show()
+    
+    # Find CritDev in a much more efficient way
+    b_temp = np.tile(np.reshape(bLvlGrid,(bLvlCount,1)),(1,hLvlCount))
+    p_temp = np.tile(np.reshape(MedPrice*CopayFunc(hLvlGrid),(1,hLvlCount)),(bLvlCount,1))
+    m_temp = np.tile(np.reshape(MedShkMeanFunc(hLvlGrid),(1,hLvlCount)),(bLvlCount,1))
+    s_temp = np.tile(np.reshape(MedShkStdFunc(hLvlGrid),(1,hLvlCount)),(bLvlCount,1))
+    LogCritShkAlt = (CRRAmed - CRRA)/(CRRAmed - 1.)*np.log(Cfloor) + CRRAmed/(CRRAmed - 1.)*np.log(b_temp/Cfloor - 1.) - np.log(p_temp)
+    CritDevArray = (LogCritShkAlt - m_temp)/s_temp
+    CritDevArray = np.minimum(np.maximum(CritDevArray,-3.0),5.0) # Apply bounds for grid
     CritDevFunc = BilinearInterp(CritDevArray,bLvlGrid,hLvlGrid)
+    Never_Cfloor = CritDevArray == 5. # Critical shock happens higher than largest shock in grid (+5std)
+    Always_Cfloor = CritDevArray == -3. # Critical shock happens lower than lowest shock in grid (-3std)
     CritShkPrbArray = norm.sf(CritDevArray)
     CritShkPrbArray[Never_Cfloor] = 0.
     CritShkPrbArray[Always_Cfloor] = 1.
-#    plt.plot(bLvlGrid,CritDevArray)
+#    print(np.sum(Never_Cfloor),np.sum(Always_Cfloor))
+    
+#    plt.plot(bLvlGrid,CritDevArrayAlt)
 #    plt.show()
+#    breakhere
+    
     
 #    # Calculate derivatives of CritShkDevFunc with respect to b and h
 #    b_temp = np.tile(np.reshape(bLvlGrid,(bLvlCount,1)),(1,hLvlCount))
@@ -826,29 +859,52 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,CRRAmed,IncomeNext,IncomeNo
 #    dvdDevArray = (vNvrsArray[bIdx,hIdx,IdxHi] - vNvrsArray[bIdx,hIdx,IdxLo])/(DevGridDense[IdxHi] - DevGridDense[IdxLo])
     
     # Integrate value according to the shock probabilities
-    vNvrs_temp = alpha_comp*vNvrsArray[bIdx,hIdx,IdxLo] + alpha*vNvrsArray[bIdx,hIdx,IdxHi]
-    v_temp = u(vNvrs_temp) + vLimNow
-    ValueArrayFlat = np.sum(v_temp*MedShkPrbArray,axis=2) + CritShkPrbArray*vFloor_expected
-    vNvrsArrayFlat = uinv(ValueArrayFlat - vLimNow)
+#    vNvrs_temp = alpha_comp*vNvrsArray[bIdx,hIdx,IdxLo] + alpha*vNvrsArray[bIdx,hIdx,IdxHi]
+#    v_temp = u(vNvrs_temp) + vLimNow
+#    ValueArrayFlat = np.sum(v_temp*MedShkPrbArray,axis=2) + CritShkPrbArray*vFloor_expected
+#    vNvrsArrayFlat = uinv(ValueArrayFlat - vLimNow)
 #    print(np.sum(np.isnan(v_temp)),np.sum(np.isinf(v_temp)))
 #    print(np.sum(np.isnan(MedShkPrbArray)),np.sum(np.isinf(MedShkPrbArray)))
 #    print(np.sum(np.isnan(CritShkPrbArray)),np.sum(np.isinf(CritShkPrbArray)))
 #    print(np.sum(np.isnan(vFloor_expected)),np.sum(np.isinf(vFloor_expected)))
 #    print(np.sum(np.isnan(ValueArrayFlat)),np.sum(np.isinf(ValueArrayFlat)))
+#    print(np.sum(np.isnan(vNvrsArrayFlat)),np.sum(np.isinf(vNvrsArrayFlat)))
 #    plt.plot(bLvlGrid,vNvrsArrayFlat)
 #    plt.show()
     
-    # Integrate marginal value of bank balances according to the shock probabilities
+    # Calculate agents' controls and post-states on the grid of shocks
     x_temp = alpha_comp*xLvlArray[bIdx,hIdx,IdxLo] + alpha*xLvlArray[bIdx,hIdx,IdxHi]
+    i_temp = alpha_comp*iLvlArray[bIdx,hIdx,IdxLo] + alpha*iLvlArray[bIdx,hIdx,IdxHi]
     Copay_temp = np.tile(np.reshape(CopayFunc(hLvlGrid),(1,hLvlCount,1)),(bLvlCount,1,MedShkCount))
+    Premium_temp = np.tile(np.reshape(PremiumFunc(hLvlGrid),(1,hLvlCount,1)),(bLvlCount,1,MedShkCount))
     EffPrice_temp = Copay_temp*MedPrice
     q_temp = np.exp(-bFromxFunc(x_temp,MedShkValArray*EffPrice_temp))
     c_temp = x_temp/(1. + q_temp)
+    SubsidyMax = np.tile(np.reshape(SubsidyFunc(hLvlGrid),(1,hLvlCount,1)),(bLvlCount,1,MedShkCount))
+    Subsidy_temp = np.minimum(i_temp*MedPrice,SubsidyMax)
+    MedOOP_temp = q_temp*x_temp/(1. + q_temp)
+    Med_temp = MedOOP_temp/EffPrice_temp
+    iCost_temp = i_temp*EffPrice_temp - Subsidy_temp
+    OOP_temp = MedOOP_temp + iCost_temp
+    b_temp = np.tile(np.reshape(bLvlGrid,(bLvlCount,1,1)),(1,hLvlCount,MedShkCount))
+    h_temp = np.tile(np.reshape(hLvlGrid,(1,hLvlCount,1)),(bLvlCount,1,MedShkCount))
+    a_temp = np.maximum(b_temp - Premium_temp - x_temp - iCost_temp, 0.0)
+    H_temp = ExpHealthNextFunc(h_temp) + HealthProdFunc(i_temp)
+    v_temp = u(c_temp) + uMed(Med_temp/MedShkValArray) + u0 + EndOfPrdvFunc(a_temp,H_temp)
+    
+    # Integrate value according to the shock probabilities
+    ValueArrayFlat = np.sum(v_temp*MedShkPrbArray,axis=2) + CritShkPrbArray*vFloor_expected
+#    vNvrsArrayFlat = uinv(ValueArrayFlat - vLimNow)
+    
+    # Integrate marginal value of bank balances according to the shock probabilities
     dvdb_temp = uP(c_temp)
 #    dCritDevdb_tiled = np.tile(np.reshape(dCritDevdb,(bLvlCount,hLvlCount,1)),(1,1,MedShkCount))
 #    dvdbArray = np.sum(dMedShkPrbdbArray*v_temp + MedShkPrbArray*(dvdb_temp + FracArray*dCritDevdb_tiled*dvdDevArray), axis=2) + dCritShkPrbdbArray*vFloor_expected + CritShkPrbArray*dvdbFloor_expected
     dvdbArray = np.sum(MedShkPrbArray*dvdb_temp, axis=2)
     dvdbNvrsArray = uPinv(dvdbArray)
+    
+#    print(np.sum(np.isinf(dvdbNvrsArray)),np.sum(np.isnan(dvdbNvrsArray)))
+#    print(np.sum(MedShkPrbArray == 0.))
     
     # Integrate marginal value of health according to the shock probabilities
 #    dvdh_temp = alpha_comp*dvdhArray[bIdx,hIdx,IdxLo] + alpha*dvdhArray[bIdx,hIdx,IdxHi]
@@ -858,8 +914,9 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,CRRAmed,IncomeNext,IncomeNo
     dvdhArray = np.zeros_like(dvdbArray)
     
     # Make (marginal) value functions
-    vNvrsFuncNow = BilinearInterp(vNvrsArrayFlat,bLvlGrid,hLvlGrid)
-    vFuncNow = ValueFunc2D(vNvrsFuncNow,CRRA,vLimNow)
+    vNvrsFuncNow = BilinearInterp(ValueArrayFlat,bLvlGrid,hLvlGrid)
+    vFuncNow = ValueFunc2D(vNvrsFuncNow,0.0,0.0)
+#    vFuncNow = BilinearInterp(ValueArrayFlat,bLvlGrid,hLvlGrid)
     dvdbNvrsFuncNow = BilinearInterp(dvdbNvrsArray,bLvlGrid,hLvlGrid)
     dvdbFuncNow = MargValueFunc2D(dvdbNvrsFuncNow,CRRA)
     dvdhFuncNow = BilinearInterp(dvdhArray,bLvlGrid,hLvlGrid)
@@ -872,23 +929,11 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,CRRAmed,IncomeNext,IncomeNo
     
     if CalcExpectationFuncs:
         # Calculate current values of various objects on the grid of shocks
-        i_temp = alpha_comp*iLvlArray[bIdx,hIdx,IdxLo] + alpha*iLvlArray[bIdx,hIdx,IdxHi]
-        SubsidyMax = np.tile(np.reshape(SubsidyFunc(hLvlGrid),(1,hLvlCount,1)),(bLvlCount,1,MedShkCount))
-        Subsidy_temp = np.minimum(i_temp*MedPrice,SubsidyMax)
-        MedOOP_temp = q*x_temp/(1. + q_temp)
-        Med_temp = MedOOP_temp/EffPrice_temp
-        iCost_temp = i_temp*EffPrice_temp - Subsidy_temp
-        OOP_temp = MedOOP_temp + iCost_temp
         TotalMed_temp = MedPrice*(i_temp + Med_temp)
         Medicare_temp = (TotalMed_temp - Subsidy_temp)*(1.-Copay_temp)
         Welfare_temp = np.zeros_like(OOP_temp) # No welfare unless we hit Cfloor
 
-        # Calculate end-of-period states for the grid of shocks and when at Cfloor
-        b_temp = np.tile(np.reshape(bLvlGrid,(bLvlCount,1,1)),(1,hLvlCount,MedShkCount))
-        h_temp = np.tile(np.reshape(hLvlGrid,(1,hLvlCount,1)),(bLvlCount,1,MedShkCount))
-        Premium_temp = np.tile(np.reshape(PremiumFunc(hLvlGrid),(1,hLvlCount,1)),(bLvlCount,1,MedShkCount))
-        a_temp = np.maximum(b_temp - Premium_temp - x_temp - iCost_temp, 0.0)
-        H_temp = ExpHealthNextFunc(h_temp) + HealthProdFunc(i_temp)
+        # Calculate end-of-period states when at Cfloor
         a_Cfloor = np.zeros_like(b_temp[:,:,0])
         H_Cfloor = ExpHealthNextFunc(h_temp[:,:,0])
         

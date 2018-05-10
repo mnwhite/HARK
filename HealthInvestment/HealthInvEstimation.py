@@ -811,7 +811,7 @@ def objectiveFunctionWrapper(param_vec):
 
 if __name__ == '__main__':
 
-#    i=4
+#    i=0
 #    param_dict = convertVecToDict(Params.test_param_vec)
 #    MyTypes = makeMultiTypeSimple(param_dict)
 #    t_start = clock()
@@ -820,7 +820,7 @@ if __name__ == '__main__':
 #    print('Processing one agent type took ' + str(t_end-t_start) + ' seconds.')
 #
 #    t=0
-#    bMax = 50.
+#    bMax = 100.
 #    MyTypes[i].plotxFuncByHealth(t,MedShk=0.1,bMax=bMax)
 #    MyTypes[i].plotxFuncByMedShk(t,hLvl=0.9,bMax=bMax)
 #    MyTypes[i].plotiFuncByHealth(t,MedShk=0.1,bMax=bMax)
@@ -863,11 +863,11 @@ if __name__ == '__main__':
 
 
     # Choose what kind of work to do:
-    test_obj_func = True
-    plot_model_fit = True
+    test_obj_func = False
+    plot_model_fit = False
     perturb_one_param = False
     perturb_two_params = False
-    estimate_model = False
+    estimate_model = True
     calc_std_errs = False
 
 
@@ -1008,9 +1008,9 @@ if __name__ == '__main__':
 
     if perturb_one_param:
         # Test model identification by perturbing one parameter at a time
-        param_i = 11
-        param_min = -0.0078
-        param_max = 0.005
+        param_i = 6
+        param_min = 1.0
+        param_max = 4.0
         N = 21
         perturb_vec = np.linspace(param_min,param_max,num=N)
         fit_vec = np.zeros(N) + np.nan
@@ -1059,7 +1059,7 @@ if __name__ == '__main__':
 
     if estimate_model:
         # Estimate some (or all) of the model parameters
-        which_indices = np.array([8,10,11,12,13,14,15])
+        which_indices = np.array([0,1,5,6,7])
         which_bool = np.zeros(33,dtype=bool)
         which_bool[which_indices] = True
         estimated_params = minimizeNelderMead(objectiveFunctionWrapper,Params.test_param_vec,verbose=True,which_vars=which_bool)
