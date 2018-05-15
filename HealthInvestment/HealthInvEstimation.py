@@ -680,7 +680,7 @@ def objectiveFunction(params,use_cohorts,return_as_list):
     TypeList = processSimulatedTypes(params,use_cohorts)
     SimulatedMoments = calcSimulatedMoments(TypeList,return_as_list)
     
-    if False:
+    if False: # Set this block to true to run the "pseudo estimation" for health production parameters
         HealthProdMoments = pseudoEstHealthProdParams(TypeList,return_as_list)
         if return_as_list:
             SimulatedMoments[-2] = HealthProdMoments[0]
@@ -727,17 +727,6 @@ def convertVecToDict(param_vec):
     Converts a 33 length vector of parameters to a dictionary that can be used
     by the estimator or standard error calculator.
     '''
-#    # Translate the parameter vector 
-#    HealthProd0 = param_vec[24]   # "Ultimate" curvature of health production function
-#    tempx = np.exp(param_vec[25]) # Slope of health production function at iLvl=0
-#    tempy = -np.exp(param_vec[25]+param_vec[26]) # Curvature of health prod at iLvl=0
-#    if tempx > 0.:
-#        HealthProd2 = tempx/tempy*(HealthProd0-1.)
-#        HealthProd1 = tempx/HealthProd0*HealthProd2**(1.-HealthProd0)
-#    else:
-#        HealthProd2 = 1.
-#        HealthProd1 = 0.
-    
     struct_params = {
         'CRRA' : param_vec[0],
         'DiscFac' : param_vec[1],
@@ -827,7 +816,7 @@ if __name__ == '__main__':
 #    MyTypes[i].plotiFuncByMedShk(t,hLvl=0.9,bMax=bMax)
 #    MyTypes[i].plotvFuncByHealth(t,bMax=bMax)
 #    MyTypes[i].plotdvdbFuncByHealth(t,bMax=bMax)
-#    MyTypes[i].plotdvdhFuncByHealth(t,bMax=bMax)
+#    #MyTypes[i].plotdvdhFuncByHealth(t,bMax=bMax)
 #
 #    MyTypes[i].plot2DfuncByHealth('TotalMedPDVfunc',t,bMax=bMax)
 #    MyTypes[i].plot2DfuncByWealth('TotalMedPDVfunc',t)
@@ -868,7 +857,7 @@ if __name__ == '__main__':
     perturb_one_param = False
     perturb_two_params = False
     estimate_model = False
-    calc_std_errs = True
+    calc_std_errs = False
 
 
     if test_obj_func:
