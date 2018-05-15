@@ -52,6 +52,7 @@ class EstimationAgentType(HealthInvestmentConsumerType):
         self.AgentCount = X*self.DataAgentCount
         self.WealthQuint = np.tile(self.WealthQuint,X)
         self.HealthTert = np.tile(self.HealthTert,X)
+        self.HealthQuint = np.tile(self.HealthQuint,X)
         self.aLvlInit = np.tile(self.aLvlInit,X)
         self.HlvlInit = np.tile(self.HlvlInit,X)
         self.BornBoolArray = np.tile(self.BornBoolArray,(1,X))
@@ -131,6 +132,7 @@ def makeMultiTypeWithCohorts(params):
         ThisType.DataAgentCount = np.sum(these)
         ThisType.WealthQuint = Data.wealth_quint_data[these]
         ThisType.HealthTert = Data.health_tert_data[these]
+        ThisType.HealthQuint = Data.health_quint_data[these]
         ThisType.aLvlInit = Data.w_init[these]
         ThisType.HlvlInit = Data.h_init[these]
         ThisType.BornBoolArray = Data.BornBoolArray[:,these]
@@ -174,6 +176,7 @@ def makeMultiTypeSimple(params):
         ThisType.DataAgentCount = np.sum(these)
         ThisType.WealthQuint = Data.wealth_quint_data[these]
         ThisType.HealthTert = Data.health_tert_data[these]
+        ThisType.HealthQuint = Data.health_quint_data[these]
         ThisType.aLvlInit = Data.w_init[these]
         ThisType.HlvlInit = Data.h_init[these]
         ThisType.BornBoolArray = Data.BornBoolArray[:,these]
@@ -238,6 +241,7 @@ def calcSimulatedMoments(type_list,return_as_list):
     
     # Combine data labels across types
     HealthTert = np.concatenate([this_type.HealthTert for this_type in type_list])
+    HealthQuint = np.concatenate([this_type.HealthQuint for this_type in type_list])
     WealthQuint = np.concatenate([this_type.WealthQuint for this_type in type_list])
     IncQuint = np.concatenate([this_type.IncQuintLong for this_type in type_list])
     Sex = np.concatenate([this_type.SexLong for this_type in type_list])
@@ -270,6 +274,7 @@ def calcSimulatedMoments(type_list,return_as_list):
     WealthByIncWealthAge = np.zeros((5,5,15))
     HealthByIncWealthAge = np.zeros((5,5,15))
     OOPbyIncWealthAge = np.zeros((5,5,15))
+    MortByHealthAge = np.zeros((5,15))
     
     # Make large 1D vectors for the health transition and OOP regressions
     THESE = np.logical_and(Active,InDataSpan)
@@ -341,6 +346,14 @@ def calcSimulatedMoments(type_list,return_as_list):
         MeanHealthChange = np.dot(HealthChange,Weight)/WeightSum
         HealthChangeSqDevFromMean = (HealthChange - MeanHealthChange)**2
         StDevDeltaHealthByAge[t] = np.sqrt(np.dot(HealthChangeSqDevFromMean,Weight)/WeightSum)
+        
+        for h in range(5):
+            right_health = HealthQuint == (h+1)
+            these = np.logical_and(THESE,right_health)
+            Mort = MortHist[t+1,these]
+            Weight = WeightHist[t+1,these]
+            WeightSum = np.sum(Weight)
+            MortByHealthAge[h,t] = np.dot(Mort,Weight)/WeightSum
         
         for h in range(3):
             # Calculate stdev OOP medical spending and stdev delta health by health by age
@@ -427,7 +440,8 @@ def calcSimulatedMoments(type_list,return_as_list):
                 HealthByIncWealthAge,
                 OOPbyIncWealthAge,
                 AvgHealthResidualByIncWealth,
-                AvgOOPResidualByIncWealth
+                AvgOOPResidualByIncWealth,
+                MortByHealthAge
                 ]
     else: 
         all_moments = np.concatenate([
@@ -447,7 +461,8 @@ def calcSimulatedMoments(type_list,return_as_list):
                 HealthByIncWealthAge.flatten(),
                 OOPbyIncWealthAge.flatten(),
                 AvgHealthResidualByIncWealth.flatten(),
-                AvgOOPResidualByIncWealth.flatten()
+                AvgOOPResidualByIncWealth.flatten(),
+                MortByHealthAge.flatten()
                 ])
     return all_moments
 
@@ -949,6 +964,13 @@ if __name__ == '__main__':
             plt.plot(Data.MortBySexHealthAge[1,h,:],'.')
         plt.ylabel('Mortality probability, men')
         plt.show()
+        
+        # Plot model fit of mortality by age and health quintile
+        plt.plot(X[17].transpose())
+        for h in range(5):
+            plt.plot(Data.MortByHealthAge[h,:],'.')
+        plt.ylabel('Mortality probability by health quintile')
+        plt.show()
     
         # Plot model fit of wealth by age and income quintile
         plt.plot(X[9].transpose())
@@ -1014,9 +1036,9 @@ if __name__ == '__main__':
 
     if perturb_one_param:
         # Test model identification by perturbing one parameter at a time
-        param_i = 9
-        param_min = -0.6
-        param_max = -0.2
+        param_i = 32
+        param_min = 1.0
+        param_max = 1.8
         N = 21
         perturb_vec = np.linspace(param_min,param_max,num=N)
         fit_vec = np.zeros(N) + np.nan

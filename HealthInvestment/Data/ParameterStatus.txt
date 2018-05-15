@@ -8,7 +8,7 @@ current_param_vec = np.array([
     8.82755999476,  # 6 Bequest0
     4.732084828,  # 7 Bequest1
     -1.44413231226,  # 8 MedShkMean0
-    -0.22,  # 9 MedShkMeanSex
+    -0.49,  # 9 MedShkMeanSex
     0.226006817126,  # 10 MedShkMeanAge
     -0.0015634240076,  # 11 MedShkMeanAgeSq
     -6.91037466878,  # 12 MedShkMeanHealth
@@ -31,5 +31,5 @@ current_param_vec = np.array([
     -0.0026232561155,  # 29 MortalityAge
     0.00631735270919,  # 30 MortalityAgeSq
     -3.27868755086,  # 31 MortalityHealth
-    1.38027402605,  # 32 MortalityHealthSq
+    1.76,  # 32 MortalityHealthSq
 ]) 
