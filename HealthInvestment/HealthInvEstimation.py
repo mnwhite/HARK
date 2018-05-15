@@ -208,7 +208,7 @@ def processSimulatedTypes(params,use_cohorts):
     else:
         type_list = makeMultiTypeSimple(params)
         
-    multiThreadCommands(type_list,['estimationAction()'],num_jobs=5)
+    multiThreadCommands(type_list,['estimationAction()'],num_jobs=10)
     return type_list
 
 
@@ -868,7 +868,7 @@ if __name__ == '__main__':
     perturb_one_param = False
     perturb_two_params = False
     estimate_model = False
-    calc_std_errs = True
+    calc_std_errs = False
 
 
     if test_obj_func:
@@ -1008,9 +1008,9 @@ if __name__ == '__main__':
 
     if perturb_one_param:
         # Test model identification by perturbing one parameter at a time
-        param_i = 6
-        param_min = 1.0
-        param_max = 4.0
+        param_i = 2
+        param_min = 3.0
+        param_max = 12.0
         N = 21
         perturb_vec = np.linspace(param_min,param_max,num=N)
         fit_vec = np.zeros(N) + np.nan
@@ -1059,7 +1059,7 @@ if __name__ == '__main__':
 
     if estimate_model:
         # Estimate some (or all) of the model parameters
-        which_indices = np.array([0,1,5,6,7,8,10,11,12,13,14,15])
+        which_indices = np.array([0,1,5,6,7])
         which_bool = np.zeros(33,dtype=bool)
         which_bool[which_indices] = True
         estimated_params = minimizeNelderMead(objectiveFunctionWrapper,Params.test_param_vec,verbose=True,which_vars=which_bool)
@@ -1070,7 +1070,7 @@ if __name__ == '__main__':
 
     if calc_std_errs:
         # Calculate standard errors for some or all parameters
-        which_indices = np.array([0,1,5,6,7,8,10,11,12,13,14,15])
+        which_indices = np.array([8,10,11,12,13,14,15])
         which_bool = np.zeros(33,dtype=bool)
         which_bool[which_indices] = True
         standard_errors, cov_matrix = calcStdErrs(Params.test_param_vec,Data.use_cohorts,which_bool,eps=0.001)
