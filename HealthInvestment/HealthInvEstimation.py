@@ -371,6 +371,16 @@ def calcSimulatedMoments(type_list,return_as_list):
                 #OOPbySexHealthAge[s,h,t] = MeanOOP
                 HealthBySexHealthAge[s,h,t] = np.dot(Health,Weight)/WeightSum
                 MortBySexHealthAge[s,h,t] = np.dot(Mort,Weight)/WeightSum
+        
+        for s in range(2):
+            # Calculate mean OOP medical spending by sex by age
+            right_sex = Sex==s
+            these = np.logical_and(THESE,right_sex)
+            OOP = OOPhist[t,these]
+            Weight = WeightHist[t+1,these]
+            WeightSum = np.sum(Weight)
+            MeanOOP = np.dot(OOP,Weight)/WeightSum
+            OOPbySexHealthAge[1,s,t] = MeanOOP
                 
         for i in range(5):
             # Calculate median wealth, mean health, and mean OOP medical spending by income quintile by age
@@ -852,8 +862,8 @@ if __name__ == '__main__':
 
 
     # Choose what kind of work to do:
-    test_obj_func = False
-    plot_model_fit = False
+    test_obj_func = True
+    plot_model_fit = True
     perturb_one_param = False
     perturb_two_params = False
     estimate_model = False
@@ -878,6 +888,13 @@ if __name__ == '__main__':
         for h in range(3):
             plt.plot(Data.OOPbySexHealthAge[0,h,:],'--')
         plt.ylabel('Mean OOP medical spending by health tertile')
+        plt.show()
+        
+        # Plot model fit of mean out of pocket medical spending by age-sex
+        plt.plot(X[7][1,0:2,:].transpose())
+        for s in range(2):
+            plt.plot(Data.OOPbySexHealthAge[1,s,:],'.')
+        plt.ylabel('Mean OOP medical spending by sex')
         plt.show()
         
         ## Plot model fit of mean out of pocket medical spending by age-health for males
@@ -997,9 +1014,9 @@ if __name__ == '__main__':
 
     if perturb_one_param:
         # Test model identification by perturbing one parameter at a time
-        param_i = 6
-        param_min = 1.0
-        param_max = 4.0
+        param_i = 9
+        param_min = -0.6
+        param_max = -0.2
         N = 21
         perturb_vec = np.linspace(param_min,param_max,num=N)
         fit_vec = np.zeros(N) + np.nan

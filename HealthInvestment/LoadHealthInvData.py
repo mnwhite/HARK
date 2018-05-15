@@ -22,19 +22,19 @@ use_cohorts = False
 
 # Choose which moments will actually be used
 moment_dummies = np.array([
-        True,  # OOPbyAge
-        True,  # StDevOOPbyAge
+        False, # OOPbyAge
+        False, # StDevOOPbyAge
         False, # MortByAge
         False, # StDevDeltaHealthByAge
-        True,  # StDevOOPbyHealthAge
+        False, # StDevOOPbyHealthAge
         False, # StDevDeltaHealthByHealthAge
         False, # HealthBySexHealthAge
         True,  # OOPbySexHealthAge
         False, # MortBySexHealthAge
-        True,  # WealthByIncAge
+        False, # WealthByIncAge
         False, # HealthByIncAge
         False, # OOPbyIncAge
-        True,  # WealthByIncWealthAge
+        False, # WealthByIncWealthAge
         False, # HealthByIncWealthAge
         False, # OOPbyIncWealthAge
         False, # AvgHealthResidualByIncWealth
@@ -484,6 +484,13 @@ for b in range(data_bootstrap_count+1):
                 DeathCount = float(np.sum(np.logical_and(those,JustDied)))
                 MortBySexHealthAge[s,h,a] = DeathCount/float(np.sum(those))
                 SexHealthAgeCellSizeMort[s,h,a] = np.sum(those)
+                
+    # Calculate mean OOP by age-sex
+    for s in range(2):
+        for a in range(15):
+            these = np.logical_and(Useable,np.logical_and(SexBoolArray[:,:,s],AgeBoolArray[:,:,a]))
+            OOPbySexHealthAge[1,s,a] = np.nanmean(arsinh(m_data[these]))
+    OOPbySexHealthAge[1,2,:] = 0.0 # Delete old moments
     
     # Calculate mean OOP medical spending by age: 15
     # Calculate stdev OOP medical spending by age: 15
@@ -525,7 +532,6 @@ for b in range(data_bootstrap_count+1):
             these = np.logical_and(Useable,np.logical_and(HealthTertBoolArray[:,:,h],AgeBoolArray[:,:,a]))
             OOPbySexHealthAge[0,h,a] = np.nanmean(arsinh(m_data[these]))
             StDevOOPbyHealthAge[h,a] = np.nanstd(arsinh(m_data[these]))
-            StDevDeltaHealthByHealthAge[h,a] = np.nan
             HealthAgeCellSize[h,a] = np.sum(these)
             thise = np.logical_and(HealthDeltaUseable,np.logical_and(HealthTertBoolArray[:,:,h],AgeBoolArray[:,:,a]))
             StDevDeltaHealthByHealthAge[h,a] = np.nanstd(HealthDelta[thise])
@@ -575,8 +581,8 @@ moment_mask = np.concatenate([
         np.ones(45)*moment_dummies[4],
         np.ones(45)*moment_dummies[5],
         np.ones(90)*moment_dummies[6],
-        np.ones(45)*moment_dummies[7], # OOPbySexHealthAge[0,:,:] now has data for all
-        np.zeros(45), # Don't use these moments ever
+        np.ones(75)*moment_dummies[7], # OOPbySexHealthAge[0,:,:] now has data by age-health, [1,0:2,:] has data for age-sex
+        np.zeros(15), # Don't use these moments ever
         np.ones(90)*moment_dummies[8],
         np.ones(75)*moment_dummies[9],
         np.ones(75)*moment_dummies[10],
@@ -603,8 +609,6 @@ if data_bootstrap_count > 0:
     moment_valid[1405:1410] = False # Turn off OOP moments for bottom wealth quintile of bottom income quintile after age 85
     moment_valid[1770:1773] = False # Turn off health residual moments for bottom three wealth quintiles of bottom income quintile
     moment_valid[1795:1798] = False # Turn off OOP residual moments for bottom three wealth quintiles of bottom income quintile
-    #moment_valid[1795] = False
-    #moment_valid[1800] = False
     valid_moment_N = np.sum(moment_valid)
     print(str(valid_moment_N) + ' of ' + str(moment_valid.size) + ' data moments were useable.')
     

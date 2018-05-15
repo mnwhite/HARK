@@ -146,7 +146,7 @@ test_param_vec = np.array([
     8.82755999476,      # 6 Bequest0
     4.732084828,        # 7 Bequest1
     -1.44413231226,     # 8 MedShkMean0
-    0.0,                # 9 MedShkMeanSex
+    -0.49,              # 9 MedShkMeanSex
     0.226006817126,     # 10 MedShkMeanAge
     -0.0015634240076,   # 11 MedShkMeanAgeSq
     -6.91037466878,     # 12 MedShkMeanHealth
