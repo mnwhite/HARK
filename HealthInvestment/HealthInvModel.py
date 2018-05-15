@@ -753,6 +753,7 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,CRRAmed,IncomeNext,IncomeNo
         TotalMed_temp = MedPrice*(i_temp + Med_temp)
         Medicare_temp = (TotalMed_temp - Subsidy_temp)*(1.-Copay_temp)
         Welfare_temp = np.zeros_like(OOP_temp) # No welfare unless we hit Cfloor
+        Life_temp = 2.0*norm.sf(LivPrbFunc(H_temp)) # Expected years we life this period
 
         # Calculate end-of-period states when at Cfloor
         a_Cfloor = np.zeros_like(b_temp[:,:,0])
@@ -767,6 +768,7 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,CRRAmed,IncomeNext,IncomeNo
         Welfare_Cfloor = Cost_Cfloor - b_temp[:,:,0] - Medicare_Cfloor # Welfare is whatever is not accounted for by bLvl or Medicare
         TotalMed_Cfloor[Never_Cfloor] = 0.0
         Welfare_Cfloor[Never_Cfloor] = 0.0
+        Life_Cfloor = 2.0*norm.sf(LivPrbFunc(H_Cfloor))
         
         # Evaluate future PDV of various objects on the grid of shocks
         FutureTotalMed_temp = FutureTotalMedFunc(a_temp,H_temp)
@@ -790,7 +792,7 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,CRRAmed,IncomeNext,IncomeNo
         MedicarePDV = np.sum((Medicare_temp + FutureMedicare_temp)*MedShkPrbArray, axis=2) + (Medicare_Cfloor + FutureMedicare_Cfloor)*CritShkPrbArray
         SubsidyPDV = np.sum((Subsidy_temp + FutureSubsidy_temp)*MedShkPrbArray, axis=2) + (Subsidy_Cfloor + FutureSubsidy_Cfloor)*CritShkPrbArray
         WelfarePDV = np.sum((Welfare_temp + FutureWelfare_temp)*MedShkPrbArray, axis=2) + (Welfare_Cfloor + FutureWelfare_Cfloor)*CritShkPrbArray
-        ExpectedLife = 2.0 + np.sum((FutureLife_temp)*MedShkPrbArray, axis=2) + (FutureLife_Cfloor)*CritShkPrbArray
+        ExpectedLife = np.sum((Life_temp + FutureLife_temp)*MedShkPrbArray, axis=2) + (Life_Cfloor + FutureLife_Cfloor)*CritShkPrbArray
         GovtPDV = MedicarePDV + SubsidyPDV + WelfarePDV
         
         # Make PDV functions and store them as attributes of the solution
