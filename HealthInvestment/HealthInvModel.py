@@ -458,10 +458,11 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,CRRAmed,IncomeNext,IncomeNo
     LivPrb = norm.sf(LivPrbFunc(Hgrid))
     TerriblePrb = norm.cdf(zArray[:,:,0])
     PerfectPrb = norm.sf(zArray[:,:,-1])
-    MainProbs = BaseProbs/ProbSum*np.tile(np.reshape(LivPrb*(1.0-TerriblePrb-PerfectPrb),(1,Hcount,1)),(1,1,hNextCount-2))
+    MainProbs = BaseProbs/ProbSum*np.tile(np.reshape((1.0-TerriblePrb-PerfectPrb),(1,Hcount,1)),(1,1,hNextCount-2))
     ProbArray[:,:,1:-1] = MainProbs
     ProbArray[:,:,0] = TerriblePrb
     ProbArray[:,:,-1] = PerfectPrb
+    ProbArray *= np.tile(np.reshape(LivPrb,(1,Hcount,1)),(1,1,hNextCount))
     DiePrb = 1. - LivPrb
         
     # Calculate the rate of change in probabilities of arriving in each future health state from end-of-period health
@@ -944,6 +945,8 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,CRRAmed,IncomeNext,IncomeNo
         Cost_Cfloor = Cfloor + Premium_temp[:,:,0] + MedPrice*TotalMed_Cfloor # Total expected cost of all goods at Cfloor
         Medicare_Cfloor = (1.-Copay_temp[:,:,0])*OOP_Cfloor/Copay_temp[:,:,0] # Medicare pays for medical expenses until Cfloor is hit
         Welfare_Cfloor = Cost_Cfloor - b_temp[:,:,0] - Medicare_Cfloor # Welfare is whatever is not accounted for by bLvl or Medicare
+        TotalMed_Cfloor[Never_Cfloor] = 0.0
+        Welfare_Cfloor[Never_Cfloor] = 0.0
         
         # Evaluate future PDV of various objects on the grid of shocks
         FutureTotalMed_temp = FutureTotalMedFunc(a_temp,H_temp)
@@ -968,7 +971,7 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,CRRAmed,IncomeNext,IncomeNo
         SubsidyPDV = np.sum((Subsidy_temp + FutureSubsidy_temp)*MedShkPrbArray, axis=2) + (Subsidy_Cfloor + FutureSubsidy_Cfloor)*CritShkPrbArray
         WelfarePDV = np.sum((Welfare_temp + FutureWelfare_temp)*MedShkPrbArray, axis=2) + (Welfare_Cfloor + FutureWelfare_Cfloor)*CritShkPrbArray
         ExpectedLife = 2.0 + np.sum((FutureLife_temp)*MedShkPrbArray, axis=2) + (FutureLife_Cfloor)*CritShkPrbArray
-        GovtPDV = MedicarePDV + SubsidyPDV + ExpectedLife
+        GovtPDV = MedicarePDV + SubsidyPDV + WelfarePDV
         
         # Make PDV functions and store them as attributes of the solution
         solution_now.TotalMedPDVfunc = BilinearInterp(TotalMedPDV,bLvlGrid,hLvlGrid)
