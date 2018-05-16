@@ -137,22 +137,22 @@ basic_estimation_dict.update(grid_size_params)
 
 # Make a test parameter vector
 test_param_vec = np.array([
-    1.40271510879,      # 0 CRRA
-    0.953002440294,     # 1 DiscFac
+    1.31848194189,      # 0 CRRA
+    0.951777852029,     # 1 DiscFac
     5.87049902286,      # 2 MedCurve
     2.26019614099,      # 3 LifeUtility
     0.0,                # 4 MargUtilityShift
-    0.433464574891,     # 5 Cfloor
-    8.82755999476,      # 6 Bequest0
-    4.732084828,        # 7 Bequest1
-    -1.23384437546,     # 8 MedShkMean0
+    0.222343957329,     # 5 Cfloor
+    11.4165243069,      # 6 Bequest0
+    3.83333489479,      # 7 Bequest1
+    -1.27056067029,     # 8 MedShkMean0
     0.0,                # 9 MedShkMeanSex
-    0.217850845215,     # 10 MedShkMeanAge
-    -0.00228257976039,  # 11 MedShkMeanAgeSq
-    -6.8321332634,      # 12 MedShkMeanHealth
-    -0.0550335699222,   # 13 MedShkMeanHealthSq
-    2.00168371994,      # 14 MedShkStd0
-    0.291841396883,     # 15 MedShkStd1
+    0.221595411393,     # 10 MedShkMeanAge
+    -0.00287169449526,  # 11 MedShkMeanAgeSq
+    -6.68044453199,     # 12 MedShkMeanHealth
+    -0.0614538984595,   # 13 MedShkMeanHealthSq
+    1.98837933411,      # 14 MedShkStd0
+    0.301197776702,     # 15 MedShkStd1
     -0.00116834109549,  # 16 HealthNext0
     -0.00806383188226,  # 17 HealthNextSex
     -0.000819044499055, # 18 HealthNextAge
