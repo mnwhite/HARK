@@ -137,39 +137,39 @@ basic_estimation_dict.update(grid_size_params)
 
 # Make a test parameter vector
 test_param_vec = np.array([
-    1.31848194189,      # 0 CRRA
-    0.951777852029,     # 1 DiscFac
-    5.87049902286,      # 2 MedCurve
-    2.26019614099,      # 3 LifeUtility
+    1.31227464968,      # 0 CRRA
+    0.951743507223,     # 1 DiscFac
+    5.92045230814,      # 2 MedCurve
+    2.33386438153,      # 3 LifeUtility
     0.0,                # 4 MargUtilityShift
-    0.222343957329,     # 5 Cfloor
-    11.4165243069,      # 6 Bequest0
-    3.83333489479,      # 7 Bequest1
-    -1.27056067029,     # 8 MedShkMean0
+    0.222906767166,     # 5 Cfloor
+    11.4460359759,      # 6 Bequest0
+    3.80938776521,      # 7 Bequest1
+    -1.27333768705,     # 8 MedShkMean0
     0.0,                # 9 MedShkMeanSex
-    0.221595411393,     # 10 MedShkMeanAge
-    -0.00287169449526,  # 11 MedShkMeanAgeSq
-    -6.68044453199,     # 12 MedShkMeanHealth
-    -0.0614538984595,   # 13 MedShkMeanHealthSq
-    1.98837933411,      # 14 MedShkStd0
-    0.301197776702,     # 15 MedShkStd1
-    -0.00116834109549,  # 16 HealthNext0
-    -0.00806383188226,  # 17 HealthNextSex
-    -0.000819044499055, # 18 HealthNextAge
-    -0.000347150554326, # 19 HealthNextAgeSq
-    0.880326170663,     # 20 HealthNextHealth
-    0.078761617513,     # 21 HealthNextHealthSq
-    0.170477527804,     # 22 HealthShkStd0
-    -0.0801110679839,   # 23 HealthShkStd1
-    -14.877102499,      # 24 LogJerk
-    -1.52104735886,     # 25 LogSlope
-    2.05062400653,      # 26 LogCurve
-    -0.39771190734,     # 27 Mortality0
-    0.344463349295,     # 28 MortalitySex
-    -0.000620796977268, # 29 MortalityAge
-    0.00622864936203,   # 30 MortalityAgeSq
-    -3.20895556924,     # 31 MortalityHealth
-    1.33042762047,      # 32 MortalityHealthSq
+    0.221726768121,     # 10 MedShkMeanAge
+    -0.00286998248716,  # 11 MedShkMeanAgeSq
+    -6.67629226678,     # 12 MedShkMeanHealth
+    -0.0615004369575,   # 13 MedShkMeanHealthSq
+    1.98861616794,      # 14 MedShkStd0
+    0.303606509789,     # 15 MedShkStd1
+    -0.0011637681873,   # 16 HealthNext0
+    -0.00805163660507,  # 17 HealthNextSex
+    -0.000819783048845, # 18 HealthNextAge
+    -0.00034825565717,  # 19 HealthNextAgeSq
+    0.87996678252,      # 20 HealthNextHealth
+    0.0781600175873,    # 21 HealthNextHealthSq
+    0.17037348533,      # 22 HealthShkStd0
+    -0.0804025772933,   # 23 HealthShkStd1
+    -14.8839894417,     # 24 LogJerk
+    -1.53126486432,     # 25 LogSlope
+    2.06452653773,      # 26 LogCurve
+    -0.396828479727,    # 27 Mortality0
+    0.342775636977,     # 28 MortalitySex
+    -0.000622613919962, # 29 MortalityAge
+    0.0062259993173,    # 30 MortalityAgeSq
+    -3.20969450762,     # 31 MortalityHealth
+    1.33098832529,      # 32 MortalityHealthSq
     ])
 
 #    1.65857373243,      # 3 LifeUtility
