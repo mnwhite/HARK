@@ -268,22 +268,25 @@ def makeCounterfactualSummaryTables(means,spec_name,file_base,label):
                  'Change in PDV of Medicare Costs',
                  'PDV of Direct Subsidy Expenses',
                  'Change in PDV of Welfare Payments',
-                 'Change in PDV of Total Government Expenses']
+                 'Change in PDV of Total Government Expenses',
+                 'Willingness to Pay for Policy']
     var_codes = ['TotalMed',
                  'OOPmed',
                  'ExpLife',
                  'Medicare',
                  'Subsidy',
                  'Welfare',
-                 'Govt']
+                 'Govt',
+                 'WTP']
     convert = [True,
                True,
                False,
                True,
                True,
                True,
+               True,
                True]
     
-    for i in range(7):
+    for i in range(8):
         makeCounterfactualSummaryTablesOneVar(means[i],var_names[i],spec_name,file_base + var_codes[i],label + var_codes[i],convert[i])
           

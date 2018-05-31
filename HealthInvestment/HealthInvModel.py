@@ -488,6 +488,7 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,CRRAmed,IncomeNext,IncomeNo
     EndOfPrddvdH = DiscFac*(np.sum(vNext_tiled*dProbdHArray_tiled,axis=2)) + dDiePrbdH_tiled*BequestMotiveArray
     MargValueRatio = EndOfPrddvda/EndOfPrddvdH
     MargValueRatioAdj = np.maximum(MargValueRatio*MedPrice,0.0)
+    MargValueRatioAdj[np.isinf(MargValueRatioAdj)] = 0.0 # Code infinities as zero
     
     if CalcExpectationFuncs:
         # Evaluate PDV of future expected lifetime medical care and life expectancy, and make interpolations
@@ -536,7 +537,6 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,CRRAmed,IncomeNext,IncomeNo
         hGuess = hNow[these].flatten()
         CopayGuess = CopayFunc(hGuess)
         iGuess = np.maximum(MargHealthProdInvFunc(CopayGuess*Ratio),0.0) # Invert FOC for iLvl
-        iGuess[np.isinf(Ratio)] = 0.0
         iGuess[Ratio == 0.] = 0.0 # Fix "bad" iLvl values
         temp = np.logical_and(Ratio > 0., np.logical_not(np.isinf(Ratio)))
         iGuess[temp] = np.maximum(iGuess[temp], SubsidyFunc(hGuess[temp])/MedPrice) # If i is good but not using all subsidy, use it all
@@ -589,6 +589,7 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,CRRAmed,IncomeNext,IncomeNo
     HarrayCnst = np.tile(np.reshape(Hgrid,(1,Hcount,1)),(bCnstCount,1,MedShkCount))
     EndOfPrddvdHCnst = np.tile(np.reshape(EndOfPrddvdH[0,:],(1,Hcount,1)),(bCnstCount,1,MedShkCount))
     EndOfPrddvdHCnstAdj = np.maximum(EndOfPrddvdHCnst,0.0)
+    EndOfPrddvdHCnstAdj[np.isinf(EndOfPrddvdHCnstAdj)] = 0.0 # code infinities as zero
     
     # Use a fixed point loop to solve for the constrained solution at each constrained xLvl
     tol = 1e-5
@@ -611,6 +612,8 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,CRRAmed,IncomeNext,IncomeNo
         iLvl = np.maximum(MargHealthProdInvFunc(ImpliedMargHealthProd),0.0) # Invert FOC for iLvl when constrained
         iLvl[dvdH == 0.] = 0. # Fix zero dvdH (actually negative) to have zero investment
         iLvl[x == 0.] = 0. # Solution when x=0 is also i=0
+        temp = dvdH > 0.
+        iLvl[temp] = np.maximum(iLvl[temp], SubsidyFunc(hGuess[temp])/MedPrice) # If i is good but not using all subsidy, use it all
         hCnst[these] = ExpHealthNextInvFunc(HarrayCnst[these] - HealthProdFunc(iLvl)) # Update constrained hLvl
         diff[these] = np.abs(iCnst[these] - iLvl) # Calculate distance between old and new iLvl
         iCnst[these] = iLvl
