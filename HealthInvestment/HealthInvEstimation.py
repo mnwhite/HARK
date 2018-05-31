@@ -10,7 +10,7 @@ from time import clock
 from copy import copy
 import numpy as np
 from statsmodels.api import WLS
-from HARKparallel import multiThreadCommands
+from HARKparallel import multiThreadCommands, multiThreadCommandsFake
 from HARKestimation import minimizeNelderMead
 from HARKutilities import getPercentiles
 from HealthInvModel import HealthInvestmentConsumerType
@@ -52,6 +52,7 @@ class EstimationAgentType(HealthInvestmentConsumerType):
         self.AgentCount = X*self.DataAgentCount
         self.WealthQuint = np.tile(self.WealthQuint,X)
         self.HealthTert = np.tile(self.HealthTert,X)
+        self.HealthQuint = np.tile(self.HealthQuint,X)
         self.aLvlInit = np.tile(self.aLvlInit,X)
         self.HlvlInit = np.tile(self.HlvlInit,X)
         self.BornBoolArray = np.tile(self.BornBoolArray,(1,X))
@@ -131,6 +132,7 @@ def makeMultiTypeWithCohorts(params):
         ThisType.DataAgentCount = np.sum(these)
         ThisType.WealthQuint = Data.wealth_quint_data[these]
         ThisType.HealthTert = Data.health_tert_data[these]
+        ThisType.HealthQuint = Data.health_quint_data[these]
         ThisType.aLvlInit = Data.w_init[these]
         ThisType.HlvlInit = Data.h_init[these]
         ThisType.BornBoolArray = Data.BornBoolArray[:,these]
@@ -174,6 +176,7 @@ def makeMultiTypeSimple(params):
         ThisType.DataAgentCount = np.sum(these)
         ThisType.WealthQuint = Data.wealth_quint_data[these]
         ThisType.HealthTert = Data.health_tert_data[these]
+        ThisType.HealthQuint = Data.health_quint_data[these]
         ThisType.aLvlInit = Data.w_init[these]
         ThisType.HlvlInit = Data.h_init[these]
         ThisType.BornBoolArray = Data.BornBoolArray[:,these]
@@ -238,6 +241,7 @@ def calcSimulatedMoments(type_list,return_as_list):
     
     # Combine data labels across types
     HealthTert = np.concatenate([this_type.HealthTert for this_type in type_list])
+    HealthQuint = np.concatenate([this_type.HealthQuint for this_type in type_list])
     WealthQuint = np.concatenate([this_type.WealthQuint for this_type in type_list])
     IncQuint = np.concatenate([this_type.IncQuintLong for this_type in type_list])
     Sex = np.concatenate([this_type.SexLong for this_type in type_list])
@@ -270,6 +274,7 @@ def calcSimulatedMoments(type_list,return_as_list):
     WealthByIncWealthAge = np.zeros((5,5,15))
     HealthByIncWealthAge = np.zeros((5,5,15))
     OOPbyIncWealthAge = np.zeros((5,5,15))
+    MortByHealthAge = np.zeros((5,15))
     
     # Make large 1D vectors for the health transition and OOP regressions
     THESE = np.logical_and(Active,InDataSpan)
@@ -342,6 +347,14 @@ def calcSimulatedMoments(type_list,return_as_list):
         HealthChangeSqDevFromMean = (HealthChange - MeanHealthChange)**2
         StDevDeltaHealthByAge[t] = np.sqrt(np.dot(HealthChangeSqDevFromMean,Weight)/WeightSum)
         
+        for h in range(5):
+            right_health = HealthQuint == (h+1)
+            these = np.logical_and(THESE,right_health)
+            Mort = MortHist[t+1,these]
+            Weight = WeightHist[t+1,these]
+            WeightSum = np.sum(Weight)
+            MortByHealthAge[h,t] = np.dot(Mort,Weight)/WeightSum
+        
         for h in range(3):
             # Calculate stdev OOP medical spending and stdev delta health by health by age
             right_health = HealthTert==(h+1)
@@ -371,6 +384,16 @@ def calcSimulatedMoments(type_list,return_as_list):
                 #OOPbySexHealthAge[s,h,t] = MeanOOP
                 HealthBySexHealthAge[s,h,t] = np.dot(Health,Weight)/WeightSum
                 MortBySexHealthAge[s,h,t] = np.dot(Mort,Weight)/WeightSum
+        
+        for s in range(2):
+            # Calculate mean OOP medical spending by sex by age
+            right_sex = Sex==s
+            these = np.logical_and(THESE,right_sex)
+            OOP = OOPhist[t,these]
+            Weight = WeightHist[t+1,these]
+            WeightSum = np.sum(Weight)
+            MeanOOP = np.dot(OOP,Weight)/WeightSum
+            OOPbySexHealthAge[1,s,t] = MeanOOP
                 
         for i in range(5):
             # Calculate median wealth, mean health, and mean OOP medical spending by income quintile by age
@@ -417,7 +440,8 @@ def calcSimulatedMoments(type_list,return_as_list):
                 HealthByIncWealthAge,
                 OOPbyIncWealthAge,
                 AvgHealthResidualByIncWealth,
-                AvgOOPResidualByIncWealth
+                AvgOOPResidualByIncWealth,
+                MortByHealthAge
                 ]
     else: 
         all_moments = np.concatenate([
@@ -437,7 +461,8 @@ def calcSimulatedMoments(type_list,return_as_list):
                 HealthByIncWealthAge.flatten(),
                 OOPbyIncWealthAge.flatten(),
                 AvgHealthResidualByIncWealth.flatten(),
-                AvgOOPResidualByIncWealth.flatten()
+                AvgOOPResidualByIncWealth.flatten(),
+                MortByHealthAge.flatten()
                 ])
     return all_moments
 
@@ -680,7 +705,7 @@ def objectiveFunction(params,use_cohorts,return_as_list):
     TypeList = processSimulatedTypes(params,use_cohorts)
     SimulatedMoments = calcSimulatedMoments(TypeList,return_as_list)
     
-    if False:
+    if False: # Set this block to true to run the "pseudo estimation" for health production parameters
         HealthProdMoments = pseudoEstHealthProdParams(TypeList,return_as_list)
         if return_as_list:
             SimulatedMoments[-2] = HealthProdMoments[0]
@@ -727,17 +752,6 @@ def convertVecToDict(param_vec):
     Converts a 33 length vector of parameters to a dictionary that can be used
     by the estimator or standard error calculator.
     '''
-#    # Translate the parameter vector 
-#    HealthProd0 = param_vec[24]   # "Ultimate" curvature of health production function
-#    tempx = np.exp(param_vec[25]) # Slope of health production function at iLvl=0
-#    tempy = -np.exp(param_vec[25]+param_vec[26]) # Curvature of health prod at iLvl=0
-#    if tempx > 0.:
-#        HealthProd2 = tempx/tempy*(HealthProd0-1.)
-#        HealthProd1 = tempx/HealthProd0*HealthProd2**(1.-HealthProd0)
-#    else:
-#        HealthProd2 = 1.
-#        HealthProd1 = 0.
-    
     struct_params = {
         'CRRA' : param_vec[0],
         'DiscFac' : param_vec[1],
@@ -820,13 +834,14 @@ if __name__ == '__main__':
 #    print('Processing one agent type took ' + str(t_end-t_start) + ' seconds.')
 #
 #    t=0
-#    bMax = 50.
+#    bMax = 100.
 #    MyTypes[i].plotxFuncByHealth(t,MedShk=0.1,bMax=bMax)
 #    MyTypes[i].plotxFuncByMedShk(t,hLvl=0.9,bMax=bMax)
 #    MyTypes[i].plotiFuncByHealth(t,MedShk=0.1,bMax=bMax)
+#    MyTypes[i].plotiFuncByMedShk(t,hLvl=0.9,bMax=bMax)
 #    MyTypes[i].plotvFuncByHealth(t,bMax=bMax)
 #    MyTypes[i].plotdvdbFuncByHealth(t,bMax=bMax)
-#    MyTypes[i].plotdvdhFuncByHealth(t,bMax=bMax)
+#    #MyTypes[i].plotdvdhFuncByHealth(t,bMax=bMax)
 #
 #    MyTypes[i].plot2DfuncByHealth('TotalMedPDVfunc',t,bMax=bMax)
 #    MyTypes[i].plot2DfuncByWealth('TotalMedPDVfunc',t)
@@ -863,7 +878,7 @@ if __name__ == '__main__':
 
     # Choose what kind of work to do:
     test_obj_func = True
-    plot_model_fit = True
+    plot_model_fit = False
     perturb_one_param = False
     perturb_two_params = False
     estimate_model = False
@@ -888,6 +903,13 @@ if __name__ == '__main__':
         for h in range(3):
             plt.plot(Data.OOPbySexHealthAge[0,h,:],'--')
         plt.ylabel('Mean OOP medical spending by health tertile')
+        plt.show()
+        
+        # Plot model fit of mean out of pocket medical spending by age-sex
+        plt.plot(X[7][1,0:2,:].transpose())
+        for s in range(2):
+            plt.plot(Data.OOPbySexHealthAge[1,s,:],'.')
+        plt.ylabel('Mean OOP medical spending by sex')
         plt.show()
         
         ## Plot model fit of mean out of pocket medical spending by age-health for males
@@ -941,6 +963,13 @@ if __name__ == '__main__':
         for h in range(3):
             plt.plot(Data.MortBySexHealthAge[1,h,:],'.')
         plt.ylabel('Mortality probability, men')
+        plt.show()
+        
+        # Plot model fit of mortality by age and health quintile
+        plt.plot(X[17].transpose())
+        for h in range(5):
+            plt.plot(Data.MortByHealthAge[h,:],'.')
+        plt.ylabel('Mortality probability by health quintile')
         plt.show()
     
         # Plot model fit of wealth by age and income quintile
@@ -1007,9 +1036,9 @@ if __name__ == '__main__':
 
     if perturb_one_param:
         # Test model identification by perturbing one parameter at a time
-        param_i = 12
-        param_min = -10.5
-        param_max = -9.
+        param_i = 32
+        param_min = 1.0
+        param_max = 1.8
         N = 21
         perturb_vec = np.linspace(param_min,param_max,num=N)
         fit_vec = np.zeros(N) + np.nan
@@ -1058,7 +1087,7 @@ if __name__ == '__main__':
 
     if estimate_model:
         # Estimate some (or all) of the model parameters
-        which_indices = np.array([0,1,2,3,5,6,7,8,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32])
+        which_indices = np.array([0,1,5,6,7,8,10,11,12,13,14,15])
         which_bool = np.zeros(33,dtype=bool)
         which_bool[which_indices] = True
         estimated_params = minimizeNelderMead(objectiveFunctionWrapper,Params.test_param_vec,verbose=True,which_vars=which_bool)
@@ -1069,7 +1098,7 @@ if __name__ == '__main__':
 
     if calc_std_errs:
         # Calculate standard errors for some or all parameters
-        which_indices = np.array([0,1,2,3,5,6,7,8,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32])
+        which_indices = np.array([0,1,5,6,7,8,10,11,12,13,14,15])
         which_bool = np.zeros(33,dtype=bool)
         which_bool[which_indices] = True
         standard_errors, cov_matrix = calcStdErrs(Params.test_param_vec,Data.use_cohorts,which_bool,eps=0.001)

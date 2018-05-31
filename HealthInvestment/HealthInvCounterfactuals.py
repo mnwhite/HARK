@@ -14,6 +14,7 @@ from HARKcore import HARKobject
 from HARKparallel import multiThreadCommands, multiThreadCommandsFake
 from HealthInvEstimation import convertVecToDict, EstimationAgentType
 import LoadHealthInvData as Data
+import matplotlib.pyplot as plt
 
 # Define a class to hold subpopulation means
 class MyMeans(HARKobject):
@@ -92,7 +93,7 @@ class SubsidyPolicy(HARKobject):
         '''
         for name in self.policy_attributes:
             for i in range(len(Agents)):
-                setattr(Agents[i],name,getattr(self,name))
+                setattr(Agents[i],name,getattr(self,name)[i])
                 
                 
 # Define an agent class for the policy experiments, adding a few methods
@@ -112,8 +113,6 @@ class CounterfactualAgentType(EstimationAgentType):
         self.repSimData()
         self.t_ageInit = self.BornBoolArray.flatten() # other end of hacky fix
         self.evalExpectationFuncs(False)
-        for t in range(3):
-            self.plotvFuncByHealth(t)
         self.delSolution()
         
         
@@ -234,6 +233,7 @@ def makeMultiTypeCounterfactual(params):
         ThisType.DataAgentCount = np.sum(these)
         ThisType.WealthQuint = Data.wealth_quint_data[these]
         ThisType.HealthTert = Data.health_tert_data[these]
+        ThisType.HealthQuint = Data.health_quint_data[these]
         ThisType.aLvlInit = Data.w7_data[these]
         ThisType.HlvlInit = Data.h7_data[these]
         ThisType.t_ageInit = Data.age_in_2010[these]
@@ -281,6 +281,10 @@ def calcSubpopMeans(type_list):
     SubsidyPDVarray = np.concatenate([this_type.SubsidyPDVarray for this_type in type_list])
     WelfarePDVarray = np.concatenate([this_type.WelfarePDVarray for this_type in type_list])
     GovtPDVarray = np.concatenate([this_type.GovtPDVarray for this_type in type_list])
+    WTParray = np.concatenate([this_type.WTParray for this_type in type_list])
+    
+    plt.plot(np.sort(WTParray))
+    plt.show()
     
     # Make and return MyMeans objects
     TotalMedMeans = MyMeans(TotalMedPDVarray,WealthQuint,IncQuint,HealthQuarter)
@@ -290,7 +294,8 @@ def calcSubpopMeans(type_list):
     SubsidyMeans = MyMeans(SubsidyPDVarray,WealthQuint,IncQuint,HealthQuarter)
     WelfareMeans = MyMeans(WelfarePDVarray,WealthQuint,IncQuint,HealthQuarter)
     GovtMeans = MyMeans(GovtPDVarray,WealthQuint,IncQuint,HealthQuarter)
-    SubpopMeans = [TotalMedMeans, OOPmedMeans, ExpectedLifeMeans, MedicareMeans, SubsidyMeans, WelfareMeans, GovtMeans]
+    WTPmeans = MyMeans(WTParray,WealthQuint,IncQuint,HealthQuarter)
+    SubpopMeans = [TotalMedMeans, OOPmedMeans, ExpectedLifeMeans, MedicareMeans, SubsidyMeans, WelfareMeans, GovtMeans, WTPmeans]
     return SubpopMeans
     #return [TotalMedPDVarray, OOPmedPDVarray, ExpectedLifeArray, MedicarePDVarray, SubsidyPDVarray, WelfarePDVarray, GovtPDVarray]
                 
@@ -318,8 +323,8 @@ def runCounterfactuals(name,Parameters,Policies):
     Agents = makeMultiTypeCounterfactual(param_dict)
     
     # Solve the baseline model and get arrays of outcome variables
-    multiThreadCommandsFake(Agents,['runBaselineAction()'])
-    TotalMedBaseline, OOPmedBaseline, ExpectedLifeBaseline, MedicareBaseline, SubsidyBaseline, WelfareBaseline, GovtBaseline = calcSubpopMeans(Agents)
+    multiThreadCommands(Agents,['runBaselineAction()'],num_jobs=5)
+    TotalMedBaseline, OOPmedBaseline, ExpectedLifeBaseline, MedicareBaseline, SubsidyBaseline, WelfareBaseline, GovtBaseline, trash = calcSubpopMeans(Agents)
     for this_type in Agents:
         this_type.ValueBaseline = copy(this_type.ValueArray)
         
@@ -334,6 +339,7 @@ def runCounterfactuals(name,Parameters,Policies):
     SubsidyDiffs = np.zeros(N)
     WelfareDiffs = np.zeros(N)
     GovtDiffs = np.zeros(N)
+    WTPs = np.zeros(N)
     for n in range(N):
         # Enact the policy for all of the agents
         this_policy = Policies[n]
@@ -341,7 +347,7 @@ def runCounterfactuals(name,Parameters,Policies):
         
         # Run the counterfactual and get arrays of outcome variables
         multiThreadCommands(Agents,['runCounterfactualAction()'],num_jobs=5)
-        TotalMedCounterfactual, OOPmedCounterfactual, ExpectedLifeCounterfactual, MedicareCounterfactual, SubsidyCounterfactual, WelfareCounterfactual, GovtCounterfactual = calcSubpopMeans(Agents)
+        TotalMedCounterfactual, OOPmedCounterfactual, ExpectedLifeCounterfactual, MedicareCounterfactual, SubsidyCounterfactual, WelfareCounterfactual, GovtCounterfactual, WTPcounterfactual = calcSubpopMeans(Agents)
         
         # Calculate differences and store overall means in the arrays
         TotalMedDiff = TotalMedCounterfactual.subtract(TotalMedBaseline)
@@ -359,14 +365,14 @@ def runCounterfactuals(name,Parameters,Policies):
         SubsidyDiffs[n] = SubsidyDiff.overall
         WelfareDiffs[n] = WelfareDiff.overall
         GovtDiffs[n] = GovtDiff.overall
+        WTPs[n] = WTPcounterfactual.overall
         
     # If there is only one counterfactual policy, return the full set of mean-diffs.
     # If there is more than one, return vectors of overall mean-diffs.
-    return Agents
     if len(Policies) > 1:
-        return [TotalMedDiffs, OOPmedDiffs, ExpectedLifeDiffs, MedicareDiffs, SubsidyDiffs, WelfareDiffs, GovtDiffs]
+        return [TotalMedDiffs, OOPmedDiffs, ExpectedLifeDiffs, MedicareDiffs, SubsidyDiffs, WelfareDiffs, GovtDiffs, WTPs]
     else:
-        return [TotalMedDiff, OOPmedDiff, ExpectedLifeDiff, MedicareDiff, SubsidyDiff, WelfareDiff, GovtDiff]
+        return [TotalMedDiff, OOPmedDiff, ExpectedLifeDiff, MedicareDiff, SubsidyDiff, WelfareDiff, GovtDiff, WTPcounterfactual]
             
             
 
@@ -376,20 +382,20 @@ if __name__ == '__main__':
     from MakeTables import makeCounterfactualSummaryTables
     from MakeFigures import makeCounterfactualFigures
     
-    TestPolicy = SubsidyPolicy(Subsidy0=0.05,Subsidy1=0.0)
+    TestPolicy = SubsidyPolicy(Subsidy0=10*[0.01],Subsidy1=10*[0.0])
     t_start = clock()
     Out = runCounterfactuals('blah',Params.test_param_vec,[TestPolicy])
     t_end = clock()
     print('That took ' + str(t_end-t_start) + ' seconds.')
-#    makeCounterfactualSummaryTables(Out,'Test Policy','testname','Test')
+    makeCounterfactualSummaryTables(Out,'Test Policy','testname','Test')
 
 #    PolicyList = []
 #    SubsidyVec = np.linspace(0,0.1,6)
 #    for x in SubsidyVec:
-#        PolicyList.append(SubsidyPolicy(Subsidy0=x,Subsidy1=0.0))
+#        PolicyList.append(SubsidyPolicy(Subsidy0=10*[x],Subsidy1=10*[0.0]))
 #    t_start = clock()
 #    Out = runCounterfactuals('blah',Params.test_param_vec,PolicyList)
 #    t_end = clock()
 #    print('That took ' + str(t_end-t_start) + ' seconds.')
 #    makeCounterfactualFigures(Out,SubsidyVec*10000,'Subsidy',' Test Scenario', 'Test')
-    
+#    

@@ -11,6 +11,7 @@ import scipy as sp
 import statsmodels.api as sm
 sys.path.insert(0,'../')
 sys.path.insert(0,'./Data/')
+from HARKutilities import getPercentiles
 
 # Choose how many times to bootstrap the data to calculate standard errors for data moments.
 # If this is zero, the module will try to read the CSV file ./Data/MomentWeights.txt to load
@@ -22,23 +23,24 @@ use_cohorts = False
 
 # Choose which moments will actually be used
 moment_dummies = np.array([
-        True,  # OOPbyAge
-        True,  # StDevOOPbyAge
-        True,  # MortByAge
-        True,  # StDevDeltaHealthByAge
-        True,  # StDevOOPbyHealthAge
-        True,  # StDevDeltaHealthByHealthAge
-        True,  # HealthBySexHealthAge
-        True,  # OOPbySexHealthAge
-        True,  # MortBySexHealthAge
-        True,  # WealthByIncAge
-        True,  # HealthByIncAge
+        False, # OOPbyAge
+        False, # StDevOOPbyAge
+        False, # MortByAge
+        False, # StDevDeltaHealthByAge
+        False, # StDevOOPbyHealthAge
+        False, # StDevDeltaHealthByHealthAge
+        False, # HealthBySexHealthAge
+        False, # OOPbySexHealthAge
+        False, # MortBySexHealthAge
+        False, # WealthByIncAge
+        False, # HealthByIncAge
         False, # OOPbyIncAge
-        True,  # WealthByIncWealthAge
+        False, # WealthByIncWealthAge
         False, # HealthByIncWealthAge
         False, # OOPbyIncWealthAge
-        True,  # AvgHealthResidualByIncWealth
+        False, # AvgHealthResidualByIncWealth
         True,  # AvgOOPResidualByIncWealth
+        False, # MortByHealthAge
         ])
 
 # Make a random number generator for the data bootstrap
@@ -182,7 +184,7 @@ for j in range(10):
     MaxWealthSmall[j] = np.max(MaxWealth[these])
 
 # Initialize an array of bootstrapped data moments
-moment_count = 1820
+moment_count = 1895
 BootstrappedMoments = np.zeros((data_bootstrap_count,moment_count)) + np.nan
 BootstrapValidBool = np.zeros(data_bootstrap_count,dtype=bool)
 BootstrappedResiduals = np.zeros((data_bootstrap_count,26)) + np.nan
@@ -293,6 +295,17 @@ for b in range(data_bootstrap_count+1):
     Alive = h_data > 0.
     NotInit = np.logical_not(InitBoolArray)
     Useable = np.logical_and(BelowCohort16,np.logical_and(Alive,NotInit))
+    
+    # Calculate health quintiles at data entry by age
+    health_quintile_cuts = np.zeros((4,15))
+    health_quint_data = np.zeros_like(health_tert_data,dtype=int)
+    for a in range(15):
+        these = np.logical_and(Alive,AgeBoolArray[:,:,a])
+        health_temp = h_data[these]
+        health_quintile_cuts[:,a] = getPercentiles(health_temp,percentiles=[0.2,0.4,0.6,0.8])
+        h_init_temp = h_init[BornBoolArray[a,:]]
+        health_quint_data[BornBoolArray[a,:]] = np.searchsorted(health_quintile_cuts[:,a],h_init_temp)
+    health_quint_data += 1 # To fit with other style
     
     # Make data objects for the health production pre-estimation
     UseableAlt = np.logical_and(BelowCohort16,Alive)
@@ -422,6 +435,13 @@ for b in range(data_bootstrap_count+1):
         right_tert = HealthTert == j+1
         HealthTertBoolArray[:,:,j] = right_tert
         
+    # Make boolean array of health quintiles for the data
+    HealthQuint = np.tile(np.reshape(health_quint_data,(1,obs)),(8,1))
+    HealthQuintBoolArray = np.zeros((8,obs,5),dtype=bool)
+    for j in range(5):
+        right_quint = HealthQuint == j+1
+        HealthQuintBoolArray[:,:,j] = right_quint
+        
     # Make a boolean array of sex for the data
     Sex = np.tile(np.reshape(sex_data,(1,obs)),(8,1))
     SexBoolArray = np.zeros((8,obs,2),dtype=bool)
@@ -484,6 +504,13 @@ for b in range(data_bootstrap_count+1):
                 DeathCount = float(np.sum(np.logical_and(those,JustDied)))
                 MortBySexHealthAge[s,h,a] = DeathCount/float(np.sum(those))
                 SexHealthAgeCellSizeMort[s,h,a] = np.sum(those)
+                
+    # Calculate mean OOP by age-sex
+    for s in range(2):
+        for a in range(15):
+            these = np.logical_and(Useable,np.logical_and(SexBoolArray[:,:,s],AgeBoolArray[:,:,a]))
+            OOPbySexHealthAge[1,s,a] = np.nanmean(arsinh(m_data[these]))
+    OOPbySexHealthAge[1,2,:] = 0.0 # Delete old moments
     
     # Calculate mean OOP medical spending by age: 15
     # Calculate stdev OOP medical spending by age: 15
@@ -525,11 +552,18 @@ for b in range(data_bootstrap_count+1):
             these = np.logical_and(Useable,np.logical_and(HealthTertBoolArray[:,:,h],AgeBoolArray[:,:,a]))
             OOPbySexHealthAge[0,h,a] = np.nanmean(arsinh(m_data[these]))
             StDevOOPbyHealthAge[h,a] = np.nanstd(arsinh(m_data[these]))
-            StDevDeltaHealthByHealthAge[h,a] = np.nan
             HealthAgeCellSize[h,a] = np.sum(these)
             thise = np.logical_and(HealthDeltaUseable,np.logical_and(HealthTertBoolArray[:,:,h],AgeBoolArray[:,:,a]))
             StDevDeltaHealthByHealthAge[h,a] = np.nanstd(HealthDelta[thise])
             HealthAgeCellSizeHealthDelta[h,a] = np.sum(thise)
+            
+    # Calculate mortality by health quintile by age: 75
+    MortByHealthAge = np.zeros((5,15))
+    for h in range(5):
+        for a in range(15):
+            those = np.logical_and(MortUseable,np.logical_and(HealthQuintBoolArray[:,:,h],AgeBoolArray[:,:,a]))
+            DeathCount = float(np.sum(np.logical_and(those,JustDied)))
+            MortByHealthAge[h,a] = DeathCount/float(np.sum(those))
             
     # Aggregate moments into a single vector
     all_moments = np.concatenate([
@@ -550,6 +584,7 @@ for b in range(data_bootstrap_count+1):
             OOPbyIncWealthAge.flatten(),
             AvgHealthResidualByIncWealth.flatten(),
             AvgOOPResidualByIncWealth.flatten(),
+            MortByHealthAge.flatten()
             ])
     
     HealthProdPreEstMoments = np.concatenate([AvgHealthResidualByIncWealth.flatten(),OOPdiffByInc])
@@ -575,8 +610,8 @@ moment_mask = np.concatenate([
         np.ones(45)*moment_dummies[4],
         np.ones(45)*moment_dummies[5],
         np.ones(90)*moment_dummies[6],
-        np.ones(45)*moment_dummies[7], # OOPbySexHealthAge[0,:,:] now has data for all
-        np.zeros(45), # Don't use these moments ever
+        np.ones(75)*moment_dummies[7], # OOPbySexHealthAge[0,:,:] now has data by age-health, [1,0:2,:] has data for age-sex
+        np.zeros(15), # Don't use these moments ever
         np.ones(90)*moment_dummies[8],
         np.ones(75)*moment_dummies[9],
         np.ones(75)*moment_dummies[10],
@@ -585,7 +620,8 @@ moment_mask = np.concatenate([
         np.ones(375)*moment_dummies[13],
         np.ones(375)*moment_dummies[14],
         np.ones(25)*moment_dummies[15],
-        np.ones(25)*moment_dummies[16]
+        np.ones(25)*moment_dummies[16],
+        np.ones(75)*moment_dummies[17]
         ])
 
 # If the data moments were bootstrapped, calculate the optimal weighting matrix and save it to a file.
@@ -603,8 +639,6 @@ if data_bootstrap_count > 0:
     moment_valid[1405:1410] = False # Turn off OOP moments for bottom wealth quintile of bottom income quintile after age 85
     moment_valid[1770:1773] = False # Turn off health residual moments for bottom three wealth quintiles of bottom income quintile
     moment_valid[1795:1798] = False # Turn off OOP residual moments for bottom three wealth quintiles of bottom income quintile
-    #moment_valid[1795] = False
-    #moment_valid[1800] = False
     valid_moment_N = np.sum(moment_valid)
     print(str(valid_moment_N) + ' of ' + str(moment_valid.size) + ' data moments were useable.')
     
@@ -624,13 +658,14 @@ if data_bootstrap_count > 0:
                    1395,1470,1545,1620,1695, # income wealth age moments: OOP
                    1770, # health residual moments
                    1795, # OOP residual moments
+                   1820, # health age mort moments
                    moment_count] # end
                    
     # This vector indicates whether each block of moments should use the inverse of
     # the variance-covariance submatrix (True) or simply the inverse of the variance
     # elements as a diagonal matrix (False).  It is here to experiment with whether
     # moment covariances for mean OOP spending are driving estimation results.
-    use_cov = np.ones(32,dtype=bool) 
+    use_cov = np.ones(33,dtype=bool) 
     #use_cov[0] = False  # OOP by age
     #use_cov[8] = False  # OOP by health-age, women
     #use_cov[9] = False  # OOP by health-age, men
