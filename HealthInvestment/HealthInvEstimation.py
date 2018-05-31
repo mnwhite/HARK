@@ -878,7 +878,7 @@ if __name__ == '__main__':
 
     # Choose what kind of work to do:
     test_obj_func = True
-    plot_model_fit = True
+    plot_model_fit = False
     perturb_one_param = False
     perturb_two_params = False
     estimate_model = False
