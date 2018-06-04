@@ -181,7 +181,7 @@ def makeMultiTypeSimple(params):
         ThisType.HlvlInit = Data.h_init[these]
         ThisType.BornBoolArray = Data.BornBoolArray[:,these]
         ThisType.InDataSpanArray = Data.InDataSpanArray[:,these]
-        ThisType.track_vars = ['OOPmedNow','hLvlNow','aLvlNow','CumLivPrb','DiePrbNow','RatioNow','MedLvlNow','CopayNow']
+        ThisType.track_vars = ['OOPmedNow','hLvlNow','aLvlNow','CumLivPrb','DiePrbNow','RatioNow','MedLvlNow','CopayMedNow','CopayInvstNow']
         ThisType.seed = n
         
         type_list.append(ThisType)
@@ -491,7 +491,8 @@ def pseudoEstHealthProdParams(type_list,return_as_list):
     MedLvlHist  = np.concatenate([this_type.MedLvlNow_hist for this_type in type_list],axis=1)
     WeightHist = np.concatenate([this_type.CumLivPrb_hist for this_type in type_list],axis=1)
     RatioHist = np.concatenate([this_type.RatioNow_hist for this_type in type_list],axis=1)
-    CopayHist = np.concatenate([this_type.CopayNow_hist for this_type in type_list],axis=1)
+    CopayMedHist = np.concatenate([this_type.CopayMedNow_hist for this_type in type_list],axis=1)
+    CopayInvstHist = np.concatenate([this_type.CopayInvstNow_hist for this_type in type_list],axis=1)
     
     # Combine data labels across types
     WealthQuint = np.concatenate([this_type.WealthQuint for this_type in type_list])
@@ -516,7 +517,8 @@ def pseudoEstHealthProdParams(type_list,return_as_list):
     N = hLvlHist.shape[1]
     Med_reg = MedLvlHist[THESE]
     Ratio_reg = RatioHist[THESE]
-    Copay_reg = CopayHist[THESE]
+    CopayMed_reg = CopayMedHist[THESE]
+    CopayInvst_reg = CopayInvstHist[THESE]
     h_reg = hLvlHist[THESE]
     hSq_reg = h_reg**2
     AgeHist = np.tile(np.reshape(np.arange(T),(T,1)),(1,N))
@@ -577,7 +579,7 @@ def pseudoEstHealthProdParams(type_list,return_as_list):
         HealthInv = np.maximum(MargHealthProdInvFunc(Ratio_reg),0.0)
         HealthInv[Ratio_reg == 0.] = 0.
         HealthProd = HealthProdFunc(HealthInv)
-        OOP_reg = (HealthInv + Med_reg)*Copay_reg
+        OOP_reg = HealthInv*CopayInvst_reg + Med_reg*CopayMed_reg
         
         # Regress OOP medical spending on sex, age, health, quintile dummies
         OOP_model = WLS(OOP_reg,regressors,weights=weight_reg)
@@ -835,9 +837,13 @@ if __name__ == '__main__':
 #
 #    t=0
 #    bMax = 100.
-#    MyTypes[i].plotxFuncByHealth(t,MedShk=0.1,bMax=bMax)
+#    MyTypes[i].plotxFuncByHealth(t,Dev=0.,bMax=bMax)
 #    MyTypes[i].plotxFuncByMedShk(t,hLvl=0.9,bMax=bMax)
-#    MyTypes[i].plotiFuncByHealth(t,MedShk=0.1,bMax=bMax)
+#    MyTypes[i].plotcFuncByHealth(t,Dev=0.,bMax=bMax)
+#    MyTypes[i].plotcFuncByMedShk(t,hLvl=0.9,bMax=bMax)
+#    MyTypes[i].plotMedFuncByHealth(t,Dev=0.,bMax=bMax)
+#    MyTypes[i].plotMedFuncByMedShk(t,hLvl=0.9,bMax=bMax)
+#    MyTypes[i].plotiFuncByHealth(t,Dev=0.,bMax=bMax)
 #    MyTypes[i].plotiFuncByMedShk(t,hLvl=0.9,bMax=bMax)
 #    MyTypes[i].plotvFuncByHealth(t,bMax=bMax)
 #    MyTypes[i].plotdvdbFuncByHealth(t,bMax=bMax)

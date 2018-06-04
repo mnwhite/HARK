@@ -3,20 +3,18 @@ This module contains the solver and agent class for the model for "...An Ounce o
 '''
 
 import sys
-import os
 sys.path.insert(0,'../')
 sys.path.insert(0,'../ConsumptionSaving/')
 
 import numpy as np
-from copy import copy
+from copy import copy, deepcopy
 from scipy.stats import norm
-from scipy.optimize import brentq
 from scipy.special import erfc
 from HARKcore import NullFunc, Solution, HARKobject, AgentType
-from HARKinterpolation import ConstantFunction, LinearInterp, CubicInterp, BilinearInterp, TrilinearInterp, LinearInterpOnInterp1D, UpperEnvelope, LowerEnvelope
-from HARKutilities import makeGridExpMult, CRRAutility, CRRAutilityP, CRRAutilityP_inv, CRRAutility_inv, plotFuncs
+from HARKinterpolation import ConstantFunction, LinearInterp, CubicInterp, BilinearInterp, TrilinearInterp, UpperEnvelope, LowerEnvelope
+from HARKutilities import makeGridExpMult, CRRAutility, CRRAutilityP, CRRAutilityP_inv, plotFuncs
 from HARKsimulation import drawNormal
-from ConsIndShockModel import IndShockConsumerType, ValueFunc
+from ConsIndShockModel import IndShockConsumerType
 from ConsAggShockModel import MargValueFunc2D
 from JorgensenDruedahl3D import JDfixer
 import matplotlib.pyplot as plt
@@ -136,7 +134,7 @@ class HealthInvestmentPolicyFunc(HARKobject):
     Its call function returns cLvl, MedLvl, iLvl.  Also has functions for these
     controls individually, and for xLvl.
     '''
-    def __init__(self, xFunc, iFunc, bFromxFunc, CopayFunc, MedShkMeanFunc, MedShkStdFunc, MedPrice):
+    def __init__(self, xFunc, iFunc, bFromxFunc, CopayMedFunc, MedShkMeanFunc, MedShkStdFunc, MedPrice):
         '''
         Constructor method for a new instance of HealthInvestmentPolicyFunc.
         
@@ -148,7 +146,7 @@ class HealthInvestmentPolicyFunc(HARKobject):
             Health investment function, defined over (bLvl,hLvl,Dev).
         bFromxFunc : function
             Transformed consumption share function, defined over (xLvl,MedShkAdj).  Badly named.
-        CopayFunc : function
+        CopayMedFunc : function
             Coinsurance rate for medical care as a function of hLvl.
         MedShkMeanFunc : function
             Mean of log medical need shocks as a function of hLvl.
@@ -164,7 +162,7 @@ class HealthInvestmentPolicyFunc(HARKobject):
         self.xFunc = xFunc
         self.iFunc = iFunc
         self.bFromxFunc = bFromxFunc
-        self.CopayFunc = CopayFunc
+        self.CopayMedFunc = CopayMedFunc
         self.MedShkMeanFunc = MedShkMeanFunc
         self.MedShkStdFunc = MedShkStdFunc
         self.MedPrice = MedPrice
@@ -181,7 +179,7 @@ class HealthInvestmentPolicyFunc(HARKobject):
             Array of health levels.
         MedShk : np.array
             Array of medical need shocks.
-            
+         
         Returns
         -------
         cLvl : np.array
@@ -191,9 +189,9 @@ class HealthInvestmentPolicyFunc(HARKobject):
         iLvl : np.array
             Array of health investment levels.
         '''
-        Dev = (MedShk - self.MedShkMeanFunc(hLvl))/self.MedShkStdFunc(hLvl)
+        Dev = (np.log(MedShk) - self.MedShkMeanFunc(hLvl))/self.MedShkStdFunc(hLvl)
         xLvl = self.xFunc(bLvl,hLvl,Dev)
-        CopayEff = self.CopayFunc(hLvl)*self.MedPrice
+        CopayEff = self.CopayMedFunc(hLvl)*self.MedPrice
         cShareTrans = self.bFromxFunc(xLvl,MedShk*CopayEff)
         q = np.exp(-cShareTrans)
         cLvl = xLvl/(1.+q)
@@ -208,14 +206,6 @@ class HealthInvestmentPolicyFunc(HARKobject):
     def MedFunc(self,bLvl,hLvl,MedShk):
         cLvl, MedLvl, iLvl, xLvl = self(bLvl,hLvl,MedShk)
         return MedLvl
-    
-    def iFunc(self,bLvl,hLvl,MedShk):
-        cLvl, MedLvl, iLvl, xLvl = self(bLvl,hLvl,MedShk)
-        return iLvl
-    
-    def xFunc(self,bLvl,hLvl,MedShk):
-        cLvl, MedLvl, iLvl, xLvl = self(bLvl,hLvl,MedShk)
-        return xLvl
     
     
     
@@ -318,7 +308,7 @@ class TransConShareFunc(HARKobject):
 def solveHealthInvestment(solution_next,CRRA,DiscFac,CRRAmed,IncomeNext,IncomeNow,Rfree,Cfloor,LifeUtility,
                           Bequest0,Bequest1,MedPrice,aXtraGrid,bLvlGrid,Hcount,hLvlGrid,
                           HealthProdFunc,MargHealthProdInvFunc,HealthShkStd0,HealthShkStd1,
-                          ExpHealthNextFunc,ExpHealthNextInvFunc,LivPrbFunc,bFromxFunc,PremiumFunc,CopayFunc,
+                          ExpHealthNextFunc,ExpHealthNextInvFunc,LivPrbFunc,bFromxFunc,PremiumFunc,CopayMedFunc,CopayInvstFunc,
                           MedShkMeanFunc,MedShkStdFunc,MedShkCount,ConvexityFixer,SubsidyFunc,CalcExpectationFuncs):
     '''
     Solves the one period problem in the health investment model.
@@ -377,8 +367,8 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,CRRAmed,IncomeNext,IncomeNo
         Transformed consumption share as a function of expenditure and effective medical need.
     PremiumFunc : function
         Out-of-pocket premiums as a function of health.
-    CopayFunc : function
-        Out-of-pocket coinsurance rate as a function of health.
+    CopayMedFunc : function
+        Out-of-pocket coinsurance rate for mitigative care as a function of health.
     MedShkMeanFunc : function
         Mean of log medical need shock as a function of health.
     MedShkStdFunc : function
@@ -535,7 +525,7 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,CRRAmed,IncomeNext,IncomeNo
         Ratio = MargValueRatioAdj[these]
         H = Harray[these]
         hGuess = hNow[these].flatten()
-        CopayGuess = CopayFunc(hGuess)
+        CopayGuess = CopayInvstFunc(hGuess)
         iGuess = np.maximum(MargHealthProdInvFunc(CopayGuess*Ratio),0.0) # Invert FOC for iLvl
         iGuess[Ratio == 0.] = 0.0 # Fix "bad" iLvl values
         temp = np.logical_and(Ratio > 0., np.logical_not(np.isinf(Ratio)))
@@ -561,7 +551,8 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,CRRAmed,IncomeNext,IncomeNo
     hLvlArrayBig = np.tile(np.reshape(hNow,(aCount,Hcount,1)),(1,1,MedShkCount))
     iLvlArrayBig = np.tile(np.reshape(iNow,(aCount,Hcount,1)),(1,1,MedShkCount))
     PremiumArrayBig = PremiumFunc(hLvlArrayBig)
-    CopayArrayBig = CopayFunc(hLvlArrayBig)
+    CopayMedArrayBig = CopayMedFunc(hLvlArrayBig)
+    CopayInvstArrayBig = CopayInvstFunc(hLvlArrayBig)
     EndOfPrdvBig = np.tile(np.reshape(EndOfPrdv,(aCount,Hcount,1)),(1,1,MedShkCount))
     EndOfPrddvdaBig = np.tile(np.reshape(EndOfPrddvda,(aCount,Hcount,1)),(1,1,MedShkCount))
     EndOfPrddvdHBig = np.tile(np.reshape(EndOfPrddvdH,(aCount,Hcount,1)),(1,1,MedShkCount))
@@ -569,10 +560,10 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,CRRAmed,IncomeNext,IncomeNo
     # Use the first order conditions to calculate optimal expenditure on consumption and mitigative care (unconstrained)
     EndOfPrddvdaNvrs = uPinv(EndOfPrddvdaBig)
     cLvlArrayBig = EndOfPrddvdaNvrs
-    EffPriceArrayBig = MedPrice*CopayArrayBig
+    EffPriceArrayBig = MedPrice*CopayMedArrayBig
     MedLvlArrayBig = EffPriceArrayBig**(-1./CRRAmed)*MedShkArrayBig**(1.-1./CRRAmed)*cLvlArrayBig**(CRRA/CRRAmed)
     xLvlArrayBig = cLvlArrayBig + EffPriceArrayBig*MedLvlArrayBig
-    iCostArrayBig = CopayArrayBig*np.maximum(MedPrice*iLvlArrayBig - SubsidyFunc(hLvlArrayBig), 0.0)
+    iCostArrayBig = CopayInvstArrayBig*np.maximum(MedPrice*iLvlArrayBig - SubsidyFunc(hLvlArrayBig), 0.0)
     bLvlArrayBig = aLvlArrayBig + xLvlArrayBig + iCostArrayBig + PremiumArrayBig
     vArrayBig = u(cLvlArrayBig) + uMed(MedLvlArrayBig/MedShkArrayBig) + u0 + EndOfPrdvBig
     dvdhArrayBig = ExpHealthNextFunc.der(hLvlArrayBig)*EndOfPrddvdHBig
@@ -603,12 +594,12 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,CRRAmed,IncomeNext,IncomeNo
     while (points_left > 0) and (LoopCount < MaxLoops):
         hGuess = hCnst[these] # Get current guess of beginning of period health
         x = xLvlArrayCnst[these] # Get relevant expenditure values
-        EffPrice = MedPrice*CopayFunc(hGuess) # Calculate effective coinsurance rate
+        EffPriceInvst = MedPrice*CopayInvstFunc(hGuess) # Calculate effective coinsurance rate
         Shk = np.exp(MedShkMeanFunc(hGuess) + DevArrayCnst[these]*MedShkStdFunc(hGuess))
-        q = np.exp(-bFromxFunc(x,EffPrice*Shk)) # Get transformed consumption shares
+        q = np.exp(-bFromxFunc(x,EffPriceInvst*Shk)) # Get transformed consumption shares
         cLvl = x/(1. + q) # Calculate consumption given expenditure and transformed consumption share
         dvdH = EndOfPrddvdHCnstAdj[these] # Get relevant end of period marginal value of post-health
-        ImpliedMargHealthProd = uP(cLvl)*EffPrice/dvdH # Calculate what the marginal product of health investment must be for cLvl to be optimal
+        ImpliedMargHealthProd = uP(cLvl)*EffPriceInvst/dvdH # Calculate what the marginal product of health investment must be for cLvl to be optimal
         iLvl = np.maximum(MargHealthProdInvFunc(ImpliedMargHealthProd),0.0) # Invert FOC for iLvl when constrained
         iLvl[dvdH == 0.] = 0. # Fix zero dvdH (actually negative) to have zero investment
         iLvl[x == 0.] = 0. # Solution when x=0 is also i=0
@@ -626,12 +617,13 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,CRRAmed,IncomeNext,IncomeNo
     # Rename the constrained arrays and calculate (marginal) values for them
     hLvlArrayCnst = hCnst
     iLvlArrayCnst = iCnst
-    EffPriceCnst = MedPrice*CopayFunc(hCnst)
+    EffPriceMedCnst = MedPrice*CopayMedFunc(hCnst)
+    EffPriceInvstCnst = MedPrice*CopayInvstFunc(hCnst)
     MedShkArrayCnst = np.exp(MedShkMeanFunc(hCnst) + DevArrayCnst*MedShkStdFunc(hCnst))
-    bLvlArrayCnst = 0.0 + xLvlArrayCnst + EffPriceCnst*iCnst + PremiumFunc(hCnst)
-    q = np.exp(-bFromxFunc(xLvlArrayCnst,EffPriceCnst*MedShkArrayCnst)) 
+    bLvlArrayCnst = 0.0 + xLvlArrayCnst + EffPriceInvstCnst*iCnst + PremiumFunc(hCnst)
+    q = np.exp(-bFromxFunc(xLvlArrayCnst,EffPriceMedCnst*MedShkArrayCnst)) 
     cCnst = xLvlArrayCnst/(1. + q)
-    MedCnst = q*cCnst/EffPriceCnst
+    MedCnst = q*cCnst/EffPriceMedCnst
     vArrayCnst = u(cCnst) + uMed(MedCnst/MedShkArrayCnst) + u0 + np.tile(np.reshape(EndOfPrdvBig[0,:,:],(1,Hcount,MedShkCount)),(bCnstCount,1,1))
     dvdhArrayCnst = ExpHealthNextFunc.der(hLvlArrayCnst)*EndOfPrddvdHCnst
     
@@ -649,7 +641,7 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,CRRAmed,IncomeNext,IncomeNo
                                         vArrayAll,dvdhArrayAll,xLvlArrayAll,iLvlArrayAll,bLvlGrid,hLvlGrid,DevGridDense)
     xFuncNow = TrilinearInterp(xLvlArray,bLvlGrid,hLvlGrid,DevGridDense)
     iFuncNow = TrilinearInterp(iLvlArray,bLvlGrid,hLvlGrid,DevGridDense)
-    PolicyFuncNow = HealthInvestmentPolicyFunc(xFuncNow,iFuncNow,bFromxFunc,CopayFunc,MedShkMeanFunc,MedShkStdFunc,MedPrice)
+    PolicyFuncNow = HealthInvestmentPolicyFunc(xFuncNow,iFuncNow,bFromxFunc,CopayMedFunc,MedShkMeanFunc,MedShkStdFunc,MedPrice)
     bLvlCount = bLvlGrid.size
     hLvlCount = hLvlGrid.size
     ShkCount  = DevGridDense.size
@@ -661,7 +653,7 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,CRRAmed,IncomeNext,IncomeNo
     
     # Find CritDev using a clever closed formula
     b_temp = np.tile(np.reshape(bLvlGrid,(bLvlCount,1)),(1,hLvlCount))
-    p_temp = np.tile(np.reshape(MedPrice*CopayFunc(hLvlGrid),(1,hLvlCount)),(bLvlCount,1))
+    p_temp = np.tile(np.reshape(MedPrice*CopayMedFunc(hLvlGrid),(1,hLvlCount)),(bLvlCount,1))
     m_temp = np.tile(np.reshape(MedShkMeanFunc(hLvlGrid),(1,hLvlCount)),(bLvlCount,1))
     s_temp = np.tile(np.reshape(MedShkStdFunc(hLvlGrid),(1,hLvlCount)),(bLvlCount,1))
     LogCritShkAlt = (CRRAmed - CRRA)/(CRRAmed - 1.)*np.log(Cfloor) + CRRAmed/(CRRAmed - 1.)*np.log(b_temp/Cfloor - 1.) - np.log(p_temp)
@@ -690,7 +682,7 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,CRRAmed,IncomeNext,IncomeNo
     # Calculate expected value when hitting Cfloor (use truncated lognormal formula)
     mu = (1.-1./CRRAmed)*LogShkMeanArray[:,:,0] # underlying mean of lognormal shocks
     sigma = (1.-1./CRRAmed)*LogShkStdArray[:,:,0] # underlying std of lognormal shocks
-    C1_vec = (MedPrice*CopayFunc(hLvlGrid))**(1.-1./CRRAmed)*Cfloor**(CRRA/CRRAmed - CRRA)/(1.-CRRAmed) # constant factor
+    C1_vec = (MedPrice*CopayMedFunc(hLvlGrid))**(1.-1./CRRAmed)*Cfloor**(CRRA/CRRAmed - CRRA)/(1.-CRRAmed) # constant factor
     ExpectedAdjShkAtCfloor = -0.5*np.exp(mu+(sigma**2)*0.5)*(erfc(np.sqrt(0.5)*(sigma-CritDevArray))-2.0)/CritShkPrbArray
     X = ExpectedAdjShkAtCfloor*np.tile(np.reshape(C1_vec,(1,hLvlCount)),(bLvlCount,1)) # Don't know what to call this
     vFloor_expected = u(Cfloor) + u0 + EndOfPrdv_temp[:,:,0] + X
@@ -710,16 +702,18 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,CRRAmed,IncomeNext,IncomeNo
     x_temp = alpha_comp*xLvlArray[bIdx,hIdx,IdxLo] + alpha*xLvlArray[bIdx,hIdx,IdxHi]
     i_temp = alpha_comp*iLvlArray[bIdx,hIdx,IdxLo] + alpha*iLvlArray[bIdx,hIdx,IdxHi]
     i_temp = np.maximum(i_temp,0.0) # Prevent small glitchy negative values
-    Copay_temp = np.tile(np.reshape(CopayFunc(hLvlGrid),(1,hLvlCount,1)),(bLvlCount,1,MedShkCount))
+    CopayMed_temp = np.tile(np.reshape(CopayMedFunc(hLvlGrid),(1,hLvlCount,1)),(bLvlCount,1,MedShkCount))
+    CopayInvst_temp = np.tile(np.reshape(CopayInvstFunc(hLvlGrid),(1,hLvlCount,1)),(bLvlCount,1,MedShkCount))
     Premium_temp = np.tile(np.reshape(PremiumFunc(hLvlGrid),(1,hLvlCount,1)),(bLvlCount,1,MedShkCount))
-    EffPrice_temp = Copay_temp*MedPrice
-    q_temp = np.exp(-bFromxFunc(x_temp,MedShkValArray*EffPrice_temp))
+    EffPriceMed_temp = CopayMed_temp*MedPrice
+    EffPriceInvst_temp = CopayInvst_temp*MedPrice
+    q_temp = np.exp(-bFromxFunc(x_temp,MedShkValArray*EffPriceMed_temp))
     c_temp = x_temp/(1. + q_temp)
     SubsidyMax = np.tile(np.reshape(SubsidyFunc(hLvlGrid),(1,hLvlCount,1)),(bLvlCount,1,MedShkCount))
     Subsidy_temp = np.minimum(i_temp*MedPrice,SubsidyMax)
     MedOOP_temp = q_temp*x_temp/(1. + q_temp)
-    Med_temp = MedOOP_temp/EffPrice_temp
-    iCost_temp = i_temp*EffPrice_temp - Subsidy_temp
+    Med_temp = MedOOP_temp/EffPriceMed_temp
+    iCost_temp = i_temp*EffPriceInvst_temp - Subsidy_temp
     OOP_temp = MedOOP_temp + iCost_temp
     b_temp = np.tile(np.reshape(bLvlGrid,(bLvlCount,1,1)),(1,hLvlCount,MedShkCount))
     h_temp = np.tile(np.reshape(hLvlGrid,(1,hLvlCount,1)),(bLvlCount,1,MedShkCount))
@@ -754,7 +748,7 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,CRRAmed,IncomeNext,IncomeNo
     if CalcExpectationFuncs:
         # Calculate current values of various objects on the grid of shocks
         TotalMed_temp = MedPrice*(i_temp + Med_temp)
-        Medicare_temp = (TotalMed_temp - Subsidy_temp)*(1.-Copay_temp)
+        Medicare_temp = TotalMed_temp - Subsidy_temp - EffPriceMed_temp*Med_temp - EffPriceInvst_temp*i_temp
         Welfare_temp = np.zeros_like(OOP_temp) # No welfare unless we hit Cfloor
         Life_temp = 2.0*norm.sf(LivPrbFunc(H_temp)) # Expected years we life this period
 
@@ -765,9 +759,9 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,CRRAmed,IncomeNext,IncomeNo
         # Calculate current values of various objects when at Cfloor
         Subsidy_Cfloor = np.zeros_like(a_Cfloor)
         OOP_Cfloor = np.maximum(b_temp[:,:,0] - Premium_temp[:,:,0] - Cfloor, 0.0)
-        TotalMed_Cfloor = EffPrice_temp[:,:,0]**(-1./CRRAmed)*ExpectedAdjShkAtCfloor*Cfloor**(CRRA/CRRAmed)
+        TotalMed_Cfloor = EffPriceMed_temp[:,:,0]**(-1./CRRAmed)*ExpectedAdjShkAtCfloor*Cfloor**(CRRA/CRRAmed)
         Cost_Cfloor = Cfloor + Premium_temp[:,:,0] + MedPrice*TotalMed_Cfloor # Total expected cost of all goods at Cfloor
-        Medicare_Cfloor = (1.-Copay_temp[:,:,0])*OOP_Cfloor/Copay_temp[:,:,0] # Medicare pays for medical expenses until Cfloor is hit
+        Medicare_Cfloor = (1.-CopayMed_temp[:,:,0])*OOP_Cfloor/CopayMed_temp[:,:,0] # Medicare pays for medical expenses until Cfloor is hit
         Welfare_Cfloor = Cost_Cfloor - b_temp[:,:,0] - Medicare_Cfloor # Welfare is whatever is not accounted for by bLvl or Medicare
         TotalMed_Cfloor[Never_Cfloor] = 0.0
         Welfare_Cfloor[Never_Cfloor] = 0.0
@@ -912,7 +906,7 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
             
     def updateInsuranceFuncs(self):
         '''
-        Constructs the attributes PremiumFunc and CopayFunc as time-varying lists
+        Constructs the attributes PremiumFunc and CopayMedFunc as time-varying lists
         of real to real functions.  Each element of these lists takes in a current
         health level and returns a coinsurance rate or premium.
         
@@ -935,7 +929,7 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         CopayMax = ConstantFunction(1.0) # Shouldn't happen
             
         PremiumFunc = []
-        CopayFunc = []
+        CopayMedFunc = []
         for t in range(self.T_cycle):
             Age = t*1
             y = self.IncomeNow[t]
@@ -947,11 +941,12 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
             c0 = self.Copay0 + self.Sex*self.CopaySex + self.CopayAge*Age + self.CopayAgeSq*Age**2 + self.CopayInc*y + self.CopayIncSq*y**2 + self.CopayIncCu*y**3
             c1 = self.CopayHealth + self.CopayHealthAge*Age + self.CopayHealthAgeSq*Age**2 + self.CopayHealthInc*y + self.CopayHealthIncSq*y**2
             c2 = self.CopayHealthSq + self.CopayHealthSqAge*Age + self.CopayHealthSqAgeSq*Age**2 + self.CopayHealthSqInc*y + self.CopayHealthSqIncSq*y**2
-            CopayFunc.append(LowerEnvelope(UpperEnvelope(QuadraticFunction(c0,c1,c2),CopayMin),CopayMax))
+            CopayMedFunc.append(LowerEnvelope(UpperEnvelope(QuadraticFunction(c0,c1,c2),CopayMin),CopayMax))
             
         self.PremiumFunc = PremiumFunc
-        self.CopayFunc = CopayFunc
-        self.addToTimeVary('PremiumFunc','CopayFunc')
+        self.CopayMedFunc = CopayMedFunc
+        self.CopayInvstFunc = deepcopy(CopayMedFunc)
+        self.addToTimeVary('PremiumFunc','CopayMedFunc','CopayInvstFunc')
             
         if not orig_time:
             self.timeRev()
@@ -1293,7 +1288,8 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         not_these = np.logical_not(these)
         
         PremiumNow = self.PremiumFunc[t](self.hLvlNow[these])
-        CopayNow = self.CopayFunc[t](self.hLvlNow[these])
+        CopayMedNow = self.CopayMedFunc[t](self.hLvlNow[these])
+        CopayInvstNow = self.CopayInvstFunc[t](self.hLvlNow[these])
         MedPrice = self.MedPrice[t]
         
         bLvlNow = self.bLvlNow[these]
@@ -1306,14 +1302,14 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         Cfloor_better = MedShkBase > self.solution[t].CritDevFunc(bLvlNow,hLvlNow)
         cLvlNow[Cfloor_better] = self.Cfloor
         iLvlNow[Cfloor_better] = 0.0
-        MedLvlNow[Cfloor_better] = (MedPrice*CopayNow[Cfloor_better])**(-1./self.CRRAmed)*MedShkNow[Cfloor_better]**(1.-1./self.CRRAmed)*self.Cfloor**(self.CRRA/self.CRRAmed)
-        xLvlNow[Cfloor_better] = self.Cfloor + MedPrice*CopayNow[Cfloor_better]*MedLvlNow[Cfloor_better]
+        MedLvlNow[Cfloor_better] = (MedPrice*CopayMedNow[Cfloor_better])**(-1./self.CRRAmed)*MedShkNow[Cfloor_better]**(1.-1./self.CRRAmed)*self.Cfloor**(self.CRRA/self.CRRAmed)
+        xLvlNow[Cfloor_better] = self.Cfloor + MedPrice*CopayMedNow[Cfloor_better]*MedLvlNow[Cfloor_better]
         
         SubsidyMax = self.SubsidyFunc(hLvlNow)
         iCostFull = MedPrice*iLvlNow
-        iCostNow = CopayNow*np.maximum(iCostFull - SubsidyMax,0.0)
+        iCostNow = CopayInvstNow*np.maximum(iCostFull - SubsidyMax,0.0)
         SubsidyNow = np.minimum(iCostFull,SubsidyMax)
-        OOPmedNow = MedPrice*MedLvlNow*CopayNow + iCostNow
+        OOPmedNow = MedPrice*MedLvlNow*CopayMedNow + iCostNow
         OOPmedNow[Cfloor_better] = np.maximum(bLvlNow[Cfloor_better] - PremiumNow[Cfloor_better] - self.Cfloor, 0.0)
         
         if ~hasattr(self,'cLvlNow'):
@@ -1322,12 +1318,14 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
             self.iLvlNow = np.zeros(self.AgentCount)
             self.xLvlNow = np.zeros(self.AgentCount)
             self.PremiumNow = np.zeros(self.AgentCount)
-            self.CopayNow = np.zeros(self.AgentCount)
+            self.CopayMedNow = np.zeros(self.AgentCount)
+            self.CopayInvstNow = np.zeros(self.AgentCount)
             self.OOPmedNow = np.zeros(self.AgentCount)
             self.SubsidyNow = np.zeros(self.AgentCount)
             
         self.PremiumNow[these] = PremiumNow
-        self.CopayNow[these] = CopayNow
+        self.CopayMedNow[these] = CopayMedNow
+        self.CopayInvstNow[these] = CopayInvstNow
         self.cLvlNow[these] = cLvlNow
         self.MedLvlNow[these] = MedLvlNow
         self.iLvlNow[these] = iLvlNow
@@ -1335,7 +1333,8 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         self.OOPmedNow[these] = OOPmedNow
         self.SubsidyNow[these] = SubsidyNow
         self.PremiumNow[not_these] = np.nan
-        self.CopayNow[not_these] = np.nan
+        self.CopayMedNow[not_these] = np.nan
+        self.CopayInvstNow[not_these] = np.nan
         self.cLvlNow[not_these] = np.nan
         self.MedLvlNow[not_these] = np.nan
         self.iLvlNow[not_these] = np.nan
@@ -1353,7 +1352,7 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         aLvlNow = self.bLvlNow - self.PremiumNow - self.cLvlNow - self.OOPmedNow
         aLvlNow = np.maximum(aLvlNow,0.0) # Fixes those who go negative due to Cfloor help
         HlvlNow = self.ExpHealthNextFunc[t](self.hLvlNow) + self.HealthProdFunc(self.iLvlNow)
-        RatioNow = np.maximum(self.MedPrice[t]*self.CopayNow*self.solution[t].dvdaFunc(aLvlNow,HlvlNow)/self.solution[t].dvdHfunc(aLvlNow,HlvlNow),0.0)
+        RatioNow = np.maximum(self.MedPrice[t]*self.CopayInvstNow*self.solution[t].dvdaFunc(aLvlNow,HlvlNow)/self.solution[t].dvdHfunc(aLvlNow,HlvlNow),0.0)
         
         self.aLvlNow = aLvlNow
         self.HlvlNow = HlvlNow
@@ -1378,10 +1377,10 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
             self.CopaySocOpt = dvdH/(dvda*(p_L*dLdH - dOdH)) # coinsurance rate that *would have* made agent choose "socially optimal" health investment  
 
     
-    def plotxFuncByHealth(self,t,MedShk,bMin=None,bMax=20.0,hSet=None):
+    def plotxFuncByHealth(self,t,Dev,bMin=None,bMax=20.0,hSet=None):
         '''
-        Plot the expenditure function vs bLvl at a fixed medical need shock and
-        a set of health values.
+        Plot the expenditure function vs bLvl at a fixed standard deviations from
+        expeced medical need shock and a set of health values.
         
         Parameters
         ----------
@@ -1395,21 +1394,22 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
             hSet = self.solution[t].PolicyFunc.xFunc.y_list
         if bMin is None:
             bMin = self.solution[t].PolicyFunc.xFunc.x_list[0]
-            
+        
         B = np.linspace(bMin,bMax,300)
         some_ones = np.ones_like(B)
         for hLvl in hSet:
-            X = self.solution[t].PolicyFunc.xFunc(B,hLvl*some_ones,MedShk*some_ones)
+            #MedShk = np.exp(self.MedShkMeanFunc[t](hLvl) + Dev*self.MedShkStdFunc(hLvl))
+            X = self.solution[t].PolicyFunc.xFunc(B,hLvl*some_ones,Dev*some_ones)
             plt.plot(B,X)
         plt.xlabel('Market resources bLvl')
         plt.ylabel('Expenditure level xLvl')
         plt.show()
 
         
-    def plotxFuncByMedShk(self,t,hLvl,bMin=None,bMax=20.0,ShkSet=None):
+    def plotxFuncByMedShk(self,t,hLvl,bMin=None,bMax=20.0,DevSet=None):
         '''
         Plot the expenditure function vs bLvl at a fixed health level and
-        a set of medical need shock values.
+        a set of standard deviations from expected medical need shock.
         
         Parameters
         ----------
@@ -1419,25 +1419,26 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         -------
         None
         '''
-        if ShkSet is None:
-            ShkSet = self.solution[t].PolicyFunc.xFunc.z_list
+        if DevSet is None:
+            DevSet = self.solution[t].PolicyFunc.xFunc.z_list
         if bMin is None:
             bMin = self.solution[t].PolicyFunc.xFunc.x_list[0]
             
         B = np.linspace(bMin,bMax,300)
         some_ones = np.ones_like(B)
-        for MedShk in ShkSet:
-            X = self.solution[t].PolicyFunc.xFunc(B,hLvl*some_ones,MedShk*some_ones)
+        for Dev in DevSet:
+            #MedShk = np.exp(self.MedShkMeanFunc[t](hLvl) + Dev*self.MedShkStdFunc(hLvl))
+            X = self.solution[t].PolicyFunc.xFunc(B,hLvl*some_ones,Dev*some_ones)
             plt.plot(B,X)
         plt.xlabel('Market resources bLvl')
         plt.ylabel('Expenditure level xLvl')
         plt.show()
         
         
-    def plotcFuncByHealth(self,t,MedShk,bMin=None,bMax=20.0,hSet=None):
+    def plotcFuncByHealth(self,t,Dev,bMin=None,bMax=20.0,hSet=None):
         '''
-        Plot the consumption function vs bLvl at a fixed medical need shock and
-        a set of health values.
+        Plot the consumption function vs bLvl at a fixed standard deviations from
+        expeced medical need shock and a set of health values.
         
         Parameters
         ----------
@@ -1451,10 +1452,11 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
             hSet = self.solution[t].PolicyFunc.xFunc.y_list
         if bMin is None:
             bMin = self.solution[t].PolicyFunc.xFunc.x_list[0]
-            
+        
         B = np.linspace(bMin,bMax,300)
         some_ones = np.ones_like(B)
         for hLvl in hSet:
+            MedShk = np.exp(self.MedShkMeanFunc[t](hLvl) + Dev*self.MedShkStdFunc(hLvl))
             C = self.solution[t].PolicyFunc.cFunc(B,hLvl*some_ones,MedShk*some_ones)
             plt.plot(B,C)
         plt.xlabel('Market resources bLvl')
@@ -1462,10 +1464,10 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         plt.show()
 
         
-    def plotcFuncByMedShk(self,t,hLvl,bMin=None,bMax=20.0,ShkSet=None):
+    def plotcFuncByMedShk(self,t,hLvl,bMin=None,bMax=20.0,DevSet=None):
         '''
         Plot the consumption function vs bLvl at a fixed health level and
-        a set of medical need shock values.
+        a set of standard deviations from expected medical need shock.
         
         Parameters
         ----------
@@ -1475,25 +1477,26 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         -------
         None
         '''
-        if ShkSet is None:
-            ShkSet = self.solution[t].PolicyFunc.xFunc.z_list
+        if DevSet is None:
+            DevSet = self.solution[t].PolicyFunc.xFunc.z_list
         if bMin is None:
             bMin = self.solution[t].PolicyFunc.xFunc.x_list[0]
             
         B = np.linspace(bMin,bMax,300)
         some_ones = np.ones_like(B)
-        for MedShk in ShkSet:
-            C = self.solution[t].PolicyFunc.cFunc(B,hLvl*some_ones,MedShk*some_ones)
-            plt.plot(B,C)
+        for Dev in DevSet:
+            MedShk = np.exp(self.MedShkMeanFunc[t](hLvl) + Dev*self.MedShkStdFunc(hLvl))
+            X = self.solution[t].PolicyFunc.cFunc(B,hLvl*some_ones,MedShk*some_ones)
+            plt.plot(B,X)
         plt.xlabel('Market resources bLvl')
         plt.ylabel('Consumption level cLvl')
         plt.show()
-
-
-    def plotiFuncByHealth(self,t,MedShk,bMin=None,bMax=20.0,hSet=None):
+        
+        
+    def plotMedFuncByHealth(self,t,Dev,bMin=None,bMax=20.0,hSet=None):
         '''
-        Plot the investment function vs bLvl at a fixed medical need shock and
-        a set of health values.
+        Plot the mitigative care function vs bLvl at a fixed standard deviations
+        from expeced medical need shock and a set of health values.
         
         Parameters
         ----------
@@ -1507,21 +1510,80 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
             hSet = self.solution[t].PolicyFunc.xFunc.y_list
         if bMin is None:
             bMin = self.solution[t].PolicyFunc.xFunc.x_list[0]
-            
+        
         B = np.linspace(bMin,bMax,300)
         some_ones = np.ones_like(B)
         for hLvl in hSet:
-            I = self.solution[t].PolicyFunc.iFunc(B,hLvl*some_ones,MedShk*some_ones)
+            MedShk = np.exp(self.MedShkMeanFunc[t](hLvl) + Dev*self.MedShkStdFunc(hLvl))
+            M = self.solution[t].PolicyFunc.MedFunc(B,hLvl*some_ones,MedShk*some_ones)
+            plt.plot(B,M)
+        plt.xlabel('Market resources bLvl')
+        plt.ylabel('Mitigative care level MedLvl')
+        plt.show()
+
+        
+    def plotMedFuncByMedShk(self,t,hLvl,bMin=None,bMax=20.0,DevSet=None):
+        '''
+        Plot the mitigative care function vs bLvl at a fixed health level and
+        a set of standard deviations from expected medical need shock.
+        
+        Parameters
+        ----------
+        None
+        
+        Returns
+        -------
+        None
+        '''
+        if DevSet is None:
+            DevSet = self.solution[t].PolicyFunc.xFunc.z_list
+        if bMin is None:
+            bMin = self.solution[t].PolicyFunc.xFunc.x_list[0]
+            
+        B = np.linspace(bMin,bMax,300)
+        some_ones = np.ones_like(B)
+        for Dev in DevSet:
+            MedShk = np.exp(self.MedShkMeanFunc[t](hLvl) + Dev*self.MedShkStdFunc(hLvl))
+            M = self.solution[t].PolicyFunc.MedFunc(B,hLvl*some_ones,MedShk*some_ones)
+            plt.plot(B,M)
+        plt.xlabel('Market resources bLvl')
+        plt.ylabel('Mitigative care level MedLvl')
+        plt.show()
+        
+        
+    def plotiFuncByHealth(self,t,Dev,bMin=None,bMax=20.0,hSet=None):
+        '''
+        Plot the investment function vs bLvl at a fixed standard deviations from
+        expeced medical need shock and a set of health values.
+        
+        Parameters
+        ----------
+        None
+        
+        Returns
+        -------
+        None
+        '''
+        if hSet is None:
+            hSet = self.solution[t].PolicyFunc.xFunc.y_list
+        if bMin is None:
+            bMin = self.solution[t].PolicyFunc.xFunc.x_list[0]
+        
+        B = np.linspace(bMin,bMax,300)
+        some_ones = np.ones_like(B)
+        for hLvl in hSet:
+            #MedShk = np.exp(self.MedShkMeanFunc[t](hLvl) + Dev*self.MedShkStdFunc(hLvl))
+            I = self.solution[t].PolicyFunc.iFunc(B,hLvl*some_ones,Dev*some_ones)
             plt.plot(B,I)
         plt.xlabel('Market resources bLvl')
         plt.ylabel('Investment level iLvl')
         plt.show()
 
         
-    def plotiFuncByMedShk(self,t,hLvl,bMin=None,bMax=20.0,ShkSet=None):
+    def plotiFuncByMedShk(self,t,hLvl,bMin=None,bMax=20.0,DevSet=None):
         '''
         Plot the investment function vs bLvl at a fixed health level and
-        a set of medical need shock values.
+        a set of standard deviations from expected medical need shock.
         
         Parameters
         ----------
@@ -1531,15 +1593,16 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         -------
         None
         '''
-        if ShkSet is None:
-            ShkSet = self.solution[t].PolicyFunc.xFunc.z_list
+        if DevSet is None:
+            DevSet = self.solution[t].PolicyFunc.xFunc.z_list
         if bMin is None:
             bMin = self.solution[t].PolicyFunc.xFunc.x_list[0]
             
         B = np.linspace(bMin,bMax,300)
         some_ones = np.ones_like(B)
-        for MedShk in ShkSet:
-            I = self.solution[t].PolicyFunc.iFunc(B,hLvl*some_ones,MedShk*some_ones)
+        for Dev in DevSet:
+            #MedShk = np.exp(self.MedShkMeanFunc[t](hLvl) + Dev*self.MedShkStdFunc(hLvl))
+            I = self.solution[t].PolicyFunc.iFunc(B,hLvl*some_ones,Dev*some_ones)
             plt.plot(B,I)
         plt.xlabel('Market resources bLvl')
         plt.ylabel('Investment level iLvl')
