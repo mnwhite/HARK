@@ -120,7 +120,7 @@ def paramStr(value):
     n = int(np.floor(np.log(np.abs(value))/np.log(10.)))
     if n < -2:
         temp = value/10.**n
-        out = "{:.2f}".format(temp) + "$e^" + str(n) + "$"
+        out = "{:.2f}".format(temp) + "e" + str(n)
     else:
         out = "{:.3f}".format(value)
     return out
@@ -143,23 +143,25 @@ def makeParamTable(filename,values,which,stderrs=None):
     -------
     None
     '''
-    output =  '\\begin{center} \n'
-    output += '\begin{tabular}{cccl} \n'
+    output =  '\\begin{table} \caption{Structurally Estimated Parameters} \n'
+    output += '\\centering \n'
+    output += '\\small \n'
+    output += '\\begin{tabular}{cccl} \n'
     output += '\\hline \\hline \n'
     output += 'Parameter & Estimate & Std Err & Description \n'
-    output += '\\ \\hline \n'
+    output += '\\\\ \\hline \n'
     for j in range(which.size):
         i = which[j]
         if stderrs is None:
             se = '(-)'
         else:
             se = '(' + paramStr(stderrs[j]) + ')'
-        output += '\\ $' + param_tex[i] + '$ & ' + paramStr(values[j]) + ' & ' + se + ' & ' + param_desc[i] + '\n'
-    output += '\\ \\hline \\hline \n'
+        output += '\\\\ $' + param_tex[i] + '$ & ' + paramStr(values[j]) + ' & ' + se + ' & ' + param_desc[i] + '\n'
+    output += '\\\\ \\hline \\hline \n'
     output += '\\end{tabular} \n'
-    output += '\\end{center} \n'
+    output += '\\end{table} \n'
     
-    with open('./Data/' + filename + '.txt.','w') as f:
+    with open('./Tables/' + filename + '.txt.','w') as f:
         f.write(output)
         f.close()
         

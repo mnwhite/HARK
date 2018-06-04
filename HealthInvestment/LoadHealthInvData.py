@@ -38,7 +38,7 @@ moment_dummies = np.array([
         False, # WealthByIncWealthAge
         False, # HealthByIncWealthAge
         False, # OOPbyIncWealthAge
-        False, # AvgHealthResidualByIncWealth
+        True,  # AvgHealthResidualByIncWealth
         True,  # AvgOOPResidualByIncWealth
         False, # MortByHealthAge
         ])
