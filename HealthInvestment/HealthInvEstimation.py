@@ -48,13 +48,13 @@ class EstimationAgentType(HealthInvestmentConsumerType):
         simulated agents than data respondents.
         '''
         X = self.DataToSimRepFactor
-        self.T_sim = self.T_cycle
         self.AgentCount = X*self.DataAgentCount
         self.WealthQuint = np.tile(self.WealthQuint,X)
         self.HealthTert = np.tile(self.HealthTert,X)
         self.HealthQuint = np.tile(self.HealthQuint,X)
         self.aLvlInit = np.tile(self.aLvlInit,X)
         self.HlvlInit = np.tile(self.HlvlInit,X)
+        self.t_ageInit = np.tile(self.t_ageInit,X)
         self.BornBoolArray = np.tile(self.BornBoolArray,(1,X))
         self.InDataSpanArray = np.tile(self.InDataSpanArray,(1,X))
         if self.Sex:
@@ -85,7 +85,8 @@ class EstimationAgentType(HealthInvestmentConsumerType):
         HealthProd1 = tempx/HealthProd0*HealthProd2**(1.-HealthProd0)
         if tempx > 0.:
             HealthProdFunc = lambda i : tempx/HealthProd0*((i*HealthProd2**((1.-HealthProd0)/HealthProd0) + HealthProd2**(1./HealthProd0))**HealthProd0 - HealthProd2)
-            MargHealthProdInvFunc = lambda q : HealthProd2*((q/tempx)**(1./(HealthProd0-1.)) -1.)
+            MargHealthProdFunc = lambda i : tempx*(i/HealthProd2 + 1.)**(HealthProd0-1.)
+            MargHealthProdInvFunc = lambda q : HealthProd2*((q/tempx)**(1./(HealthProd0-1.)) - 1.)
         else:
             HealthProdFunc = lambda i : 0.*i
             MargHealthProdInvFunc = lambda q : 0.*q
@@ -93,7 +94,8 @@ class EstimationAgentType(HealthInvestmentConsumerType):
         # Define the (marginal)(inverse) health production function
         self.HealthProdFunc = HealthProdFunc
         self.MargHealthProdInvFunc = MargHealthProdInvFunc
-        self.addToTimeInv('HealthProdFunc','MargHealthProdInvFunc')
+        self.MargHealthProdFunc = MargHealthProdFunc
+        self.addToTimeInv('HealthProdFunc','MargHealthProdFunc','MargHealthProdInvFunc')
         self.HealthProd0 = HealthProd0
         self.HealthProd1 = HealthProd1
         self.HealthProd2 = HealthProd2
@@ -180,6 +182,7 @@ def makeMultiTypeSimple(params):
         ThisType.aLvlInit = Data.w_init[these]
         ThisType.HlvlInit = Data.h_init[these]
         ThisType.BornBoolArray = Data.BornBoolArray[:,these]
+        ThisType.t_ageInit = np.zeros_like(ThisType.aLvlInit)*np.nan # unused in estimation
         ThisType.InDataSpanArray = Data.InDataSpanArray[:,these]
         ThisType.track_vars = ['OOPmedNow','hLvlNow','aLvlNow','CumLivPrb','DiePrbNow','RatioNow','MedLvlNow','CopayMedNow','CopayInvstNow']
         ThisType.seed = n
@@ -884,7 +887,7 @@ if __name__ == '__main__':
 
     # Choose what kind of work to do:
     test_obj_func = True
-    plot_model_fit = False
+    plot_model_fit = True
     perturb_one_param = False
     perturb_two_params = False
     estimate_model = False

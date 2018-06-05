@@ -111,7 +111,6 @@ class CounterfactualAgentType(EstimationAgentType):
         self.update()
         self.solve()
         self.repSimData()
-        self.t_ageInit = self.BornBoolArray.flatten() # other end of hacky fix
         self.evalExpectationFuncs(False)
         self.delSolution()
         
@@ -124,6 +123,20 @@ class CounterfactualAgentType(EstimationAgentType):
         self.solve()
         self.evalExpectationFuncs(True)
         self.delSolution()
+        
+    
+    def evalSocialOptimum(self):
+        '''
+        Execute a simulation run that calculates "socially optimal" objects.
+        '''
+        self.CalcSocialOptimum = True
+        self.initializeSim()
+        self.simulate()
+        self.iLvlSocOpt_histX = deepcopy(self.iLvlSocOpt_hist)
+        self.CopaySocOpt_histX = deepcopy(self.CopaySocOpt_hist)
+        self.LifePriceSocOpt_histX = deepcopy(self.LifePriceSocOpt_hist)
+        self.CumLivPrb_histX = deepcopy(self.CumLivPrb_hist)
+        self.CalcSocialOptimum = False
         
         
     def evalExpectationFuncs(self,isCounterfactual):
@@ -237,10 +250,12 @@ def makeMultiTypeCounterfactual(params):
         ThisType.aLvlInit = Data.w7_data[these]
         ThisType.HlvlInit = Data.h7_data[these]
         ThisType.t_ageInit = Data.age_in_2010[these]
-        ThisType.BornBoolArray = ThisType.t_ageInit # hacky workaround
+        ThisType.BornBoolArray = Data.BornBoolArray[:,these]
         ThisType.InDataSpanArray = np.zeros(10) # irrelevant
         ThisType.CalcExpectationFuncs = True
-        ThisType.track_vars = ['OOPmedNow','hLvlNow','aLvlNow','CumLivPrb','DiePrbNow','RatioNow','MedLvlNow','CopayNow']
+        ThisType.track_vars = ['OOPmedNow','hLvlNow','aLvlNow','CumLivPrb','DiePrbNow',
+                               'RatioNow','MedLvlNow','CopayMedNow','CopayInvstNow',
+                               'iLvlNow','iLvlSocOpt','CopaySocOpt','LifePriceSocOpt']
         ThisType.seed = n
         
         type_list.append(ThisType)
@@ -283,9 +298,6 @@ def calcSubpopMeans(type_list):
     GovtPDVarray = np.concatenate([this_type.GovtPDVarray for this_type in type_list])
     WTParray = np.concatenate([this_type.WTParray for this_type in type_list])
     
-    plt.plot(np.sort(WTParray))
-    plt.show()
-    
     # Make and return MyMeans objects
     TotalMedMeans = MyMeans(TotalMedPDVarray,WealthQuint,IncQuint,HealthQuarter)
     OOPmedMeans = MyMeans(OOPmedPDVarray,WealthQuint,IncQuint,HealthQuarter)
@@ -327,9 +339,7 @@ def runCounterfactuals(name,Parameters,Policies):
     TotalMedBaseline, OOPmedBaseline, ExpectedLifeBaseline, MedicareBaseline, SubsidyBaseline, WelfareBaseline, GovtBaseline, trash = calcSubpopMeans(Agents)
     for this_type in Agents:
         this_type.ValueBaseline = copy(this_type.ValueArray)
-        
-    #return [TotalMedBaseline, OOPmedBaseline, ExpectedLifeBaseline, MedicareBaseline, SubsidyBaseline, WelfareBaseline, GovtBaseline]
-        
+           
     # Loop through the policies, executing the counterfactuals and storing results.
     N = len(Policies)
     TotalMedDiffs = np.zeros(N)
@@ -382,7 +392,7 @@ if __name__ == '__main__':
     from MakeTables import makeCounterfactualSummaryTables
     from MakeFigures import makeCounterfactualFigures
     
-    TestPolicy = SubsidyPolicy(Subsidy0=10*[0.01],Subsidy1=10*[0.0])
+    TestPolicy = SubsidyPolicy(Subsidy0=10*[0.1],Subsidy1=10*[0.0])
     t_start = clock()
     Out = runCounterfactuals('blah',Params.test_param_vec,[TestPolicy])
     t_end = clock()

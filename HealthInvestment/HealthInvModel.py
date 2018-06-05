@@ -800,6 +800,8 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,CRRAmed,IncomeNext,IncomeNo
         solution_now.WelfarePDVfunc = BilinearInterp(WelfarePDV,bLvlGrid,hLvlGrid)
         solution_now.ExpectedLifeFunc = BilinearInterp(ExpectedLife,bLvlGrid,hLvlGrid)
         solution_now.GovtPDVfunc = BilinearInterp(GovtPDV,bLvlGrid,hLvlGrid)
+        solution_now.FutureTotalMedFunc = FutureTotalMedFunc
+        solution_now.FutureLifeFunc = FutureLifeFunc
             
     return solution_now
     
@@ -1191,6 +1193,26 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         self.DiePrbNow = np.zeros(self.AgentCount)
         
         
+    def initializeSimX(self):
+        '''
+        Prepares for a new simulation run by clearing histories and post-state
+        variable arrays, and setting time to zero.
+        '''
+        self.resetRNG()
+        self.t_sim = 0
+        self.t_age = 0
+        self.t_cycle = np.zeros(self.AgentCount,dtype=int)
+        blank_array = np.zeros(self.AgentCount)
+        for var_name in self.poststate_vars:
+            setattr(self,var_name,copy(blank_array))
+        self.clearHistory()
+        self.ActiveNow = np.zeros(self.AgentCount,dtype=bool)
+        self.DiedNow = np.zeros(self.AgentCount,dtype=bool)
+        self.hLvlNow = np.zeros(self.AgentCount) + np.nan
+        self.CumLivPrb = np.zeros(self.AgentCount)
+        self.DiePrbNow = np.zeros(self.AgentCount)
+        
+        
     def getMortality(self):
         '''
         Overwrites the standard method in AgentType with a simple thing.
@@ -1368,13 +1390,27 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
             iLvl = self.iLvlNow     # actual health investment this period
             dvda = self.solution[t].dvdaFunc(self.aLvlNow,self.HlvlNow)
             dvdH = self.solution[t].dvdHfunc(self.aLvlNow,self.HlvlNow)
-            dLdH = self.solution[t].ExpectedLifeFunc.derivativeY(self.aLvlNow,self.HlvlNow) # marginal life expectancy from post-health
-            dOdH = self.solution[t].TotalMedPDVfunc.derivativeY(self.aLvlNow,self.HlvlNow) # marginal PDV lifetime medical expenses from post-health
+            dLdH = self.solution[t].FutureLifeFunc.derivativeY(self.aLvlNow,self.HlvlNow) # marginal life expectancy from post-health
+            dOdH = self.solution[t].FutureTotalMedFunc.derivativeY(self.aLvlNow,self.HlvlNow) # marginal PDV lifetime medical expenses from post-health
             
             # Calculate "socially optimal" values
-            self.iLvlSocOpt = fp_inv(pi/(p_L*dLdH - dOdH)) # "socially optimal" health investment
-            self.LifePriceSocOpt = pi/(fp(iLvl)*dLdH) + dOdH/dLdH # "value" of life year that *would* make actual health investment "socially optimal"
-            self.CopaySocOpt = dvdH/(dvda*(p_L*dLdH - dOdH)) # coinsurance rate that *would have* made agent choose "socially optimal" health investment  
+            dWdH = (p_L*dLdH - dOdH)
+            iLvlSocOpt = fp_inv(pi/dWdH) # "socially optimal" health investment
+            iLvlSocOpt[iLvlSocOpt < 0.] = 0.
+            iLvlSocOpt[np.isnan(iLvlSocOpt)] = 0.
+            
+            LifePriceSocOpt = pi/(fp(iLvl)*dLdH) + dOdH/dLdH # "value" of life year that *would* make actual health investment "socially optimal"
+            LifePriceSocOpt[iLvl == 0.] = np.nan
+            
+            CopaySocOpt = dvdH/(dvda*dWdH) # coinsurance rate that *would have* made agent choose "socially optimal" health investment  
+            CopaySocOpt[CopaySocOpt > 1.] = 1.
+            CopaySocOpt[dvdH < 0.] = np.nan
+            CopaySocOpt[dWdH < 0.] = np.nan
+            
+            # Store socially optimal values
+            self.iLvlSocOpt = iLvlSocOpt
+            self.LifePriceSocOpt = LifePriceSocOpt
+            self.CopaySocOpt = CopaySocOpt
 
     
     def plotxFuncByHealth(self,t,Dev,bMin=None,bMax=20.0,hSet=None):

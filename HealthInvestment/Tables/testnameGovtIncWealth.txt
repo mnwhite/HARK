@@ -5,11 +5,11 @@
 Income & \multicolumn{5}{c}{Wealth Quintile} \\ 
 Quintile & Bottom & Second & Third & Fourth & Top \\ 
 \hline 
-Bottom & \$0 & \$0 & \$0 & \$7 & \$49 \\ 
-Second & \$62 & \$69 & \$60 & \$54 & \$155 \\ 
-Third  & \$211 & \$239 & \$236 & \$230 & \$219 \\ 
-Fourth & \$210 & \$210 & \$227 & \$229 & \$229 \\ 
-Top    & \$225 & \$209 & \$241 & \$230 & \$219 \\ 
+Bottom & \$0 & \$0 & \$0 & \$33 & \$167 \\ 
+Second & \$467 & \$509 & \$673 & \$774 & \$621 \\ 
+Third  & \$875 & \$664 & \$627 & \$544 & \$424 \\ 
+Fourth & \$427 & \$424 & \$396 & \$359 & \$301 \\ 
+Top    & \$242 & \$188 & \$209 & \$172 & \$122 \\ 
 \hline \hline 
 \end{tabular} 
 \end{table} 

@@ -82,8 +82,10 @@ other_exog_params = {
     'Subsidy1' : 0.0,
     'CalcExpectationFuncs' : False,
     'CalcSocialOptimum' : False,
+    'LifePrice' : 10.,
     'Sex' : 0.0,
     'cycles' : 1,
+    'T_sim' : 25,
     'DataToSimRepFactor' : 50
 }
 
