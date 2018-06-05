@@ -620,7 +620,8 @@ moment_mask = np.concatenate([
         np.ones(375)*moment_dummies[13],
         np.ones(375)*moment_dummies[14],
         np.ones(25)*moment_dummies[15],
-        np.ones(25)*moment_dummies[16],
+        np.ones(23)*moment_dummies[16],
+        np.zeros(2)*moment_dummies[16],
         np.ones(75)*moment_dummies[17]
         ])
 
