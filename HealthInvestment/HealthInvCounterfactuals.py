@@ -9,9 +9,10 @@ sys.path.insert(0,'../')
 from copy import copy, deepcopy
 import numpy as np
 from scipy.optimize import brentq
-from HARKutilities import getPercentiles
+from HARKutilities import getPercentiles, plotFuncs
 from HARKcore import HARKobject
 from HARKparallel import multiThreadCommands, multiThreadCommandsFake
+from HARKinterpolation import ConstantFunction
 from HealthInvEstimation import convertVecToDict, EstimationAgentType
 import LoadHealthInvData as Data
 import matplotlib.pyplot as plt
@@ -129,6 +130,8 @@ class CounterfactualAgentType(EstimationAgentType):
         '''
         Execute a simulation run that calculates "socially optimal" objects.
         '''
+        self.update()
+        self.solve()
         self.CalcSocialOptimum = True
         self.initializeSim()
         self.simulate()
@@ -137,6 +140,22 @@ class CounterfactualAgentType(EstimationAgentType):
         self.LifePriceSocOpt_histX = deepcopy(self.LifePriceSocOpt_hist)
         self.CumLivPrb_histX = deepcopy(self.CumLivPrb_hist)
         self.CalcSocialOptimum = False
+        
+        OptimalCopayInvstFunc = []
+        OptCopayList = []
+        for t in range(self.T_cycle):
+            Weights = self.CumLivPrb_hist[t,:]
+            Copays  = self.CopaySocOpt_hist[t,:]
+            these = np.logical_not(np.isnan(Copays))
+            OptCopay = np.dot(Weights[these],Copays[these])/np.sum(Weights[these])
+            if np.isnan(OptCopay):
+                OptCopay = 1.0
+            OptimalCopayInvstFunc.append(ConstantFunction(OptCopay))
+            OptCopayList.append(OptCopay)
+        self.OptimalCopayInvstFunc = OptimalCopayInvstFunc
+        self.OptCopayList = OptCopayList
+        
+        self.delSolution()
         
         
     def evalExpectationFuncs(self,isCounterfactual):
@@ -383,6 +402,57 @@ def runCounterfactuals(name,Parameters,Policies):
         return [TotalMedDiffs, OOPmedDiffs, ExpectedLifeDiffs, MedicareDiffs, SubsidyDiffs, WelfareDiffs, GovtDiffs, WTPs]
     else:
         return [TotalMedDiff, OOPmedDiff, ExpectedLifeDiff, MedicareDiff, SubsidyDiff, WelfareDiff, GovtDiff, WTPcounterfactual]
+    
+    
+# Define a function for evaluating the "socially optimal" policy
+def runOptimalPolicy(name,Parameters):
+    '''
+    Run a set of counterfactual policies given a set of parameters.
+    
+    Parameters
+    ----------
+    name : str
+        Name of this counterfactual set, used in filenames.
+    Parameters : np.array
+        A size 33 array of parameters, just like for the estimation.
+    
+    Returns
+    -------
+    TBD
+    '''
+    # Make the agent types
+    param_dict = convertVecToDict(Parameters)
+    Agents = makeMultiTypeCounterfactual(param_dict)
+    
+    # Solve the baseline model and get arrays of outcome variables
+    multiThreadCommands(Agents,['runBaselineAction()'],num_jobs=5)
+    TotalMedBaseline, OOPmedBaseline, ExpectedLifeBaseline, MedicareBaseline, SubsidyBaseline, WelfareBaseline, GovtBaseline, trash = calcSubpopMeans(Agents)
+    for this_type in Agents:
+        this_type.ValueBaseline = copy(this_type.ValueArray)
+        
+    # Find the "socially optimal" policy and implement it
+    multiThreadCommands(Agents,['evalSocialOptimum()'],num_jobs=5)
+    for this_type in Agents:
+        this_type.CopayInvstFunc = this_type.OptimalCopayInvstFunc
+        this_type.SameCopayForMedAndInvst = False # Make sure CopayInvst isn't overwritten!
+        
+    # Run the counterfactual and get arrays of outcome variables
+    multiThreadCommands(Agents,['runCounterfactualAction()'],num_jobs=5)
+    TotalMedCounterfactual, OOPmedCounterfactual, ExpectedLifeCounterfactual, MedicareCounterfactual, SubsidyCounterfactual, WelfareCounterfactual, GovtCounterfactual, WTPcounterfactual = calcSubpopMeans(Agents)
+    
+    # Calculate differences and store overall means in the arrays
+    TotalMedDiff = TotalMedCounterfactual.subtract(TotalMedBaseline)
+    #OOPmedDiff = OOPmedCounterfactual.subtract(OOPmedBaseline)
+    OOPmedDiff = OOPmedBaseline.subtract(OOPmedCounterfactual)
+    ExpectedLifeDiff = ExpectedLifeCounterfactual.subtract(ExpectedLifeBaseline)
+    MedicareDiff = MedicareCounterfactual.subtract(MedicareBaseline)
+    SubsidyDiff = SubsidyCounterfactual.subtract(SubsidyBaseline)
+    WelfareDiff = WelfareCounterfactual.subtract(WelfareBaseline)
+    GovtDiff = GovtCounterfactual.subtract(GovtBaseline)
+        
+    # If there is only one counterfactual policy, return the full set of mean-diffs.
+    # If there is more than one, return vectors of overall mean-diffs.
+    return [TotalMedDiff, OOPmedDiff, ExpectedLifeDiff, MedicareDiff, SubsidyDiff, WelfareDiff, GovtDiff, WTPcounterfactual]
             
             
 
@@ -392,12 +462,12 @@ if __name__ == '__main__':
     from MakeTables import makeCounterfactualSummaryTables
     from MakeFigures import makeCounterfactualFigures
     
-    TestPolicy = SubsidyPolicy(Subsidy0=10*[0.1],Subsidy1=10*[0.0])
-    t_start = clock()
-    Out = runCounterfactuals('blah',Params.test_param_vec,[TestPolicy])
-    t_end = clock()
-    print('That took ' + str(t_end-t_start) + ' seconds.')
-    makeCounterfactualSummaryTables(Out,'Test Policy','testname','Test')
+#    TestPolicy = SubsidyPolicy(Subsidy0=10*[0.1],Subsidy1=10*[0.0])
+#    t_start = clock()
+#    Out = runCounterfactuals('blah',Params.test_param_vec,[TestPolicy])
+#    t_end = clock()
+#    print('That took ' + str(t_end-t_start) + ' seconds.')
+#    makeCounterfactualSummaryTables(Out,'Test Policy','testname','Test')
 
 #    PolicyList = []
 #    SubsidyVec = np.linspace(0,0.1,6)
@@ -408,4 +478,8 @@ if __name__ == '__main__':
 #    t_end = clock()
 #    print('That took ' + str(t_end-t_start) + ' seconds.')
 #    makeCounterfactualFigures(Out,SubsidyVec*10000,'Subsidy',' Test Scenario', 'Test')
-#    
+    
+    t_start = clock()
+    Out = runOptimalPolicy('blah',Params.test_param_vec)
+    t_end = clock()
+    print('That took ' + str(t_end-t_start) + ' seconds.')

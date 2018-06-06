@@ -82,6 +82,7 @@ other_exog_params = {
     'Subsidy1' : 0.0,
     'CalcExpectationFuncs' : False,
     'CalcSocialOptimum' : False,
+    'SameCopayForMedAndInvst' : True,
     'LifePrice' : 10.,
     'Sex' : 0.0,
     'cycles' : 1,

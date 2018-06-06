@@ -947,7 +947,8 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
             
         self.PremiumFunc = PremiumFunc
         self.CopayMedFunc = CopayMedFunc
-        self.CopayInvstFunc = deepcopy(CopayMedFunc)
+        if self.SameCopayForMedAndInvst:
+            self.CopayInvstFunc = deepcopy(CopayMedFunc)
         self.addToTimeVary('PremiumFunc','CopayMedFunc','CopayInvstFunc')
             
         if not orig_time:
