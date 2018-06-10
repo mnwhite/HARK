@@ -1194,26 +1194,6 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         self.DiePrbNow = np.zeros(self.AgentCount)
         
         
-    def initializeSimX(self):
-        '''
-        Prepares for a new simulation run by clearing histories and post-state
-        variable arrays, and setting time to zero.
-        '''
-        self.resetRNG()
-        self.t_sim = 0
-        self.t_age = 0
-        self.t_cycle = np.zeros(self.AgentCount,dtype=int)
-        blank_array = np.zeros(self.AgentCount)
-        for var_name in self.poststate_vars:
-            setattr(self,var_name,copy(blank_array))
-        self.clearHistory()
-        self.ActiveNow = np.zeros(self.AgentCount,dtype=bool)
-        self.DiedNow = np.zeros(self.AgentCount,dtype=bool)
-        self.hLvlNow = np.zeros(self.AgentCount) + np.nan
-        self.CumLivPrb = np.zeros(self.AgentCount)
-        self.DiePrbNow = np.zeros(self.AgentCount)
-        
-        
     def getMortality(self):
         '''
         Overwrites the standard method in AgentType with a simple thing.
@@ -1262,6 +1242,7 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         these = self.ActiveNow
         not_these = np.logical_not(these)
         N = np.sum(these)
+        t = self.t_sim
         
         HlvlNow = self.HlvlNow[these]
         HealthShkStd = self.HealthShkStd0 + self.HealthShkStd1*HlvlNow
@@ -1270,6 +1251,7 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
             self.hShkNow = np.zeros(self.AgentCount)
         self.hShkNow[these] = hShkNow
         self.hShkNow[not_these] = np.nan
+        self.hShkNow[self.BornBoolArray[t,:]] = 0.0
         
         MedShkBase = drawNormal(N,seed=self.RNG.randint(0,2**31-1))
         if ~hasattr(self,'MedShkBase'):

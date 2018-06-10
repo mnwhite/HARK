@@ -288,7 +288,7 @@ for b in range(data_bootstrap_count+1):
     for j in range(15):
         right_age = age_data == j+1
         AgeBoolArray[:,:,j] = right_age
-    NotTooOld = (age_data < 14)[:7,:]
+    NotTooOld = (age_data < 14)[:7,:] # unused?
         
     # Make a boolean array of usable observations (for non-mortality moments)
     BelowCohort16 = np.tile(np.reshape(cohort_data,(1,obs)),(8,1)) < 16
@@ -781,5 +781,13 @@ AllYearPricePath[35:] = np.exp(MedInflation*(np.arange(35,81) - 34))*AllYearPric
 MedPriceHistory = np.zeros(40)
 for t in range(40):
     MedPriceHistory[t] = (AllYearPricePath[2*t+1] + AllYearPricePath[2*t+2])/2
+    
+# Calculate mortality by income quintile by age (only used for model validation)
+MortByIncAge = np.zeros((5,15))
+for i in range(5):
+    for a in range(15):
+        those = np.logical_and(MortUseable,np.logical_and(IncQuintBoolArray[:,:,i],AgeBoolArray[:,:,a]))
+        DeathCount = float(np.sum(np.logical_and(those,JustDied)))
+        MortByIncAge[i,a] = DeathCount/float(np.sum(those))
 
         

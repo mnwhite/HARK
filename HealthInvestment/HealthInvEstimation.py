@@ -3,7 +3,6 @@ This module runs the structural estimation for the Ounce of Prevention project.
 '''
 
 import sys
-import os
 sys.path.insert(0,'../')
 
 from time import clock
@@ -886,8 +885,8 @@ if __name__ == '__main__':
 
 
     # Choose what kind of work to do:
-    test_obj_func = True
-    plot_model_fit = True
+    test_obj_func = False
+    plot_model_fit = False
     perturb_one_param = False
     perturb_two_params = False
     estimate_model = False
