@@ -887,7 +887,7 @@ if __name__ == '__main__':
     # Choose what kind of work to do:
     test_obj_func = False
     plot_model_fit = False
-    perturb_one_param = False
+    perturb_one_param = True
     perturb_two_params = False
     estimate_model = False
     calc_std_errs = False
@@ -1044,9 +1044,9 @@ if __name__ == '__main__':
 
     if perturb_one_param:
         # Test model identification by perturbing one parameter at a time
-        param_i = 24
-        param_min = -3.0
-        param_max = -1.2
+        param_i = 6
+        param_min = 9.5
+        param_max = 12.0
         N = 21
         perturb_vec = np.linspace(param_min,param_max,num=N)
         fit_vec = np.zeros(N) + np.nan
@@ -1095,7 +1095,7 @@ if __name__ == '__main__':
 
     if estimate_model:
         # Estimate some (or all) of the model parameters
-        which_indices = np.array([0,1,5,6,7,8,10,11,12,13,14,15])
+        which_indices = which_indices = np.array([0,1,2,3,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32])
         which_bool = np.zeros(33,dtype=bool)
         which_bool[which_indices] = True
         estimated_params = minimizeNelderMead(objectiveFunctionWrapper,Params.test_param_vec,verbose=True,which_vars=which_bool)
@@ -1113,6 +1113,6 @@ if __name__ == '__main__':
         for n in range(which_indices.size):
             i = which_indices[n]
             print(Params.param_names[i] + ' = ' + str(standard_errors[n]))
-        makeParamTable('EstimatedParameters',Params.test_param_vec[which_indices],which_indices,stderrs=standard_errors)
+        #makeParamTable('EstimatedParameters',Params.test_param_vec[which_indices],which_indices,stderrs=standard_errors)
         
         

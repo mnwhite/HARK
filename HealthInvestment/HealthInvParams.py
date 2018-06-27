@@ -7,7 +7,7 @@ from copy import copy
 import numpy as np
 
 # Choose state grid sizes and bounds (exogenously chosen)
-Hcount = 16
+Hcount = 26
 aXtraCount = 48
 hCount = 2*(Hcount-1)+1
 bNrmCount = 2*aXtraCount
@@ -140,39 +140,39 @@ basic_estimation_dict.update(grid_size_params)
 
 # Make a test parameter vector
 test_param_vec = np.array([
-    0.83602947488,     # 0 CRRA
-    0.945648183906,    # 1 DiscFac
-    9.67386433787,     # 2 MedCurve
-    1.92827333716,     # 3 LifeUtility
-    0.0,               # 4 MargUtilityShift
-    0.250168455346,    # 5 Cfloor
-    8.83124038257,     # 6 Bequest0
-    3.27114070138,     # 7 Bequest1
-    -0.937569006661,   # 8 MedShkMean0
-    -0.483764708529,   # 9 MedShkMeanSex
-    0.352550056843,    # 10 MedShkMeanAge
-    -0.0108688251532,  # 11 MedShkMeanAgeSq
-    -8.04361988208,    # 12 MedShkMeanHealth
-    0.016407026972,    # 13 MedShkMeanHealthSq
-    1.90465294754,     # 14 MedShkStd0
-    0.363882657392,    # 15 MedShkStd1
-    0.00675376633684,  # 16 HealthNext0
-    -0.00779270596293, # 17 HealthNextSex
-    -0.000543875153737,# 18 HealthNextAge
-    -0.000329445734769,# 19 HealthNextAgeSq
-    0.852151279099,    # 20 HealthNextHealth
-    0.102617375387,    # 21 HealthNextHealthSq
-    0.168496518726,    # 22 HealthShkStd0
-    -0.0762850917462,  # 23 HealthShkStd1
-    -0.795743216678,   # 24 LogJerk
-    -1.42275930956,    # 25 LogSlope
-    2.77602971599,     # 26 LogCurve
-    -0.431711271567,   # 27 Mortality0
-    0.350131809154,    # 28 MortalitySex
-    -0.000105225646254,# 29 MortalityAge
-    0.00611315527816,  # 30 MortalityAgeSq
-    -2.94710219605,    # 31 MortalityHealth
-    0.969086236483,    # 32 MortalityHealthSq
+    0.469095217795,      # 0 CRRA
+    0.951246566246,      # 1 DiscFac
+    8.30674289454,       # 2 MedCurve
+    1.99280256459,       # 3 LifeUtility
+    0.0,                 # 4 MargUtilityShift
+    0.446061079412,      # 5 Cfloor
+    10.5530217851,       # 6 Bequest0
+    1.9297865176,        # 7 Bequest1
+    -2.03585954156,      # 8 MedShkMean0
+    -0.666973901287,     # 9 MedShkMeanSex
+    0.438882277916,      # 10 MedShkMeanAge
+    -0.0147918778328,    # 11 MedShkMeanAgeSq
+    -7.973674239,        # 12 MedShkMeanHealth
+    -0.0403829628929,    # 13 MedShkMeanHealthSq
+    2.3142418949,        # 14 MedShkStd0
+    0.503747944763,      # 15 MedShkStd1
+    0.0248596781706,     # 16 HealthNext0
+    -0.00768329955849,   # 17 HealthNextSex
+    -0.000192818616488,  # 18 HealthNextAge
+    -0.00033612246444,   # 19 HealthNextAgeSq
+    0.803903471652,      # 20 HealthNextHealth
+    0.134083631898,      # 21 HealthNextHealthSq
+    0.166986140029,      # 22 HealthShkStd0
+    -0.0750119732905,    # 23 HealthShkStd1
+    -6.3057422662,       # 24 LogJerk
+    -2.15022562509,      # 25 LogSlope
+    1.65132014559,       # 26 LogCurve
+    -0.548629938657,     # 27 Mortality0
+    0.352059307837,      # 28 MortalitySex
+    -0.000137394824353,  # 29 MortalityAge
+    0.00605289274876,    # 30 MortalityAgeSq
+    -2.13078198201,      # 31 MortalityHealth
+    -0.00802680509805,   # 32 MortalityHealthSq
     ])
 
 #    1.65857373243,      # 3 LifeUtility
@@ -188,7 +188,7 @@ test_param_vec = np.array([
 
 # These are only used by the estimation to decide when to write parameters to disk
 func_call_count = 0
-store_freq = 10
+store_freq = 5
 
 # Make a list of parameter names corresponding to their position in the vector above
 param_names = [

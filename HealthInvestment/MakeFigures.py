@@ -253,7 +253,7 @@ def makeValidationFigures(params,use_cohorts):
     plt.show()
     
     # Calculate the serial correlation of log OOP medical spending in simulated data
-    Med_sim = np.log(10000*OOPhist + 10.)
+    Med_sim = np.log(10000*OOPhist + 1.)
     serial_corr_sim = np.zeros(15)
     for t in range(15):
         these = np.logical_and(WeightAdj[t+1,:] > 0., WeightAdj[t+1,:] < 1.) # Alive but not the first simulated period
@@ -271,7 +271,7 @@ def makeValidationFigures(params,use_cohorts):
     BothAlive  = np.logical_and(Data.Alive[:-1,:],Data.Alive[1:,:])
     Usable = np.logical_and(DataExists,BothAlive)
     serial_corr_data = np.zeros(15)
-    Med_data = np.log(10000*Data.m_data + 10.)
+    Med_data = np.log(10000*Data.m_data + 1.)
     for t in range(15):
         these = np.logical_and(Usable,Data.AgeBoolArray[:-1,:,t])
         Med_t = Med_data[1:,:][these]
@@ -286,7 +286,7 @@ def makeValidationFigures(params,use_cohorts):
     plt.plot(AgeVec+2,serial_corr_data,'-r')
     plt.plot(AgeVec+2,serial_corr_sim,'-b')
     plt.xlabel('Age')
-    plt.ylabel('$R^2$ of regression of $\log(OOP_{t}$ on $\log(OOP_{t-1}$')
+    plt.ylabel('$R^2$ of regression of $\log(OOP_{t})$ on $\log(OOP_{t-1})$')
     plt.legend(['HRS data','Model'],loc=1)
     plt.show()
     

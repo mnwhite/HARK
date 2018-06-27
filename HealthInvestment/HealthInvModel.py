@@ -1251,7 +1251,7 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
             self.hShkNow = np.zeros(self.AgentCount)
         self.hShkNow[these] = hShkNow
         self.hShkNow[not_these] = np.nan
-        self.hShkNow[self.BornBoolArray[t,:]] = 0.0
+        #self.hShkNow[self.BornBoolArray[t,:]] = 0.0
         
         MedShkBase = drawNormal(N,seed=self.RNG.randint(0,2**31-1))
         if ~hasattr(self,'MedShkBase'):

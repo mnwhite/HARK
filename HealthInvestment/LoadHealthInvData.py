@@ -23,24 +23,24 @@ use_cohorts = False
 
 # Choose which moments will actually be used
 moment_dummies = np.array([
-        False, # OOPbyAge
-        False, # StDevOOPbyAge
-        False, # MortByAge
-        False, # StDevDeltaHealthByAge
-        False, # StDevOOPbyHealthAge
-        False, # StDevDeltaHealthByHealthAge
-        False, # HealthBySexHealthAge
-        False, # OOPbySexHealthAge
-        False, # MortBySexHealthAge
-        False, # WealthByIncAge
-        False, # HealthByIncAge
+        True,  # OOPbyAge
+        True,  # StDevOOPbyAge
+        True,  # MortByAge
+        True,  # StDevDeltaHealthByAge
+        True,  # StDevOOPbyHealthAge
+        True,  # StDevDeltaHealthByHealthAge
+        True,  # HealthBySexHealthAge
+        True,  # OOPbySexHealthAge
+        True,  # MortBySexHealthAge
+        True,  # WealthByIncAge
+        True,  # HealthByIncAge
         False, # OOPbyIncAge
-        False, # WealthByIncWealthAge
+        True,  # WealthByIncWealthAge
         False, # HealthByIncWealthAge
         False, # OOPbyIncWealthAge
         True,  # AvgHealthResidualByIncWealth
         True,  # AvgOOPResidualByIncWealth
-        False, # MortByHealthAge
+        True,  # MortByHealthAge
         ])
 
 # Make a random number generator for the data bootstrap
@@ -620,8 +620,8 @@ moment_mask = np.concatenate([
         np.ones(375)*moment_dummies[13],
         np.ones(375)*moment_dummies[14],
         np.ones(25)*moment_dummies[15],
-        np.ones(23)*moment_dummies[16],
-        np.zeros(2)*moment_dummies[16],
+        np.ones(24)*moment_dummies[16],
+        np.zeros(1)*moment_dummies[16],
         np.ones(75)*moment_dummies[17]
         ])
 
