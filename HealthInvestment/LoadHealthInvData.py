@@ -297,15 +297,18 @@ for b in range(data_bootstrap_count+1):
     Useable = np.logical_and(BelowCohort16,np.logical_and(Alive,NotInit))
     
     # Calculate health quintiles at data entry by age
+    health_tertile_cuts = np.zeros((2,15))
     health_quintile_cuts = np.zeros((4,15))
     health_quint_data = np.zeros_like(health_tert_data,dtype=int)
     for a in range(15):
         these = np.logical_and(Alive,AgeBoolArray[:,:,a])
         health_temp = h_data[these]
         health_quintile_cuts[:,a] = getPercentiles(health_temp,percentiles=[0.2,0.4,0.6,0.8])
-        h_init_temp = h_init[BornBoolArray[a,:]]
-        health_quint_data[BornBoolArray[a,:]] = np.searchsorted(health_quintile_cuts[:,a],h_init_temp)
-    health_quint_data += 1 # To fit with other style
+        health_tertile_cuts[:,a] = getPercentiles(health_temp,percentiles=[0.333,0.666])
+        those = BornBoolArray[a,:]
+        h_init_temp = h_init[those]
+        health_quint_data[those] = np.searchsorted(health_quintile_cuts[:,a],h_init_temp) + 1
+        #health_tert_data[those] = np.searchsorted(health_tertile_cuts[:,a],h_init_temp) + 1
     
     # Make data objects for the health production pre-estimation
     UseableAlt = np.logical_and(BelowCohort16,Alive)
@@ -558,12 +561,16 @@ for b in range(data_bootstrap_count+1):
             HealthAgeCellSizeHealthDelta[h,a] = np.sum(thise)
             
     # Calculate mortality by health quintile by age: 75
+    # Calculate health by health quintile by age: 75
     MortByHealthAge = np.zeros((5,15))
+    HealthByHealthAge = np.zeros((5,15))
     for h in range(5):
         for a in range(15):
             those = np.logical_and(MortUseable,np.logical_and(HealthQuintBoolArray[:,:,h],AgeBoolArray[:,:,a]))
             DeathCount = float(np.sum(np.logical_and(those,JustDied)))
             MortByHealthAge[h,a] = DeathCount/float(np.sum(those))
+            these = np.logical_and(Useable,np.logical_and(HealthQuintBoolArray[:,:,h],AgeBoolArray[:,:,a]))
+            HealthByHealthAge[h,a] = np.mean(h_data[these])
             
     # Aggregate moments into a single vector
     all_moments = np.concatenate([

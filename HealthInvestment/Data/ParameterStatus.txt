@@ -5,7 +5,7 @@ current_param_vec = np.array([
     1.99280256459,  # 3 LifeUtility
     0.0,  # 4 MargUtilityShift
     0.446061079412,  # 5 Cfloor
-    11.875,  # 6 Bequest0
+    10.5530217851,  # 6 Bequest0
     1.9297865176,  # 7 Bequest1
     -2.03585954156,  # 8 MedShkMean0
     -0.666973901287,  # 9 MedShkMeanSex
@@ -23,8 +23,8 @@ current_param_vec = np.array([
     0.134083631898,  # 21 HealthNextHealthSq
     0.166986140029,  # 22 HealthShkStd0
     -0.0750119732905,  # 23 HealthShkStd1
-    -6.3057422662,  # 24 LogJerk
-    -2.15022562509,  # 25 LogSlope
+    6.3057422662,  # 24 LogJerk
+    -2.105,  # 25 LogSlope
     1.65132014559,  # 26 LogCurve
     -0.548629938657,  # 27 Mortality0
     0.352059307837,  # 28 MortalitySex

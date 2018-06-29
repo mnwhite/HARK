@@ -5,9 +5,10 @@ the health investment model, as well as test values of the structural parameters
 
 from copy import copy
 import numpy as np
+import csv
 
 # Choose state grid sizes and bounds (exogenously chosen)
-Hcount = 26
+Hcount = 16
 aXtraCount = 48
 hCount = 2*(Hcount-1)+1
 bNrmCount = 2*aXtraCount
@@ -31,43 +32,92 @@ grid_size_params = {
     'T_cycle' : T_cycle
 }
 
-# Make a dictionary with insurance function parameters (copied from paper table)
+# Load the insurance coefficients into memory
+infile = open('./Data/InsuranceCoeffs.txt','r') 
+my_reader = csv.reader(infile,delimiter=',')
+insurance_coeffs_raw = list(my_reader)[1]
+infile.close()
+copay_coeffs = np.zeros(17)
+premium_coeffs = np.zeros(17)
+for i in range(17):
+    copay_coeffs[i] = float(insurance_coeffs_raw[i])
+    premium_coeffs[i] = float(insurance_coeffs_raw[i+17])
+    
+# Make a dictionary with insurance function parameters (loaded from Stata output)
 insurance_params = {
-    'Premium0' : -0.0058,
-    'PremiumHealth' : 0.0803,
-    'PremiumHealthSq' : 0.0130,
-    'PremiumAge' : .0036,
-    'PremiumAgeSq' : -0.00008,
-    'PremiumSex' : -0.0088,
-    'PremiumInc' : 0.0216,
-    'PremiumIncSq' : -0.0001,
-    'PremiumIncCu' : 0.00000000673,
-    'PremiumHealthAge' : 0.0039,
-    'PremiumHealthSqAge' : -0.0068,
-    'PremiumHealthAgeSq' : 0.000034,
-    'PremiumHealthSqAgeSq' : -0.000024,
-    'PremiumHealthInc' : -0.0324,
-    'PremiumHealthSqInc' : 0.0133,
-    'PremiumHealthIncSq' : 0.00007,
-    'PremiumHealthSqIncSq' : 0.000032,
-    'Copay0' : 0.0436,
-    'CopayHealth' : 0.4325,
-    'CopayHealthSq' : -0.1505,
-    'CopayAge' : .0034,
-    'CopayAgeSq' : -0.000013,
-    'CopaySex' : -0.0409,
-    'CopayInc' : 0.0337,
-    'CopayIncSq' : -0.0012,
-    'CopayIncCu' : 0.000000606,
-    'CopayHealthAge' : -0.0067,
-    'CopayHealthSqAge' : 0.0032,
-    'CopayHealthAgeSq' : 0.00000438,
-    'CopayHealthSqAgeSq' : -0.00012,
-    'CopayHealthInc' : -0.0539,
-    'CopayHealthSqInc' : 0.0268,
-    'CopayHealthIncSq' : 0.0024,
-    'CopayHealthSqIncSq' : -0.00136,
+    'PremiumHealth' : premium_coeffs[0],
+    'PremiumHealthSq' : premium_coeffs[1],
+    'PremiumAge' : premium_coeffs[2],
+    'PremiumAgeSq' : premium_coeffs[3],
+    'PremiumSex' : premium_coeffs[4],
+    'PremiumInc' : premium_coeffs[5],
+    'PremiumIncSq' : premium_coeffs[6],
+    'PremiumIncCu' : premium_coeffs[7],
+    'PremiumHealthAge' : premium_coeffs[8],
+    'PremiumHealthSqAge' : premium_coeffs[9],
+    'PremiumHealthAgeSq' : premium_coeffs[10],
+    'PremiumHealthSqAgeSq' : premium_coeffs[11],
+    'PremiumHealthInc' : premium_coeffs[12],
+    'PremiumHealthSqInc' : premium_coeffs[13],
+    'PremiumHealthIncSq' : premium_coeffs[14],
+    'PremiumHealthSqIncSq' : premium_coeffs[15],
+    'Premium0' : premium_coeffs[16],
+    'CopayHealth' : copay_coeffs[0],
+    'CopayHealthSq' : copay_coeffs[1],
+    'CopayAge' : copay_coeffs[2],
+    'CopayAgeSq' : copay_coeffs[3],
+    'CopaySex' : copay_coeffs[4],
+    'CopayInc' : copay_coeffs[5],
+    'CopayIncSq' : copay_coeffs[6],
+    'CopayIncCu' : copay_coeffs[7],
+    'CopayHealthAge' : copay_coeffs[8],
+    'CopayHealthSqAge' : copay_coeffs[9],
+    'CopayHealthAgeSq' : copay_coeffs[10],
+    'CopayHealthSqAgeSq' : copay_coeffs[11],
+    'CopayHealthInc' : copay_coeffs[12],
+    'CopayHealthSqInc' : copay_coeffs[13],
+    'CopayHealthIncSq' : copay_coeffs[14],
+    'CopayHealthSqIncSq' : copay_coeffs[15],
+    'Copay0' : copay_coeffs[16],
 }
+
+# Make a dictionary with insurance function parameters (copied from paper table)
+#insurance_params = {
+#    'Premium0' : -0.0058,
+#    'PremiumHealth' : 0.0803,
+#    'PremiumHealthSq' : 0.0130,
+#    'PremiumAge' : .0036,
+#    'PremiumAgeSq' : -0.00008,
+#    'PremiumSex' : -0.0088,
+#    'PremiumInc' : 0.0216,
+#    'PremiumIncSq' : -0.0001,
+#    'PremiumIncCu' : 0.00000000673,
+#    'PremiumHealthAge' : 0.0039,
+#    'PremiumHealthSqAge' : -0.0068,
+#    'PremiumHealthAgeSq' : 0.000034,
+#    'PremiumHealthSqAgeSq' : -0.000024,
+#    'PremiumHealthInc' : -0.0324,
+#    'PremiumHealthSqInc' : 0.0133,
+#    'PremiumHealthIncSq' : 0.00007,
+#    'PremiumHealthSqIncSq' : 0.000032,
+#    'Copay0' : 0.0436,
+#    'CopayHealth' : 0.4325,
+#    'CopayHealthSq' : -0.1505,
+#    'CopayAge' : .0034,
+#    'CopayAgeSq' : -0.000013,
+#    'CopaySex' : -0.0409,
+#    'CopayInc' : 0.0337,
+#    'CopayIncSq' : -0.0012,
+#    'CopayIncCu' : 0.000000606,
+#    'CopayHealthAge' : -0.0067,
+#    'CopayHealthSqAge' : 0.0032,
+#    'CopayHealthAgeSq' : 0.00000438,
+#    'CopayHealthSqAgeSq' : -0.00012,
+#    'CopayHealthInc' : -0.0539,
+#    'CopayHealthSqInc' : 0.0268,
+#    'CopayHealthIncSq' : 0.0024,
+#    'CopayHealthSqIncSq' : -0.00136,
+#}
 
 # Make a dictionary with example basic parameters
 other_exog_params = {
@@ -164,7 +214,7 @@ test_param_vec = np.array([
     0.134083631898,      # 21 HealthNextHealthSq
     0.166986140029,      # 22 HealthShkStd0
     -0.0750119732905,    # 23 HealthShkStd1
-    -6.3057422662,       # 24 LogJerk
+    6.3057422662,        # 24 LogJerk
     -2.15022562509,      # 25 LogSlope
     1.65132014559,       # 26 LogCurve
     -0.548629938657,     # 27 Mortality0

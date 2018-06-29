@@ -76,11 +76,12 @@ class EstimationAgentType(HealthInvestmentConsumerType):
         MargHealthProdFunc, and MargHealthProdInvFunc.  Translates the primitive
         parameters LogJerk, LogSlope, and LogCurve.
         '''
-        tempw = 2. - np.exp(self.LogJerk)
-        HealthProd0 = (tempw-1.)/(tempw-2.)
+        tempw = np.exp(self.LogJerk)
+        HealthProd0 = 1. - tempw
         tempx = np.exp(self.LogSlope) # Slope of health production function at iLvl=0
         tempy = -np.exp(self.LogSlope+self.LogCurve) # Curvature of health prod at iLvl=0
-        HealthProd2 = tempx/tempy*(HealthProd0-1.)
+        #HealthProd2 = tempx/tempy*(HealthProd0-1.)
+        HealthProd2 = np.exp(self.LogJerk - self.LogCurve)
         HealthProd1 = tempx/HealthProd0*HealthProd2**(1.-HealthProd0)
         if tempx > 0.:
             HealthProdFunc = lambda i : tempx/HealthProd0*((i*HealthProd2**((1.-HealthProd0)/HealthProd0) + HealthProd2**(1./HealthProd0))**HealthProd0 - HealthProd2)
@@ -885,9 +886,9 @@ if __name__ == '__main__':
 
 
     # Choose what kind of work to do:
-    test_obj_func = False
-    plot_model_fit = False
-    perturb_one_param = True
+    test_obj_func = True
+    plot_model_fit = True
+    perturb_one_param = False
     perturb_two_params = False
     estimate_model = False
     calc_std_errs = False
@@ -1044,9 +1045,9 @@ if __name__ == '__main__':
 
     if perturb_one_param:
         # Test model identification by perturbing one parameter at a time
-        param_i = 6
-        param_min = 9.5
-        param_max = 12.0
+        param_i = 25
+        param_min = -2.2
+        param_max = -2.1
         N = 21
         perturb_vec = np.linspace(param_min,param_max,num=N)
         fit_vec = np.zeros(N) + np.nan
