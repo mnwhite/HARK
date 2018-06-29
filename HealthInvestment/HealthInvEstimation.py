@@ -278,6 +278,7 @@ def calcSimulatedMoments(type_list,return_as_list):
     HealthByIncWealthAge = np.zeros((5,5,15))
     OOPbyIncWealthAge = np.zeros((5,5,15))
     MortByHealthAge = np.zeros((5,15))
+    HealthByHealthAge = np.zeros((5,15))
     
     # Make large 1D vectors for the health transition and OOP regressions
     THESE = np.logical_and(Active,InDataSpan)
@@ -354,9 +355,11 @@ def calcSimulatedMoments(type_list,return_as_list):
             right_health = HealthQuint == (h+1)
             these = np.logical_and(THESE,right_health)
             Mort = MortHist[t+1,these]
+            Health = hLvlHist[t+1,these]
             Weight = WeightHist[t+1,these]
             WeightSum = np.sum(Weight)
             MortByHealthAge[h,t] = np.dot(Mort,Weight)/WeightSum
+            HealthByHealthAge[h,t] = np.dot(Health,Weight)/WeightSum
         
         for h in range(3):
             # Calculate stdev OOP medical spending and stdev delta health by health by age
@@ -444,7 +447,8 @@ def calcSimulatedMoments(type_list,return_as_list):
                 OOPbyIncWealthAge,
                 AvgHealthResidualByIncWealth,
                 AvgOOPResidualByIncWealth,
-                MortByHealthAge
+                MortByHealthAge,
+                HealthByHealthAge
                 ]
     else: 
         all_moments = np.concatenate([
@@ -465,7 +469,8 @@ def calcSimulatedMoments(type_list,return_as_list):
                 OOPbyIncWealthAge.flatten(),
                 AvgHealthResidualByIncWealth.flatten(),
                 AvgOOPResidualByIncWealth.flatten(),
-                MortByHealthAge.flatten()
+                MortByHealthAge.flatten(),
+                HealthByHealthAge.flatten()
                 ])
     return all_moments
 
@@ -887,7 +892,7 @@ if __name__ == '__main__':
 
     # Choose what kind of work to do:
     test_obj_func = True
-    plot_model_fit = True
+    plot_model_fit = False
     perturb_one_param = False
     perturb_two_params = False
     estimate_model = False
@@ -1007,6 +1012,12 @@ if __name__ == '__main__':
         plt.ylabel('Health profiles by health tertile, men')
         plt.show()
         
+        # Plot model fit of mean health by health and age
+        plt.plot(X[18].transpose())
+        plt.plot(Data.HealthByHealthAge.transpose(),'--')
+        plt.ylabel('Health profiles by health quintile')
+        plt.show()
+        
         # Plot model fit of mean health by income and age
         plt.plot(X[10].transpose())
         plt.plot(Data.HealthByIncAge.transpose(),'--')
@@ -1096,7 +1107,7 @@ if __name__ == '__main__':
 
     if estimate_model:
         # Estimate some (or all) of the model parameters
-        which_indices = which_indices = np.array([0,1,2,3,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32])
+        which_indices = which_indices = np.array([16,17,18,19,20,21])
         which_bool = np.zeros(33,dtype=bool)
         which_bool[which_indices] = True
         estimated_params = minimizeNelderMead(objectiveFunctionWrapper,Params.test_param_vec,verbose=True,which_vars=which_bool)
@@ -1107,7 +1118,7 @@ if __name__ == '__main__':
 
     if calc_std_errs:
         # Calculate standard errors for some or all parameters
-        which_indices = np.array([0,1,2,3,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32])
+        which_indices = np.array([16,17,18,19,20,21])
         which_bool = np.zeros(33,dtype=bool)
         which_bool[which_indices] = True
         standard_errors, cov_matrix = calcStdErrs(Params.test_param_vec,Data.use_cohorts,which_bool,eps=0.001)
