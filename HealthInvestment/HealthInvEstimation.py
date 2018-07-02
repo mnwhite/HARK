@@ -891,12 +891,13 @@ if __name__ == '__main__':
 
 
     # Choose what kind of work to do:
-    test_obj_func = True
-    plot_model_fit = True
+    test_obj_func = False
+    plot_model_fit = False
     perturb_one_param = False
     perturb_two_params = False
     estimate_model = False
-    calc_std_errs = False
+    calc_std_errs = True
+    save_figs = False
 
 
     if test_obj_func:
@@ -906,150 +907,260 @@ if __name__ == '__main__':
         print('One objective function evaluation took ' + str(t_end-t_start) + ' seconds.')
     
     if plot_model_fit:
+        AgeVec = np.linspace(67.,95.,num=15)
+        health_colors = ['b','r','g']
+        sex_colors = ['r','b']
+        income_colors = ['b','r','g','m','c']
+        
         # Plot model fit of mean out of pocket medical spending by age
-        plt.plot(X[0])
-        plt.plot(Data.OOPbyAge,'.k')
-        plt.ylabel('Mean OOP medical spending')
+        plt.plot(AgeVec,X[0],'-k')
+        plt.plot(AgeVec,Data.OOPbyAge,'.k')
+        plt.title('Mean out-of-pocket medical spending [3(a)]')
+        plt.ylabel(r'OOP expenses $o_{it}$, \$10,000 USD (y2000)')
+        plt.xlabel('Age')
+        if save_figs:
+            plt.savefig('./Figures/OOPbyAge.pdf')
         plt.show()
         
         # Plot model fit of mean out of pocket medical spending by age-health for all
-        plt.plot(X[7][0,:,:].transpose())
         for h in range(3):
-            plt.plot(Data.OOPbySexHealthAge[0,h,:],'--')
-        plt.ylabel('Mean OOP medical spending by health tertile')
+            plt.plot(AgeVec,X[7][0,h,:], health_colors[h] + '-')
+        for h in range(3):
+            plt.plot(AgeVec,Data.OOPbySexHealthAge[0,h,:], '.' + health_colors[h])
+        plt.title('Mean out-of-pocket medical spending by health [3(b)]')
+        plt.ylabel(r'OOP expenses $o_{it}$, \$10,000 USD (y2000)')
+        plt.xlabel('Age')
+        plt.legend(['Bottom tertile','Middle tertile','Top tertile'],loc=2)
+        if save_figs:
+            plt.savefig('./Figures/OOPbyHealthAge.pdf')
         plt.show()
         
         # Plot model fit of mean out of pocket medical spending by age-sex
-        plt.plot(X[7][1,0:2,:].transpose())
         for s in range(2):
-            plt.plot(Data.OOPbySexHealthAge[1,s,:],'.')
-        plt.ylabel('Mean OOP medical spending by sex')
+            plt.plot(AgeVec,X[7][1,s,:], sex_colors[s] + '-')
+        for s in range(2):
+            plt.plot(AgeVec,Data.OOPbySexHealthAge[1,s,:], '.' + sex_colors[s])
+        plt.title('Mean out-of-pocket medical spending by sex [3(c)]')
+        plt.ylabel(r'OOP expenses $o_{it}$, \$10,000 USD (y2000)')
+        plt.xlabel('Age')
+        plt.legend(['Women','Men'],loc=2)
+        if save_figs:
+            plt.savefig('./Figures/OOPbySexAge.pdf')
         plt.show()
-        
-        ## Plot model fit of mean out of pocket medical spending by age-health for males
-        #plt.plot(X[7][1,:,:].transpose())
-        #for h in range(3):
-        #    plt.plot(Data.OOPbySexHealthAge[1,h,:],'--')
-        #plt.ylabel('Mean OOP medical spending, men')
-        #plt.show()
         
         # Plot model fit of "OOP coefficient" by wealth and income
-        plt.plot(X[16].transpose())
-        plt.plot(Data.AvgOOPResidualByIncWealth.transpose(),'--')
+        for i in range(5):
+            plt.plot(np.arange(1,6),X[16][i,:], income_colors[i] + '-')
+        for i in range(5):
+            plt.plot(np.arange(1,6),Data.AvgOOPResidualByIncWealth[i,:], '.' + income_colors[i])
         plt.xlabel('Wealth quintile')
-        plt.ylabel('OOP coefficient by income quintile')
+        plt.ylabel(r'Coeff on income-wealth quintile $\daleth_d[k,\ell]$, \$10k')
+        plt.xticks(np.arange(1,6),['Bottom','Second','Third','Fourth','Top'])
+        plt.title('Out-of-pocket medical spending by income and wealth quintile, [7(b)]')
+        if save_figs:
+            plt.savefig('./Figures/OOPcoeffByIncWealth.pdf')
         plt.show()
         
-        ## Plot model fit of mean out of pocket medical spending by age-income
-        #plt.plot(X[11].transpose())
-        #plt.plot(Data.OOPbyIncAge.transpose(),'.')
-        #plt.ylabel('Mean OOP medical spending by income quintile')
-        #plt.show()
+        # Plot model fit of mean out of pocket medical spending by age-income
+        for i in range(5):
+            plt.plot(X[11][i,:], '-' + income_colors[i])
+        for i in range(5):
+            plt.plot(Data.OOPbyIncAge[i,:], '.' + income_colors[i])
+        plt.title('Mean out-of-pocket medical spending by income')
+        plt.ylabel(r'OOP expenses $o_{it}$, \$10,000 USD (y2000)')
+        plt.xlabel('Age')
+        plt.legend(['Bottom quintile','Second quintile','Third quintile','Fourth quintile','Top quintile'],loc=2)
+        if save_figs:
+            plt.savefig('./Figures/OOPbyIncAge.pdf')
+        plt.show()
     
         # Plot model fit of stdev out of pocket medical spending by age
-        plt.plot(X[1])
-        plt.plot(Data.StDevOOPbyAge,'.k')
-        plt.ylabel('StDev OOP medical spending')
+        plt.plot(AgeVec,X[1],'-k')
+        plt.plot(AgeVec,Data.StDevOOPbyAge,'.k')
+        plt.title('Standard deviation of out-of-pocket medical spending [4(a)]')
+        plt.ylabel(r'OOP expenses $o_{it}$, \$10,000 USD (y2000)')
+        plt.xlabel('Age')
+        if save_figs:
+            plt.savefig('./Figures/StDevOOPbyAge.pdf')
         plt.show()
         
         # Plot model fit of stdev out of pocket medical spending by age and health
-        plt.plot(X[4].transpose())
         for h in range(3):
-            plt.plot(Data.StDevOOPbyHealthAge[h,:],'--')
-        plt.ylabel('StDev OOP medical spending')
+            plt.plot(AgeVec,X[4][h,:], '-' + health_colors[h])
+        for h in range(3):
+            plt.plot(AgeVec,Data.StDevOOPbyHealthAge[h,:], '.' + health_colors[h])
+        plt.legend(['Bottom tertile','Middle tertile','Top tertile'],loc=2)
+        plt.title('Standard deviation of out-of-pocket medical spending by health [4(b)]')
+        plt.ylabel(r'OOP expenses $o_{it}$, \$10,000 USD (y2000)')
+        plt.xlabel('Age')
+        if save_figs:
+            plt.savefig('./Figures/StDevOOPbyHealthAge.pdf')
         plt.show()
         
         # Plot model fit of mortality by age
-        plt.plot(X[2])
-        plt.plot(Data.MortByAge,'.k')
-        plt.ylabel('Mortality probability')
+        plt.plot(AgeVec, X[2],'-k')
+        plt.plot(AgeVec, Data.MortByAge,'.k')
+        plt.title('Mortality probability [5(a)]')
+        plt.ylabel(r'Probability $D_{it}$')
+        plt.xlabel('Age')
+        if save_figs:
+            plt.savefig('./Figures/MortByAge.pdf')
         plt.show()
         
         # Plot model fit of mortality by age and health for females
-        plt.plot(X[8][0,:,:].transpose())
         for h in range(3):
-            plt.plot(Data.MortBySexHealthAge[0,h,:],'.')
-        plt.ylabel('Mortality probability, women')
+            plt.plot(AgeVec, X[8][0,h,:], '-' + health_colors[h])
+        for h in range(3):
+            plt.plot(AgeVec, Data.MortBySexHealthAge[0,h,:], '.' + health_colors[h])
+        plt.title('Mortality probability by health, women [5(b).1]')
+        plt.ylabel(r'Probability $D_{it}$')
+        plt.xlabel('Age')
+        plt.legend(['Bottom tertile','Middle tertile','Top tertile'],loc=2)
+        if save_figs:
+            plt.savefig('./Figures/MortByHealthAgeWomen.pdf')
         plt.show()
         
         # Plot model fit of mortality by age and health for males
-        plt.plot(X[8][1,:,:].transpose())
         for h in range(3):
-            plt.plot(Data.MortBySexHealthAge[1,h,:],'.')
-        plt.ylabel('Mortality probability, men')
+            plt.plot(AgeVec, X[8][1,h,:], '-' + health_colors[h])
+        for h in range(3):
+            plt.plot(AgeVec, Data.MortBySexHealthAge[1,h,:], '.' + health_colors[h])
+        plt.title('Mortality probability by health, men [5(b).2]')
+        plt.ylabel(r'Probability $D_{it}$')
+        plt.xlabel('Age')
+        plt.legend(['Bottom tertile','Middle tertile','Top tertile'],loc=2)
+        if save_figs:
+            plt.savefig('./Figures/MortByHealthAgeMen.pdf')
         plt.show()
         
         # Plot model fit of mortality by age and health quintile
-        plt.plot(X[17].transpose())
         for h in range(5):
-            plt.plot(Data.MortByHealthAge[h,:],'.')
-        plt.ylabel('Mortality probability by health quintile')
+            plt.plot(AgeVec, X[17][h,:], '-' + income_colors[h])
+        for h in range(5):
+            plt.plot(AgeVec, Data.MortByHealthAge[h,:], '.' + income_colors[h])
+        plt.title('Mortality probability by health [5(c)]')
+        plt.ylabel(r'Probability $D_{it}$')
+        plt.xlabel('Age')
+        plt.legend(['Bottom quintile','Second quintile','Third quintile','Fourth quintile','Top quintile'],loc=2)
+        if save_figs:
+            plt.savefig('./Figures/MortByHealthAge.pdf')
         plt.show()
     
         # Plot model fit of wealth by age and income quintile
-        plt.plot(X[9].transpose())
         for i in range(5):
-            plt.plot(Data.WealthByIncAge[i,:],'.')
-        plt.ylabel('Median wealth profiles')
+            plt.plot(AgeVec, X[9][i,:], '-' + income_colors[i])
+        for i in range(5):
+            plt.plot(AgeVec, Data.WealthByIncAge[i,:], '.' + income_colors[i])
+        plt.title('Median wealth by income quintile [1(a)]')
+        plt.ylabel(r'Assets $a_{it}$, \$10,000 USD (y2000)')
+        plt.xlabel('Age')
+        if save_figs:
+            plt.savefig('./Figures/WealthByIncAge.pdf')
         plt.show()
         
         # Plot model fit of wealth by age and wealth quintile (for one income quintile at a time)
-        names = ['lowest','second','third','fourth','highest']
+        names = ['bottom','second','third','fourth','top']
         for i in range(5):
-            plt.plot(X[12][i,:,:].transpose())
             for j in range(5):
-                plt.plot(Data.WealthByIncWealthAge[i,j,:],'.')
-            plt.ylabel('Median wealth profiles for ' + names[i] + ' income quintile')
+                plt.plot(AgeVec, X[12][i,j,:], '-' + income_colors[j])
+            for j in range(5):
+                plt.plot(AgeVec, Data.WealthByIncWealthAge[i,j,:], '.' + income_colors[j])
+            plt.title('Median wealth by wealth quintile: ' + names[i] + ' income quintile [1(b).' + str(i+1) + ']')
+            plt.ylabel(r'Assets $a_{it}$, \$10,000 USD (y2000)')
+            plt.xlabel('Age')
+            if save_figs:
+                plt.savefig('./Figures/WealthByIncWealthAge' + str(i+1) + '.pdf')
             plt.show()
         
         # Plot model fit of mean health by health, sex, and age
-        plt.plot(X[6][0,:,:].transpose())
-        plt.plot(Data.HealthBySexHealthAge[0,:,:].transpose(),'.k')
-        plt.ylabel('Health profiles by health tertile, women')
+        for h in range(3):
+            plt.plot(AgeVec, X[6][0,h,:], '-' + health_colors[h])
+        for h in range(3):
+            plt.plot(AgeVec, Data.HealthBySexHealthAge[0,h,:], '.' + health_colors[h])
+        plt.title('Mean health by health tertile, women [2(a).1]')
+        plt.ylabel(r'Health capital $h_{it}$')
+        plt.xlabel('Age')
+        plt.ylim([0.2,0.9])
+        plt.legend(['Bottom tertile','Middle tertile','Top tertile'],loc=1)
+        if save_figs:
+            plt.savefig('./Figures/HealthbyHealthAgeWomen.pdf')
         plt.show()
-        plt.plot(X[6][1,:,:].transpose())
-        plt.plot(Data.HealthBySexHealthAge[1,:,:].transpose(),'.k')
-        plt.ylabel('Health profiles by health tertile, men')
+        
+        for h in range(3):
+            plt.plot(AgeVec, X[6][1,h,:], '-' + health_colors[h])
+        for h in range(3):
+            plt.plot(AgeVec, Data.HealthBySexHealthAge[1,h,:], '.' + health_colors[h])
+        plt.title('Mean health by health tertile, men [2(a).2]')
+        plt.ylabel(r'Health capital $h_{it}$')
+        plt.xlabel('Age')
+        plt.ylim([0.2,0.9])
+        plt.legend(['Bottom tertile','Middle tertile','Top tertile'],loc=1)
+        if save_figs:
+            plt.savefig('./Figures/HealthbyHealthAgeMen.pdf')
         plt.show()
         
         # Plot model fit of mean health by health and age
-        plt.plot(X[18].transpose())
-        plt.plot(Data.HealthByHealthAge.transpose(),'--')
-        plt.ylabel('Health profiles by health quintile')
+        for h in range(5):
+            plt.plot(AgeVec, X[18][h,:], '-' + income_colors[h])
+        for h in range(5):
+            plt.plot(AgeVec, Data.HealthByHealthAge[h,:], '.' + income_colors[h])
+        plt.legend(['Bottom quintile','Second quintile','Third quintile','Fourth quintile','Top quintile'],loc=1)
+        plt.title('Mean health by health quintile [2(c)]')
+        plt.ylabel(r'Health capital $h_{it}$')
+        plt.xlabel('Age')
+        plt.ylim([0.2,0.9])
+        if save_figs:
+            plt.savefig('./Figures/HealthbyHealthAge.pdf')
         plt.show()
         
-        # Plot model fit of mean health by income and age
-        plt.plot(X[10].transpose())
-        plt.plot(Data.HealthByIncAge.transpose(),'--')
-        plt.ylabel('Health profiles by income quintile')
+        # Plot model fit of mean health by health and age
+        for i in range(5):
+            plt.plot(AgeVec, X[10][i,:], '-' + income_colors[i])
+        for i in range(5):
+            plt.plot(AgeVec, Data.HealthByIncAge[i,:], '.' + income_colors[i])
+        plt.legend(['Bottom quintile','Second quintile','Third quintile','Fourth quintile','Top quintile'],loc=1)
+        plt.title('Mean health by income quintile, [2(b)]')
+        plt.ylabel(r'Health capital $h_{it}$')
+        plt.xlabel('Age')
+        plt.ylim([0.39,0.75])
+        if save_figs:
+            plt.savefig('./Figures/HealthbyIncAge.pdf')
         plt.show()
         
         # Plot model fit of "health next coefficient" by wealth and income
-        plt.plot(X[15].transpose())
-        plt.plot(Data.AvgHealthResidualByIncWealth.transpose(),'--')
+        for i in range(5):
+            plt.plot(np.arange(1,6),X[15][i,:], income_colors[i] + '-')
+        for i in range(5):
+            plt.plot(np.arange(1,6),Data.AvgHealthResidualByIncWealth[i,:], '.' + income_colors[i])
         plt.xlabel('Wealth quintile')
-        plt.ylabel('Health next coefficient by income quintile')
+        plt.ylabel(r'Coeff on income-wealth quintile $\gimel_d[k,\ell]$, \$10k')
+        plt.xticks(np.arange(1,6),['Bottom','Second','Third','Fourth','Top'])
+        plt.title('Average health produced by income and wealth quintile [7(a)]')
+        if save_figs:
+            plt.savefig('./Figures/HealthCoeffByIncWealth.pdf')
         plt.show()
         
-        ## Plot model fit of mean health by age and wealth quintile (for one income quintile at a time)
-        #names = ['lowest','second','third','fourth','highest']
-        #for i in range(5):
-        #    plt.plot(X[13][i,:,:].transpose())
-        #    for j in range(5):
-        #        plt.plot(Data.HealthByIncWealthAge[i,j,:],'.')
-        #    plt.ylabel('Health profiles for ' + names[i] + ' income quintile')
-        #    plt.show()
-        
         # Plot model fit of standard deviation of change in health by age
-        plt.plot(X[3])
-        plt.plot(Data.StDevDeltaHealthByAge,'.k')
-        plt.ylabel('Standard deviation of change in health')
+        plt.plot(AgeVec, X[3], '-k')
+        plt.plot(AgeVec, Data.StDevDeltaHealthByAge, '.k')
+        plt.title('Standard deviation of change in health [6(a)]')
+        plt.ylabel(r'Standard deviation of $\Delta h_{it}$')
+        plt.xlabel('Age')
+        if save_figs:
+            plt.savefig('./Figures/StDevDeltaHealthByAge.pdf')
         plt.show()
         
         # Plot model fit of standard deviation of change in health by age and health
-        plt.plot(X[5].transpose())
-        plt.plot(Data.StDevDeltaHealthByHealthAge.transpose(),'.')
-        plt.ylabel('Standard deviation of change in health')
+        for h in range(3):
+            plt.plot(AgeVec, X[5][h,:], '-' + health_colors[h])
+        for h in range(3):
+            plt.plot(AgeVec, Data.StDevDeltaHealthByHealthAge[h,:], '.' + health_colors[h])
+        plt.title('Standard deviation of change in health by health tertile [6(b)]')
+        plt.ylabel(r'Standard deviation of $\Delta h_{it}$')
+        plt.xlabel('Age')
+        plt.legend(['Bottom tertile','Middle tertile','Top tertile'],loc=4)
+        if save_figs:
+            plt.savefig('./Figures/StDevDeltaHealthByHealthAge.pdf')
         plt.show()
     
 
@@ -1107,7 +1218,7 @@ if __name__ == '__main__':
 
     if estimate_model:
         # Estimate some (or all) of the model parameters
-        which_indices = which_indices = np.array([3,24,25,26])
+        which_indices = which_indices = np.array([16,17,18,19,20,21,22,23,27,28,29,30,31,32])
         which_bool = np.zeros(33,dtype=bool)
         which_bool[which_indices] = True
         estimated_params = minimizeNelderMead(objectiveFunctionWrapper,Params.test_param_vec,verbose=True,which_vars=which_bool)
@@ -1118,7 +1229,7 @@ if __name__ == '__main__':
 
     if calc_std_errs:
         # Calculate standard errors for some or all parameters
-        which_indices = np.array([3,24,25,26])
+        which_indices = np.array([16,17,18,19,20,21,22,23,27,28,29,30,31,32])
         which_bool = np.zeros(33,dtype=bool)
         which_bool[which_indices] = True
         standard_errors, cov_matrix = calcStdErrs(Params.test_param_vec,Data.use_cohorts,which_bool,eps=0.001)

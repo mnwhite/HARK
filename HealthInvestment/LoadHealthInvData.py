@@ -25,23 +25,23 @@ use_cohorts = False
 moment_dummies = np.array([
         False, # OOPbyAge
         False, # StDevOOPbyAge
-        False, # MortByAge
+        True , # MortByAge
         False, # StDevDeltaHealthByAge
         False, # StDevOOPbyHealthAge
         False, # StDevDeltaHealthByHealthAge
-        False, # HealthBySexHealthAge
+        True,  # HealthBySexHealthAge
         False, # OOPbySexHealthAge
-        False, # MortBySexHealthAge
+        True,  # MortBySexHealthAge
         False, # WealthByIncAge
-        False, # HealthByIncAge
+        True,  # HealthByIncAge
         False, # OOPbyIncAge
         False, # WealthByIncWealthAge
         False, # HealthByIncWealthAge
         False, # OOPbyIncWealthAge
-        True,  # AvgHealthResidualByIncWealth
-        True,  # AvgOOPResidualByIncWealth
-        False, # MortByHealthAge
-        False, # HealthByHealthAge
+        False, # AvgHealthResidualByIncWealth
+        False, # AvgOOPResidualByIncWealth
+        True,  # MortByHealthAge
+        True,  # HealthByHealthAge
         ])
 
 # Make a random number generator for the data bootstrap
