@@ -24,13 +24,20 @@ class MyMeans(HARKobject):
     Stores overall mean and by income quintile, by wealth quintile, by health
     quarter, by income-wealth, and by income-health.
     '''
-    def __init__(self,data,wealth,income,health):
+    def __init__(self,data,wealth,income,health,sex):
         self.overall = np.mean(data)
         self.byIncome = np.zeros(5)
         self.byWealth = np.zeros(5)
         self.byHealth = np.zeros(4)
         self.byIncWealth = np.zeros((5,5))
         self.byIncHealth = np.zeros((5,4))
+        self.bySex = np.zeros(2)
+        self.bySexIncHealth = np.zeros((2,5,2))
+        self.bySexHealth = np.zeros((2,2))
+        
+        half_health = np.zeros((2,health.size))
+        half_health[0,:] = health <=2
+        half_health[1,:] = health > 2
         
         for i in range(5):
             these = income == i+1
@@ -47,6 +54,17 @@ class MyMeans(HARKobject):
         for h in range(4):
             these = health == h+1
             self.byHealth[h] = np.mean(data[these])
+        for s in range(2):
+            these = sex == s
+            self.bySex[s] = np.mean(data[these])
+            for i in range(5):
+                those = np.logical_and(these, income == i+1)
+                for h in range(2):
+                    thise = np.logical_and(those, half_health[h,:])
+                    self.bySexIncHealth[s,i,h] = np.mean(data[thise])
+            for h in range(2):
+                those = np.logical_and(these, half_health[h,:])
+                self.bySexHealth[s,h] = np.mean(data[those])
             
     
     def subtract(self,other):
@@ -305,6 +323,7 @@ def calcSubpopMeans(type_list):
     # Get wealth, income, and health data
     WealthQuint = np.concatenate([this_type.WealthQuint for this_type in type_list])
     IncQuint = np.concatenate([this_type.IncQuintLong for this_type in type_list])
+    Sex = np.concatenate([this_type.SexLong for this_type in type_list])
     HealthQuarter = (np.ceil(np.concatenate([this_type.hLvlNow for this_type in type_list])*4.)).astype(int)
     
     # Get outcome data
@@ -318,14 +337,14 @@ def calcSubpopMeans(type_list):
     WTParray = np.concatenate([this_type.WTParray for this_type in type_list])
     
     # Make and return MyMeans objects
-    TotalMedMeans = MyMeans(TotalMedPDVarray,WealthQuint,IncQuint,HealthQuarter)
-    OOPmedMeans = MyMeans(OOPmedPDVarray,WealthQuint,IncQuint,HealthQuarter)
-    ExpectedLifeMeans = MyMeans(ExpectedLifeArray,WealthQuint,IncQuint,HealthQuarter)
-    MedicareMeans = MyMeans(MedicarePDVarray,WealthQuint,IncQuint,HealthQuarter)
-    SubsidyMeans = MyMeans(SubsidyPDVarray,WealthQuint,IncQuint,HealthQuarter)
-    WelfareMeans = MyMeans(WelfarePDVarray,WealthQuint,IncQuint,HealthQuarter)
-    GovtMeans = MyMeans(GovtPDVarray,WealthQuint,IncQuint,HealthQuarter)
-    WTPmeans = MyMeans(WTParray,WealthQuint,IncQuint,HealthQuarter)
+    TotalMedMeans = MyMeans(TotalMedPDVarray,WealthQuint,IncQuint,HealthQuarter,Sex)
+    OOPmedMeans = MyMeans(OOPmedPDVarray,WealthQuint,IncQuint,HealthQuarter,Sex)
+    ExpectedLifeMeans = MyMeans(ExpectedLifeArray,WealthQuint,IncQuint,HealthQuarter,Sex)
+    MedicareMeans = MyMeans(MedicarePDVarray,WealthQuint,IncQuint,HealthQuarter,Sex)
+    SubsidyMeans = MyMeans(SubsidyPDVarray,WealthQuint,IncQuint,HealthQuarter,Sex)
+    WelfareMeans = MyMeans(WelfarePDVarray,WealthQuint,IncQuint,HealthQuarter,Sex)
+    GovtMeans = MyMeans(GovtPDVarray,WealthQuint,IncQuint,HealthQuarter,Sex)
+    WTPmeans = MyMeans(WTParray,WealthQuint,IncQuint,HealthQuarter,Sex)
     SubpopMeans = [TotalMedMeans, OOPmedMeans, ExpectedLifeMeans, MedicareMeans, SubsidyMeans, WelfareMeans, GovtMeans, WTPmeans]
     return SubpopMeans
     #return [TotalMedPDVarray, OOPmedPDVarray, ExpectedLifeArray, MedicarePDVarray, SubsidyPDVarray, WelfarePDVarray, GovtPDVarray]
@@ -401,7 +420,7 @@ def runCounterfactuals(name,Parameters,Policies):
     if len(Policies) > 1:
         return [TotalMedDiffs, OOPmedDiffs, ExpectedLifeDiffs, MedicareDiffs, SubsidyDiffs, WelfareDiffs, GovtDiffs, WTPs]
     else:
-        return [TotalMedDiff, OOPmedDiff, ExpectedLifeDiff, MedicareDiff, SubsidyDiff, WelfareDiff, GovtDiff, WTPcounterfactual]
+        return [TotalMedDiff, OOPmedDiff, ExpectedLifeDiff, MedicareDiff, SubsidyDiff, WelfareDiff, GovtDiff, WTPcounterfactual, ExpectedLifeBaseline]
     
     
 # Define a function for evaluating the "socially optimal" policy
@@ -462,12 +481,12 @@ if __name__ == '__main__':
     from MakeTables import makeCounterfactualSummaryTables
     from MakeFigures import makeCounterfactualFigures
     
-#    TestPolicy = SubsidyPolicy(Subsidy0=10*[0.1],Subsidy1=10*[0.0])
-#    t_start = clock()
-#    Out = runCounterfactuals('blah',Params.test_param_vec,[TestPolicy])
-#    t_end = clock()
-#    print('That took ' + str(t_end-t_start) + ' seconds.')
-#    makeCounterfactualSummaryTables(Out,'Test Policy','testname','Test')
+    TestPolicy = SubsidyPolicy(Subsidy0=10*[0.1],Subsidy1=10*[0.0])
+    t_start = clock()
+    Out = runCounterfactuals('blah',Params.test_param_vec,[TestPolicy])
+    t_end = clock()
+    print('That took ' + str(t_end-t_start) + ' seconds.')
+    makeCounterfactualSummaryTables(Out,'Test Policy','testname','Test')
 
 #    PolicyList = []
 #    SubsidyVec = np.linspace(0,0.1,6)
@@ -479,7 +498,7 @@ if __name__ == '__main__':
 #    print('That took ' + str(t_end-t_start) + ' seconds.')
 #    makeCounterfactualFigures(Out,SubsidyVec*10000,'Subsidy',' Test Scenario', 'Test')
     
-    t_start = clock()
-    Out = runOptimalPolicy('blah',Params.test_param_vec)
-    t_end = clock()
-    print('That took ' + str(t_end-t_start) + ' seconds.')
+#    t_start = clock()
+#    Out = runOptimalPolicy('blah',Params.test_param_vec)
+#    t_end = clock()
+#    print('That took ' + str(t_end-t_start) + ' seconds.')

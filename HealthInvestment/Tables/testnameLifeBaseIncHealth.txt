@@ -1,0 +1,17 @@
+\begin{table} \caption{Remaining Life Expectancy by Income and Health, Test Policy} \label{table:TestLifeBaseIH}
+\centering 
+\begin{tabular}{l c c c c c} 
+\hline \hline 
+Income & \multicolumn{5}{c}{Range of Health $h$} \\ 
+Quintile & All & $(0,0.25]$ & $(0.25,0.5]$ & $(0.5,0.75]$ & $(0.75,1.0]$ \\ 
+\hline 
+Bottom & 10.13 & 6.23 & 8.45 & 10.81 & 13.91 \\ 
+Second & 10.64 & 5.83 & 8.70 & 11.23 & 14.01 \\ 
+Third  & 12.35 & 6.40 & 9.12 & 12.16 & 15.50 \\ 
+Fourth & 13.41 & 7.09 & 9.74 & 12.81 & 16.13 \\ 
+Top    & 14.33 & 6.81 & 9.42 & 13.37 & 16.56 \\ 
+\hline 
+All    & 12.23 & 6.33 & 9.02 & 12.18 & 15.66 \\ 
+\hline \hline 
+\end{tabular} 
+\end{table} 

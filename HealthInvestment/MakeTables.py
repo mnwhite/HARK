@@ -200,7 +200,7 @@ def makeCounterfactualSummaryTablesOneVar(means,var_name,spec_name,file_name,lab
     I = means.byIncome
     H = means.byHealth
     O = means.overall
-    table1 = '\\begin{table} \\caption{' + var_name + ' by Income and Wealth, ' + spec_name + '} \\label{table:' + label + 'IH}\n'
+    table1 = '\\begin{table} \\caption{' + var_name + ' by Income and Health, ' + spec_name + '} \\label{table:' + label + 'IH}\n'
     table1 += '\\centering \n'
     table1 += '\\begin{tabular}{l c c c c c} \n'
     table1 += '\\hline \\hline \n'
@@ -242,6 +242,61 @@ def makeCounterfactualSummaryTablesOneVar(means,var_name,spec_name,file_name,lab
     g.write(table2)
     g.close()
     
+    
+def makeTableBySexIncHealth(means,var_name,file_name,label,convert_dollars=True):
+    '''
+    Make one table showing decomposed means of a simulation outcome variable:
+    sex-income-health.  Saves to txt files in the /Tables directory.
+    
+    Parameters
+    ----------
+    means : MyMeans
+        Object containing overall and decomposed outcomes.
+    var_name : str
+        Name of the variable of interest as it should appear in the table.
+    spec_name : str
+        Name of the counterfactual policy as it should appear in the table.
+    file_name : str
+        Name of the file to be saved; .txt extension will be added automatically.
+    label : str
+        LaTeX label for the table.
+    convert_dollars : bool
+        Whether to convert values in means to $10k of dollars.
+        
+    Returns
+    -------
+    None
+    '''
+    f = lambda x : "{:.1f}".format(x)
+    
+    # Make the sex-income-health table
+    SIH = means.bySexIncHealth
+    I = means.byIncome
+    SH = means.bySexHealth
+    O = means.overall
+    
+    table1 = '\\begin{table} \\caption{' + var_name + ' by Sex, Income, and Health} \\label{table:' + label + 'IH}\n'
+    table1 += '\\centering \n'
+    table1 += '\\begin{tabular}{l c c c c c} \n'
+    table1 += '\\hline \\hline \n'
+    table1 += 'Income & & \multicolumn{2}{c}{Women} & \multicolumn{2}{c}{Men} \\\\ \n'
+    table1 += 'Quintile & All & $h < 0.5$ & $h \\geq 0.5$ & $h < 0.5$ & $h \\geq 0.5$ \\\\ \n'
+    table1 += '\\hline \n'
+    table1 += 'Bottom & ' + f(I[0]) + ' & ' + f(SIH[0,0,0]) + ' & ' + f(SIH[0,0,1]) + ' & ' + f(SIH[1,0,0]) + ' & ' + f(SIH[1,0,1]) + ' \\\\ \n'
+    table1 += 'Second & ' + f(I[1]) + ' & ' + f(SIH[0,1,0]) + ' & ' + f(SIH[0,1,1]) + ' & ' + f(SIH[1,1,0]) + ' & ' + f(SIH[1,1,1]) + ' \\\\ \n'
+    table1 += 'Third  & ' + f(I[2]) + ' & ' + f(SIH[0,2,0]) + ' & ' + f(SIH[0,2,1]) + ' & ' + f(SIH[1,2,0]) + ' & ' + f(SIH[1,2,1]) + ' \\\\ \n'
+    table1 += 'Fourth & ' + f(I[3]) + ' & ' + f(SIH[0,3,0]) + ' & ' + f(SIH[0,3,1]) + ' & ' + f(SIH[1,3,0]) + ' & ' + f(SIH[1,3,1]) + ' \\\\ \n'
+    table1 += 'Top    & ' + f(I[4]) + ' & ' + f(SIH[0,4,0]) + ' & ' + f(SIH[0,4,1]) + ' & ' + f(SIH[1,4,0]) + ' & ' + f(SIH[1,4,1]) + ' \\\\ \n'
+    table1 += '\\hline \n'
+    table1 += 'All    & ' + f(O) + ' & ' + f(SH[0,0]) + ' & ' + f(SH[0,1]) + ' & ' + f(SH[1,0]) + ' & ' + f(SH[1,1]) + ' \\\\ \n'
+    table1 += '\\hline \\hline \n'
+    table1 += '\\end{tabular} \n'
+    table1 += '\\end{table} \n'
+    g = open('./Tables/' + file_name + 'SexIncHealth.txt','w')
+    g.write(table1)
+    g.close()
+    
+    
         
 def makeCounterfactualSummaryTables(means,spec_name,file_base,label):
     '''
@@ -271,7 +326,8 @@ def makeCounterfactualSummaryTables(means,spec_name,file_base,label):
                  'PDV of Direct Subsidy Expenses',
                  'Change in PDV of Welfare Payments',
                  'Change in PDV of Total Government Expenses',
-                 'Willingness to Pay for Policy']
+                 'Willingness to Pay for Policy',
+                 'Remaining Life Expectancy']
     var_codes = ['TotalMed',
                  'OOPmed',
                  'ExpLife',
@@ -279,7 +335,8 @@ def makeCounterfactualSummaryTables(means,spec_name,file_base,label):
                  'Subsidy',
                  'Welfare',
                  'Govt',
-                 'WTP']
+                 'WTP',
+                 'LifeBase']
     convert = [True,
                True,
                False,
@@ -287,8 +344,10 @@ def makeCounterfactualSummaryTables(means,spec_name,file_base,label):
                True,
                True,
                True,
-               True]
+               True,
+               False]
     
     for i in range(8):
-        makeCounterfactualSummaryTablesOneVar(means[i],var_names[i],spec_name,file_base + var_codes[i],label + var_codes[i],convert[i])
+        makeCounterfactualSummaryTablesOneVar(means[i],var_names[i],spec_name, file_base + var_codes[i], label + var_codes[i],convert[i])
+    makeTableBySexIncHealth(means[8], var_names[8], file_base + var_codes[8], label + var_codes[8], convert[8])
           

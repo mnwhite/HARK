@@ -208,7 +208,7 @@ def makeValidationFigures(params,use_cohorts):
         DataHealthPctiles[t,:] = getPercentiles(h_temp,percentiles=pctiles)
         
     # Plot deciles of health by by age
-    AgeVec = np.linspace(65.,93.,num=15)
+    AgeVec = np.linspace(67.,95.,num=15)
     plt.plot(AgeVec,SimHealthPctiles,'-k')
     plt.plot(AgeVec,DataHealthPctiles,'--k')
     plt.ylim(0.,1.)
@@ -255,6 +255,7 @@ def makeValidationFigures(params,use_cohorts):
     # Calculate the serial correlation of log OOP medical spending in simulated data
     Med_sim = np.log(10000*OOPhist + 1.)
     serial_corr_sim = np.zeros(15)
+    serial_corr_sim_inc = np.zeros((15,5))
     for t in range(15):
         these = np.logical_and(WeightAdj[t+1,:] > 0., WeightAdj[t+1,:] < 1.) # Alive but not the first simulated period
         Med_t = Med_sim[t+1,these]
@@ -265,12 +266,23 @@ def makeValidationFigures(params,use_cohorts):
         temp_model = WLS(Med_t,regressors,weights=weight_reg)
         temp_results = temp_model.fit()
         serial_corr_sim[t] = temp_results.rsquared
+        for i in range(5):
+            those = np.logical_and(these,IncQuint==i+1)
+            Med_t = Med_sim[t+1,those]
+            Med_tm1 = Med_sim[t,those]
+            weight_reg = WeightAdj[t+1,those]
+            const_reg = np.ones_like(Med_t)
+            regressors = np.transpose(np.vstack([const_reg,Med_tm1]))
+            temp_model = WLS(Med_t,regressors,weights=weight_reg)
+            temp_results = temp_model.fit()
+            serial_corr_sim_inc[t,i] = temp_results.rsquared
         
     # Calculate the serial correlation of log OOP medical spending in HRS data
     DataExists = np.logical_and(np.logical_not(np.isnan(Data.m_data[:-1,:])),np.logical_not(np.isnan(Data.m_data[1:,:])))
     BothAlive  = np.logical_and(Data.Alive[:-1,:],Data.Alive[1:,:])
     Usable = np.logical_and(DataExists,BothAlive)
     serial_corr_data = np.zeros(15)
+    serial_corr_data_inc = np.zeros((15,5))
     Med_data = np.log(10000*Data.m_data + 1.)
     for t in range(15):
         these = np.logical_and(Usable,Data.AgeBoolArray[:-1,:,t])
@@ -281,6 +293,65 @@ def makeValidationFigures(params,use_cohorts):
         temp_model = OLS(Med_t,regressors)
         temp_results = temp_model.fit()
         serial_corr_data[t] = temp_results.rsquared
+        for i in range(5):
+            those = np.logical_and(these,Data.IncQuintBoolArray[:-1,:,i])
+            Med_t = Med_data[1:,:][those]
+            Med_tm1 = Med_data[:-1,:][those]
+            const_reg = np.ones_like(Med_t)
+            regressors = np.transpose(np.vstack([const_reg,Med_tm1]))
+            temp_model = OLS(Med_t,regressors)
+            temp_results = temp_model.fit()
+            serial_corr_data_inc[t,i] = temp_results.rsquared
+            
+    # Make a plot of serial correlation of OOP medical expenses
+    plt.subplot(3,2,1)
+    plt.plot(AgeVec,serial_corr_data,'-r')
+    plt.plot(AgeVec,serial_corr_sim,'-b')
+    plt.ylim(0,0.5)
+    plt.xticks([])
+    plt.text(75,0.4,'All individuals')
+    
+    plt.subplot(3,2,2)
+    plt.plot(AgeVec,serial_corr_data_inc[:,0],'-r')
+    plt.plot(AgeVec,serial_corr_sim_inc[:,0],'-b')
+    plt.ylim(0,0.5)
+    plt.xticks([])
+    plt.yticks([])
+    plt.text(70,0.4,'Bottom income quintile')
+    
+    plt.subplot(3,2,3)
+    plt.plot(AgeVec,serial_corr_data_inc[:,1],'-r')
+    plt.plot(AgeVec,serial_corr_sim_inc[:,1],'-b')
+    plt.ylim(0,0.5)
+    plt.xticks([])
+    plt.text(67,0.4,'Second income quintile')
+    plt.ylabel('$R^2$ of regression of $\log(OOP_{t})$ on $\log(OOP_{t-1})$')
+    
+    plt.subplot(3,2,4)
+    plt.plot(AgeVec,serial_corr_data_inc[:,2],'-r')
+    plt.plot(AgeVec,serial_corr_sim_inc[:,2],'-b')
+    plt.ylim(0,0.5)
+    plt.xticks([])
+    plt.yticks([])
+    plt.text(70,0.4,'Third income quintile')
+    
+    plt.subplot(3,2,5)
+    plt.plot(AgeVec,serial_corr_data_inc[:,3],'-r')
+    plt.plot(AgeVec,serial_corr_sim_inc[:,3],'-b')
+    plt.ylim(0,0.5)
+    plt.xlabel('Age')
+    plt.text(70,0.4,'Fourth income quintile')
+    
+    plt.subplot(3,2,6)
+    plt.plot(AgeVec,serial_corr_data_inc[:,4],'-r')
+    plt.plot(AgeVec,serial_corr_sim_inc[:,4],'-b')
+    plt.ylim(0,0.5)
+    plt.xlabel('Age')
+    plt.yticks([])
+    plt.text(70,0.4,'Top income quintile')
+    plt.savefig('./Figures/SerialCorrOOP.pdf')
+    plt.show()
+    
     
     # Make a plot of serial correlation of OOP medical expenses
     plt.plot(AgeVec+2,serial_corr_data,'-r')

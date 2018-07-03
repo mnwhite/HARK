@@ -1,17 +1,17 @@
-\begin{table} \caption{Change in PDV of Welfare Payments by Income and Wealth, Test Policy} \label{table:TestWelfareIH}
+\begin{table} \caption{Change in PDV of Welfare Payments by Income and Health, Test Policy} \label{table:TestWelfareIH}
 \centering 
 \begin{tabular}{l c c c c c} 
 \hline \hline 
 Income & \multicolumn{5}{c}{Range of Health $h$} \\ 
 Quintile & All & $(0,0.25]$ & $(0.25,0.5]$ & $(0.5,0.75]$ & $(0.75,1.0]$ \\ 
 \hline 
-Bottom & \$-112 & \$-40 & \$-48 & \$-80 & \$-93 \\ 
-Second & \$-1169 & \$-593 & \$-1323 & \$-1431 & \$-1241 \\ 
-Third  & \$-449 & \$-408 & \$-504 & \$-517 & \$-475 \\ 
-Fourth & \$-188 & \$-252 & \$-275 & \$-185 & \$-142 \\ 
-Top    & \$-49 & \$-59 & \$-58 & \$-60 & \$-47 \\ 
+Bottom & \$-86 & \$-50 & \$-38 & \$-53 & \$-125 \\ 
+Second & \$-1317 & \$-835 & \$-1456 & \$-1540 & \$-1377 \\ 
+Third  & \$-757 & \$-653 & \$-812 & \$-869 & \$-845 \\ 
+Fourth & \$-267 & \$-357 & \$-398 & \$-257 & \$-187 \\ 
+Top    & \$-51 & \$-65 & \$-61 & \$-64 & \$-47 \\ 
 \hline 
-All    & \$-389 & \$-265 & \$-460 & \$-451 & \$-330 \\ 
+All    & \$-495 & \$-384 & \$-577 & \$-565 & \$-447 \\ 
 \hline \hline 
 \end{tabular} 
 \end{table} 

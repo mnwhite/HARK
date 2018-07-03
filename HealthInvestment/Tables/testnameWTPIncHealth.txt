@@ -1,17 +1,17 @@
-\begin{table} \caption{Willingness to Pay for Policy by Income and Wealth, Test Policy} \label{table:TestWTPIH}
+\begin{table} \caption{Willingness to Pay for Policy by Income and Health, Test Policy} \label{table:TestWTPIH}
 \centering 
 \begin{tabular}{l c c c c c} 
 \hline \hline 
 Income & \multicolumn{5}{c}{Range of Health $h$} \\ 
 Quintile & All & $(0,0.25]$ & $(0.25,0.5]$ & $(0.5,0.75]$ & $(0.75,1.0]$ \\ 
 \hline 
-Bottom & \$802 & \$227 & \$282 & \$754 & \$1850 \\ 
-Second & \$4726 & \$2053 & \$3766 & \$5404 & \$6749 \\ 
-Third  & \$6276 & \$3568 & \$4887 & \$6214 & \$7520 \\ 
-Fourth & \$6720 & \$3896 & \$5065 & \$6570 & \$7870 \\ 
-Top    & \$7232 & \$3954 & \$5330 & \$6943 & \$8118 \\ 
+Bottom & \$640 & \$223 & \$282 & \$649 & \$1564 \\ 
+Second & \$4580 & \$2599 & \$3744 & \$4915 & \$6080 \\ 
+Third  & \$6071 & \$3706 & \$4806 & \$5995 & \$7266 \\ 
+Fourth & \$6562 & \$4029 & \$5083 & \$6375 & \$7665 \\ 
+Top    & \$6984 & \$3976 & \$5104 & \$6661 & \$7874 \\ 
 \hline 
-All    & \$5255 & \$2031 & \$3616 & \$5477 & \$7245 \\ 
+All    & \$5071 & \$2200 & \$3558 & \$5219 & \$6953 \\ 
 \hline \hline 
 \end{tabular} 
 \end{table} 
