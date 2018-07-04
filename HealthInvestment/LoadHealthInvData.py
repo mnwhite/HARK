@@ -23,23 +23,23 @@ use_cohorts = False
 
 # Choose which moments will actually be used
 moment_dummies = np.array([
-        False, # OOPbyAge
-        False, # StDevOOPbyAge
-        True , # MortByAge
-        False, # StDevDeltaHealthByAge
-        False, # StDevOOPbyHealthAge
-        False, # StDevDeltaHealthByHealthAge
+        True,  # OOPbyAge
+        True,  # StDevOOPbyAge
+        True,  # MortByAge
+        True,  # StDevDeltaHealthByAge
+        True,  # StDevOOPbyHealthAge
+        True,  # StDevDeltaHealthByHealthAge
         True,  # HealthBySexHealthAge
-        False, # OOPbySexHealthAge
+        True,  # OOPbySexHealthAge
         True,  # MortBySexHealthAge
-        False, # WealthByIncAge
+        True,  # WealthByIncAge
         True,  # HealthByIncAge
         False, # OOPbyIncAge
-        False, # WealthByIncWealthAge
+        True,  # WealthByIncWealthAge
         False, # HealthByIncWealthAge
         False, # OOPbyIncWealthAge
-        False, # AvgHealthResidualByIncWealth
-        False, # AvgOOPResidualByIncWealth
+        True,  # AvgHealthResidualByIncWealth
+        True,  # AvgOOPResidualByIncWealth
         True,  # MortByHealthAge
         True,  # HealthByHealthAge
         ])
@@ -660,16 +660,16 @@ if data_bootstrap_count > 0:
     # anyway, as the almost-poorest groups will have very little wealth, and the poorest have even less (zero).
     
     # Define moment groups for creating diagonal blocks of the weighting matrix
-    moment_cuts = [0,15,30,45, # age moments
-                   60,105, # health age moments
-                   150,195,240,285,330,375, # health sex age moments
-                   420,495,570, # health income age moments
-                   645,720,795,870,945, # income wealth age moments: wealth
-                   1020,1095,1170,1245,1320, # income wealth age moments: health
-                   1395,1470,1545,1620,1695, # income wealth age moments: OOP
+    moment_cuts = [0,15,30,45, # age moments: OOP, StDevOOP, Mort, StDevDeltaHealth
+                   60,105, # health tertile-age moments: StDevOOP, StDevDeltaHealth
+                   150,195,240,285,330,375, # health_tertile-sex-age moments: Health-women, Health-men, OOP-by-health, OOP-by-sex, Mort-women, Mort-men
+                   420,495,570, # income-age moments: Wealth, Health, OOP
+                   645,720,795,870,945, # income-wealth-age moments: wealth (1st,2nd,3rd,4th,5th income quintile)
+                   1020,1095,1170,1245,1320, # income-wealth-age moments: health (1st,2nd,3rd,4th,5th income quintile)
+                   1395,1470,1545,1620,1695, # income-wealth-age moments: OOP (1st,2nd,3rd,4th,5th income quintile)
                    1770, # health residual moments
                    1795, # OOP residual moments
-                   1820,1895, # health age moments: mort and health
+                   1820,1895, # health_quintile-age moments: Mort, Health
                    moment_count] # end
                    
     # This vector indicates whether each block of moments should use the inverse of

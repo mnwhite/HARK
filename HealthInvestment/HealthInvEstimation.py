@@ -8,6 +8,7 @@ sys.path.insert(0,'../')
 from time import clock
 from copy import copy
 import numpy as np
+from scipy.optimize import brentq, newton
 from statsmodels.api import WLS
 from HARKparallel import multiThreadCommands, multiThreadCommandsFake
 from HARKestimation import minimizeNelderMead
@@ -631,9 +632,9 @@ def pseudoEstHealthProdParams(type_list,return_as_list):
 
 def calcStdErrs(params,use_cohorts,which,eps):
     '''
-    The objective function for the ounce of prevention estimation.  Takes a dictionary
-    of parameters and a boolean indicator for whether to break sample up by cohorts.
-    Returns a single real representing the weighted sum of squared moment distances.
+    Calculate standard errors of the estimated parameters for the Ounce of Prevention
+    project.  Approximates the Hessian of the objective function as the inner product
+    of the Jacobian of the moment difference function (with the weighting matrix).
     
     Parameters
     ----------
@@ -650,6 +651,8 @@ def calcStdErrs(params,use_cohorts,which,eps):
     -------
     StdErrVec : np.array
         Vector of length np.sum(which) with standard errors for the indicated structural parameters.
+    ParamCovarMatrix : np.arrau
+        Square array of covariances for the indicated structural parameters.
     '''
     # Initialize an array of numeric derivatives of moment differences
     N = np.sum(which)
@@ -687,6 +690,111 @@ def calcStdErrs(params,use_cohorts,which,eps):
     StdErrVec = np.sqrt(np.diag(ParamCovMatrix))
     return StdErrVec, ParamCovMatrix
 
+
+def findBracketingInterval(f,x0,init_eps=0.1):
+    '''
+    Finds a bracketing interval that contains a zero of continuous function f: R-->R
+    with x0 as one end point.  This bracketing interval can be used in a rootfinding
+    routine that requires this input.
+    
+    Parameters
+    ----------
+    f : function
+        Function to find a zero bracketing interval; assumed continuous.
+    x0 : float
+        One end of the bracketing interval.
+    init_eps : float
+        Initial perturbation to x0 when searching for the other bracket end.
+        
+    Returns
+    -------
+    [x0,x1] or [x1,x0] : [float,float]
+        Bracketing interval for a zero of f, with lower element in first position.
+    '''
+    eps = init_eps
+    found_it = False
+    f0 = f(x0)
+    f0_positive = f0 > 0.
+    
+    while not found_it:
+        x1 = x0 + eps
+        f1 = f(x1)
+        f1_positive = f1 > 0.
+        found_it = np.logical_xor(f0_positive,f1_positive)
+        if not found_it:
+            eps *= np.e
+            
+    if x1 > x0:
+        return [x0,x1]
+    else:
+        return [x1,x0]
+    
+    
+def calcStdErrsAlt(params,use_cohorts,which,f_dev):
+    '''
+    Calculate standard errors of the estimated parameters for the Ounce of Prevention
+    project.  Approximates the Hessian of the objective function by searching for the
+    quadratic coefficients that best fit the objective function near the estimated values.
+    
+    Parameters
+    ----------
+    params : dict
+        The dictionary to be used to construct each of the types.
+    use_cohorts : bool
+        Indicator for whether to separately solve and simulate the 15 cohorts.
+    which : np.array
+        Length 33 boolean array indicating which parameters should get std errs.
+    f_dev : float
+        Positive increase in the objective function to search for each parameter.
+        
+    Returns
+    -------
+    StdErrVec : np.array
+        Vector of length np.sum(which) with standard errors for the indicated structural parameters.
+    ParamCovarMatrix : np.arrau
+        Square array of covariances for the indicated structural parameters.
+    '''
+    N = np.sum(which)
+    fOpt = objectiveFunctionWrapper(params)
+    x_dev_vec = np.zeros(N)
+    coeff_matrix = np.zeros((N,N))
+    
+    n = 0
+    for i in range(33):
+        if which[i]:
+            def temp_f(x):
+                eps = np.zeros(33)
+                eps[i] = x
+                return objectiveFunctionWrapper(params+eps) - fOpt - f_dev
+            
+            bracket = findBracketingInterval(temp_f,0.0,0.1*params[i])
+            x_dev_vec[n] = brentq(temp_f, bracket[0], bracket[1], xtol=2e-12, rtol=1e-6, maxiter=100)
+            coeff_matrix[n,n] = f_dev/x_dev_vec[n]**2
+            print('Found diagonal coefficient for parameter ' + str(n+1) + ' of ' + str(N) + '.')
+            
+            nn = 0
+            for j in range(i):
+                if which[j]:
+                    eps1 = np.zeros(33)
+                    eps1[i] = x_dev_vec[n]
+                    eps2 = np.zeros(33)
+                    eps2[j] = x_dev_vec[nn]
+                    temp_params = params + eps1 + eps2
+                    f2 = objectiveFunctionWrapper(temp_params) - fOpt - 2*f_dev
+                    diag_coeff = f2/(2*x_dev_vec[n]*x_dev_vec[nn])
+                    coeff_matrix[n,nn] = diag_coeff
+                    coeff_matrix[nn,n] = diag_coeff
+                    nn += 1
+            print('Found ' + str(2*n) + ' off-diagonal coefficients for parameter ' + str(n+1) + ' of ' + str(N) + '.')
+                    
+            n += 1
+    
+    hessian = 2*coeff_matrix
+    ParamCovarMatrix = np.linalg.inv(hessian)
+    StdErrVec = np.sqrt(np.diag(ParamCovarMatrix))
+    
+    return StdErrVec, ParamCovarMatrix
+    
 
 def objectiveFunction(params,use_cohorts,return_as_list):
     '''
@@ -893,12 +1001,13 @@ if __name__ == '__main__':
     # Choose what kind of work to do:
     test_obj_func = False
     plot_model_fit = False
+    save_figs = False
     perturb_one_param = False
     perturb_two_params = False
     estimate_model = False
     calc_std_errs = True
-    save_figs = False
-
+    calc_std_errs_alt = False
+    
 
     if test_obj_func:
         t_start = clock()
@@ -1218,7 +1327,7 @@ if __name__ == '__main__':
 
     if estimate_model:
         # Estimate some (or all) of the model parameters
-        which_indices = which_indices = np.array([16,17,18,19,20,21,22,23,27,28,29,30,31,32])
+        which_indices = which_indices = np.array([0,1,2,3,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32])
         which_bool = np.zeros(33,dtype=bool)
         which_bool[which_indices] = True
         estimated_params = minimizeNelderMead(objectiveFunctionWrapper,Params.test_param_vec,verbose=True,which_vars=which_bool)
@@ -1228,14 +1337,34 @@ if __name__ == '__main__':
 
 
     if calc_std_errs:
-        # Calculate standard errors for some or all parameters
-        which_indices = np.array([16,17,18,19,20,21,22,23,27,28,29,30,31,32])
+        # Calculate standard errors using Jacobian of moment difference function for some or all parameters
+        which_indices = np.array([0,1,2,3,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32])
         which_bool = np.zeros(33,dtype=bool)
         which_bool[which_indices] = True
         standard_errors, cov_matrix = calcStdErrs(Params.test_param_vec,Data.use_cohorts,which_bool,eps=0.001)
         for n in range(which_indices.size):
             i = which_indices[n]
             print(Params.param_names[i] + ' = ' + str(standard_errors[n]))
+        for n in range(which_indices.size):
+            for nn in range(n):
+                corr = cov_matrix[n,nn]/(standard_errors[n]*standard_errors[nn])
+                if np.abs(corr > 0.7):
+                    print(Params.param_names[which_indices[n]] + ' and ' + Params.param_names[which_indices[nn]] + ' have a correlation of ' + str(corr))
+        makeParamTable('EstimatedParameters',Params.test_param_vec[which_indices],which_indices,stderrs=standard_errors)
+        
+        
+    if calc_std_errs_alt:
+        # Calculate standard errors using approximation of Hessian of objective function for some or all parameters
+        which_indices = np.array([0,1,5,6,7])
+        which_bool = np.zeros(33,dtype=bool)
+        which_bool[which_indices] = True
+        standard_errors, cov_matrix = calcStdErrsAlt(Params.test_param_vec,Data.use_cohorts,which_bool,f_dev=5.)
+        for n in range(which_indices.size):
+            i = which_indices[n]
+            print(Params.param_names[i] + ' = ' + str(standard_errors[n]))
+        for n in range(which_indices.size):
+            for nn in range(n):
+                corr = cov_matrix[n,nn]/(standard_errors[n]*standard_errors[nn])
+                if np.abs(corr > 0.7):
+                    print(Params.param_names[which_indices[n]] + ' and ' + Params.param_names[which_indices[nn]] + ' have a correlation of ' + str(corr))
         #makeParamTable('EstimatedParameters',Params.test_param_vec[which_indices],which_indices,stderrs=standard_errors)
-        
-        
