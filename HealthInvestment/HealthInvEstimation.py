@@ -1338,7 +1338,7 @@ if __name__ == '__main__':
 
     if calc_std_errs:
         # Calculate standard errors using Jacobian of moment difference function for some or all parameters
-        which_indices = np.array([0,1,2,3,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32])
+        which_indices = np.array([0,1,2,3,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,25,26,27,28,29,30,31,32])
         which_bool = np.zeros(33,dtype=bool)
         which_bool[which_indices] = True
         standard_errors, cov_matrix = calcStdErrs(Params.test_param_vec,Data.use_cohorts,which_bool,eps=0.001)
@@ -1350,7 +1350,9 @@ if __name__ == '__main__':
                 corr = cov_matrix[n,nn]/(standard_errors[n]*standard_errors[nn])
                 if np.abs(corr > 0.7):
                     print(Params.param_names[which_indices[n]] + ' and ' + Params.param_names[which_indices[nn]] + ' have a correlation of ' + str(corr))
-        makeParamTable('EstimatedParameters',Params.test_param_vec[which_indices],which_indices,stderrs=standard_errors)
+        stderrs_adj = np.zeros(33)
+        stderrs_adj[which_bool] = standard_errors
+        makeParamTable('EstimatedParameters', Params.test_param_vec, stderrs=stderrs_adj)
         
         
     if calc_std_errs_alt:

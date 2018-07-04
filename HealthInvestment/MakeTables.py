@@ -79,7 +79,7 @@ param_desc = [
     'Coefficient of relative risk aversion for consumption',
     'Intertemporal discount factor (biennial)',
     'Ratio of relative risk aversion for $m$ vs $c$',
-    'Utility level shifter: $u(\\lambda)=0$',
+    'Utility level shifter: $U(c=0\\varsigma,m;\\eta=0)=0$',
     'Marginal utility shifter for health',
     'Effective consumption floor (\$10,000)',
     'Bequest motive shifter (\$10,000)',
@@ -126,16 +126,16 @@ def paramStr(value):
     return out
 
 
-def makeParamTable(filename,values,which,stderrs=None):
+def makeParamTable(filename,values,stderrs=None):
     '''
     Make a txt file with tex code for the parameter table, including standard errors.
     
     Parameters
     ----------
+    filename : str
+        Name of file in which to store
     values : np.array
         Vector of parameter values.
-    which : np.array
-        Integer array of which parameter indices those values represent.
     stderrs : np.array
         Vector of standard errors.
         
@@ -143,20 +143,27 @@ def makeParamTable(filename,values,which,stderrs=None):
     -------
     None
     '''
-    output =  '\\begin{table} \caption{Structurally Estimated Parameters} \n'
+    if stderrs is None:
+        stderrs = np.zeros_like(values) + np.nan
+    
+    output =  '\\begin{table} \\label{table:SMMestimates} \n'
+    output += '\caption{Parameters Estimated by SMM} \n'
     output += '\\centering \n'
     output += '\\small \n'
     output += '\\begin{tabular}{cccl} \n'
     output += '\\hline \\hline \n'
     output += 'Parameter & Estimate & Std Err & Description \n'
     output += '\\\\ \\hline \n'
-    for j in range(which.size):
-        i = which[j]
-        if stderrs is None:
-            se = '(-)'
+    for j in range(len(values)):
+        if j == 4:
+            continue
+        if np.isnan(stderrs[j]):
+            se = '(---)'
         else:
             se = '(' + paramStr(stderrs[j]) + ')'
-        output += '\\\\ $' + param_tex[i] + '$ & ' + paramStr(values[j]) + ' & ' + se + ' & ' + param_desc[i] + '\n'
+        if j > 0:
+            output += '\\\\'
+        output += '$' + param_tex[j] + '$ & ' + paramStr(values[j]) + ' & ' + se + ' & ' + param_desc[j] + '\n'
     output += '\\\\ \\hline \\hline \n'
     output += '\\end{tabular} \n'
     output += '\\end{table} \n'
