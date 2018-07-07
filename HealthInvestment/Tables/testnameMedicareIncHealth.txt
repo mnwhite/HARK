@@ -1,17 +1,18 @@
-\begin{table} \caption{Change in PDV of Medicare Costs by Income and Health, Test Policy} \label{table:TestMedicareIH}
+\begin{table} \label{table:TestMedicareIH} 
+ \caption{Change in PDV of Medicare Costs by Income and Health, Test Policy} 
 \centering 
 \begin{tabular}{l c c c c c} 
 \hline \hline 
 Income & \multicolumn{5}{c}{Range of Health $h$} \\ 
 Quintile & All & $(0,0.25]$ & $(0.25,0.5]$ & $(0.5,0.75]$ & $(0.75,1.0]$ \\ 
 \hline 
-Bottom & \$-463 & \$-123 & \$-171 & \$-480 & \$-1287 \\ 
-Second & \$-2414 & \$-906 & \$-1619 & \$-2768 & \$-3900 \\ 
-Third  & \$-4437 & \$-2263 & \$-3179 & \$-4303 & \$-5557 \\ 
-Fourth & \$-5693 & \$-3187 & \$-4158 & \$-5543 & \$-6847 \\ 
-Top    & \$-6557 & \$-3700 & \$-4745 & \$-6222 & \$-7417 \\ 
+Bottom & \$-356 & \$-90 & \$-99 & \$-428 & \$-1177 \\ 
+Second & \$-1326 & \$-541 & \$-761 & \$-1517 & \$-2424 \\ 
+Third  & \$-4228 & \$-2096 & \$-2972 & \$-4074 & \$-5313 \\ 
+Fourth & \$-5762 & \$-3321 & \$-4220 & \$-5577 & \$-6959 \\ 
+Top    & \$-6569 & \$-3767 & \$-4756 & \$-6212 & \$-7474 \\ 
 \hline 
-All    & \$-4007 & \$-1373 & \$-2503 & \$-4124 & \$-5895 \\ 
+All    & \$-3754 & \$-1263 & \$-2275 & \$-3843 & \$-5690 \\ 
 \hline \hline 
 \end{tabular} 
 \end{table} 

@@ -80,8 +80,6 @@ class EstimationAgentType(HealthInvestmentConsumerType):
         tempw = np.exp(self.LogJerk)
         HealthProd0 = 1. - tempw
         tempx = np.exp(self.LogSlope) # Slope of health production function at iLvl=0
-        tempy = -np.exp(self.LogSlope+self.LogCurve) # Curvature of health prod at iLvl=0
-        #HealthProd2 = tempx/tempy*(HealthProd0-1.)
         HealthProd2 = np.exp(self.LogJerk - self.LogCurve)
         HealthProd1 = tempx/HealthProd0*HealthProd2**(1.-HealthProd0)
         if tempx > 0.:
@@ -91,6 +89,7 @@ class EstimationAgentType(HealthInvestmentConsumerType):
         else:
             HealthProdFunc = lambda i : 0.*i
             MargHealthProdInvFunc = lambda q : 0.*q
+            MargHealthProdFunc = lambda i : 0.*i
         
         # Define the (marginal)(inverse) health production function
         self.HealthProdFunc = HealthProdFunc
@@ -688,7 +687,7 @@ def calcStdErrs(params,use_cohorts,which,eps):
     ParamCovMatrix = np.linalg.inv(np.dot(MomentDerivativeArray,np.dot(MomentWeights,MomentDerivativeArray.transpose())))
     ParamCovMatrix *= scale_fac
     StdErrVec = np.sqrt(np.diag(ParamCovMatrix))
-    return StdErrVec, ParamCovMatrix
+    return StdErrVec, ParamCovMatrix, MomentDerivativeArray
 
 
 def findBracketingInterval(f,x0,init_eps=0.1):
@@ -999,13 +998,13 @@ if __name__ == '__main__':
 
 
     # Choose what kind of work to do:
-    test_obj_func = False
+    test_obj_func = True
     plot_model_fit = False
     save_figs = False
     perturb_one_param = False
     perturb_two_params = False
     estimate_model = False
-    calc_std_errs = True
+    calc_std_errs = False
     calc_std_errs_alt = False
     
 
@@ -1327,7 +1326,8 @@ if __name__ == '__main__':
 
     if estimate_model:
         # Estimate some (or all) of the model parameters
-        which_indices = which_indices = np.array([0,1,2,3,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32])
+        #which_indices = which_indices = np.array([0,1,2,3,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32])
+        which_indices = np.array([0,1,5,6,7])
         which_bool = np.zeros(33,dtype=bool)
         which_bool[which_indices] = True
         estimated_params = minimizeNelderMead(objectiveFunctionWrapper,Params.test_param_vec,verbose=True,which_vars=which_bool)
@@ -1339,9 +1339,10 @@ if __name__ == '__main__':
     if calc_std_errs:
         # Calculate standard errors using Jacobian of moment difference function for some or all parameters
         which_indices = np.array([0,1,2,3,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,25,26,27,28,29,30,31,32])
+        #which_indices = np.array([0,1,5,6,7])
         which_bool = np.zeros(33,dtype=bool)
         which_bool[which_indices] = True
-        standard_errors, cov_matrix = calcStdErrs(Params.test_param_vec,Data.use_cohorts,which_bool,eps=0.001)
+        standard_errors, cov_matrix, moment_derivatives = calcStdErrs(Params.test_param_vec,Data.use_cohorts,which_bool,eps=0.001)
         for n in range(which_indices.size):
             i = which_indices[n]
             print(Params.param_names[i] + ' = ' + str(standard_errors[n]))
@@ -1350,9 +1351,11 @@ if __name__ == '__main__':
                 corr = cov_matrix[n,nn]/(standard_errors[n]*standard_errors[nn])
                 if np.abs(corr > 0.7):
                     print(Params.param_names[which_indices[n]] + ' and ' + Params.param_names[which_indices[nn]] + ' have a correlation of ' + str(corr))
-        stderrs_adj = np.zeros(33)
+        stderrs_adj = np.zeros(33) + np.nan
         stderrs_adj[which_bool] = standard_errors
         makeParamTable('EstimatedParameters', Params.test_param_vec, stderrs=stderrs_adj)
+        temp = np.dot(moment_derivatives,MomentWeights)
+        sensitivity = -np.dot(np.linalg.inv(np.dot(temp,moment_derivatives.transpose())),temp)
         
         
     if calc_std_errs_alt:

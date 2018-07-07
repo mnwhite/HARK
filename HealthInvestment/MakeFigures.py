@@ -212,8 +212,9 @@ def makeValidationFigures(params,use_cohorts):
     plt.plot(AgeVec,SimHealthPctiles,'-k')
     plt.plot(AgeVec,DataHealthPctiles,'--k')
     plt.ylim(0.,1.)
-    plt.ylabel('Health Deciles')
+    plt.ylabel('Health capital $h_{it}$')
     plt.xlabel('Age')
+    plt.savefig('./Figures/HealthDistribution.pdf')
     plt.show()
     
     OOPmodFunc = lambda x : np.log(10000*x)
@@ -250,6 +251,7 @@ def makeValidationFigures(params,use_cohorts):
     plt.xlabel('Out-of-pocket medical expenses, biannual')
     plt.ylabel('Cumulative distribution')
     plt.legend(['HRS data','Model'],loc=4)
+    plt.savefig('./Figures/OOPdistribution.pdf')
     plt.show()
     
     # Calculate the serial correlation of log OOP medical spending in simulated data
@@ -380,14 +382,16 @@ def makeValidationFigures(params,use_cohorts):
             MortByIncAge_sim[i,t] = np.dot(Mort,Weight)/WeightSum
     
     # Plot mortality probability by age and income quintile
-    colors = ['b','r','g','m','c']
+    income_colors = ['b','r','g','m','c']
     for i in range(5):
-        plt.plot(AgeVec,MortByIncAge_sim[i,:]-MortByAge_sim,'-' + colors[i])
+        plt.plot(AgeVec,MortByIncAge_sim[i,:]-MortByAge_sim,'-' + income_colors[i])
     for i in range(5):
-        plt.plot(AgeVec,MortByIncAge_data[i,:]-MortByAge_sim,'--' + colors[i])
+        plt.plot(AgeVec,MortByIncAge_data[i,:]-MortByAge_sim,'.' + income_colors[i])
     plt.xlabel('Age')
     plt.ylabel('Relative death probability (biannual)')
     plt.title('Death Probability by Income Quintile')
+    plt.legend(['Bottom quintile','Second quintile','Third quintile','Fourth quintile','Top quintile'],loc=2)
+    plt.savefig('./Figures/MortByIncAge.pdf')
     plt.show()
     
 

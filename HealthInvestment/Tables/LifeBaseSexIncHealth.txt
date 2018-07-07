@@ -1,0 +1,18 @@
+\begin{table} \label{table:TestLifeBaseSIH} 
+ \caption{Remaining Life Expectancy by Sex, Income, and Health}
+\centering 
+\begin{tabular}{l c c c c c} 
+\hline \hline 
+Income & & \multicolumn{2}{c}{Women} & \multicolumn{2}{c}{Men} \\ 
+Quintile & All & $h < 0.5$ & $h \geq 0.5$ & $h < 0.5$ & $h \geq 0.5$ \\ 
+\hline 
+Bottom & 10.3 & 10.5 & 12.9 & 7.8 & 9.8 \\ 
+Second & 10.7 & 10.8 & 13.1 & 8.1 & 10.7 \\ 
+Third  & 12.2 & 12.2 & 14.2 & 9.5 & 11.5 \\ 
+Fourth & 13.4 & 13.4 & 15.4 & 10.3 & 12.0 \\ 
+Top    & 14.2 & 15.1 & 15.7 & 10.8 & 12.3 \\ 
+\hline 
+All    & 12.2 & 12.3 & 14.6 & 9.3 & 11.4 \\ 
+\hline \hline 
+\end{tabular} 
+\end{table} 

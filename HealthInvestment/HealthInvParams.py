@@ -190,9 +190,9 @@ basic_estimation_dict.update(grid_size_params)
 
 # Make a test parameter vector
 test_param_vec = np.array([
-    0.449674117713,      # 0 CRRA
+    0.449674117713,      # 0 CRRAcon
     0.951850827876,      # 1 DiscFac
-    7.2864532876,        # 2 MedCurve
+    3.276529453358,      # 2 CRRAmed
     2.05585837907,       # 3 LifeUtility
     0.0,                 # 4 MargUtilityShift
     0.580556089693,      # 5 Cfloor

@@ -1034,7 +1034,7 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         None
         '''
         rho = self.CRRA
-        nu = rho*self.MedCurve
+        nu = self.MedCurve
         self.bFromxFunc = TransConShareFunc(rho,nu)
         self.CRRAmed = nu
         self.addToTimeInv('CRRAmed','bFromxFunc')

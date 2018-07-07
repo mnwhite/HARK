@@ -1,15 +1,16 @@
-\begin{table} \caption{Willingness to Pay for Policy by Income and Wealth, Test Policy} \label{table:TestWTPIH}
+\begin{table}  \label{table:TestWTPIW} 
+ \caption{Willingness to Pay for Policy by Income and Wealth, Test Policy}
 \centering 
 \begin{tabular}{l c c c c c} 
 \hline \hline 
 Income & \multicolumn{5}{c}{Wealth Quintile} \\ 
 Quintile & Bottom & Second & Third & Fourth & Top \\ 
 \hline 
-Bottom & \$0 & \$0 & \$24 & \$396 & \$2289 \\ 
-Second & \$4200 & \$4028 & \$4090 & \$4757 & \$5952 \\ 
-Third  & \$5296 & \$5983 & \$5987 & \$6327 & \$6765 \\ 
-Fourth & \$5768 & \$5948 & \$6621 & \$7035 & \$7321 \\ 
-Top    & \$6516 & \$6347 & \$7358 & \$7356 & \$7301 \\ 
+Bottom & \$0 & \$0 & \$0 & \$258 & \$1460 \\ 
+Second & \$1312 & \$1618 & \$1288 & \$1950 & \$4739 \\ 
+Third  & \$4986 & \$5743 & \$5771 & \$6190 & \$6653 \\ 
+Fourth & \$5731 & \$5918 & \$6578 & \$6988 & \$7256 \\ 
+Top    & \$6482 & \$6288 & \$7294 & \$7287 & \$7226 \\ 
 \hline \hline 
 \end{tabular} 
 \end{table} 

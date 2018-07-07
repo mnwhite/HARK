@@ -42,7 +42,7 @@ param_names = [
 param_tex = [
     '\\rho',
     '\\beta',
-    '\\nu / \\rho',
+    '\\nu',
     '\\varsigma',
     '\\alpha',
     '\\underline{c}',
@@ -76,10 +76,10 @@ param_tex = [
     ]
 
 param_desc = [
-    'Coefficient of relative risk aversion for consumption',
+    'CRRA for consumption $c$',
     'Intertemporal discount factor (biennial)',
-    'Ratio of relative risk aversion for $m$ vs $c$',
-    'Utility level shifter: $U(c=0\\varsigma,m;\\eta=0)=0$',
+    'CRRA for medical consumption $m$',
+    'Utility level shifter: $U(\\varsigma,m;0)=0$',
     'Marginal utility shifter for health',
     'Effective consumption floor (\$10,000)',
     'Bequest motive shifter (\$10,000)',
@@ -207,7 +207,7 @@ def makeCounterfactualSummaryTablesOneVar(means,var_name,spec_name,file_name,lab
     I = means.byIncome
     H = means.byHealth
     O = means.overall
-    table1 = '\\begin{table} \\caption{' + var_name + ' by Income and Health, ' + spec_name + '} \\label{table:' + label + 'IH}\n'
+    table1 = '\\begin{table} \\label{table:' + label + 'IH} \n \\caption{' + var_name + ' by Income and Health, ' + spec_name + '} \n'
     table1 += '\\centering \n'
     table1 += '\\begin{tabular}{l c c c c c} \n'
     table1 += '\\hline \\hline \n'
@@ -230,7 +230,7 @@ def makeCounterfactualSummaryTablesOneVar(means,var_name,spec_name,file_name,lab
     
     # Make the income-wealth table
     IW = means.byIncWealth
-    table2 =  '\\begin{table} \\caption{' + var_name + ' by Income and Wealth, ' + spec_name + '} \\label{table:' + label + 'IH}\n'
+    table2 =  '\\begin{table}  \\label{table:' + label + 'IW} \n \\caption{' + var_name + ' by Income and Wealth, ' + spec_name + '}\n'
     table2 += '\\centering \n'
     table2 += '\\begin{tabular}{l c c c c c} \n'
     table2 += '\\hline \\hline \n'
@@ -282,7 +282,7 @@ def makeTableBySexIncHealth(means,var_name,file_name,label,convert_dollars=True)
     SH = means.bySexHealth
     O = means.overall
     
-    table1 = '\\begin{table} \\caption{' + var_name + ' by Sex, Income, and Health} \\label{table:' + label + 'IH}\n'
+    table1 = '\\begin{table} \\label{table:' + label + 'SIH} \n \\caption{' + var_name + ' by Sex, Income, and Health}\n'
     table1 += '\\centering \n'
     table1 += '\\begin{tabular}{l c c c c c} \n'
     table1 += '\\hline \\hline \n'
@@ -356,5 +356,5 @@ def makeCounterfactualSummaryTables(means,spec_name,file_base,label):
     
     for i in range(8):
         makeCounterfactualSummaryTablesOneVar(means[i],var_names[i],spec_name, file_base + var_codes[i], label + var_codes[i],convert[i])
-    makeTableBySexIncHealth(means[8], var_names[8], file_base + var_codes[8], label + var_codes[8], convert[8])
+    makeTableBySexIncHealth(means[8], var_names[8], var_codes[8], label + var_codes[8], convert[8])
           
