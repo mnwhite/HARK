@@ -1,18 +1,19 @@
-\begin{table} \label{table:TestOOPmedIH} 
- \caption{Change in PDV of Out of Pocket Medical Expenses by Income and Health, Test Policy} 
+\begin{table} 
+ \caption{Change in PDV of Out of Pocket Medical Expenses by Income and Health, Test Policy}
+ \label{table:TestOOPmedIH}
 \centering 
 \begin{tabular}{l c c c c c} 
 \hline \hline 
 Income & \multicolumn{5}{c}{Range of Health $h$} \\ 
 Quintile & All & $(0,0.25]$ & $(0.25,0.5]$ & $(0.5,0.75]$ & $(0.75,1.0]$ \\ 
 \hline 
-Bottom & \$407 & \$137 & \$135 & \$481 & \$1257 \\ 
-Second & \$2047 & \$1182 & \$1365 & \$2410 & \$3460 \\ 
-Third  & \$5391 & \$3332 & \$4231 & \$5280 & \$6413 \\ 
-Fourth & \$6274 & \$3929 & \$4874 & \$6070 & \$7374 \\ 
-Top    & \$6738 & \$3923 & \$4913 & \$6395 & \$7644 \\ 
+Bottom & \$414 & \$137 & \$135 & \$485 & \$1294 \\ 
+Second & \$2048 & \$1173 & \$1354 & \$2399 & \$3457 \\ 
+Third  & \$5392 & \$3324 & \$4222 & \$5276 & \$6425 \\ 
+Fourth & \$6279 & \$3928 & \$4874 & \$6074 & \$7382 \\ 
+Top    & \$6742 & \$3925 & \$4915 & \$6399 & \$7649 \\ 
 \hline 
-All    & \$4292 & \$1745 & \$2833 & \$4446 & \$6250 \\ 
+All    & \$4296 & \$1742 & \$2829 & \$4445 & \$6259 \\ 
 \hline \hline 
 \end{tabular} 
 \end{table} 

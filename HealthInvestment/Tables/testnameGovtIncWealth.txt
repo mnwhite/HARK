@@ -1,16 +1,17 @@
-\begin{table}  \label{table:TestGovtIW} 
+\begin{table} 
  \caption{Change in PDV of Total Government Expenses by Income and Wealth, Test Policy}
+ \label{table:TestGovtIW} 
 \centering 
 \begin{tabular}{l c c c c c} 
 \hline \hline 
 Income & \multicolumn{5}{c}{Wealth Quintile} \\ 
 Quintile & Bottom & Second & Third & Fourth & Top \\ 
 \hline 
-Bottom & \$0 & \$0 & \$0 & \$38 & \$168 \\ 
-Second & \$676 & \$964 & \$590 & \$645 & \$656 \\ 
-Third  & \$1176 & \$851 & \$770 & \$688 & \$537 \\ 
-Fourth & \$546 & \$537 & \$492 & \$444 & \$371 \\ 
-Top    & \$280 & \$214 & \$244 & \$201 & \$142 \\ 
+Bottom & \$0 & \$0 & \$0 & \$37 & \$169 \\ 
+Second & \$667 & \$954 & \$581 & \$634 & \$636 \\ 
+Third  & \$1123 & \$818 & \$743 & \$667 & \$519 \\ 
+Fourth & \$534 & \$523 & \$479 & \$429 & \$358 \\ 
+Top    & \$270 & \$205 & \$234 & \$192 & \$136 \\ 
 \hline \hline 
 \end{tabular} 
 \end{table} 

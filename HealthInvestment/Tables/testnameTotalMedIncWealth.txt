@@ -1,16 +1,17 @@
-\begin{table}  \label{table:TestTotalMedIW} 
+\begin{table} 
  \caption{Change in PDV of Total Medical Expenses by Income and Wealth, Test Policy}
+ \label{table:TestTotalMedIW} 
 \centering 
 \begin{tabular}{l c c c c c} 
 \hline \hline 
 Income & \multicolumn{5}{c}{Wealth Quintile} \\ 
 Quintile & Bottom & Second & Third & Fourth & Top \\ 
 \hline 
-Bottom & \$0 & \$0 & \$0 & \$59 & \$314 \\ 
-Second & \$1005 & \$1342 & \$850 & \$1112 & \$1239 \\ 
-Third  & \$2232 & \$1621 & \$1401 & \$1116 & \$840 \\ 
-Fourth & \$829 & \$805 & \$731 & \$650 & \$538 \\ 
-Top    & \$411 & \$307 & \$352 & \$285 & \$200 \\ 
+Bottom & \$0 & \$0 & \$0 & \$58 & \$317 \\ 
+Second & \$993 & \$1331 & \$838 & \$1100 & \$1209 \\ 
+Third  & \$2181 & \$1585 & \$1369 & \$1088 & \$814 \\ 
+Fourth & \$818 & \$790 & \$715 & \$631 & \$521 \\ 
+Top    & \$397 & \$296 & \$338 & \$274 & \$192 \\ 
 \hline \hline 
 \end{tabular} 
 \end{table} 

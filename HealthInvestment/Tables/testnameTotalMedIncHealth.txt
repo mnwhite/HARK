@@ -1,18 +1,19 @@
-\begin{table} \label{table:TestTotalMedIH} 
- \caption{Change in PDV of Total Medical Expenses by Income and Health, Test Policy} 
+\begin{table} 
+ \caption{Change in PDV of Total Medical Expenses by Income and Health, Test Policy}
+ \label{table:TestTotalMedIH}
 \centering 
 \begin{tabular}{l c c c c c} 
 \hline \hline 
 Income & \multicolumn{5}{c}{Range of Health $h$} \\ 
 Quintile & All & $(0,0.25]$ & $(0.25,0.5]$ & $(0.5,0.75]$ & $(0.75,1.0]$ \\ 
 \hline 
-Bottom & \$88 & \$53 & \$49 & \$89 & \$285 \\ 
-Second & \$1107 & \$750 & \$784 & \$1363 & \$1912 \\ 
-Third  & \$1446 & \$1253 & \$1293 & \$1400 & \$1740 \\ 
-Fourth & \$706 & \$617 & \$719 & \$669 & \$706 \\ 
-Top    & \$307 & \$211 & \$235 & \$312 & \$341 \\ 
+Bottom & \$89 & \$52 & \$49 & \$88 & \$294 \\ 
+Second & \$1091 & \$741 & \$766 & \$1339 & \$1887 \\ 
+Third  & \$1411 & \$1229 & \$1263 & \$1368 & \$1696 \\ 
+Fourth & \$690 & \$604 & \$706 & \$654 & \$689 \\ 
+Top    & \$295 & \$201 & \$225 & \$300 & \$329 \\ 
 \hline 
-All    & \$747 & \$517 & \$629 & \$807 & \$966 \\ 
+All    & \$731 & \$508 & \$615 & \$789 & \$945 \\ 
 \hline \hline 
 \end{tabular} 
 \end{table} 

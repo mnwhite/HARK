@@ -1,18 +1,19 @@
-\begin{table} \label{table:TestGovtIH} 
- \caption{Change in PDV of Total Government Expenses by Income and Health, Test Policy} 
+\begin{table} 
+ \caption{Change in PDV of Total Government Expenses by Income and Health, Test Policy}
+ \label{table:TestGovtIH}
 \centering 
 \begin{tabular}{l c c c c c} 
 \hline \hline 
 Income & \multicolumn{5}{c}{Range of Health $h$} \\ 
 Quintile & All & $(0,0.25]$ & $(0.25,0.5]$ & $(0.5,0.75]$ & $(0.75,1.0]$ \\ 
 \hline 
-Bottom & \$48 & \$38 & \$36 & \$50 & \$114 \\ 
-Second & \$708 & \$578 & \$496 & \$816 & \$1174 \\ 
-Third  & \$805 & \$845 & \$753 & \$723 & \$817 \\ 
-Fourth & \$475 & \$430 & \$484 & \$451 & \$468 \\ 
-Top    & \$213 & \$151 & \$166 & \$217 & \$233 \\ 
+Bottom & \$49 & \$38 & \$36 & \$49 & \$120 \\ 
+Second & \$696 & \$571 & \$483 & \$799 & \$1156 \\ 
+Third  & \$774 & \$819 & \$721 & \$691 & \$784 \\ 
+Fourth & \$461 & \$416 & \$470 & \$438 & \$456 \\ 
+Top    & \$205 & \$143 & \$158 & \$207 & \$225 \\ 
 \hline 
-All    & \$459 & \$369 & \$393 & \$475 & \$548 \\ 
+All    & \$446 & \$361 & \$379 & \$459 & \$533 \\ 
 \hline \hline 
 \end{tabular} 
 \end{table} 

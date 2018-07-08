@@ -214,6 +214,7 @@ def makeValidationFigures(params,use_cohorts):
     plt.ylim(0.,1.)
     plt.ylabel('Health capital $h_{it}$')
     plt.xlabel('Age')
+    plt.title('Simulated vs Actual Distribution of Health by Age')
     plt.savefig('./Figures/HealthDistribution.pdf')
     plt.show()
     

@@ -146,8 +146,8 @@ def makeParamTable(filename,values,stderrs=None):
     if stderrs is None:
         stderrs = np.zeros_like(values) + np.nan
     
-    output =  '\\begin{table} \\label{table:SMMestimates} \n'
-    output += '\caption{Parameters Estimated by SMM} \n'
+    output =  '\\begin{table} \n'
+    output += '\\caption{Parameters Estimated by SMM} \n \\label{table:SMMestimates} \n'
     output += '\\centering \n'
     output += '\\small \n'
     output += '\\begin{tabular}{cccl} \n'
@@ -207,7 +207,7 @@ def makeCounterfactualSummaryTablesOneVar(means,var_name,spec_name,file_name,lab
     I = means.byIncome
     H = means.byHealth
     O = means.overall
-    table1 = '\\begin{table} \\label{table:' + label + 'IH} \n \\caption{' + var_name + ' by Income and Health, ' + spec_name + '} \n'
+    table1 = '\\begin{table} \n \\caption{' + var_name + ' by Income and Health, ' + spec_name + '}\n \\label{table:' + label + 'IH}\n'
     table1 += '\\centering \n'
     table1 += '\\begin{tabular}{l c c c c c} \n'
     table1 += '\\hline \\hline \n'
@@ -230,7 +230,7 @@ def makeCounterfactualSummaryTablesOneVar(means,var_name,spec_name,file_name,lab
     
     # Make the income-wealth table
     IW = means.byIncWealth
-    table2 =  '\\begin{table}  \\label{table:' + label + 'IW} \n \\caption{' + var_name + ' by Income and Wealth, ' + spec_name + '}\n'
+    table2 =  '\\begin{table} \n \\caption{' + var_name + ' by Income and Wealth, ' + spec_name + '}\n \\label{table:' + label + 'IW} \n'
     table2 += '\\centering \n'
     table2 += '\\begin{tabular}{l c c c c c} \n'
     table2 += '\\hline \\hline \n'
@@ -282,20 +282,20 @@ def makeTableBySexIncHealth(means,var_name,file_name,label,convert_dollars=True)
     SH = means.bySexHealth
     O = means.overall
     
-    table1 = '\\begin{table} \\label{table:' + label + 'SIH} \n \\caption{' + var_name + ' by Sex, Income, and Health}\n'
+    table1 = '\\begin{table} \n \\caption{' + var_name + ' by Sex, Income, and Health}\n \\label{table:' + label + 'SIH}\n'
     table1 += '\\centering \n'
     table1 += '\\begin{tabular}{l c c c c c} \n'
     table1 += '\\hline \\hline \n'
-    table1 += 'Income & & \multicolumn{2}{c}{Women} & \multicolumn{2}{c}{Men} \\\\ \n'
-    table1 += 'Quintile & All & $h < 0.5$ & $h \\geq 0.5$ & $h < 0.5$ & $h \\geq 0.5$ \\\\ \n'
+    table1 += 'Income & \multicolumn{2}{c}{Women} & \multicolumn{2}{c}{Men} & \\\\ \n'
+    table1 += 'Quintile & $h < 0.5$ & $h \\geq 0.5$ & $h < 0.5$ & $h \\geq 0.5$ & All \\\\ \n'
     table1 += '\\hline \n'
-    table1 += 'Bottom & ' + f(I[0]) + ' & ' + f(SIH[0,0,0]) + ' & ' + f(SIH[0,0,1]) + ' & ' + f(SIH[1,0,0]) + ' & ' + f(SIH[1,0,1]) + ' \\\\ \n'
-    table1 += 'Second & ' + f(I[1]) + ' & ' + f(SIH[0,1,0]) + ' & ' + f(SIH[0,1,1]) + ' & ' + f(SIH[1,1,0]) + ' & ' + f(SIH[1,1,1]) + ' \\\\ \n'
-    table1 += 'Third  & ' + f(I[2]) + ' & ' + f(SIH[0,2,0]) + ' & ' + f(SIH[0,2,1]) + ' & ' + f(SIH[1,2,0]) + ' & ' + f(SIH[1,2,1]) + ' \\\\ \n'
-    table1 += 'Fourth & ' + f(I[3]) + ' & ' + f(SIH[0,3,0]) + ' & ' + f(SIH[0,3,1]) + ' & ' + f(SIH[1,3,0]) + ' & ' + f(SIH[1,3,1]) + ' \\\\ \n'
-    table1 += 'Top    & ' + f(I[4]) + ' & ' + f(SIH[0,4,0]) + ' & ' + f(SIH[0,4,1]) + ' & ' + f(SIH[1,4,0]) + ' & ' + f(SIH[1,4,1]) + ' \\\\ \n'
+    table1 += 'Bottom & ' + f(SIH[0,0,0]) + ' & ' + f(SIH[0,0,1]) + ' & ' + f(SIH[1,0,0]) + ' & ' + f(SIH[1,0,1]) + ' & ' + f(I[0]) + ' \\\\ \n'
+    table1 += 'Second & ' + f(SIH[0,1,0]) + ' & ' + f(SIH[0,1,1]) + ' & ' + f(SIH[1,1,0]) + ' & ' + f(SIH[1,1,1]) + ' & ' + f(I[1]) + ' \\\\ \n'
+    table1 += 'Third  & ' + f(SIH[0,2,0]) + ' & ' + f(SIH[0,2,1]) + ' & ' + f(SIH[1,2,0]) + ' & ' + f(SIH[1,2,1]) + ' & ' + f(I[2]) + ' \\\\ \n'
+    table1 += 'Fourth & ' + f(SIH[0,3,0]) + ' & ' + f(SIH[0,3,1]) + ' & ' + f(SIH[1,3,0]) + ' & ' + f(SIH[1,3,1]) + ' & ' + f(I[3]) + ' \\\\ \n'
+    table1 += 'Top    & ' + f(SIH[0,4,0]) + ' & ' + f(SIH[0,4,1]) + ' & ' + f(SIH[1,4,0]) + ' & ' + f(SIH[1,4,1]) + ' & ' + f(I[4]) + ' \\\\ \n'
     table1 += '\\hline \n'
-    table1 += 'All    & ' + f(O) + ' & ' + f(SH[0,0]) + ' & ' + f(SH[0,1]) + ' & ' + f(SH[1,0]) + ' & ' + f(SH[1,1]) + ' \\\\ \n'
+    table1 += 'All    & ' + f(SH[0,0]) + ' & ' + f(SH[0,1]) + ' & ' + f(SH[1,0]) + ' & ' + f(SH[1,1]) + ' & ' + f(O) + ' \\\\ \n'
     table1 += '\\hline \\hline \n'
     table1 += '\\end{tabular} \n'
     table1 += '\\end{table} \n'

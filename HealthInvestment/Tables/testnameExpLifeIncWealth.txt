@@ -1,5 +1,6 @@
-\begin{table}  \label{table:TestExpLifeIW} 
+\begin{table} 
  \caption{Change in Remaining Life Expectancy (Years) by Income and Wealth, Test Policy}
+ \label{table:TestExpLifeIW} 
 \centering 
 \begin{tabular}{l c c c c c} 
 \hline \hline 
@@ -8,7 +9,7 @@ Quintile & Bottom & Second & Third & Fourth & Top \\
 \hline 
 Bottom & 0.00 & 0.00 & 0.00 & 0.01 & 0.06 \\ 
 Second & 0.15 & 0.17 & 0.11 & 0.21 & 0.23 \\ 
-Third  & 0.38 & 0.25 & 0.18 & 0.09 & 0.05 \\ 
+Third  & 0.39 & 0.24 & 0.17 & 0.09 & 0.05 \\ 
 Fourth & 0.03 & 0.02 & 0.02 & 0.02 & 0.01 \\ 
 Top    & 0.00 & 0.00 & 0.00 & 0.00 & 0.00 \\ 
 \hline \hline 

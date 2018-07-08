@@ -1,18 +1,19 @@
-\begin{table} \label{table:TestSubsidyIH} 
- \caption{PDV of Direct Subsidy Expenses by Income and Health, Test Policy} 
+\begin{table} 
+ \caption{PDV of Direct Subsidy Expenses by Income and Health, Test Policy}
+ \label{table:TestSubsidyIH}
 \centering 
 \begin{tabular}{l c c c c c} 
 \hline \hline 
 Income & \multicolumn{5}{c}{Range of Health $h$} \\ 
 Quintile & All & $(0,0.25]$ & $(0.25,0.5]$ & $(0.5,0.75]$ & $(0.75,1.0]$ \\ 
 \hline 
-Bottom & \$446 & \$151 & \$148 & \$520 & \$1428 \\ 
-Second & \$2446 & \$1354 & \$1652 & \$2956 & \$4198 \\ 
-Third  & \$6031 & \$3740 & \$4771 & \$5957 & \$7337 \\ 
-Fourth & \$6505 & \$4116 & \$5109 & \$6288 & \$7612 \\ 
-Top    & \$6832 & \$3983 & \$4981 & \$6490 & \$7752 \\ 
+Bottom & \$454 & \$152 & \$148 & \$524 & \$1468 \\ 
+Second & \$2443 & \$1343 & \$1637 & \$2939 & \$4189 \\ 
+Third  & \$6029 & \$3733 & \$4764 & \$5953 & \$7337 \\ 
+Fourth & \$6508 & \$4116 & \$5109 & \$6290 & \$7616 \\ 
+Top    & \$6833 & \$3983 & \$4982 & \$6491 & \$7753 \\ 
 \hline 
-All    & \$4579 & \$1893 & \$3069 & \$4778 & \$6668 \\ 
+All    & \$4580 & \$1889 & \$3064 & \$4775 & \$6672 \\ 
 \hline \hline 
 \end{tabular} 
 \end{table} 

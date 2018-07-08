@@ -42,6 +42,7 @@ moment_dummies = np.array([
         True,  # AvgOOPResidualByIncWealth
         True,  # MortByHealthAge
         True,  # HealthByHealthAge
+        False, # WealthByHealthAge
         ])
 
 # Make a random number generator for the data bootstrap
@@ -185,7 +186,7 @@ for j in range(10):
     MaxWealthSmall[j] = np.max(MaxWealth[these])
 
 # Initialize an array of bootstrapped data moments
-moment_count = 1970
+moment_count = 2045
 BootstrappedMoments = np.zeros((data_bootstrap_count,moment_count)) + np.nan
 BootstrapValidBool = np.zeros(data_bootstrap_count,dtype=bool)
 BootstrappedResiduals = np.zeros((data_bootstrap_count,26)) + np.nan
@@ -203,7 +204,7 @@ for b in range(data_bootstrap_count+1):
         cohort_data = np.zeros_like(cohort_data_orig)
         inc_quint_data = np.zeros_like(inc_quint_data_orig)
         wealth_quint_data = np.zeros_like(wealth_quint_data_orig)
-        health_tert_data = np.zeros_like(health_tert_data_orig)
+        health_tert_data_alt = np.zeros_like(health_tert_data_orig)
         sex_data = np.zeros_like(sex_data_orig)
         
         # Resample the data within each cohort
@@ -224,7 +225,7 @@ for b in range(data_bootstrap_count+1):
             cohort_data[THESE] = cohort_data_orig[new_idx]
             inc_quint_data[THESE] = inc_quint_data_orig[new_idx]
             wealth_quint_data[THESE] = wealth_quint_data_orig[new_idx]
-            health_tert_data[THESE] = health_tert_data_orig[new_idx]
+            health_tert_data_alt[THESE] = health_tert_data_orig[new_idx]
             sex_data[THESE] = sex_data_orig[new_idx]            
         
     else: # If this is the last pass, just load the data itself
@@ -236,7 +237,7 @@ for b in range(data_bootstrap_count+1):
         cohort_data = cohort_data_orig
         inc_quint_data = inc_quint_data_orig
         wealth_quint_data = wealth_quint_data_orig
-        health_tert_data = health_tert_data_orig
+        health_tert_data_alt = health_tert_data_orig
         sex_data = sex_data_orig
 
     t0 = (first_ob_data-1996)/2
@@ -300,7 +301,8 @@ for b in range(data_bootstrap_count+1):
     # Calculate health quintiles at data entry by age (and overwrite old health tertile info)
     health_tertile_cuts = np.zeros((2,15))
     health_quintile_cuts = np.zeros((4,15))
-    health_quint_data = np.zeros_like(health_tert_data,dtype=int)
+    health_tert_data = np.zeros_like(health_tert_data_alt,dtype=int)
+    health_quint_data = np.zeros_like(health_tert_data_alt,dtype=int)
     for a in range(15):
         these = np.logical_and(Alive,AgeBoolArray[:,:,a])
         health_temp = h_data[these]
@@ -439,6 +441,13 @@ for b in range(data_bootstrap_count+1):
         right_tert = HealthTert == j+1
         HealthTertBoolArray[:,:,j] = right_tert
         
+    # Make boolean array of alternate health tertiles for the data
+    HealthTertAlt = np.tile(np.reshape(health_tert_data_alt,(1,obs)),(8,1))
+    HealthTertAltBoolArray = np.zeros((8,obs,3),dtype=bool)
+    for j in range(3):
+        right_tert = HealthTertAlt == j+1
+        HealthTertAltBoolArray[:,:,j] = right_tert
+        
     # Make boolean array of health quintiles for the data
     HealthQuint = np.tile(np.reshape(health_quint_data,(1,obs)),(8,1))
     HealthQuintBoolArray = np.zeros((8,obs,5),dtype=bool)
@@ -563,8 +572,10 @@ for b in range(data_bootstrap_count+1):
             
     # Calculate mortality by health quintile by age: 75
     # Calculate health by health quintile by age: 75
+    # Calculate wealth by health quintile by age: 75
     MortByHealthAge = np.zeros((5,15))
     HealthByHealthAge = np.zeros((5,15))
+    WealthByHealthAge = np.zeros((5,15))
     for h in range(5):
         for a in range(15):
             those = np.logical_and(MortUseable,np.logical_and(HealthQuintBoolArray[:,:,h],AgeBoolArray[:,:,a]))
@@ -572,6 +583,8 @@ for b in range(data_bootstrap_count+1):
             MortByHealthAge[h,a] = DeathCount/float(np.sum(those))
             these = np.logical_and(Useable,np.logical_and(HealthQuintBoolArray[:,:,h],AgeBoolArray[:,:,a]))
             HealthByHealthAge[h,a] = np.mean(h_data[these])
+            WealthByHealthAge[h,a] = np.median(w_data[these])
+            
             
     # Aggregate moments into a single vector
     all_moments = np.concatenate([
@@ -593,7 +606,8 @@ for b in range(data_bootstrap_count+1):
             AvgHealthResidualByIncWealth.flatten(),
             AvgOOPResidualByIncWealth.flatten(),
             MortByHealthAge.flatten(),
-            HealthByHealthAge.flatten()
+            HealthByHealthAge.flatten(),
+            WealthByHealthAge.flatten()
             ])
     
     HealthProdPreEstMoments = np.concatenate([AvgHealthResidualByIncWealth.flatten(),OOPdiffByInc])
@@ -632,7 +646,8 @@ moment_mask = np.concatenate([
         np.ones(24)*moment_dummies[16],
         np.zeros(1)*moment_dummies[16],
         np.ones(75)*moment_dummies[17],
-        np.ones(75)*moment_dummies[18]
+        np.ones(75)*moment_dummies[18],
+        np.ones(75)*moment_dummies[19]
         ])
 
 # If the data moments were bootstrapped, calculate the optimal weighting matrix and save it to a file.
@@ -669,14 +684,14 @@ if data_bootstrap_count > 0:
                    1395,1470,1545,1620,1695, # income-wealth-age moments: OOP (1st,2nd,3rd,4th,5th income quintile)
                    1770, # health residual moments
                    1795, # OOP residual moments
-                   1820,1895, # health_quintile-age moments: Mort, Health
+                   1820,1895,1970, # health_quintile-age moments: Mort, Health, Wealth
                    moment_count] # end
                    
     # This vector indicates whether each block of moments should use the inverse of
     # the variance-covariance submatrix (True) or simply the inverse of the variance
     # elements as a diagonal matrix (False).  It is here to experiment with whether
     # moment covariances for mean OOP spending are driving estimation results.
-    use_cov = np.ones(34,dtype=bool) 
+    use_cov = np.ones(35,dtype=bool) 
     #use_cov[0] = False  # OOP by age
     #use_cov[8] = False  # OOP by health-age, women
     #use_cov[9] = False  # OOP by health-age, men

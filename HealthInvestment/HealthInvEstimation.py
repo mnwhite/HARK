@@ -279,6 +279,7 @@ def calcSimulatedMoments(type_list,return_as_list):
     OOPbyIncWealthAge = np.zeros((5,5,15))
     MortByHealthAge = np.zeros((5,15))
     HealthByHealthAge = np.zeros((5,15))
+    WealthByHealthAge = np.zeros((5,15))
     
     # Make large 1D vectors for the health transition and OOP regressions
     THESE = np.logical_and(Active,InDataSpan)
@@ -356,10 +357,12 @@ def calcSimulatedMoments(type_list,return_as_list):
             these = np.logical_and(THESE,right_health)
             Mort = MortHist[t+1,these]
             Health = hLvlHist[t+1,these]
+            Wealth = aLvlHist[t,these]
             Weight = WeightHist[t+1,these]
             WeightSum = np.sum(Weight)
             MortByHealthAge[h,t] = np.dot(Mort,Weight)/WeightSum
             HealthByHealthAge[h,t] = np.dot(Health,Weight)/WeightSum
+            WealthByHealthAge[h,t] = getPercentiles(Wealth,weights=Weight)
         
         for h in range(3):
             # Calculate stdev OOP medical spending and stdev delta health by health by age
@@ -448,7 +451,8 @@ def calcSimulatedMoments(type_list,return_as_list):
                 AvgHealthResidualByIncWealth,
                 AvgOOPResidualByIncWealth,
                 MortByHealthAge,
-                HealthByHealthAge
+                HealthByHealthAge,
+                WealthByHealthAge
                 ]
     else: 
         all_moments = np.concatenate([
@@ -470,7 +474,8 @@ def calcSimulatedMoments(type_list,return_as_list):
                 AvgHealthResidualByIncWealth.flatten(),
                 AvgOOPResidualByIncWealth.flatten(),
                 MortByHealthAge.flatten(),
-                HealthByHealthAge.flatten()
+                HealthByHealthAge.flatten(),
+                WealthByHealthAge.flatten()
                 ])
     return all_moments
 
@@ -999,8 +1004,8 @@ if __name__ == '__main__':
 
     # Choose what kind of work to do:
     test_obj_func = True
-    plot_model_fit = False
-    save_figs = False
+    plot_model_fit = True
+    save_figs = True
     perturb_one_param = False
     perturb_two_params = False
     estimate_model = False
@@ -1021,11 +1026,15 @@ if __name__ == '__main__':
         income_colors = ['b','r','g','m','c']
         
         # Plot model fit of mean out of pocket medical spending by age
-        plt.plot(AgeVec,X[0],'-k')
-        plt.plot(AgeVec,Data.OOPbyAge,'.k')
-        plt.title('Mean out-of-pocket medical spending [3(a)]')
+        plt.plot(AgeVec,X[0],'-m')
+        plt.plot(AgeVec,X[1],'-c')
+        plt.plot(AgeVec,Data.OOPbyAge,'.m')
+        plt.plot(AgeVec,Data.StDevOOPbyAge,'.c')
+        plt.title('Mean and stdev out-of-pocket medical spending [3(a), 4(a)]')
         plt.ylabel(r'OOP expenses $o_{it}$, \$10,000 USD (y2000)')
         plt.xlabel('Age')
+        plt.ylim([0.,1.75])
+        plt.legend(['Mean','Standard deviation'],loc=2)
         if save_figs:
             plt.savefig('./Figures/OOPbyAge.pdf')
         plt.show()
@@ -1071,9 +1080,9 @@ if __name__ == '__main__':
         
         # Plot model fit of mean out of pocket medical spending by age-income
         for i in range(5):
-            plt.plot(X[11][i,:], '-' + income_colors[i])
+            plt.plot(AgeVec,X[11][i,:], '-' + income_colors[i])
         for i in range(5):
-            plt.plot(Data.OOPbyIncAge[i,:], '.' + income_colors[i])
+            plt.plot(AgeVec,Data.OOPbyIncAge[i,:], '.' + income_colors[i])
         plt.title('Mean out-of-pocket medical spending by income')
         plt.ylabel(r'OOP expenses $o_{it}$, \$10,000 USD (y2000)')
         plt.xlabel('Age')
@@ -1120,7 +1129,7 @@ if __name__ == '__main__':
             plt.plot(AgeVec, X[8][0,h,:], '-' + health_colors[h])
         for h in range(3):
             plt.plot(AgeVec, Data.MortBySexHealthAge[0,h,:], '.' + health_colors[h])
-        plt.title('Mortality probability by health, women [5(b).1]')
+        plt.title('Mortality probability by health, women [5(c).1]')
         plt.ylabel(r'Probability $D_{it}$')
         plt.xlabel('Age')
         plt.legend(['Bottom tertile','Middle tertile','Top tertile'],loc=2)
@@ -1133,7 +1142,7 @@ if __name__ == '__main__':
             plt.plot(AgeVec, X[8][1,h,:], '-' + health_colors[h])
         for h in range(3):
             plt.plot(AgeVec, Data.MortBySexHealthAge[1,h,:], '.' + health_colors[h])
-        plt.title('Mortality probability by health, men [5(b).2]')
+        plt.title('Mortality probability by health, men [5(c).2]')
         plt.ylabel(r'Probability $D_{it}$')
         plt.xlabel('Age')
         plt.legend(['Bottom tertile','Middle tertile','Top tertile'],loc=2)
@@ -1146,7 +1155,7 @@ if __name__ == '__main__':
             plt.plot(AgeVec, X[17][h,:], '-' + income_colors[h])
         for h in range(5):
             plt.plot(AgeVec, Data.MortByHealthAge[h,:], '.' + income_colors[h])
-        plt.title('Mortality probability by health [5(c)]')
+        plt.title('Mortality probability by health [5(b)]')
         plt.ylabel(r'Probability $D_{it}$')
         plt.xlabel('Age')
         plt.legend(['Bottom quintile','Second quintile','Third quintile','Fourth quintile','Top quintile'],loc=2)
@@ -1173,12 +1182,27 @@ if __name__ == '__main__':
                 plt.plot(AgeVec, X[12][i,j,:], '-' + income_colors[j])
             for j in range(5):
                 plt.plot(AgeVec, Data.WealthByIncWealthAge[i,j,:], '.' + income_colors[j])
-            plt.title('Median wealth by wealth quintile: ' + names[i] + ' income quintile [1(b).' + str(i+1) + ']')
+            plt.title('Median wealth by wealth quintile: ' + names[i] + ' income quintile')
             plt.ylabel(r'Assets $a_{it}$, \$10,000 USD (y2000)')
             plt.xlabel('Age')
             if save_figs:
                 plt.savefig('./Figures/WealthByIncWealthAge' + str(i+1) + '.pdf')
             plt.show()
+            
+        # Plot model fit of wealth by age and health quintile
+        for i in range(5):
+            plt.plot(AgeVec, X[19][i,:], '-' + income_colors[i])
+        for i in range(5):
+            plt.plot(AgeVec, Data.WealthByHealthAge[i,:], '.' + income_colors[i])
+        plt.title('Median wealth by health quintile')
+        plt.ylabel(r'Assets $a_{it}$, \$10,000 USD (y2000)')
+        plt.xlabel('Age')
+        plt.ylim([-1.,19.])
+        plt.legend(['Bottom quintile','Second quintile','Third quintile','Fourth quintile','Top quintile'],loc=1)
+        if save_figs:
+            plt.savefig('./Figures/WealthByHealthAge.pdf')
+        plt.show()
+        
         
         # Plot model fit of mean health by health, sex, and age
         for h in range(3):
@@ -1326,8 +1350,8 @@ if __name__ == '__main__':
 
     if estimate_model:
         # Estimate some (or all) of the model parameters
-        #which_indices = which_indices = np.array([0,1,2,3,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32])
-        which_indices = np.array([0,1,5,6,7])
+        which_indices = which_indices = np.array([0,1,2,3,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32])
+        #which_indices = np.array([0,1,5,6,7])
         which_bool = np.zeros(33,dtype=bool)
         which_bool[which_indices] = True
         estimated_params = minimizeNelderMead(objectiveFunctionWrapper,Params.test_param_vec,verbose=True,which_vars=which_bool)

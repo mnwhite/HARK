@@ -1,16 +1,17 @@
-\begin{table}  \label{table:TestWelfareIW} 
+\begin{table} 
  \caption{Change in PDV of Welfare Payments by Income and Wealth, Test Policy}
+ \label{table:TestWelfareIW} 
 \centering 
 \begin{tabular}{l c c c c c} 
 \hline \hline 
 Income & \multicolumn{5}{c}{Wealth Quintile} \\ 
 Quintile & Bottom & Second & Third & Fourth & Top \\ 
 \hline 
-Bottom & \$0 & \$0 & \$0 & \$-34 & \$-147 \\ 
-Second & \$-258 & \$-313 & \$-233 & \$-579 & \$-706 \\ 
-Third  & \$-1818 & \$-1212 & \$-1010 & \$-576 & \$-339 \\ 
-Fourth & \$-434 & \$-382 & \$-257 & \$-179 & \$-113 \\ 
-Top    & \$-104 & \$-53 & \$-52 & \$-32 & \$-15 \\ 
+Bottom & \$0 & \$0 & \$0 & \$-35 & \$-153 \\ 
+Second & \$-262 & \$-319 & \$-237 & \$-593 & \$-717 \\ 
+Third  & \$-1858 & \$-1242 & \$-1033 & \$-585 & \$-340 \\ 
+Fourth & \$-451 & \$-393 & \$-260 & \$-179 & \$-112 \\ 
+Top    & \$-104 & \$-52 & \$-51 & \$-31 & \$-15 \\ 
 \hline \hline 
 \end{tabular} 
 \end{table} 
