@@ -15,7 +15,7 @@ from HealthInvEstimation import makeMultiTypeSimple, makeMultiTypeWithCohorts, c
 import LoadHealthInvData as Data
 
 
-def makeSimpleFigure(data,names,colors,x_vals,x_label,title,convert_dollars,file_name):
+def makeSimpleFigure(data,names,colors,x_vals,x_label,show_legend,title,convert_dollars,file_name):
     '''
     Make a simple line plot with counterfactual results across several policies.
     Saves in the /Figures directory with given name, in pdf format.
@@ -32,6 +32,8 @@ def makeSimpleFigure(data,names,colors,x_vals,x_label,title,convert_dollars,file
         Corresponding x-axis values for data; should be same size as data[i].
     x_label : str
         Label as it should appear on the x axis.
+    show_legend : bool
+        Indicator for whether the legend should be drawn.
     title : str
         Title of figure to display at top.
     convert_dollars : bool
@@ -57,7 +59,8 @@ def makeSimpleFigure(data,names,colors,x_vals,x_label,title,convert_dollars,file
     else:
         plt.ylabel('Years', fontsize=14)
     plt.title(title,fontsize=14)
-    plt.legend(names)
+    if show_legend:
+        plt.legend(names)
     
     plt.savefig('./Figures/' + file_name + '.pdf')
     plt.show()
@@ -158,7 +161,7 @@ def makeCounterfactualFigures(data,x_vals,x_label,title_base,file_base):
     makeSimpleFigure([data[3],data[4],data[5],data[6]],
                      [var_names[3],var_names[4],var_names[5],var_names[6]],
                      new_colors[0:4],
-                     x_vals, x_label,
+                     x_vals, x_label, True,
                      'Per Capita Change in PDV of Government Spending',
                      True, file_base + 'GovtChange')
     
@@ -166,7 +169,7 @@ def makeCounterfactualFigures(data,x_vals,x_label,title_base,file_base):
     makeSimpleFigure([data[0],data[1],data[6]],
                      [var_names[0],var_names[1],var_names[6]],
                      [new_colors[4],new_colors[5],new_colors[3]],
-                     x_vals, x_label,
+                     x_vals, x_label, True,
                      'Per Capita Change in PDV of Medical Costs',
                      True, file_base + 'MedChange')
     
@@ -174,16 +177,16 @@ def makeCounterfactualFigures(data,x_vals,x_label,title_base,file_base):
     makeSimpleFigure([data[2]] + [data[8][:,i] for i in range(5)],
                      [var_names[2]] + quintile_names,
                      ['k'] + old_colors,
-                     x_vals, x_label,
-                     'Average Change in Life Expectancy',
+                     x_vals, x_label, True,
+                     'Average Change in Life Expectancy by Income',
                      False, file_base + 'LifeExp')
     
     # Plot changes in life expectancy
     makeSimpleFigure([data[2]] + [data[9][:,i] for i in range(5)],
                      [var_names[2]] + quintile_names,
                      ['k'] + old_colors,
-                     x_vals, x_label,
-                     'Average Willingness to Pay for Policy',
+                     x_vals, x_label, False,
+                     'Average Willingness to Pay for Policy by Income',
                      True, file_base + 'WTP')
     
     #makeCumulativeFigure([data[4],data[3]],[var_names[4],var_names[3]], x_vals, x_label, 'Composition of Government Costs, ' + title_base, True, 'GovtComp')

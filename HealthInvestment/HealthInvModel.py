@@ -309,7 +309,8 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,CRRAmed,IncomeNext,IncomeNo
                           Bequest0,Bequest1,MedPrice,aXtraGrid,bLvlGrid,Hcount,hLvlGrid,
                           HealthProdFunc,MargHealthProdInvFunc,HealthShkStd0,HealthShkStd1,
                           ExpHealthNextFunc,ExpHealthNextInvFunc,LivPrbFunc,bFromxFunc,PremiumFunc,CopayMedFunc,CopayInvstFunc,
-                          MedShkMeanFunc,MedShkStdFunc,MedShkCount,ConvexityFixer,SubsidyFunc,CalcExpectationFuncs):
+                          MedShkMeanFunc,MedShkStdFunc,MedShkCount,ConvexityFixer,SubsidyFunc,CalcExpectationFuncs,
+                          SameCopayForMedAndInvst):
     '''
     Solves the one period problem in the health investment model.
     
@@ -382,6 +383,10 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,CRRAmed,IncomeNext,IncomeNo
     CalcExpectationFuncs : bool
         Indicator for whether to calculate PDV of expected lifetime medical care
         and life expectancy.
+    SameCopayForMedAndInvst : bool
+        Indicator for whether this individual's CopayInvstFunc is different from
+        CopayMedFunc, assumed to be the "baseline" insurance function.  Only ever
+        False during some counterfactual experiments.
         
     Returns
     -------
@@ -707,11 +712,17 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,CRRAmed,IncomeNext,IncomeNo
     EffPriceInvst_temp = CopayInvst_temp*MedPrice
     q_temp = np.exp(-bFromxFunc(x_temp,MedShkValArray*EffPriceMed_temp))
     c_temp = x_temp/(1. + q_temp)
-    SubsidyMax = np.tile(np.reshape(SubsidyFunc(hLvlGrid),(1,hLvlCount,1)),(bLvlCount,1,MedShkCount))
-    Subsidy_temp = np.minimum(i_temp*MedPrice,SubsidyMax)
+    
+    if SameCopayForMedAndInvst:
+        SubsidyMax = np.tile(np.reshape(SubsidyFunc(hLvlGrid),(1,hLvlCount,1)),(bLvlCount,1,MedShkCount))
+        Subsidy_temp = np.minimum(i_temp*MedPrice,SubsidyMax)
+        iCost_temp = np.maximum(i_temp*EffPriceInvst_temp - Subsidy_temp, 0.0)
+    else:
+        iCost_temp = i_temp*EffPriceInvst_temp
+        Subsidy_temp = i_temp*(EffPriceMed_temp - EffPriceInvst_temp)
+    
     MedOOP_temp = q_temp*x_temp/(1. + q_temp)
     Med_temp = MedOOP_temp/EffPriceMed_temp
-    iCost_temp = np.maximum(i_temp*EffPriceInvst_temp - Subsidy_temp, 0.0)
     OOP_temp = MedOOP_temp + iCost_temp
     b_temp = np.tile(np.reshape(bLvlGrid,(bLvlCount,1,1)),(1,hLvlCount,MedShkCount))
     h_temp = np.tile(np.reshape(hLvlGrid,(1,hLvlCount,1)),(bLvlCount,1,MedShkCount))
@@ -948,6 +959,7 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         if self.SameCopayForMedAndInvst:
             self.CopayInvstFunc = deepcopy(CopayMedFunc)
         self.addToTimeVary('PremiumFunc','CopayMedFunc','CopayInvstFunc')
+        self.addToTimeInv('SameCopayForMedAndInvst')
             
         if not orig_time:
             self.timeRev()

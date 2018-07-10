@@ -90,7 +90,7 @@ class SubsidyPolicy(HARKobject):
     method as lists of the same length as the list of AgentTypes that will be
     used in the counterfactual exercises.
     '''
-    policy_attributes = ['Subsidy0','Subsidy1']
+    policy_attributes = ['Subsidy0','Subsidy1','FlatCopayInvst']
     
     def __init__(self, **kwds):
         for key in kwds:
@@ -111,8 +111,9 @@ class SubsidyPolicy(HARKobject):
         None
         '''
         for name in self.policy_attributes:
-            for i in range(len(Agents)):
-                setattr(Agents[i],name,getattr(self,name)[i])
+            if hasattr(self,name):
+                for i in range(len(Agents)):
+                    setattr(Agents[i],name,getattr(self,name)[i])
                 
                 
 # Define an agent class for the policy experiments, adding a few methods
@@ -132,6 +133,17 @@ class CounterfactualAgentType(EstimationAgentType):
         self.repSimData()
         self.evalExpectationFuncs(False)
         self.delSolution()
+        
+        
+    def updateInsuranceFuncs(self):
+        '''
+        Altered version of this method that makes the counterfactuals able to
+        handle a subsidy policy that specifies a flat coinsurance rate for investment.
+        '''
+        EstimationAgentType.updateInsuranceFuncs(self)
+        if hasattr(self,'FlatCopayInvst'):
+            self.CopayInvstFunc = self.T_cycle*[ConstantFunction(self.FlatCopayInvst)]
+            self.SameCopayForMedAndInvst = False
         
         
     def runCounterfactualAction(self):
@@ -493,15 +505,27 @@ if __name__ == '__main__':
 #    print('That took ' + str(t_end-t_start) + ' seconds.')
 #    makeCounterfactualSummaryTables(Out,'Test Policy','testname','Test')
 
+#    PolicyList = []
+#    SubsidyVec = np.linspace(0,0.6,51)
+#    for x in SubsidyVec:
+#        PolicyList.append(SubsidyPolicy(Subsidy0=10*[x],Subsidy1=10*[0.0]))
+#    t_start = clock()
+#    Out = runCounterfactuals('direct subsidy experiment',Params.test_param_vec,PolicyList)
+#    t_end = clock()
+#    print('That took ' + str(t_end-t_start) + ' seconds.')
+#    makeCounterfactualFigures(Out,SubsidyVec*10000,'Direct subsidy (y2000 USD)', 'direct subsidy', 'DirectSubsidy')
+#    
+    
     PolicyList = []
-    SubsidyVec = np.linspace(0,0.6,51)
-    for x in SubsidyVec:
-        PolicyList.append(SubsidyPolicy(Subsidy0=10*[x],Subsidy1=10*[0.0]))
+    CopayVec = np.linspace(0.02,1.0,51)
+    for x in CopayVec:
+        PolicyList.append(SubsidyPolicy(FlatCopayInvst=10*[x]))
     t_start = clock()
-    Out = runCounterfactuals('direct subsidy experiment',Params.test_param_vec,PolicyList)
+    Out = runCounterfactuals('flat coinsurance rate experiment',Params.test_param_vec,PolicyList)
     t_end = clock()
     print('That took ' + str(t_end-t_start) + ' seconds.')
-    makeCounterfactualFigures(Out,SubsidyVec*10000,'Direct subsidy (y2000 USD)', 'direct subsidy', 'DirectSubsidy')
+    makeCounterfactualFigures(Out,CopayVec,'Coinsurance rate for health investment $q^{n}$', 'flat copay', 'FlatCopayInvst')
+    
     
 #    t_start = clock()
 #    Out = runOptimalPolicy('blah',Params.test_param_vec)
