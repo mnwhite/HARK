@@ -4,9 +4,9 @@ This module has functions for making LaTeX code for various tables.
 import numpy as np
 
 param_names = [
-    'CRRA',
+    'CRRAcon',
     'DiscFac',
-    'MedCurve',
+    'CRRAmed',
     'LifeUtility',
     'MargUtilityShift',
     'Cfloor',
@@ -212,15 +212,15 @@ def makeCounterfactualSummaryTablesOneVar(means,var_name,spec_name,file_name,lab
     table1 += '\\begin{tabular}{l c c c c c} \n'
     table1 += '\\hline \\hline \n'
     table1 += 'Income & \multicolumn{5}{c}{Range of Health $h$} \\\\ \n'
-    table1 += 'Quintile & All & $(0,0.25]$ & $(0.25,0.5]$ & $(0.5,0.75]$ & $(0.75,1.0]$ \\\\ \n'
+    table1 += 'Quintile & $(0,0.25]$ & $(0.25,0.5]$ & $(0.5,0.75]$ & $(0.75,1.0]$ & All \\\\ \n'
     table1 += '\\hline \n'
-    table1 += 'Bottom & ' + f(I[0]) + ' & ' + f(IH[0][0]) + ' & ' + f(IH[0][1]) + ' & ' + f(IH[0][2]) + ' & ' + f(IH[0][3]) + ' \\\\ \n'
-    table1 += 'Second & ' + f(I[1]) + ' & ' + f(IH[1][0]) + ' & ' + f(IH[1][1]) + ' & ' + f(IH[1][2]) + ' & ' + f(IH[1][3]) + ' \\\\ \n'
-    table1 += 'Third  & ' + f(I[2]) + ' & ' + f(IH[2][0]) + ' & ' + f(IH[2][1]) + ' & ' + f(IH[2][2]) + ' & ' + f(IH[2][3]) + ' \\\\ \n'
-    table1 += 'Fourth & ' + f(I[3]) + ' & ' + f(IH[3][0]) + ' & ' + f(IH[3][1]) + ' & ' + f(IH[3][2]) + ' & ' + f(IH[3][3]) + ' \\\\ \n'
-    table1 += 'Top    & ' + f(I[4]) + ' & ' + f(IH[4][0]) + ' & ' + f(IH[4][1]) + ' & ' + f(IH[4][2]) + ' & ' + f(IH[4][3]) + ' \\\\ \n'
+    table1 += 'Bottom & ' + f(IH[0][0]) + ' & ' + f(IH[0][1]) + ' & ' + f(IH[0][2]) + ' & ' + f(IH[0][3]) + ' & ' + f(I[0]) + ' \\\\ \n'
+    table1 += 'Second & ' + f(IH[1][0]) + ' & ' + f(IH[1][1]) + ' & ' + f(IH[1][2]) + ' & ' + f(IH[1][3]) + ' & ' + f(I[1]) + ' \\\\ \n'
+    table1 += 'Third  & ' + f(IH[2][0]) + ' & ' + f(IH[2][1]) + ' & ' + f(IH[2][2]) + ' & ' + f(IH[2][3]) + ' & ' + f(I[2]) + ' \\\\ \n'
+    table1 += 'Fourth & ' + f(IH[3][0]) + ' & ' + f(IH[3][1]) + ' & ' + f(IH[3][2]) + ' & ' + f(IH[3][3]) + ' & ' + f(I[3]) + ' \\\\ \n'
+    table1 += 'Top    & ' + f(IH[4][0]) + ' & ' + f(IH[4][1]) + ' & ' + f(IH[4][2]) + ' & ' + f(IH[4][3]) + ' & ' + f(I[4]) + '\\\\ \n'
     table1 += '\\hline \n'
-    table1 += 'All    & ' + f(O) + ' & ' + f(H[0]) + ' & ' + f(H[1]) + ' & ' + f(H[2]) + ' & ' + f(H[3]) + ' \\\\ \n'
+    table1 += 'All    & ' + f(H[0]) + ' & ' + f(H[1]) + ' & ' + f(H[2]) + ' & ' + f(H[3]) + ' & ' + f(O) + ' \\\\ \n'
     table1 += '\\hline \\hline \n'
     table1 += '\\end{tabular} \n'
     table1 += '\\end{table} \n'
@@ -327,7 +327,7 @@ def makeCounterfactualSummaryTables(means,spec_name,file_base,label):
     None
     '''
     var_names = ['Change in PDV of Total Medical Expenses',
-                 'Change in PDV of Out of Pocket Medical Expenses',
+                 'Change in PDV of OOP Medical Expenses',
                  'Change in Remaining Life Expectancy (Years)',
                  'Change in PDV of Medicare Costs',
                  'PDV of Direct Subsidy Expenses',

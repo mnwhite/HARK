@@ -15,7 +15,7 @@ from HealthInvEstimation import makeMultiTypeSimple, makeMultiTypeWithCohorts, c
 import LoadHealthInvData as Data
 
 
-def makeSimpleFigure(data,names,x_vals,x_label,title,convert_dollars,file_name):
+def makeSimpleFigure(data,names,colors,x_vals,x_label,title,convert_dollars,file_name):
     '''
     Make a simple line plot with counterfactual results across several policies.
     Saves in the /Figures directory with given name, in pdf format.
@@ -26,6 +26,8 @@ def makeSimpleFigure(data,names,x_vals,x_label,title,convert_dollars,file_name):
         One or more 1D arrays with counterfactual outcomes (overall means).
     names : [str]
         Names of the data variables, as they should appear on the legend.
+    colors : [str]
+        List of colors to use for each data sequence.
     x_vals : np.array
         Corresponding x-axis values for data; should be same size as data[i].
     x_label : str
@@ -47,11 +49,11 @@ def makeSimpleFigure(data,names,x_vals,x_label,title,convert_dollars,file_name):
             temp_data = data[n]*10000
         else:
             temp_data = data[n]
-        plt.plot(x_vals,temp_data,'-')
+        plt.plot(x_vals,temp_data,color=colors[n])
     plt.xlim([x_vals[0],x_vals[-1]])
     plt.xlabel(x_label, fontsize=14)
     if convert_dollars:
-        plt.ylabel('USD (2000)', fontsize=14)
+        plt.ylabel('USD (y2000)', fontsize=14)
     else:
         plt.ylabel('Years', fontsize=14)
     plt.title(title,fontsize=14)
@@ -135,17 +137,56 @@ def makeCounterfactualFigures(data,x_vals,x_label,title_base,file_base):
     -------
     None
     '''
+    old_colors = ['b','g','r','c','m']
+    new_colors = [u'#1f77b4', u'#ff7f0e', u'#2ca02c', u'#d62728', u'#9467bd', u'#8c564b', u'#e377c2', u'#7f7f7f', u'#bcbd22', u'#17becf']
+    
     var_names = ['Total medical expenses',
-                 'OOP medical expenses (-)',
-                 'Life expectancy',
+                 'OOP medical expenses',
+                 'Overall',
                  'Medicare costs',
                  'Direct subsidy costs',
                  'Welfare costs',
                  'Total government costs']
     
-    makeSimpleFigure([data[0],data[1],data[6]],[var_names[0],var_names[1],var_names[6]],x_vals,x_label,'Per Capita Change in PDV of Medical Expenses, ' + title_base, True, file_base + 'TotalVsOOPChange')
-    makeSimpleFigure([data[2]],[var_names[2]],x_vals,x_label,'Average Change in Life Expectancy, ' + title_base, False, file_base + 'LifeExp')
-    makeCumulativeFigure([data[4],data[3]],[var_names[4],var_names[3]], x_vals, x_label, 'Composition of Government Costs, ', True, 'GovtComp')
+    quintile_names = ['Bottom quintile',
+                      'Second quintile',
+                      'Third quintile',
+                      'Fourth quintile',
+                      'Top quintile']
+    
+    # Plot changes in government spending
+    makeSimpleFigure([data[3],data[4],data[5],data[6]],
+                     [var_names[3],var_names[4],var_names[5],var_names[6]],
+                     new_colors[0:4],
+                     x_vals, x_label,
+                     'Per Capita Change in PDV of Government Spending',
+                     True, file_base + 'GovtChange')
+    
+    # Plot changes in medical spending: total vs govt vs OOP
+    makeSimpleFigure([data[0],data[1],data[6]],
+                     [var_names[0],var_names[1],var_names[6]],
+                     [new_colors[4],new_colors[5],new_colors[3]],
+                     x_vals, x_label,
+                     'Per Capita Change in PDV of Medical Costs',
+                     True, file_base + 'MedChange')
+    
+    # Plot changes in life expectancy
+    makeSimpleFigure([data[2]] + [data[8][:,i] for i in range(5)],
+                     [var_names[2]] + quintile_names,
+                     ['k'] + old_colors,
+                     x_vals, x_label,
+                     'Average Change in Life Expectancy',
+                     False, file_base + 'LifeExp')
+    
+    # Plot changes in life expectancy
+    makeSimpleFigure([data[2]] + [data[9][:,i] for i in range(5)],
+                     [var_names[2]] + quintile_names,
+                     ['k'] + old_colors,
+                     x_vals, x_label,
+                     'Average Willingness to Pay for Policy',
+                     True, file_base + 'WTP')
+    
+    #makeCumulativeFigure([data[4],data[3]],[var_names[4],var_names[3]], x_vals, x_label, 'Composition of Government Costs, ' + title_base, True, 'GovtComp')
     
     
     

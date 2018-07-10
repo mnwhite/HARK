@@ -612,8 +612,6 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,CRRAmed,IncomeNext,IncomeNo
         points_left = np.sum(these) # Move to next iteration
         LoopCount += 1
         
-        # NEED TO ADJUST BLOCK ABOVE TO HANDLE SUBSIDY WHEN CONSTRAINED!!
-        
     # Rename the constrained arrays and calculate (marginal) values for them
     hLvlArrayCnst = hCnst
     iLvlArrayCnst = iCnst
@@ -713,7 +711,7 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,CRRAmed,IncomeNext,IncomeNo
     Subsidy_temp = np.minimum(i_temp*MedPrice,SubsidyMax)
     MedOOP_temp = q_temp*x_temp/(1. + q_temp)
     Med_temp = MedOOP_temp/EffPriceMed_temp
-    iCost_temp = i_temp*EffPriceInvst_temp - Subsidy_temp
+    iCost_temp = np.maximum(i_temp*EffPriceInvst_temp - Subsidy_temp, 0.0)
     OOP_temp = MedOOP_temp + iCost_temp
     b_temp = np.tile(np.reshape(bLvlGrid,(bLvlCount,1,1)),(1,hLvlCount,MedShkCount))
     h_temp = np.tile(np.reshape(hLvlGrid,(1,hLvlCount,1)),(bLvlCount,1,MedShkCount))
@@ -748,18 +746,18 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,CRRAmed,IncomeNext,IncomeNo
     if CalcExpectationFuncs:
         # Calculate current values of various objects on the grid of shocks
         TotalMed_temp = MedPrice*(i_temp + Med_temp)
-        Medicare_temp = TotalMed_temp - Subsidy_temp - EffPriceMed_temp*Med_temp - EffPriceInvst_temp*i_temp
+        Medicare_temp = TotalMed_temp - Subsidy_temp - OOP_temp
         Welfare_temp = np.zeros_like(OOP_temp) # No welfare unless we hit Cfloor
-        Life_temp = 2.0*norm.sf(LivPrbFunc(H_temp)) # Expected years we life this period
+        Life_temp = 2.0*norm.sf(LivPrbFunc(H_temp)) # Expected years we live this period
 
         # Calculate end-of-period states when at Cfloor
         a_Cfloor = np.zeros_like(b_temp[:,:,0])
         H_Cfloor = ExpHealthNextFunc(h_temp[:,:,0])
         
         # Calculate current values of various objects when at Cfloor
-        Subsidy_Cfloor = np.zeros_like(a_Cfloor)
-        OOP_Cfloor = np.maximum(b_temp[:,:,0] - Premium_temp[:,:,0] - Cfloor, 0.0)
-        TotalMed_Cfloor = EffPriceMed_temp[:,:,0]**(-1./CRRAmed)*ExpectedAdjShkAtCfloor*Cfloor**(CRRA/CRRAmed)
+        Subsidy_Cfloor = np.zeros_like(a_Cfloor) # No investment purchased, no subsidy
+        OOP_Cfloor = np.maximum(b_temp[:,:,0] - Premium_temp[:,:,0] - Cfloor, 0.0) # OOP expenses are the remainder of bLvl after paying for consumption and the premium, if anything
+        TotalMed_Cfloor = EffPriceMed_temp[:,:,0]**(-1./CRRAmed)*ExpectedAdjShkAtCfloor*Cfloor**(CRRA/CRRAmed) # Use truncated lognormal formula
         Cost_Cfloor = Cfloor + Premium_temp[:,:,0] + MedPrice*TotalMed_Cfloor # Total expected cost of all goods at Cfloor
         Medicare_Cfloor = (1.-CopayMed_temp[:,:,0])*OOP_Cfloor/CopayMed_temp[:,:,0] # Medicare pays for medical expenses until Cfloor is hit
         Welfare_Cfloor = Cost_Cfloor - b_temp[:,:,0] - Medicare_Cfloor # Welfare is whatever is not accounted for by bLvl or Medicare

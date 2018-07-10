@@ -377,17 +377,20 @@ def runCounterfactuals(name,Parameters,Policies):
     TotalMedBaseline, OOPmedBaseline, ExpectedLifeBaseline, MedicareBaseline, SubsidyBaseline, WelfareBaseline, GovtBaseline, trash = calcSubpopMeans(Agents)
     for this_type in Agents:
         this_type.ValueBaseline = copy(this_type.ValueArray)
+    print('Finished the baseline policy.')
            
     # Loop through the policies, executing the counterfactuals and storing results.
     N = len(Policies)
     TotalMedDiffs = np.zeros(N)
     OOPmedDiffs = np.zeros(N)
-    ExpectedLifeDiffs = np.zeros(N)
+    LifeDiffs = np.zeros(N)
     MedicareDiffs = np.zeros(N)
     SubsidyDiffs = np.zeros(N)
     WelfareDiffs = np.zeros(N)
     GovtDiffs = np.zeros(N)
     WTPs = np.zeros(N)
+    LifeDiffsByIncome = np.zeros((N,5))
+    WTPsByIncome = np.zeros((N,5))
     for n in range(N):
         # Enact the policy for all of the agents
         this_policy = Policies[n]
@@ -399,28 +402,32 @@ def runCounterfactuals(name,Parameters,Policies):
         
         # Calculate differences and store overall means in the arrays
         TotalMedDiff = TotalMedCounterfactual.subtract(TotalMedBaseline)
-        #OOPmedDiff = OOPmedCounterfactual.subtract(OOPmedBaseline)
-        OOPmedDiff = OOPmedBaseline.subtract(OOPmedCounterfactual)
-        ExpectedLifeDiff = ExpectedLifeCounterfactual.subtract(ExpectedLifeBaseline)
+        OOPmedDiff = OOPmedCounterfactual.subtract(OOPmedBaseline)
+        LifeDiff = ExpectedLifeCounterfactual.subtract(ExpectedLifeBaseline)
         MedicareDiff = MedicareCounterfactual.subtract(MedicareBaseline)
         SubsidyDiff = SubsidyCounterfactual.subtract(SubsidyBaseline)
         WelfareDiff = WelfareCounterfactual.subtract(WelfareBaseline)
         GovtDiff = GovtCounterfactual.subtract(GovtBaseline)
         TotalMedDiffs[n] = TotalMedDiff.overall
         OOPmedDiffs[n] = OOPmedDiff.overall
-        ExpectedLifeDiffs[n] = ExpectedLifeDiff.overall
+        LifeDiffs[n] = LifeDiff.overall
+        for i in range(5):
+            LifeDiffsByIncome[n,i] = LifeDiff.byIncome[i]
         MedicareDiffs[n] = MedicareDiff.overall
         SubsidyDiffs[n] = SubsidyDiff.overall
         WelfareDiffs[n] = WelfareDiff.overall
         GovtDiffs[n] = GovtDiff.overall
         WTPs[n] = WTPcounterfactual.overall
+        for i in range(5):
+            WTPsByIncome[n,i] = WTPcounterfactual.byIncome[i]
+        print('Finished counterfactual policy ' + str(n+1) + ' of ' + str(N) + ' for ' + name +  '.')
         
     # If there is only one counterfactual policy, return the full set of mean-diffs.
     # If there is more than one, return vectors of overall mean-diffs.
     if len(Policies) > 1:
-        return [TotalMedDiffs, OOPmedDiffs, ExpectedLifeDiffs, MedicareDiffs, SubsidyDiffs, WelfareDiffs, GovtDiffs, WTPs]
+        return [TotalMedDiffs, OOPmedDiffs, LifeDiffs, MedicareDiffs, SubsidyDiffs, WelfareDiffs, GovtDiffs, WTPs, LifeDiffsByIncome, WTPsByIncome]
     else:
-        return [TotalMedDiff, OOPmedDiff, ExpectedLifeDiff, MedicareDiff, SubsidyDiff, WelfareDiff, GovtDiff, WTPcounterfactual, ExpectedLifeBaseline]
+        return [TotalMedDiff, OOPmedDiff, LifeDiff, MedicareDiff, SubsidyDiff, WelfareDiff, GovtDiff, WTPcounterfactual, ExpectedLifeBaseline]
     
     
 # Define a function for evaluating the "socially optimal" policy
@@ -461,16 +468,14 @@ def runOptimalPolicy(name,Parameters):
     
     # Calculate differences and store overall means in the arrays
     TotalMedDiff = TotalMedCounterfactual.subtract(TotalMedBaseline)
-    #OOPmedDiff = OOPmedCounterfactual.subtract(OOPmedBaseline)
-    OOPmedDiff = OOPmedBaseline.subtract(OOPmedCounterfactual)
+    OOPmedDiff = OOPmedCounterfactual.subtract(OOPmedBaseline)
     ExpectedLifeDiff = ExpectedLifeCounterfactual.subtract(ExpectedLifeBaseline)
     MedicareDiff = MedicareCounterfactual.subtract(MedicareBaseline)
     SubsidyDiff = SubsidyCounterfactual.subtract(SubsidyBaseline)
     WelfareDiff = WelfareCounterfactual.subtract(WelfareBaseline)
     GovtDiff = GovtCounterfactual.subtract(GovtBaseline)
         
-    # If there is only one counterfactual policy, return the full set of mean-diffs.
-    # If there is more than one, return vectors of overall mean-diffs.
+    # Return the full set of mean-diffs.
     return [TotalMedDiff, OOPmedDiff, ExpectedLifeDiff, MedicareDiff, SubsidyDiff, WelfareDiff, GovtDiff, WTPcounterfactual]
             
             
@@ -481,22 +486,22 @@ if __name__ == '__main__':
     from MakeTables import makeCounterfactualSummaryTables
     from MakeFigures import makeCounterfactualFigures
     
-    TestPolicy = SubsidyPolicy(Subsidy0=10*[0.1],Subsidy1=10*[0.0])
-    t_start = clock()
-    Out = runCounterfactuals('blah',Params.test_param_vec,[TestPolicy])
-    t_end = clock()
-    print('That took ' + str(t_end-t_start) + ' seconds.')
-    makeCounterfactualSummaryTables(Out,'Test Policy','testname','Test')
-
-#    PolicyList = []
-#    SubsidyVec = np.linspace(0,0.1,6)
-#    for x in SubsidyVec:
-#        PolicyList.append(SubsidyPolicy(Subsidy0=10*[x],Subsidy1=10*[0.0]))
+#    TestPolicy = SubsidyPolicy(Subsidy0=10*[0.1],Subsidy1=10*[0.0])
 #    t_start = clock()
-#    Out = runCounterfactuals('blah',Params.test_param_vec,PolicyList)
+#    Out = runCounterfactuals('blah',Params.test_param_vec,[TestPolicy])
 #    t_end = clock()
 #    print('That took ' + str(t_end-t_start) + ' seconds.')
-#    makeCounterfactualFigures(Out,SubsidyVec*10000,'Subsidy',' Test Scenario', 'Test')
+#    makeCounterfactualSummaryTables(Out,'Test Policy','testname','Test')
+
+    PolicyList = []
+    SubsidyVec = np.linspace(0,0.6,51)
+    for x in SubsidyVec:
+        PolicyList.append(SubsidyPolicy(Subsidy0=10*[x],Subsidy1=10*[0.0]))
+    t_start = clock()
+    Out = runCounterfactuals('direct subsidy experiment',Params.test_param_vec,PolicyList)
+    t_end = clock()
+    print('That took ' + str(t_end-t_start) + ' seconds.')
+    makeCounterfactualFigures(Out,SubsidyVec*10000,'Direct subsidy (y2000 USD)', 'direct subsidy', 'DirectSubsidy')
     
 #    t_start = clock()
 #    Out = runOptimalPolicy('blah',Params.test_param_vec)

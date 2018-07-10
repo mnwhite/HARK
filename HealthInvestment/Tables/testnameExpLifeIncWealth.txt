@@ -7,10 +7,10 @@
 Income & \multicolumn{5}{c}{Wealth Quintile} \\ 
 Quintile & Bottom & Second & Third & Fourth & Top \\ 
 \hline 
-Bottom & 0.00 & 0.00 & 0.00 & 0.01 & 0.06 \\ 
-Second & 0.15 & 0.17 & 0.11 & 0.21 & 0.23 \\ 
-Third  & 0.39 & 0.24 & 0.17 & 0.09 & 0.05 \\ 
-Fourth & 0.03 & 0.02 & 0.02 & 0.02 & 0.01 \\ 
+Bottom & 0.00 & 0.00 & 0.00 & 0.01 & 0.05 \\ 
+Second & 0.14 & 0.17 & 0.11 & 0.15 & 0.20 \\ 
+Third  & 0.51 & 0.33 & 0.22 & 0.09 & 0.05 \\ 
+Fourth & 0.02 & 0.02 & 0.01 & 0.01 & 0.01 \\ 
 Top    & 0.00 & 0.00 & 0.00 & 0.00 & 0.00 \\ 
 \hline \hline 
 \end{tabular} 
