@@ -251,7 +251,7 @@ class CounterfactualAgentType(EstimationAgentType):
                 X = np.linspace(0.,b,20)
                 fX = f(X)
                 real_test = np.logical_and(np.isreal(fX), np.logical_not(np.isnan(fX)))
-                bot = -1. # This should never happen, means someone is made $10k worse off by subsidy
+                bot = -b # This should never happen, means someone is made $10k worse off by subsidy
                 top = np.max(X[real_test])
                 #print(i,b,h,top,f(bot),f(top))
                 try:
@@ -498,6 +498,7 @@ if __name__ == '__main__':
     from MakeTables import makeCounterfactualSummaryTables
     from MakeFigures import makeCounterfactualFigures
     
+#    # Run a test policy experiment
 #    TestPolicy = SubsidyPolicy(Subsidy0=10*[0.1],Subsidy1=10*[0.0])
 #    t_start = clock()
 #    Out = runCounterfactuals('blah',Params.test_param_vec,[TestPolicy])
@@ -505,6 +506,7 @@ if __name__ == '__main__':
 #    print('That took ' + str(t_end-t_start) + ' seconds.')
 #    makeCounterfactualSummaryTables(Out,'Test Policy','testname','Test')
 
+#    # Run an experiment in which a direct universal subsidy is used
 #    PolicyList = []
 #    SubsidyVec = np.linspace(0,0.6,51)
 #    for x in SubsidyVec:
@@ -515,7 +517,8 @@ if __name__ == '__main__':
 #    print('That took ' + str(t_end-t_start) + ' seconds.')
 #    makeCounterfactualFigures(Out,SubsidyVec*10000,'Direct subsidy (y2000 USD)', 'direct subsidy', 'DirectSubsidy')
 #    
-    
+
+    # Run an experiment in which the coinsurance rate on health investment is varied
     PolicyList = []
     CopayVec = np.linspace(0.02,1.0,51)
     for x in CopayVec:
@@ -525,6 +528,24 @@ if __name__ == '__main__':
     t_end = clock()
     print('That took ' + str(t_end-t_start) + ' seconds.')
     makeCounterfactualFigures(Out,CopayVec,'Coinsurance rate for health investment $q^{n}$', 'flat copay', 'FlatCopayInvst')
+    
+    # TODO BY END OF JULY 15:
+    # 1) Set up experiment for subsidy on curative care EASY
+    # 2) Set up experiment for subsidy on preventive care EASY
+    # 3) Write function to run experiment where LifePrice varies --> optimal policy HARD
+    # 4) Check optimal insurance policy procedure MED
+    # 5) Make figures of PDV of TotalMed by health (across income and sex) EASY
+    # 6) Write "dummy" solver that generates trivial policy functions MED
+    # 7) Re-estimate health and mortality moments with ^^ and no investment LONG?
+    # 8) Make moment fit figure for health moments for that EASY
+    # 9) Make alternate version of moment category 7(a) moment figure EASY
+    # 10) Write health investment fixed point appendix
+    # 11) Write liquidity constrained solution appendix
+    # 12) Write consumtion floor solution appendix
+    # 13) Write G2EGM appendix
+    # 14) Write integration method / accounting appendix
+    # 15) Write short paragraph for moment fit appendix EASY
+    # 16) Make counterfactual figure template in paper EASY
     
     
 #    t_start = clock()
