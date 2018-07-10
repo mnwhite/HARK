@@ -6,6 +6,7 @@ import sys
 sys.path.insert(0,'../')
 
 import numpy as np
+from scipy.stats import multivariate_normal
 from statsmodels.api import OLS, WLS
 import matplotlib.pyplot as plt
 from HARKutilities import getPercentiles
@@ -395,9 +396,57 @@ def makeValidationFigures(params,use_cohorts):
     plt.savefig('./Figures/MortByIncAge.pdf')
     plt.show()
     
+    # Plot the 99% confidence band of the health production function
+    mean  = np.array([-2.13369276099, 1.71842956397])
+    covar = array([[0.02248322, 0.01628292],[0.01628308, 0.01564192]])
+    dstn = multivariate_normal(mean,covar)
+    
 
 
 if __name__ == '__main__':
     import HealthInvParams as Params
+    
+    mean  = np.array([-2.13369276099, 1.71842956397])
+    covar = np.array([[0.02248322, 0.01628292],[0.01628308, 0.01564192]])
+    dstn  = multivariate_normal(mean,covar)
+    N = 10000
+    M = 201
+    draws = dstn.rvs(10000)
+    MedVec = np.linspace(0.,1.5,M)
+    func_data = np.zeros((N,M))
+    
+    def makeHealthProdFunc(LogSlope,LogCurve):
+        LogJerk = 15.6
+        tempw = np.exp(LogJerk)
+        HealthProd0 = 1. - tempw
+        tempx = np.exp(LogSlope) # Slope of health production function at iLvl=0
+        HealthProd2 = np.exp(LogJerk - LogCurve)
+        HealthProdFunc = lambda i : tempx/HealthProd0*((i*HealthProd2**((1.-HealthProd0)/HealthProd0) + HealthProd2**(1./HealthProd0))**HealthProd0 - HealthProd2)
+        return HealthProdFunc
+        
+    for n in range(N):
+        f = makeHealthProdFunc(draws[n,0],draws[n,1])
+        func_data[n,:] = f(MedVec)
+        
+    f = makeHealthProdFunc(Params.test_param_vec[25],Params.test_param_vec[26])
+    CI_array = np.zeros((M,2))
+    for m in range(M):
+        CI_array[m,:] = getPercentiles(func_data[:,m],percentiles=[0.025,0.975])
+    health_prod = f(MedVec)
+    
+    plt.plot(MedVec,health_prod,'-r')
+    plt.plot(MedVec,CI_array[:,0],'--k',linewidth=0.5)
+    plt.plot(MedVec,CI_array[:,1],'--k',linewidth=0.5)
+    plt.xlim([-0.005,1.5])
+    plt.ylim([0.,None])
+    plt.xlabel('Health investment $n_{it}$, \$10,000 (y2000)')
+    plt.ylabel('Health produced ')
+    plt.title('Estimated Health Production Function')
+    plt.legend(['Estimated health production function','Pointwise 95% confidence bounds'],loc=4)
+    plt.savefig('./Figures/HealthProdFunc.pdf')
+    plt.show()
+    
+    
+       
 
-    makeValidationFigures(Params.test_param_vec,False)    
+    #makeValidationFigures(Params.test_param_vec,False)    

@@ -1003,13 +1003,13 @@ if __name__ == '__main__':
 
 
     # Choose what kind of work to do:
-    test_obj_func = True
-    plot_model_fit = True
-    save_figs = True
+    test_obj_func = False
+    plot_model_fit = False
+    save_figs = False
     perturb_one_param = False
     perturb_two_params = False
     estimate_model = False
-    calc_std_errs = False
+    calc_std_errs = True
     calc_std_errs_alt = False
     
 
