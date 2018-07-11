@@ -403,6 +403,7 @@ def runCounterfactuals(name,Parameters,Policies):
     WTPs = np.zeros(N)
     LifeDiffsByIncome = np.zeros((N,5))
     WTPsByIncome = np.zeros((N,5))
+    
     for n in range(N):
         # Enact the policy for all of the agents
         this_policy = Policies[n]
@@ -443,9 +444,10 @@ def runCounterfactuals(name,Parameters,Policies):
     
     
 # Define a function for evaluating the "socially optimal" policy
-def runOptimalPolicy(name,Parameters):
+def runOptimalPolicy(Parameters, LifePrice):
     '''
-    Run a set of counterfactual policies given a set of parameters.
+    Solve for the "socially optimal" health investment subsidy policy, then
+    simulate its effects; depends on user-specified value of a year of life.
     
     Parameters
     ----------
@@ -453,6 +455,8 @@ def runOptimalPolicy(name,Parameters):
         Name of this counterfactual set, used in filenames.
     Parameters : np.array
         A size 33 array of parameters, just like for the estimation.
+    LifePrice : float
+        Exogenous dollar "value" of a year of life, in units of $10,000.
     
     Returns
     -------
@@ -461,10 +465,12 @@ def runOptimalPolicy(name,Parameters):
     # Make the agent types
     param_dict = convertVecToDict(Parameters)
     Agents = makeMultiTypeCounterfactual(param_dict)
+    for this_type in Agents:
+        this_type.LifePrice = copy(LifePrice)
     
     # Solve the baseline model and get arrays of outcome variables
     multiThreadCommands(Agents,['runBaselineAction()'],num_jobs=5)
-    TotalMedBaseline, OOPmedBaseline, ExpectedLifeBaseline, MedicareBaseline, SubsidyBaseline, WelfareBaseline, GovtBaseline, trash = calcSubpopMeans(Agents)
+    TotalMedBaseline, OOPmedBaseline, LifeBaseline, MedicareBaseline, SubsidyBaseline, WelfareBaseline, GovtBaseline, trash = calcSubpopMeans(Agents)
     for this_type in Agents:
         this_type.ValueBaseline = copy(this_type.ValueArray)
         
@@ -476,21 +482,74 @@ def runOptimalPolicy(name,Parameters):
         
     # Run the counterfactual and get arrays of outcome variables
     multiThreadCommands(Agents,['runCounterfactualAction()'],num_jobs=5)
-    TotalMedCounterfactual, OOPmedCounterfactual, ExpectedLifeCounterfactual, MedicareCounterfactual, SubsidyCounterfactual, WelfareCounterfactual, GovtCounterfactual, WTPcounterfactual = calcSubpopMeans(Agents)
+    TotalMedCounterfactual, OOPmedCounterfactual, LifeCounterfactual, MedicareCounterfactual, SubsidyCounterfactual, WelfareCounterfactual, GovtCounterfactual, WTPcounterfactual = calcSubpopMeans(Agents)
     
     # Calculate differences and store overall means in the arrays
     TotalMedDiff = TotalMedCounterfactual.subtract(TotalMedBaseline)
     OOPmedDiff = OOPmedCounterfactual.subtract(OOPmedBaseline)
-    ExpectedLifeDiff = ExpectedLifeCounterfactual.subtract(ExpectedLifeBaseline)
+    LifeDiff = LifeCounterfactual.subtract(LifeBaseline)
     MedicareDiff = MedicareCounterfactual.subtract(MedicareBaseline)
     SubsidyDiff = SubsidyCounterfactual.subtract(SubsidyBaseline)
     WelfareDiff = WelfareCounterfactual.subtract(WelfareBaseline)
     GovtDiff = GovtCounterfactual.subtract(GovtBaseline)
         
     # Return the full set of mean-diffs.
-    return [TotalMedDiff, OOPmedDiff, ExpectedLifeDiff, MedicareDiff, SubsidyDiff, WelfareDiff, GovtDiff, WTPcounterfactual]
-            
-            
+    return [TotalMedDiff, OOPmedDiff, LifeDiff, MedicareDiff, SubsidyDiff, WelfareDiff, GovtDiff, WTPcounterfactual]
+
+
+# Define a function for evaluating the "socially optimal" policy
+def runOptimalPolicies(name, Parameters, LifePriceVec):
+    '''
+    Solve for the "socially optimal" health investment subsidy policy, then
+    simulate its effects; depends on user-specified value of a year of life.
+    
+    Parameters
+    ----------
+    name : str
+        Name of this counterfactual set, used in filenames.
+    Parameters : np.array
+        A size 33 array of parameters, just like for the estimation.
+    LifePriceVec : np.array
+        1D array of exogenous dollar "value" of a year of life, in units of $10,000.
+    
+    Returns
+    -------
+    TBD
+    '''
+    # Initialize the output arrays
+    N = LifePriceVec.size
+    TotalMedDiffs = np.zeros(N)
+    OOPmedDiffs = np.zeros(N)
+    LifeDiffs = np.zeros(N)
+    MedicareDiffs = np.zeros(N)
+    SubsidyDiffs = np.zeros(N)
+    WelfareDiffs = np.zeros(N)
+    GovtDiffs = np.zeros(N)
+    WTPs = np.zeros(N)
+    LifeDiffsByIncome = np.zeros((N,5))
+    WTPsByIncome = np.zeros((N,5))
+    
+    # Loop through the values of LifePriceVec and fill in the output
+    for n in range(N):
+        LifePrice = LifePriceVec[n]
+        TotalMedDiff, OOPmedDiff, LifeDiff, MedicareDiff, SubsidyDiff, WelfareDiff, GovtDiff, WTPcounterfactual = runOptimalPolicy(Parameters, LifePrice)
+        
+        TotalMedDiffs[n] = TotalMedDiff.overall
+        OOPmedDiffs[n] = OOPmedDiff.overall
+        LifeDiffs[n] = LifeDiff.overall
+        for i in range(5):
+            LifeDiffsByIncome[n,i] = LifeDiff.byIncome[i]
+        MedicareDiffs[n] = MedicareDiff.overall
+        SubsidyDiffs[n] = SubsidyDiff.overall
+        WelfareDiffs[n] = WelfareDiff.overall
+        GovtDiffs[n] = GovtDiff.overall
+        WTPs[n] = WTPcounterfactual.overall
+        for i in range(5):
+            WTPsByIncome[n,i] = WTPcounterfactual.byIncome[i]
+        print('Finished counterfactual policy ' + str(n+1) + ' of ' + str(N) + ' for ' + name +  '.')
+        
+    return [TotalMedDiffs, OOPmedDiffs, LifeDiffs, MedicareDiffs, SubsidyDiffs, WelfareDiffs, GovtDiffs, WTPs, LifeDiffsByIncome, WTPsByIncome]
+
 
 if __name__ == '__main__':
     import HealthInvParams as Params
@@ -498,57 +557,128 @@ if __name__ == '__main__':
     from MakeTables import makeCounterfactualSummaryTables
     from MakeFigures import makeCounterfactualFigures
     
-#    # Run a test policy experiment
-#    TestPolicy = SubsidyPolicy(Subsidy0=10*[0.1],Subsidy1=10*[0.0])
-#    t_start = clock()
-#    Out = runCounterfactuals('blah',Params.test_param_vec,[TestPolicy])
-#    t_end = clock()
-#    print('That took ' + str(t_end-t_start) + ' seconds.')
-#    makeCounterfactualSummaryTables(Out,'Test Policy','testname','Test')
-
-#    # Run an experiment in which a direct universal subsidy is used
-#    PolicyList = []
-#    SubsidyVec = np.linspace(0,0.6,51)
-#    for x in SubsidyVec:
-#        PolicyList.append(SubsidyPolicy(Subsidy0=10*[x],Subsidy1=10*[0.0]))
-#    t_start = clock()
-#    Out = runCounterfactuals('direct subsidy experiment',Params.test_param_vec,PolicyList)
-#    t_end = clock()
-#    print('That took ' + str(t_end-t_start) + ' seconds.')
-#    makeCounterfactualFigures(Out,SubsidyVec*10000,'Direct subsidy (y2000 USD)', 'direct subsidy', 'DirectSubsidy')
-#    
-
-    # Run an experiment in which the coinsurance rate on health investment is varied
-    PolicyList = []
-    CopayVec = np.linspace(0.02,1.0,51)
-    for x in CopayVec:
-        PolicyList.append(SubsidyPolicy(FlatCopayInvst=10*[x]))
-    t_start = clock()
-    Out = runCounterfactuals('flat coinsurance rate experiment',Params.test_param_vec,PolicyList)
-    t_end = clock()
-    print('That took ' + str(t_end-t_start) + ' seconds.')
-    makeCounterfactualFigures(Out,CopayVec,'Coinsurance rate for health investment $q^{n}$', 'flat copay', 'FlatCopayInvst')
+    # Choose which policy experiments to run
+    run_test_policy = False
+    run_universal    = False
+    run_preventive  = False
+    run_curative    = False
+    run_flat_copay  = False
+    run_optimal     = False
     
+    
+    if run_test_policy:
+        # Run a test policy experiment
+        TestPolicy = SubsidyPolicy(Subsidy0=10*[0.1],Subsidy1=10*[0.0])
+        t_start = clock()
+        Out = runCounterfactuals('blah',Params.test_param_vec,[TestPolicy])
+        t_end = clock()
+        print('The text policy experiment took ' + str(t_end-t_start) + ' seconds.')
+        makeCounterfactualSummaryTables(Out,'Test Policy','testname','Test')
+
+    if run_universal:
+        # Run an experiment in which a direct universal subsidy is used
+        PolicyList = []
+        SubsidyVec = np.linspace(0,0.6,51)
+        for x in SubsidyVec:
+            PolicyList.append(SubsidyPolicy(Subsidy0=10*[x],Subsidy1=10*[0.0]))
+        t_start = clock()
+        Out = runCounterfactuals('universal subsidy experiment',Params.test_param_vec,PolicyList)
+        t_end = clock()
+        print('The universal subsidy experiment took ' + str(t_end-t_start) + ' seconds.')
+        makeCounterfactualFigures(Out,SubsidyVec,'Universal subsidy (y2000 USD)', 'universal subsidy', 'UniversalSub')
+       
+    if run_preventive:
+        # Run an experiment in which only preventive care is subsidized
+        PolicyList = []
+        SubsidyVec = np.linspace(0,0.6,51)
+        for x in SubsidyVec:
+            PolicyList.append(SubsidyPolicy(Subsidy0=10*[x], SubsidyHealthCutoff=10*[0.5], PreventiveSubsidy=10*[True]))
+        t_start = clock()
+        Out = runCounterfactuals('preventive care subsidy experiment',Params.test_param_vec,PolicyList)
+        t_end = clock()
+        print('The preventive care subsidy experiment took ' + str(t_end-t_start) + ' seconds.')
+        makeCounterfactualFigures(Out,SubsidyVec,'Preventive care subsidy (y2000 USD)', 'preventive care subsidy', 'PreventiveSub')
+
+    if run_curative:
+        # Run an experiment in which only curative care is subsidized
+        PolicyList = []
+        SubsidyVec = np.linspace(0,0.6,51)
+        for x in SubsidyVec:
+            PolicyList.append(SubsidyPolicy(Subsidy0=10*[x], SubsidyHealthCutoff=10*[0.5], PreventiveSubsidy=10*[False]))
+        t_start = clock()
+        Out = runCounterfactuals('curative care subsidy experiment',Params.test_param_vec,PolicyList)
+        t_end = clock()
+        print('The curative care subsidy experiment took ' + str(t_end-t_start) + ' seconds.')
+        makeCounterfactualFigures(Out,SubsidyVec,'Curative care subsidy (y2000 USD)', 'curative care subsidy', 'CurativeSub')
+        
+    if run_flat_copay:
+        # Run an experiment in which the coinsurance rate on health investment is varied
+        PolicyList = []
+        CopayVec = np.linspace(0.02,1.0,51)
+        for x in CopayVec:
+            PolicyList.append(SubsidyPolicy(FlatCopayInvst=10*[x]))
+        t_start = clock()
+        Out = runCounterfactuals('flat coinsurance rate experiment',Params.test_param_vec,PolicyList)
+        t_end = clock()
+        print('The flat coinsurance rate experiment took ' + str(t_end-t_start) + ' seconds.')
+        makeCounterfactualFigures(Out,CopayVec, r'Coinsurance rate for health investment $q^{n}$', 'flat copay', 'FlatCopayInvst')
+        
+    if run_optimal:    
+        # Run an experiment using the "optimal" investment policy NEED TO DO
+        t_start = clock()
+        LifePriceVec = np.linspace(0.,20.,51)
+        Out = runOptimalPolicies('socially optimal policy experiment', Params.test_param_vec, LifePriceVec)
+        t_end = clock()
+        print('The "socially optimal policy" experiment took ' + str(t_end-t_start) + ' seconds.')
+        makeCounterfactualFigures(Out, LifePriceVec, r'Value of a year of life $P_L$, \$10,000 (y2000)', 'socially optimal', 'SocOptByLifePrice')
+        
+        
     # TODO BY END OF JULY 15:
-    # 1) Set up experiment for subsidy on curative care EASY
-    # 2) Set up experiment for subsidy on preventive care EASY
-    # 3) Write function to run experiment where LifePrice varies --> optimal policy HARD
-    # 4) Check optimal insurance policy procedure MED
-    # 5) Make figures of PDV of TotalMed by health (across income and sex) EASY
-    # 6) Write "dummy" solver that generates trivial policy functions MED
-    # 7) Re-estimate health and mortality moments with ^^ and no investment LONG?
-    # 8) Make moment fit figure for health moments for that EASY
-    # 9) Make alternate version of moment category 7(a) moment figure EASY
-    # 10) Write health investment fixed point appendix
-    # 11) Write liquidity constrained solution appendix
-    # 12) Write consumtion floor solution appendix
-    # 13) Write G2EGM appendix
-    # 14) Write integration method / accounting appendix
-    # 15) Write short paragraph for moment fit appendix EASY
-    # 16) Make counterfactual figure template in paper EASY
+    # XX Set up experiment for subsidy on curative care
+    # XX Set up experiment for subsidy on preventive care
+    # XX Write function to run experiment where LifePrice varies --> optimal policy
+    # 4) Check optimal insurance policy procedure THURS
+    # 5) Make figures of PDV of TotalMed by health (across income and sex) WEDS
+    # XX Write "dummy" solver that generates trivial policy functions
+    # 7) Re-estimate health and mortality moments with ^^ and no investment FRI
+    # 8) Make moment fit figure for health moments for that FRI
+    # XX Make alternate version of moment category 7(a) moment figure
+    # 10) Write health investment fixed point appendix WEDS
+    # 11) Write liquidity constrained solution appendix FRI
+    # 12) Write consumption floor solution appendix FRI
+    # 13) Write G2EGM appendix SATURDAY
+    # 14) Write integration method / accounting appendix RETURN FLIGHT
+    # 15) Write short paragraph for moment fit appendix WEDS
+    # XX  Make counterfactual figure template in paper
+    # 17) Write identification arguments for HealthProdParam, etc SUNDAY
+    # 18) Make counterfactual tables FRIDAY
+    # 19) Make health ordered probit and insurance function tables FRIDAY
+    # 20) Move code into paper archive
     
+    # BWI --> AUS (1), (2), (3), (6), (9), (16)
+    # July 11: (5), (10), (15)
+    # July 12: (4)
+    # AUS --> BWI: (14)
+    # July 13: (7), (8), (11), (12), (18), (19)
+    # July 14: (13), begin (17)
+    # July 15: finish (17), (20)
     
-#    t_start = clock()
-#    Out = runOptimalPolicy('blah',Params.test_param_vec)
-#    t_end = clock()
-#    print('That took ' + str(t_end-t_start) + ' seconds.')
+    # -----------
+    
+    # July 16: Write counterfactual procedure and outcomes of interest section
+    # July 17: Write up results for various subsidy policies
+    # July 18: Write discussion of "socially optimal policy"
+    # July 19: Write discussion of PDV functions and derivative wrt health
+    # July 20: Address small referee points, Section 5 mop up
+    
+    # July 21-22: Move houses
+    
+    # -----------
+    
+    # July 23: Red pen introduction and literature, incorporate small referee suggestions in lit
+    # July 24-25: Rework / reframe introduction
+    # July 26: Rewrite abstract, conclusion, check internal and external references
+    # July 27: Full proofread, begin notebook
+    # July 28-29: Get notebook functioning on mybinder, begin letter to Matthias
+    # July 30-31: Finalize letter and submit
+

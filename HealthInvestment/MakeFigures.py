@@ -37,7 +37,7 @@ def makeSimpleFigure(data,names,colors,x_vals,x_label,show_legend,title,convert_
     title : str
         Title of figure to display at top.
     convert_dollars : bool
-        Whether data should be multiplied by $10,000.
+        Whether data is in $10,000 or years.
     file_name : str
         Name to save figure as; .pdf will be appended automatically.
         
@@ -47,15 +47,11 @@ def makeSimpleFigure(data,names,colors,x_vals,x_label,show_legend,title,convert_
     '''
     N = len(data)
     for n in range(N):
-        if convert_dollars:
-            temp_data = data[n]*10000
-        else:
-            temp_data = data[n]
         plt.plot(x_vals,temp_data,color=colors[n])
     plt.xlim([x_vals[0],x_vals[-1]])
     plt.xlabel(x_label, fontsize=14)
     if convert_dollars:
-        plt.ylabel('USD (y2000)', fontsize=14)
+        plt.ylabel('$10,000 (y2000)', fontsize=14)
     else:
         plt.ylabel('Years', fontsize=14)
     plt.title(title,fontsize=14)
@@ -97,10 +93,6 @@ def makeCumulativeFigure(data,names,x_vals,x_label,title,convert_dollars,file_na
     polygon_x = np.concatenate([x_vals,np.flipud(x_vals)])
     bottom_y = np.zeros_like(x_vals)
     for n in range(N):
-        if convert_dollars:
-            temp_data = data[n]*10000
-        else:
-            temp_data = data[n]
         top_y = temp_data + bottom_y
         polygon_y = np.concatenate([top_y,np.flipud(bottom_y)])
         plt.fill(polygon_x,polygon_y)
@@ -109,7 +101,7 @@ def makeCumulativeFigure(data,names,x_vals,x_label,title,convert_dollars,file_na
     plt.xlim([x_vals[0],x_vals[-1]])
     plt.xlabel(x_label, fontsize=14)
     if convert_dollars:
-        plt.ylabel('USD (2000)', fontsize=14)
+        plt.ylabel('$10,000 (2000)', fontsize=14)
     else:
         plt.ylabel('Years', fontsize=14)
     plt.title(title,fontsize=14)

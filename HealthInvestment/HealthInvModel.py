@@ -305,6 +305,35 @@ class TransConShareFunc(HARKobject):
 
 
 
+def solveHealthInvestmentFake(solution_next,CRRA,DiscFac,CRRAmed):
+    '''
+    Returns a trivial solution to the one period problem in the health investment
+    model; does literally no work.  This is used as a shortcut to estimate the
+    health and mortality processes using SMM when health investment is turned off.
+    The dynamic optimization problem is irrelevant in this case.
+    
+    Parameters
+    ----------
+    solution_next : HealthInvSolution
+        Solution to next period's problem in the same model.  Should have attributes called
+        [list of attribute names here].
+    a few constants : float
+        Just so that solve has some arguments to find.
+        
+    Returns
+    -------
+    solution_now : HealthInvSolution
+        Trivial, nonsense solution with ConstantFunctions in all policy attributes.
+    '''
+    TrivialFunc = ConstantFunction(0.0)
+    solution_now = HealthInvestmentSolution(TrivialFunc,TrivialFunc,TrivialFunc,TrivialFunc)
+    solution_now.dvdaFunc = TrivialFunc
+    solution_now.dvdHfunc = TrivialFunc
+    solution_now.CritDevFunc = TrivialFunc
+    return solution_now
+
+
+
 def solveHealthInvestment(solution_next,CRRA,DiscFac,CRRAmed,IncomeNext,IncomeNow,Rfree,Cfloor,LifeUtility,
                           Bequest0,Bequest1,MedPrice,aXtraGrid,bLvlGrid,Hcount,hLvlGrid,
                           HealthProdFunc,MargHealthProdInvFunc,HealthShkStd0,HealthShkStd1,
@@ -1076,7 +1105,13 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         -------
         None
         '''
-        self.SubsidyFunc = LinearInterp([0.0, 1.0], [self.Subsidy0, self.Subsidy0 + self.Subsidy1], lower_extrap=True)
+        if hasattr(self,'SubsidyHealthCutoff'): # Only eligible for subsidy above or below a certain health level
+            if self.PreventiveSubsidy:
+                self.SubsidyFunc = LinearInterp([0.0, self.SubsidyHealthCutoff-0.05, self.SubsidyHealthCutoff+0.05, 1.0], [0.0, 0.0, self.Subsidy0, self.Subsidy0], lower_extrap=True)
+            else:
+                self.SubsidyFunc = LinearInterp([0.0, self.SubsidyHealthCutoff-0.05, self.SubsidyHealthCutoff+0.05, 1.0], [self.Subsidy0, self.Subsidy0, 0.0, 0.0], lower_extrap=True)
+        else:
+            self.SubsidyFunc = LinearInterp([0.0, 1.0], [self.Subsidy0, self.Subsidy0 + self.Subsidy1], lower_extrap=True)
         self.addToTimeInv('SubsidyFunc')
         
         

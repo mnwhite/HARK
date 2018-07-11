@@ -1272,6 +1272,17 @@ if __name__ == '__main__':
             plt.savefig('./Figures/HealthCoeffByIncWealth.pdf')
         plt.show()
         
+        # Make the same figure but with data moments only (and dashed lines)
+        for i in range(5):
+            plt.plot(np.arange(1,6),Data.AvgHealthResidualByIncWealth[i,:], '--' + income_colors[i])
+        plt.xlabel('Wealth quintile')
+        plt.ylabel(r'Coeff on income-wealth quintile $\gimel_d[k,\ell]$, \$10k')
+        plt.xticks(np.arange(1,6),['Bottom','Second','Third','Fourth','Top'])
+        plt.title('"Residual health" coefficients by income and wealth quintile')
+        if save_figs:
+            plt.savefig('./Figures/HealthCoeffByIncWealthDataOnly.pdf')
+        plt.show()
+        
         # Plot model fit of standard deviation of change in health by age
         plt.plot(AgeVec, X[3], '-k')
         plt.plot(AgeVec, Data.StDevDeltaHealthByAge, '.k')

@@ -133,7 +133,7 @@ other_exog_params = {
     'CalcExpectationFuncs' : False,
     'CalcSocialOptimum' : False,
     'SameCopayForMedAndInvst' : True,
-    'LifePrice' : 10.,
+    'LifePrice' : 0.,
     'Sex' : 0.0,
     'cycles' : 1,
     'T_sim' : 25,
