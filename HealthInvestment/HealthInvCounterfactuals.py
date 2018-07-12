@@ -90,7 +90,7 @@ class SubsidyPolicy(HARKobject):
     method as lists of the same length as the list of AgentTypes that will be
     used in the counterfactual exercises.
     '''
-    policy_attributes = ['Subsidy0','Subsidy1','FlatCopayInvst']
+    policy_attributes = ['Subsidy0','Subsidy1','FlatCopayInvst','SubsidyHealthCutoff','PreventiveSubsidy']
     
     def __init__(self, **kwds):
         for key in kwds:
@@ -172,19 +172,18 @@ class CounterfactualAgentType(EstimationAgentType):
         self.CalcSocialOptimum = False
         
         OptimalCopayInvstFunc = []
-        OptCopayList = []
         for t in range(self.T_cycle):
             Weights = self.CumLivPrb_hist[t,:]
             Copays  = self.CopaySocOpt_hist[t,:]
             these = np.logical_not(np.isnan(Copays))
+            
+            # Restructure this block as a quadratic regression
             OptCopay = np.dot(Weights[these],Copays[these])/np.sum(Weights[these])
             if np.isnan(OptCopay):
                 OptCopay = 1.0
             OptimalCopayInvstFunc.append(ConstantFunction(OptCopay))
-            OptCopayList.append(OptCopay)
-        self.OptimalCopayInvstFunc = OptimalCopayInvstFunc
-        self.OptCopayList = OptCopayList
         
+        self.OptimalCopayInvstFunc = OptimalCopayInvstFunc
         self.delSolution()
         
         
@@ -559,11 +558,12 @@ if __name__ == '__main__':
     
     # Choose which policy experiments to run
     run_test_policy = False
-    run_universal    = False
-    run_preventive  = False
-    run_curative    = False
-    run_flat_copay  = False
-    run_optimal     = False
+    run_universal   = True
+    run_preventive  = True
+    run_curative    = True
+    run_flat_copay  = True
+    run_optimal     = True
+    N_policies      = 51
     
     
     if run_test_policy:
@@ -572,49 +572,49 @@ if __name__ == '__main__':
         t_start = clock()
         Out = runCounterfactuals('blah',Params.test_param_vec,[TestPolicy])
         t_end = clock()
-        print('The text policy experiment took ' + str(t_end-t_start) + ' seconds.')
+        print('The test policy experiment took ' + str(t_end-t_start) + ' seconds.')
         makeCounterfactualSummaryTables(Out,'Test Policy','testname','Test')
 
     if run_universal:
         # Run an experiment in which a direct universal subsidy is used
         PolicyList = []
-        SubsidyVec = np.linspace(0,0.6,51)
+        SubsidyVec = np.linspace(0,0.6,N_policies)
         for x in SubsidyVec:
             PolicyList.append(SubsidyPolicy(Subsidy0=10*[x],Subsidy1=10*[0.0]))
         t_start = clock()
         Out = runCounterfactuals('universal subsidy experiment',Params.test_param_vec,PolicyList)
         t_end = clock()
         print('The universal subsidy experiment took ' + str(t_end-t_start) + ' seconds.')
-        makeCounterfactualFigures(Out,SubsidyVec,'Universal subsidy (y2000 USD)', 'universal subsidy', 'UniversalSub')
+        makeCounterfactualFigures(Out,SubsidyVec,'Universal subsidy, $10,000 (y2000)', 'universal subsidy', 'UniversalSub')
        
     if run_preventive:
         # Run an experiment in which only preventive care is subsidized
         PolicyList = []
-        SubsidyVec = np.linspace(0,0.6,51)
+        SubsidyVec = np.linspace(0,0.6,N_policies)
         for x in SubsidyVec:
             PolicyList.append(SubsidyPolicy(Subsidy0=10*[x], SubsidyHealthCutoff=10*[0.5], PreventiveSubsidy=10*[True]))
         t_start = clock()
         Out = runCounterfactuals('preventive care subsidy experiment',Params.test_param_vec,PolicyList)
         t_end = clock()
         print('The preventive care subsidy experiment took ' + str(t_end-t_start) + ' seconds.')
-        makeCounterfactualFigures(Out,SubsidyVec,'Preventive care subsidy (y2000 USD)', 'preventive care subsidy', 'PreventiveSub')
+        makeCounterfactualFigures(Out,SubsidyVec,'Preventive care subsidy, $10,000 (y2000)', 'preventive care subsidy', 'PreventiveSub')
 
     if run_curative:
         # Run an experiment in which only curative care is subsidized
         PolicyList = []
-        SubsidyVec = np.linspace(0,0.6,51)
+        SubsidyVec = np.linspace(0,0.6,N_policies)
         for x in SubsidyVec:
             PolicyList.append(SubsidyPolicy(Subsidy0=10*[x], SubsidyHealthCutoff=10*[0.5], PreventiveSubsidy=10*[False]))
         t_start = clock()
         Out = runCounterfactuals('curative care subsidy experiment',Params.test_param_vec,PolicyList)
         t_end = clock()
         print('The curative care subsidy experiment took ' + str(t_end-t_start) + ' seconds.')
-        makeCounterfactualFigures(Out,SubsidyVec,'Curative care subsidy (y2000 USD)', 'curative care subsidy', 'CurativeSub')
+        makeCounterfactualFigures(Out,SubsidyVec,'Curative care subsidy, $10,000 (y2000 USD)', 'curative care subsidy', 'CurativeSub')
         
     if run_flat_copay:
         # Run an experiment in which the coinsurance rate on health investment is varied
         PolicyList = []
-        CopayVec = np.linspace(0.02,1.0,51)
+        CopayVec = np.linspace(0.02,1.0,N_policies)
         for x in CopayVec:
             PolicyList.append(SubsidyPolicy(FlatCopayInvst=10*[x]))
         t_start = clock()
@@ -626,7 +626,7 @@ if __name__ == '__main__':
     if run_optimal:    
         # Run an experiment using the "optimal" investment policy NEED TO DO
         t_start = clock()
-        LifePriceVec = np.linspace(0.,20.,51)
+        LifePriceVec = np.linspace(0.,20.,N_policies)
         Out = runOptimalPolicies('socially optimal policy experiment', Params.test_param_vec, LifePriceVec)
         t_end = clock()
         print('The "socially optimal policy" experiment took ' + str(t_end-t_start) + ' seconds.')

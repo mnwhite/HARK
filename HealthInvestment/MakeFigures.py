@@ -47,7 +47,7 @@ def makeSimpleFigure(data,names,colors,x_vals,x_label,show_legend,title,convert_
     '''
     N = len(data)
     for n in range(N):
-        plt.plot(x_vals,temp_data,color=colors[n])
+        plt.plot(x_vals,data[n],color=colors[n])
     plt.xlim([x_vals[0],x_vals[-1]])
     plt.xlabel(x_label, fontsize=14)
     if convert_dollars:
