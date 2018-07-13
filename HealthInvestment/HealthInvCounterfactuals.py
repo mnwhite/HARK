@@ -12,10 +12,12 @@ from scipy.optimize import brentq
 from HARKutilities import getPercentiles, plotFuncs
 from HARKcore import HARKobject
 from HARKparallel import multiThreadCommands, multiThreadCommandsFake
-from HARKinterpolation import ConstantFunction
+from HARKinterpolation import ConstantFunction, UpperEnvelope, LowerEnvelope
 from HealthInvEstimation import convertVecToDict, EstimationAgentType
+from HealthInvModel import QuadraticFunction
 import LoadHealthInvData as Data
 import matplotlib.pyplot as plt
+from statsmodels.api import WLS
 
 # Define a class to hold subpopulation means
 class MyMeans(HARKobject):
@@ -171,17 +173,59 @@ class CounterfactualAgentType(EstimationAgentType):
         self.CumLivPrb_histX = deepcopy(self.CumLivPrb_hist)
         self.CalcSocialOptimum = False
         
-        OptimalCopayInvstFunc = []
-        for t in range(self.T_cycle):
-            Weights = self.CumLivPrb_hist[t,:]
-            Copays  = self.CopaySocOpt_hist[t,:]
+        try:
+            Health  = self.hLvlNow_hist.flatten()
+            Weights = self.CumLivPrb_hist.flatten()
+            Copays  = self.CopaySocOpt_hist.flatten()
+            Age = np.tile(np.reshape(np.arange(self.T_cycle),(self.T_cycle,1)),(1,self.AgentCount)).flatten()
+            AgeSq = Age**2.
+            HealthSq = Health**2
+            Ones = np.ones_like(Health)
+            AgeHealth = Age*Health
+            AgeHealthSq = Age*HealthSq
+            AgeSqHealth = AgeSq*Health
+            AgeSqHealthSq = AgeSq*HealthSq
             these = np.logical_not(np.isnan(Copays))
+            regressors = np.transpose(np.vstack((Ones,Health,HealthSq,Age,AgeHealth,AgeHealthSq,AgeSq,AgeSqHealth,AgeSqHealthSq)))
+            copay_model = WLS(Copays[these],regressors[these,:],weights=Weights[these])
+            coeffs = (copay_model.fit()).params
             
-            # Restructure this block as a quadratic regression
-            OptCopay = np.dot(Weights[these],Copays[these])/np.sum(Weights[these])
-            if np.isnan(OptCopay):
-                OptCopay = 1.0
-            OptimalCopayInvstFunc.append(ConstantFunction(OptCopay))
+            UpperCopayFunc = ConstantFunction(1.0)
+            LowerCopayFunc = ConstantFunction(0.05)
+            OptimalCopayInvstFunc = []
+            for t in range(self.T_cycle):
+                c0 = coeffs[0] + t*coeffs[3] + t**2*coeffs[6]
+                c1 = coeffs[1] + t*coeffs[4] + t**2*coeffs[7]
+                c2 = coeffs[2] + t*coeffs[5] + t**2*coeffs[8]
+                TempFunc = QuadraticFunction(c0,c1,c2)
+                OptimalCopayInvstFunc_t = UpperEnvelope(LowerEnvelope(TempFunc,UpperCopayFunc),LowerCopayFunc)
+                OptimalCopayInvstFunc.append(OptimalCopayInvstFunc_t)
+            
+        except:
+            for t in range(self.T_cycle):
+                OptimalCopayInvstFunc.append(ConstantFunction(1.0))
+        
+        
+#        for t in range(self.T_cycle):
+#            Health  = self.hLvlNow_hist[t,:]
+#            Weights = self.CumLivPrb_hist[t,:]
+#            Copays  = self.CopaySocOpt_hist[t,:]
+#            these = np.logical_not(np.isnan(Copays))
+#            
+#            try:
+#                Ones = np.ones_like(Health)
+#                HealthSq = Health**2.
+#                regressors = np.transpose(np.vstack((Ones[these],Health[these],HealthSq[these])))
+#                copay_model = WLS(Copays[these],regressors,weights=Weights[these])
+#                coeffs = (copay_model.fit()).params
+#                TempFunc = QuadraticFunction(coeffs[0],coeffs[1],coeffs[2])
+#                OptimalCopayInvstFunc_t = UpperEnvelope(LowerEnvelope(TempFunc,UpperCopayFunc),LowerCopayFunc)
+#                OptimalCopayInvstFunc.append(OptimalCopayInvstFunc_t)
+#            except:
+#                #OptCopay = np.dot(Weights[these],Copays[these])/np.sum(Weights[these])
+#                #if np.isnan(OptCopay):
+#                    #    OptCopay = 1.0
+#                OptimalCopayInvstFunc.append(ConstantFunction(1.0))
         
         self.OptimalCopayInvstFunc = OptimalCopayInvstFunc
         self.delSolution()
@@ -558,10 +602,10 @@ if __name__ == '__main__':
     
     # Choose which policy experiments to run
     run_test_policy = False
-    run_universal   = True
-    run_preventive  = True
-    run_curative    = True
-    run_flat_copay  = True
+    run_universal   = False
+    run_preventive  = False
+    run_curative    = False
+    run_flat_copay  = False
     run_optimal     = True
     N_policies      = 51
     
@@ -637,10 +681,10 @@ if __name__ == '__main__':
     # XX Set up experiment for subsidy on curative care
     # XX Set up experiment for subsidy on preventive care
     # XX Write function to run experiment where LifePrice varies --> optimal policy
-    # 4) Check optimal insurance policy procedure THURS
+    # XX Check optimal insurance policy procedure
     # 5) Make figures of PDV of TotalMed by health (across income and sex) WEDS
     # XX Write "dummy" solver that generates trivial policy functions
-    # 7) Re-estimate health and mortality moments with ^^ and no investment FRI
+    # XX Re-estimate health and mortality moments with ^^ and no investment
     # 8) Make moment fit figure for health moments for that FRI
     # XX Make alternate version of moment category 7(a) moment figure
     # 10) Write health investment fixed point appendix WEDS
@@ -656,12 +700,14 @@ if __name__ == '__main__':
     # 20) Move code into paper archive
     
     # BWI --> AUS (1), (2), (3), (6), (9), (16)
-    # July 11: (5), (10), (15)
-    # July 12: (4)
-    # AUS --> BWI: (14)
-    # July 13: (7), (8), (11), (12), (18), (19)
-    # July 14: (13), begin (17)
-    # July 15: finish (17), (20)
+    # July 11: nothing
+    # July 12: nothing
+    # AUS --> BWI: nothing
+    # July 13: (4), (5), (7), (15), (18), (19)
+    # July 14: (8), (10), (14)
+    # July 15: (11), (12), (13)
+    
+    # Mop up: (17), (20)
     
     # -----------
     
