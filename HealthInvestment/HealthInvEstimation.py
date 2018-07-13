@@ -954,7 +954,7 @@ if __name__ == '__main__':
 #    MyTypes[i].estimationAction()
 #    t_end = clock()
 #    print('Processing one agent type took ' + str(t_end-t_start) + ' seconds.')
-#
+
 #    t=0
 #    bMax = 100.
 #    MyTypes[i].plotxFuncByHealth(t,Dev=0.,bMax=bMax)
@@ -1008,8 +1008,8 @@ if __name__ == '__main__':
     save_figs = False
     perturb_one_param = False
     perturb_two_params = False
-    estimate_model = False
-    calc_std_errs = True
+    estimate_model = True
+    calc_std_errs = False
     calc_std_errs_alt = False
     
 
@@ -1361,8 +1361,7 @@ if __name__ == '__main__':
 
     if estimate_model:
         # Estimate some (or all) of the model parameters
-        which_indices = which_indices = np.array([0,1,2,3,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32])
-        #which_indices = np.array([0,1,5,6,7])
+        which_indices = which_indices = np.array([16,17,18,19,20,21,22,23])
         which_bool = np.zeros(33,dtype=bool)
         which_bool[which_indices] = True
         estimated_params = minimizeNelderMead(objectiveFunctionWrapper,Params.test_param_vec,verbose=True,which_vars=which_bool)

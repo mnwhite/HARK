@@ -305,7 +305,12 @@ class TransConShareFunc(HARKobject):
 
 
 
-def solveHealthInvestmentFake(solution_next,CRRA,DiscFac,CRRAmed):
+def solveHealthInvestmentFake(solution_next,CRRA,DiscFac,CRRAmed,IncomeNext,IncomeNow,Rfree,Cfloor,LifeUtility,
+                          Bequest0,Bequest1,MedPrice,aXtraGrid,bLvlGrid,Hcount,hLvlGrid,
+                          HealthProdFunc,MargHealthProdInvFunc,HealthShkStd0,HealthShkStd1,
+                          ExpHealthNextFunc,ExpHealthNextInvFunc,LivPrbFunc,bFromxFunc,PremiumFunc,CopayMedFunc,CopayInvstFunc,
+                          MedShkMeanFunc,MedShkStdFunc,MedShkCount,ConvexityFixer,SubsidyFunc,CalcExpectationFuncs,
+                          SameCopayForMedAndInvst):
     '''
     Returns a trivial solution to the one period problem in the health investment
     model; does literally no work.  This is used as a shortcut to estimate the
@@ -326,7 +331,9 @@ def solveHealthInvestmentFake(solution_next,CRRA,DiscFac,CRRAmed):
         Trivial, nonsense solution with ConstantFunctions in all policy attributes.
     '''
     TrivialFunc = ConstantFunction(0.0)
-    solution_now = HealthInvestmentSolution(TrivialFunc,TrivialFunc,TrivialFunc,TrivialFunc)
+    TrivialPolicyFunc = HealthInvestmentPolicyFunc(TrivialFunc, TrivialFunc, bFromxFunc, CopayMedFunc, MedShkMeanFunc, MedShkStdFunc, 1.0)
+    
+    solution_now = HealthInvestmentSolution(TrivialPolicyFunc,TrivialFunc,TrivialFunc,TrivialFunc)
     solution_now.dvdaFunc = TrivialFunc
     solution_now.dvdHfunc = TrivialFunc
     solution_now.CritDevFunc = TrivialFunc

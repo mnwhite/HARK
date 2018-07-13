@@ -189,6 +189,42 @@ basic_estimation_dict.update(insurance_params)
 basic_estimation_dict.update(grid_size_params)
 
 # Make a test parameter vector
+#test_param_vec = np.array([
+#    0.395747637459,      # 0 CRRAcon
+#    0.954441535586,      # 1 DiscFac
+#    2.74409486877,       # 2 CRRAmed
+#    2.17014226367,       # 3 LifeUtility
+#    0.0,                 # 4 MargUtilityShift
+#    1.04831193007,       # 5 Cfloor
+#    11.0737301651,       # 6 Bequest0
+#    1.80315880232,       # 7 Bequest1
+#    -2.32454945012,      # 8 MedShkMean0
+#    -0.713908448846,     # 9 MedShkMeanSex
+#    0.44600307886,       # 10 MedShkMeanAge
+#    -0.015201358284,     # 11 MedShkMeanAgeSq
+#    -8.3210616052,       # 12 MedShkMeanHealth
+#    -0.0115458059298,    # 13 MedShkMeanHealthSq
+#    2.73086670706,       # 14 MedShkStd0
+#    0.373632264832,      # 15 MedShkStd1
+#    0.0656833979957,     # 16 HealthNext0
+#    -0.00696450550332,   # 17 HealthNextSex
+#    -0.00022776292138,   # 18 HealthNextAge
+#    -0.000325984513277,  # 19 HealthNextAgeSq
+#    0.664388775961,      # 20 HealthNextHealth
+#    0.243683208401,      # 21 HealthNextHealthSq
+#    0.172382175469,      # 22 HealthShkStd0
+#    -0.0894647939341,    # 23 HealthShkStd1
+#    15.5611402001,       # 24 LogJerk
+#    -2.13369276099,      # 25 LogSlope
+#    1.71842956397,       # 26 LogCurve
+#    -0.488972328165,     # 27 Mortality0
+#    0.327125262504,      # 28 MortalitySex
+#    -7.4458983434e-05,   # 29 MortalityAge
+#     0.0058979528662,    # 30 MortalityAgeSq
+#    -2.23644923978,      # 31 MortalityHealth
+#    0.0359369543779,     # 32 MortalityHealthSq
+#    ])
+    
 test_param_vec = np.array([
     0.395747637459,      # 0 CRRAcon
     0.954441535586,      # 1 DiscFac
@@ -215,7 +251,7 @@ test_param_vec = np.array([
     0.172382175469,      # 22 HealthShkStd0
     -0.0894647939341,    # 23 HealthShkStd1
     15.5611402001,       # 24 LogJerk
-    -2.13369276099,      # 25 LogSlope
+    -np.inf,             # 25 LogSlope
     1.71842956397,       # 26 LogCurve
     -0.488972328165,     # 27 Mortality0
     0.327125262504,      # 28 MortalitySex
@@ -225,24 +261,6 @@ test_param_vec = np.array([
     0.0359369543779,     # 32 MortalityHealthSq
     ])
     
-    
-#    0.449674117713,      # 0 CRRAcon
-#    0.951850827876,      # 1 DiscFac
-#    3.276529453358,      # 2 CRRAmed
-#    2.05585837907,       # 3 LifeUtility
-#    0.0,                 # 4 MargUtilityShift
-#    0.580556089693,      # 5 Cfloor
-#    9.94250820125,       # 6 Bequest0
-#    1.86608549957,       # 7 Bequest1
-
-#    0.416320925681,      # 0 CRRAcon
-#    0.956824080287,      # 1 DiscFac
-#    3.276529453358,      # 2 CRRAmed
-#    2.05585837907,       # 3 LifeUtility
-#    0.0,                 # 4 MargUtilityShift
-#    0.617322879252,      # 5 Cfloor
-#    10.5622165584,       # 6 Bequest0
-#    1.79492583702,       # 7 Bequest1
 
 
 # These are only used by the estimation to decide when to write parameters to disk

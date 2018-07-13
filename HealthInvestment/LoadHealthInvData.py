@@ -23,23 +23,23 @@ use_cohorts = False
 
 # Choose which moments will actually be used
 moment_dummies = np.array([
-        True,  # OOPbyAge
-        True,  # StDevOOPbyAge
+        False, # OOPbyAge
+        False, # StDevOOPbyAge
         True,  # MortByAge
         True,  # StDevDeltaHealthByAge
-        True,  # StDevOOPbyHealthAge
+        False, # StDevOOPbyHealthAge
         True,  # StDevDeltaHealthByHealthAge
         True,  # HealthBySexHealthAge
-        True,  # OOPbySexHealthAge
+        False, # OOPbySexHealthAge
         True,  # MortBySexHealthAge
-        True,  # WealthByIncAge
+        False, # WealthByIncAge
         True,  # HealthByIncAge
         False, # OOPbyIncAge
         False, # WealthByIncWealthAge
         False, # HealthByIncWealthAge
         False, # OOPbyIncWealthAge
-        True,  # AvgHealthResidualByIncWealth
-        True,  # AvgOOPResidualByIncWealth
+        False, # AvgHealthResidualByIncWealth
+        False, # AvgOOPResidualByIncWealth
         True,  # MortByHealthAge
         True,  # HealthByHealthAge
         False, # WealthByHealthAge
