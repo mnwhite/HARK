@@ -81,43 +81,6 @@ insurance_params = {
     'Copay0' : copay_coeffs[16],
 }
 
-# Make a dictionary with insurance function parameters (copied from paper table)
-#insurance_params = {
-#    'Premium0' : -0.0058,
-#    'PremiumHealth' : 0.0803,
-#    'PremiumHealthSq' : 0.0130,
-#    'PremiumAge' : .0036,
-#    'PremiumAgeSq' : -0.00008,
-#    'PremiumSex' : -0.0088,
-#    'PremiumInc' : 0.0216,
-#    'PremiumIncSq' : -0.0001,
-#    'PremiumIncCu' : 0.00000000673,
-#    'PremiumHealthAge' : 0.0039,
-#    'PremiumHealthSqAge' : -0.0068,
-#    'PremiumHealthAgeSq' : 0.000034,
-#    'PremiumHealthSqAgeSq' : -0.000024,
-#    'PremiumHealthInc' : -0.0324,
-#    'PremiumHealthSqInc' : 0.0133,
-#    'PremiumHealthIncSq' : 0.00007,
-#    'PremiumHealthSqIncSq' : 0.000032,
-#    'Copay0' : 0.0436,
-#    'CopayHealth' : 0.4325,
-#    'CopayHealthSq' : -0.1505,
-#    'CopayAge' : .0034,
-#    'CopayAgeSq' : -0.000013,
-#    'CopaySex' : -0.0409,
-#    'CopayInc' : 0.0337,
-#    'CopayIncSq' : -0.0012,
-#    'CopayIncCu' : 0.000000606,
-#    'CopayHealthAge' : -0.0067,
-#    'CopayHealthSqAge' : 0.0032,
-#    'CopayHealthAgeSq' : 0.00000438,
-#    'CopayHealthSqAgeSq' : -0.00012,
-#    'CopayHealthInc' : -0.0539,
-#    'CopayHealthSqInc' : 0.0268,
-#    'CopayHealthIncSq' : 0.0024,
-#    'CopayHealthSqIncSq' : -0.00136,
-#}
 
 # Make a dictionary with example basic parameters
 other_exog_params = {
@@ -133,6 +96,7 @@ other_exog_params = {
     'CalcExpectationFuncs' : False,
     'CalcSocialOptimum' : False,
     'SameCopayForMedAndInvst' : True,
+    'DeleteSolution' : True,
     'LifePrice' : 0.,
     'Sex' : 0.0,
     'cycles' : 1,
@@ -188,7 +152,7 @@ basic_estimation_dict = copy(other_exog_params)
 basic_estimation_dict.update(insurance_params)
 basic_estimation_dict.update(grid_size_params)
 
-# Make a test parameter vector
+# These are the estimated parameters in the full model
 test_param_vec = np.array([
     0.395747637459,      # 0 CRRAcon
     0.954441535586,      # 1 DiscFac
@@ -224,7 +188,8 @@ test_param_vec = np.array([
     -2.23644923978,      # 31 MortalityHealth
     0.0359369543779,     # 32 MortalityHealthSq
     ])
-    
+ 
+# These are the *partially* re-estimated parameters in the no health investment model
 #test_param_vec = np.array([
 #    0.395747637459,      # 0 CRRAcon
 #    0.954441535586,      # 1 DiscFac
@@ -242,23 +207,23 @@ test_param_vec = np.array([
 #    -0.0115458059298,    # 13 MedShkMeanHealthSq
 #    2.73086670706,       # 14 MedShkStd0
 #    0.373632264832,      # 15 MedShkStd1
-#    0.0656833979957,     # 16 HealthNext0
-#    -0.00696450550332,   # 17 HealthNextSex
-#    -0.00022776292138,   # 18 HealthNextAge
-#    -0.000325984513277,  # 19 HealthNextAgeSq
-#    0.664388775961,      # 20 HealthNextHealth
-#    0.243683208401,      # 21 HealthNextHealthSq
-#    0.172382175469,      # 22 HealthShkStd0
-#    -0.0894647939341,    # 23 HealthShkStd1
+#    0.0155042533703,     # 16 HealthNext0
+#    -0.0038384135423,    # 17 HealthNextSex
+#    -0.000235291171021,  # 18 HealthNextAge
+#    -0.000335534473032,  # 19 HealthNextAgeSq
+#    0.843531662843,      # 20 HealthNextHealth
+#    0.120833457634,      # 21 HealthNextHealthSq
+#    0.183501817828,      # 22 HealthShkStd0
+#    -0.105368198316,     # 23 HealthShkStd1
 #    15.5611402001,       # 24 LogJerk
 #    -np.inf,             # 25 LogSlope
 #    1.71842956397,       # 26 LogCurve
-#    -0.488972328165,     # 27 Mortality0
-#    0.327125262504,      # 28 MortalitySex
-#    -7.4458983434e-05,   # 29 MortalityAge
-#     0.0058979528662,    # 30 MortalityAgeSq
-#    -2.23644923978,      # 31 MortalityHealth
-#    0.0359369543779,     # 32 MortalityHealthSq
+#    -0.460781109508,     # 27 Mortality0
+#    0.333732265468,      # 28 MortalitySex
+#    -0.001818754439,     # 29 MortalityAge
+#     0.00619148618625,   # 30 MortalityAgeSq
+#    -2.76138537804,      # 31 MortalityHealth
+#    0.788656291627,      # 32 MortalityHealthSq
 #    ])
     
 

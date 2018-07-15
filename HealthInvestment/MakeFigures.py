@@ -209,7 +209,9 @@ def makeValidationFigures(params,use_cohorts):
         type_list = makeMultiTypeSimple(param_dict)
     for this_type in type_list:
         this_type.track_vars.append('MedLvlNow')
-    multiThreadCommands(type_list,['estimationAction()'],num_jobs=5)
+        this_type.CalcExpectationFuncs = True
+        this_type.DeleteSolution = False
+    multiThreadCommandsFake(type_list,['estimationAction()'],num_jobs=5)
     
     # Combine simulated data across all types
     aLvlHist = np.concatenate([this_type.aLvlNow_hist for this_type in type_list],axis=1)
@@ -231,11 +233,75 @@ def makeValidationFigures(params,use_cohorts):
     InDataSpan = np.concatenate([this_type.InDataSpanArray for this_type in type_list],axis=1)
     WeightAdj = InDataSpan*WeightHist
     
+    # Calculate median (pseudo) bank balances for each type
+    bLvl_init_median = np.zeros(10)
+    for n in range(10):
+        bLvl_init_median[n] = np.median(type_list[n].aLvlInit) + type_list[n].IncomeNow[2]
+    
     # Extract deciles of health by age from the simulated data
     pctiles = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9]
     SimHealthPctiles = np.zeros((15,len(pctiles)))
     for t in range(15):
         SimHealthPctiles[t,:] = getPercentiles(hLvlHist[t,:],weights=WeightAdj[t,:],percentiles=pctiles)
+        
+    # Plot PDV of total medical expenses by health at median wealth at age 69-70 by income quintile and sex
+    colors = ['b','r','g','c','m']
+    t = 2
+    H = np.linspace(0.0,1.0,201)
+    for n in range(5):
+        B = bLvl_init_median[n]*np.ones_like(H)
+        M = type_list[n].solution[t].TotalMedPDVfunc(B,H)
+        plt.plot(H,M,color=colors[n])
+    plt.xlim([0.,1.])
+    plt.ylim([0.,None])
+    plt.xlabel(r'Health capital $h_{it}$')
+    plt.ylabel('PDV total medical care, $10,000 (y2000)')
+    plt.legend(['Bottom quintile','Second quintile','Third quintile','Fourth quintile','Top quintile'])
+    plt.title('Total Medical Expenses by Health and Income, Women')
+    plt.savefig('./Figures/TotalMedPDVbyIncomeWomen.pdf')
+    plt.show()
+    for n in range(5,10):
+        B = bLvl_init_median[n]*np.ones_like(H)
+        M = type_list[n].solution[t].TotalMedPDVfunc(B,H)
+        plt.plot(H,M,color=colors[n-5])
+    plt.xlim([0.,1.])
+    plt.ylim([0.,None])
+    plt.xlabel(r'Health capital $h_{it}$')
+    plt.ylabel('PDV total medical care, $10,000 (y2000)')
+    plt.legend(['Bottom quintile','Second quintile','Third quintile','Fourth quintile','Top quintile'])
+    plt.title('Total Medical Expenses by Health and Income, Men')
+    plt.savefig('./Figures/TotalMedPDVbyIncomeMen.pdf')
+    plt.show()
+    
+    # Plot life expectancy by health at median wealth at age 69-70 by income quintile and sex
+    colors = ['b','r','g','c','m']
+    t = 2
+    H = np.linspace(0.0,1.0,201)
+    for n in range(5):
+        B = bLvl_init_median[n]*np.ones_like(H)
+        M = type_list[n].solution[t].ExpectedLifeFunc(B,H)
+        plt.plot(H,M,color=colors[n])
+    plt.xlim([0.,1.])
+    plt.ylim([0.,None])
+    plt.xlabel(r'Health capital $h_{it}$')
+    plt.ylabel('Remaining years of life expectancy')
+    plt.legend(['Bottom quintile','Second quintile','Third quintile','Fourth quintile','Top quintile'])
+    plt.title('Life Expectancy at Age 69 by Health and Income, Women')
+    plt.savefig('./Figures/LifeExpectancybyIncomeWomen.pdf')
+    plt.show()
+    for n in range(5,10):
+        B = bLvl_init_median[n]*np.ones_like(H)
+        M = type_list[n].solution[t].ExpectedLifeFunc(B,H)
+        plt.plot(H,M,color=colors[n-5])
+    plt.xlim([0.,1.])
+    plt.ylim([0.,None])
+    plt.xlabel(r'Health capital $h_{it}$')
+    plt.ylabel('Remaining years of life expectancy')
+    plt.legend(['Bottom quintile','Second quintile','Third quintile','Fourth quintile','Top quintile'])
+    plt.title('Life Expectancy at Age 69 by Health and Income, Men')
+    plt.savefig('./Figures/LifeExpectancybyIncomeMen.pdf')
+    plt.show()
+        
         
     # Extract deciles of health from the HRS data
     DataHealthPctiles = np.zeros((15,len(pctiles)))
@@ -434,15 +500,6 @@ def makeValidationFigures(params,use_cohorts):
     
     # Plot the 99% confidence band of the health production function
     mean  = np.array([-2.13369276099, 1.71842956397])
-    covar = array([[0.02248322, 0.01628292],[0.01628308, 0.01564192]])
-    dstn = multivariate_normal(mean,covar)
-    
-
-
-if __name__ == '__main__':
-    import HealthInvParams as Params
-    
-    mean  = np.array([-2.13369276099, 1.71842956397])
     covar = np.array([[0.02248322, 0.01628292],[0.01628308, 0.01564192]])
     dstn  = multivariate_normal(mean,covar)
     N = 10000
@@ -482,7 +539,10 @@ if __name__ == '__main__':
     plt.savefig('./Figures/HealthProdFunc.pdf')
     plt.show()
     
-    
+
+
+if __name__ == '__main__':
+    import HealthInvParams as Params
        
 
-    #makeValidationFigures(Params.test_param_vec,False)    
+    makeValidationFigures(Params.test_param_vec,False)    

@@ -39,7 +39,8 @@ class EstimationAgentType(HealthInvestmentConsumerType):
         self.repSimData()
         self.initializeSim()
         self.simulate()
-        self.delSolution()
+        if self.DeleteSolution:
+            self.delSolution()
         
         
     def repSimData(self):
@@ -306,7 +307,7 @@ def calcSimulatedMoments(type_list,return_as_list):
     weight_reg = WeightNext[THESE]
     del WeightNext
     
-    # Make arrayw of inc-wealth quintile indicators
+    # Make array of inc-wealth quintile indicators
     IQbool_reg = np.zeros((5,OOP_reg.size))
     for i in range(5):
         IQbool_reg[i,:] = IQ_reg == i+1
@@ -1003,12 +1004,12 @@ if __name__ == '__main__':
 
 
     # Choose what kind of work to do:
-    test_obj_func = False
-    plot_model_fit = False
-    save_figs = False
+    test_obj_func = True
+    plot_model_fit = True
+    save_figs = True
     perturb_one_param = False
     perturb_two_params = False
-    estimate_model = True
+    estimate_model = False
     calc_std_errs = False
     calc_std_errs_alt = False
     
@@ -1023,7 +1024,7 @@ if __name__ == '__main__':
         AgeVec = np.linspace(67.,95.,num=15)
         health_colors = ['b','r','g']
         sex_colors = ['r','b']
-        income_colors = ['b','r','g','m','c']
+        income_colors = ['b','r','g','c','m']
         
         # Plot model fit of mean out of pocket medical spending by age
         plt.plot(AgeVec,X[0],'-m')

@@ -682,10 +682,10 @@ if __name__ == '__main__':
     # XX Set up experiment for subsidy on preventive care
     # XX Write function to run experiment where LifePrice varies --> optimal policy
     # XX Check optimal insurance policy procedure
-    # 5) Make figures of PDV of TotalMed by health (across income and sex) WEDS
+    # XX Make figures of PDV of TotalMed by health (across income and sex) WEDS
     # XX Write "dummy" solver that generates trivial policy functions
     # XX Re-estimate health and mortality moments with ^^ and no investment
-    # 8) Make moment fit figure for health moments for that FRI
+    # XX Make moment fit figure for health moments for that FRI
     # XX Make alternate version of moment category 7(a) moment figure
     # 10) Write health investment fixed point appendix WEDS
     # 11) Write liquidity constrained solution appendix FRI
