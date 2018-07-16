@@ -696,7 +696,7 @@ if __name__ == '__main__':
     # XX  Make counterfactual figure template in paper
     # 17) Write identification arguments for HealthProdParam, etc SUNDAY
     # 18) Make counterfactual tables FRIDAY
-    # 19) Make health ordered probit and insurance function tables FRIDAY
+    # XX  Make health ordered probit and insurance function tables FRIDAY
     # 20) Move code into paper archive
     
     # BWI --> AUS (1), (2), (3), (6), (9), (16)

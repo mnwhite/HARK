@@ -1,0 +1,63 @@
+\begin{table} 
+\caption{Ordered Probit of Categorical Subjective Health on Objective Health Measures} 
+ \label{table:HealthMeas} 
+\centering 
+\footnotesize 
+\begin{tabular}{l l l} 
+\hline \hline 
+Variable description & Coefficient & t-stat \ \\ 
+\hline 
+Is male & -2.44E-01{***} & -39.57 \\ 
+Has high blood pressure & -2.14E-01{***} & -35.89 \\ 
+Has very high blood pressure & -4.12E-01{***} & -19.08 \\ 
+Has diabetes & -3.69E-01{***} & -47.18 \\ 
+Has complications from diabetes & -3.60E-01{***} & -13.59 \\ 
+Ever been diagnosed with cancer & -1.92E-01{***} & -22.93 \\ 
+Has been diagnosed with a lung condition & -3.52E-01{***} & -35.98 \\ 
+Has been diagnosed with a heart condition & -2.87E-01{***} & -40.91 \\ 
+Has ever had a stroke & -1.03E-01{***} & -7.05 \\ 
+Has ongoing problems from stroke & -1.59E-01{***} & -7.53 \\ 
+Has been diagnosed with a psychological problem & -2.04E-01{***} & -25.13 \\ 
+Has been diagnosed with a memory problem & -1.70E-01{***} & -7.95 \\ 
+Has been diagnosed with arthritis & -5.93E-02{***} & -9.33 \\ 
+Has fallen in past month at all & 3.76E-02{***} & 3.80 \\ 
+Number of times fallen in past month & -2.13E-03 & -1.23 \\ 
+Was hurt in at least one fall & 1.01E-02 & 0.73 \\ 
+Number of days with lost urine in past month & -7.46E-04{**} & -1.98 \\ 
+Is usually in at least mild pain & -2.49E-01{***} & -23.41 \\ 
+Is usually in at least moderate pain & -1.03E-01{***} & -8.56 \\ 
+Is usually in very bad pain & -2.64E-01{***} & -19.31 \\ 
+Has been diagnosed with depression & -1.68E-01{***} & -13.61 \\ 
+Number of days spent in bed in past month & -2.35E-02{***} & -25.05 \\ 
+Has difficulty jogging & -2.46E-01{***} & -28.28 \\ 
+Has difficulty walking a few blocks & -2.90E-01{***} & -31.87 \\ 
+Has difficulty walking one block & -9.95E-02{***} & -8.56 \\ 
+Has difficulty sitting down on chair & -8.96E-02{***} & -11.18 \\ 
+Has difficulty standing up from chair & -3.41E-02{***} & -4.63 \\ 
+Has difficulty climbing several flights of stairs & -2.49E-01{***} & -33.56 \\ 
+Has difficulty climbing one flight of stairs & -1.24E-01{***} & -12.67 \\ 
+Has difficulty stooping to pick up an object & -4.26E-02{***} & -5.89 \\ 
+Has difficulty reaching outward with arms & -1.23E-01{***} & -14.18 \\ 
+Has difficulty pushing chair across a room & -1.66E-01{***} & -20.24 \\ 
+Has difficulty carrying a bag of groceries & -1.57E-01{***} & -17.71 \\ 
+Has difficulty picking up a dime & -3.35E-02{***} & -2.85 \\ 
+Has difficulty dressing self & -6.32E-02{***} & -5.14 \\ 
+Has difficulty walking across a room & -2.90E-02{*} & -1.95 \\ 
+Has difficulty bathing self & 2.63E-03 & 0.17 \\ 
+Has difficulty getting into / out of bed & -1.05E-01{***} & -7.20 \\ 
+Has difficulty using the toilet & 4.06E-02{***} & 2.72 \\ 
+Has difficulty eating & -4.72E-02{**} & -2.50 \\ 
+Has difficulty using a map & -2.66E-01{***} & -35.82 \\ 
+Needs help cooking meals for self & -5.36E-02{***} & -3.22 \\ 
+Needs help shopping for groceries & -1.07E-01{***} & -7.58 \\ 
+Needs help using the phone & -6.75E-02{***} & -4.06 \\ 
+Needs help managing prescriptions & -2.96E-02 & -1.64 \\ 
+Needs help managing personal money & 2.95E-02{**} & 1.96 \\ 
+\hline 
+Cutoff 1 & -3.27 &  \\ 
+Cutoff 2 & -2.09 &  \\ 
+Cutoff 3 & -0.97 &  \\ 
+Cutoff 4 & 0.21 &  \\ 
+\hline \hline 
+\end{tabular} 
+\end{table} 

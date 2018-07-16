@@ -2,6 +2,7 @@
 This module has functions for making LaTeX code for various tables.
 '''
 import numpy as np
+from decimal import Decimal
 
 param_names = [
     'CRRAcon',
@@ -172,6 +173,192 @@ def makeParamTable(filename,values,stderrs=None):
         f.write(output)
         f.close()
         
+        
+def makeInsuranceTable(copay_coeffs,premium_coeffs,copay_stderrs,premium_stderrs,filename):
+    '''
+    Make a txt file with LaTeX table with reduced form estimates of the insurance coefficients.
+    
+    Parameters
+    ----------
+    copay_coeffs : np.array
+        Size 17 array with coefficients for the coinsurance rate.
+    premium_coeffs : np.array
+        Size 17 array with coefficients for premiums.
+    copay_stderrs : np.array
+        Size 17 array with standard errors for the coinsurance rate.
+    premium_stderrs : np.array
+        Size 17 array with standard errors for premiums.
+    filename : str
+        Name under which to save the table LaTex.
+        
+    Returns
+    -------
+    None
+    '''
+    f = lambda x : '%.2E' % Decimal(x)
+    g = lambda x : "{:.2f}".format(x)
+    sig_symb = '*'
+    
+    def sigFunc(coeff,stderr):
+        z_stat = np.abs(coeff/stderr)
+        cuts = np.array([1.645,1.96,2.576])
+        N = np.sum(z_stat > cuts)
+        if N > 0:
+            sig_text = '{' + N*sig_symb + '}'
+        else:
+            sig_text = ''
+        return sig_text
+    
+    def h(coeff,stderr):
+        return f(coeff) + sigFunc(coeff,stderr) + ' & ' + g(coeff/stderr)
+        
+    
+    coeff_names = ['Health',
+                   'Health squared',
+                   'Age (minus 65)',
+                   'Age squared',
+                   'Male',
+                   'Income (\\$10,000)',
+                   'Income square',
+                   'Income cubed',
+                   'Health * age',
+                   'Health sq * age',
+                   'Health * age sq',
+                   'Health sq * age sq',
+                   'Health * income',
+                   'Health sq * income',
+                   'Health * income sq',
+                   'Health sq * income sq',
+                   'Constant'
+                   ]
+    
+    output =  '\\begin{table} \n'
+    output += '\\caption{Estimates of Premiums and Coinsurance Rates} \n \\label{table:Insurance} \n'
+    output += '\\centering \n'
+    output += '\\begin{tabular}{l @{\\hspace{1cm}} l r c @{\\hspace{1cm}} c l r } \n'
+    output += '\\hline \\hline \n'
+    output += ' & \\multicolumn{2}{c}{Premiums} & & & \\multicolumn{2}{c}{Coinsurance Rate} \\\\ \n'
+    output += 'Variable & Coefficient & t-stat & & & Coefficient & t-stat \\\\ \n'
+    output += '\\hline \n'
+    for j in range(17):
+        output += coeff_names[j] + ' & ' + h(premium_coeffs[j],premium_stderrs[j]) + ' & & & ' + h(copay_coeffs[j],copay_stderrs[j]) + ' \\\\ \n'
+    output += '\\hline \\hline \n'
+    output += '\\end{tabular} \n'
+    output += '\\end{table} \n'
+    
+    with open('./Tables/' + filename + '.txt.','w') as f:
+        f.write(output)
+        f.close()
+        
+        
+def makeHealthProbitTable(health_coeffs,health_stderrs,filename):
+    '''
+    Make a txt file with LaTeX table with the ordered probit for health.
+    
+    Parameters
+    ----------
+    health_coeffs : np.array
+        Array with coefficients for health status.
+    health_stderrs : np.array
+        Size 17 array with standard errors for health status.
+    filename : str
+        Name under which to save the table LaTex.
+        
+    Returns
+    -------
+    None
+    '''
+    f = lambda x : '%.2E' % Decimal(x)
+    g = lambda x : "{:.2f}".format(x)
+    sig_symb = '*'
+    
+    def sigFunc(coeff,stderr):
+        z_stat = np.abs(coeff/stderr)
+        cuts = np.array([1.645,1.96,2.576])
+        N = np.sum(z_stat > cuts)
+        if N > 0:
+            sig_text = '{' + N*sig_symb + '}'
+        else:
+            sig_text = ''
+        return sig_text
+    
+    def h(coeff,stderr):
+        return f(coeff) + sigFunc(coeff,stderr) + ' & ' + g(coeff/stderr)
+        
+    
+    coeff_names = ['Is male',
+                   'Has high blood pressure',
+                   'Has very high blood pressure',
+                   'Has diabetes',
+                   'Has complications from diabetes',
+                   'Ever been diagnosed with cancer',
+                   'Has been diagnosed with a lung condition',
+                   'Has been diagnosed with a heart condition',
+                   'Has ever had a stroke',
+                   'Has ongoing problems from stroke',
+                   'Has been diagnosed with a psychological problem',
+                   'Has been diagnosed with a memory problem',
+                   'Has been diagnosed with arthritis',
+                   'Has fallen in past month at all',
+                   'Number of times fallen in past month',
+                   'Was hurt in at least one fall',
+                   'Number of days with lost urine in past month',
+                   'Is usually in at least mild pain',
+                   'Is usually in at least moderate pain',
+                   'Is usually in very bad pain',
+                   'Has been diagnosed with depression',
+                   'Number of days spent in bed in past month',
+                   'Has difficulty jogging',
+                   'Has difficulty walking a few blocks',
+                   'Has difficulty walking one block',
+                   'Has difficulty sitting down on chair',
+                   'Has difficulty standing up from chair',
+                   'Has difficulty climbing several flights of stairs',
+                   'Has difficulty climbing one flight of stairs',
+                   'Has difficulty stooping to pick up an object',
+                   'Has difficulty reaching outward with arms',
+                   'Has difficulty pushing chair across a room',
+                   'Has difficulty carrying a bag of groceries',
+                   'Has difficulty picking up a dime',
+                   'Has difficulty dressing self',
+                   'Has difficulty walking across a room',
+                   'Has difficulty bathing self',
+                   'Has difficulty getting into / out of bed',
+                   'Has difficulty using the toilet',
+                   'Has difficulty eating',
+                   'Has difficulty using a map',
+                   'Needs help cooking meals for self',
+                   'Needs help shopping for groceries',
+                   'Needs help using the phone',
+                   'Needs help managing prescriptions',
+                   'Needs help managing personal money',
+                   'Cutoff 1',
+                   'Cutoff 2',
+                   'Cutoff 3',
+                   'Cutoff 4'
+                   ]
+    
+    output =  '\\begin{table} \n'
+    output += '\\caption{Ordered Probit of Categorical Subjective Health on Objective Health Measures} \n \\label{table:HealthMeas} \n'
+    output += '\\centering \n'
+    output += '\\footnotesize \n'
+    output += '\\begin{tabular}{l l l} \n'
+    output += '\\hline \\hline \n'
+    output += 'Variable description & Coefficient & t-stat \\ \\\\ \n'
+    output += '\\hline \n'
+    for j in range(46):
+        output += coeff_names[j] + ' & ' + h(health_coeffs[j],health_stderrs[j]) + ' \\\\ \n'
+    output += '\\hline \n'
+    for j in range(46,50):
+        output += coeff_names[j] + ' & ' + g(health_coeffs[j])  + ' &  \\\\ \n'
+    output += '\\hline \\hline \n'
+    output += '\\end{tabular} \n'
+    output += '\\end{table} \n'
+    
+    with open('./Tables/' + filename + '.txt.','w') as f:
+        f.write(output)
+        f.close()
+    
         
 def makeCounterfactualSummaryTablesOneVar(means,var_name,spec_name,file_name,label,convert_dollars=True):
     '''

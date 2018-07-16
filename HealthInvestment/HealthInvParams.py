@@ -6,6 +6,7 @@ the health investment model, as well as test values of the structural parameters
 from copy import copy
 import numpy as np
 import csv
+from MakeTables import makeInsuranceTable, makeHealthProbitTable
 
 # Choose state grid sizes and bounds (exogenously chosen)
 Hcount = 16
@@ -32,6 +33,19 @@ grid_size_params = {
     'T_cycle' : T_cycle
 }
 
+# Load the health probit coefficients into memory
+infile = open('./Data/HealthCoeffs.txt','r') 
+my_reader = csv.reader(infile,delimiter=',')
+health_coeffs_raw = list(my_reader)[1]
+infile.close()
+health_coeffs = np.zeros(50)
+health_stderrs = np.zeros(50)
+for i in range(50):
+    health_coeffs[i] = float(health_coeffs_raw[i])
+    health_stderrs[i] = float(health_coeffs_raw[i+50])
+makeHealthProbitTable(health_coeffs,health_stderrs,'HealthProbit')
+
+
 # Load the insurance coefficients into memory
 infile = open('./Data/InsuranceCoeffs.txt','r') 
 my_reader = csv.reader(infile,delimiter=',')
@@ -39,9 +53,16 @@ insurance_coeffs_raw = list(my_reader)[1]
 infile.close()
 copay_coeffs = np.zeros(17)
 premium_coeffs = np.zeros(17)
+copay_stderrs = np.zeros(17)
+premium_stderrs = np.zeros(17)
 for i in range(17):
     copay_coeffs[i] = float(insurance_coeffs_raw[i])
     premium_coeffs[i] = float(insurance_coeffs_raw[i+17])
+    copay_stderrs[i] = float(insurance_coeffs_raw[i+34])
+    premium_stderrs[i] = float(insurance_coeffs_raw[i+51])
+    
+# Make an insurance table for the paper
+makeInsuranceTable(copay_coeffs,premium_coeffs,copay_stderrs,premium_stderrs,'Insurance')
     
 # Make a dictionary with insurance function parameters (loaded from Stata output)
 insurance_params = {

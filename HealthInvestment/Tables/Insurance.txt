@@ -1,0 +1,29 @@
+\begin{table} 
+\caption{Estimates of Premiums and Coinsurance Rates} 
+ \label{table:Insurance} 
+\centering 
+\begin{tabular}{l @{\hspace{1cm}} l r c @{\hspace{1cm}} c l r } 
+\hline \hline 
+ & \multicolumn{2}{c}{Premiums} & & & \multicolumn{2}{c}{Coinsurance Rate} \\ 
+Variable & Coefficient & t-stat & & & Coefficient & t-stat \\ 
+\hline 
+Health & 3.94E-02 & 1.14 & & & 3.30E-01{***} & 6.28 \\ 
+Health squared & 4.33E-02 & 1.33 & & & -6.76E-02 & -1.49 \\ 
+Age (minus 65) & 8.83E-04 & 1.05 & & & -8.04E-04 & -0.70 \\ 
+Age squared & 3.26E-06 & 0.08 & & & 1.17E-04{*} & 1.91 \\ 
+Male & -9.46E-03{***} & -3.65 & & & -3.74E-02{***} & -11.85 \\ 
+Income (\$10,000) & 1.29E-02{***} & 4.07 & & & 1.57E-02{***} & 4.29 \\ 
+Income square & -6.19E-05{***} & -2.86 & & & -1.35E-04{**} & -2.36 \\ 
+Income cubed & 1.06E-08{***} & 11.27 & & & 8.89E-09{**} & 2.05 \\ 
+Health * age & 8.55E-03{**} & 2.40 & & & 1.39E-03 & 0.34 \\ 
+Health sq * age & -1.13E-02{***} & -3.30 & & & -6.79E-04 & -0.20 \\ 
+Health * age sq & -1.37E-04 & -0.80 & & & -2.03E-04 & -0.93 \\ 
+Health sq * age sq & 1.64E-04 & 0.99 & & & -8.96E-05 & -0.48 \\ 
+Health * income & -3.04E-03 & -0.27 & & & -2.07E-02{*} & -1.90 \\ 
+Health sq * income & -8.89E-03 & -0.95 & & & 5.81E-03 & 0.73 \\ 
+Health * income sq & -9.35E-05 & -1.18 & & & 2.92E-04{*} & 1.90 \\ 
+Health sq * income sq & 1.85E-04{***} & 2.74 & & & -1.70E-04{*} & -1.73 \\ 
+Constant & 1.50E-02{*} & 1.77 & & & 8.43E-02{***} & 5.77 \\ 
+\hline \hline 
+\end{tabular} 
+\end{table} 
