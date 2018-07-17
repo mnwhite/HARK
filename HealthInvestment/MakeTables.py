@@ -232,9 +232,10 @@ def makeInsuranceTable(copay_coeffs,premium_coeffs,copay_stderrs,premium_stderrs
                    'Constant'
                    ]
     
-    output =  '\\begin{table} \n'
+    output =  '\\begin{table}[h!] \n'
     output += '\\caption{Estimates of Premiums and Coinsurance Rates} \n \\label{table:Insurance} \n'
     output += '\\centering \n'
+    output += '\\small \n'
     output += '\\begin{tabular}{l @{\\hspace{1cm}} l r c @{\\hspace{1cm}} c l r } \n'
     output += '\\hline \\hline \n'
     output += ' & \\multicolumn{2}{c}{Premiums} & & & \\multicolumn{2}{c}{Coinsurance Rate} \\\\ \n'

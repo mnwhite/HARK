@@ -1,7 +1,8 @@
-\begin{table} 
+\begin{table}[h!] 
 \caption{Estimates of Premiums and Coinsurance Rates} 
  \label{table:Insurance} 
 \centering 
+\small 
 \begin{tabular}{l @{\hspace{1cm}} l r c @{\hspace{1cm}} c l r } 
 \hline \hline 
  & \multicolumn{2}{c}{Premiums} & & & \multicolumn{2}{c}{Coinsurance Rate} \\ 
