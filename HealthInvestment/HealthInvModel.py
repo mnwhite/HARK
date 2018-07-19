@@ -751,7 +751,7 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,CRRAmed,IncomeNext,IncomeNo
     
     if SameCopayForMedAndInvst:
         SubsidyMax = np.tile(np.reshape(SubsidyFunc(hLvlGrid),(1,hLvlCount,1)),(bLvlCount,1,MedShkCount))
-        Subsidy_temp = np.minimum(i_temp*MedPrice,SubsidyMax)
+        Subsidy_temp = np.minimum(i_temp*EffPriceInvst_temp,SubsidyMax*EffPriceInvst_temp)
         iCost_temp = np.maximum(i_temp*EffPriceInvst_temp - Subsidy_temp, 0.0)
     else:
         iCost_temp = i_temp*EffPriceInvst_temp
@@ -1379,6 +1379,7 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
             self.CopayInvstNow = np.zeros(self.AgentCount)
             self.OOPmedNow = np.zeros(self.AgentCount)
             self.SubsidyNow = np.zeros(self.AgentCount)
+            self.HitCfloor = np.zeros(self.AgentCount)
             
         self.PremiumNow[these] = PremiumNow
         self.CopayMedNow[these] = CopayMedNow
@@ -1389,6 +1390,7 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         self.xLvlNow[these] = xLvlNow
         self.OOPmedNow[these] = OOPmedNow
         self.SubsidyNow[these] = SubsidyNow
+        self.HitCfloor[these] = Cfloor_better
         self.PremiumNow[not_these] = np.nan
         self.CopayMedNow[not_these] = np.nan
         self.CopayInvstNow[not_these] = np.nan
@@ -1398,6 +1400,7 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         self.xLvlNow[not_these] = np.nan
         self.OOPmedNow[not_these] = np.nan
         self.SubsidyNow[not_these] = np.nan
+        self.HitCfloor[not_these] = np.nan
         
                 
     def getPostStates(self):

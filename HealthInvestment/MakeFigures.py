@@ -15,7 +15,7 @@ from HealthInvEstimation import makeMultiTypeSimple, makeMultiTypeWithCohorts, c
 import LoadHealthInvData as Data
 
 
-def makeSimpleFigure(data,names,colors,x_vals,x_label,show_legend,title,convert_dollars,file_name):
+def makeSimpleFigure(data,names,colors,x_vals,x_label,y_lim,show_legend,title,convert_dollars,file_name):
     '''
     Make a simple line plot with counterfactual results across several policies.
     Saves in the /Figures directory with given name, in pdf format.
@@ -32,6 +32,8 @@ def makeSimpleFigure(data,names,colors,x_vals,x_label,show_legend,title,convert_
         Corresponding x-axis values for data; should be same size as data[i].
     x_label : str
         Label as it should appear on the x axis.
+    y_lim : [float,float]
+        Limits of vertical axis.
     show_legend : bool
         Indicator for whether the legend should be drawn.
     title : str
@@ -49,6 +51,7 @@ def makeSimpleFigure(data,names,colors,x_vals,x_label,show_legend,title,convert_
     for n in range(N):
         plt.plot(x_vals,data[n],color=colors[n])
     plt.xlim([x_vals[0],x_vals[-1]])
+    plt.ylim(y_lim)
     plt.xlabel(x_label, fontsize=14)
     if convert_dollars:
         plt.ylabel('$10,000 (y2000)', fontsize=14)
@@ -93,7 +96,7 @@ def makeCumulativeFigure(data,names,x_vals,x_label,title,convert_dollars,file_na
     polygon_x = np.concatenate([x_vals,np.flipud(x_vals)])
     bottom_y = np.zeros_like(x_vals)
     for n in range(N):
-        top_y = temp_data + bottom_y
+        top_y = data[n] + bottom_y
         polygon_y = np.concatenate([top_y,np.flipud(bottom_y)])
         plt.fill(polygon_x,polygon_y)
         bottom_y = top_y
@@ -137,11 +140,12 @@ def makeCounterfactualFigures(data,x_vals,x_label,title_base,file_base):
     
     var_names = ['Total medical expenses',
                  'OOP medical expenses',
-                 'Overall',
+                 'Life expectancy',
                  'Medicare costs',
                  'Direct subsidy costs',
                  'Welfare costs',
-                 'Total government costs']
+                 'Total government costs',
+                 'Willingness to pay']
     
     quintile_names = ['Bottom quintile',
                       'Second quintile',
@@ -153,36 +157,63 @@ def makeCounterfactualFigures(data,x_vals,x_label,title_base,file_base):
     makeSimpleFigure([data[3],data[4],data[5],data[6]],
                      [var_names[3],var_names[4],var_names[5],var_names[6]],
                      new_colors[0:4],
-                     x_vals, x_label, True,
-                     'Per Capita Change in PDV of Government Spending',
+                     x_vals, x_label, [None, None], True,
+                     'Change in PDV of Per Capita Government Spending',
                      True, file_base + 'GovtChange')
     
     # Plot changes in medical spending: total vs govt vs OOP
     makeSimpleFigure([data[0],data[1],data[6]],
                      [var_names[0],var_names[1],var_names[6]],
                      [new_colors[4],new_colors[5],new_colors[3]],
-                     x_vals, x_label, True,
-                     'Per Capita Change in PDV of Medical Costs',
+                     x_vals, x_label, [None, None], True,
+                     'Change in PDV of Per Capita Medical Costs',
                      True, file_base + 'MedChange')
     
-    # Plot changes in life expectancy
+    # Plot changes in life expectancy by income
     makeSimpleFigure([data[2]] + [data[8][:,i] for i in range(5)],
-                     [var_names[2]] + quintile_names,
+                     ['Overall'] + quintile_names,
                      ['k'] + old_colors,
-                     x_vals, x_label, True,
-                     'Average Change in Life Expectancy by Income',
+                     x_vals, x_label, [None, None], True,
+                     'Change in Life Expectancy by Income',
                      False, file_base + 'LifeExp')
     
-    # Plot changes in life expectancy
-    makeSimpleFigure([data[2]] + [data[9][:,i] for i in range(5)],
-                     [var_names[2]] + quintile_names,
+    # Plot willingness to pay by income
+    makeSimpleFigure([data[7]] + [data[9][:,i] for i in range(5)],
+                     ['Overall'] + quintile_names,
                      ['k'] + old_colors,
-                     x_vals, x_label, False,
-                     'Average Willingness to Pay for Policy by Income',
+                     x_vals, x_label, [None, None], False,
+                     'Willingness to Pay for Policy by Income',
                      True, file_base + 'WTP')
     
-    #makeCumulativeFigure([data[4],data[3]],[var_names[4],var_names[3]], x_vals, x_label, 'Composition of Government Costs, ' + title_base, True, 'GovtComp')
+    # Plot govt cost by income
+    makeSimpleFigure([data[10][:,i] for i in range(5)],
+                     quintile_names,
+                     old_colors,
+                     x_vals, x_label, [None, None], True,
+                     'Change in PDV of Per Capita Government Costs by Income',
+                     True, file_base + 'GovtChangeByInc')
     
+    # Plot OOP expenses by income
+    makeSimpleFigure([data[11][:,i] for i in range(5)],
+                     quintile_names,
+                     old_colors,
+                     x_vals, x_label, [None, None], False,
+                     'Change in PDV of Per Capita OOP Medical Costs by Income',
+                     True, file_base + 'OOPchangeByInc')
+    
+    # Plot government cost per additional additional year of life
+    CostPerYear = data[6]/data[2]
+    CostPerYear[data[2] < 0.] = np.nan
+    CostPerYearByIncome = data[10]/data[8]
+    CostPerYearByIncome[data[8] < 0.] = np.nan
+    TEMP = [CostPerYear] + [CostPerYearByIncome[:,i] for i in range(5)]
+    makeSimpleFigure(TEMP,
+                     ['Overall'] + quintile_names,
+                     ['k'] + old_colors,
+                     x_vals, x_label, [-5., 15.], False,
+                     'Government Cost Per Year of Life Added',
+                     True, file_base + 'CostPerYear')
+                          
     
     
 def makeValidationFigures(params,use_cohorts):
@@ -209,6 +240,8 @@ def makeValidationFigures(params,use_cohorts):
         type_list = makeMultiTypeSimple(param_dict)
     for this_type in type_list:
         this_type.track_vars.append('MedLvlNow')
+        this_type.track_vars.append('iLvlNow')
+        this_type.track_vars.append('HitCfloor')
         this_type.CalcExpectationFuncs = True
         this_type.DeleteSolution = False
     multiThreadCommandsFake(type_list,['estimationAction()'],num_jobs=5)
@@ -233,6 +266,20 @@ def makeValidationFigures(params,use_cohorts):
     InDataSpan = np.concatenate([this_type.InDataSpanArray for this_type in type_list],axis=1)
     WeightAdj = InDataSpan*WeightHist
     
+    # For each type, calculate the probability that no health investment is purchased at each age
+    # and the probability the 
+    iLvlZeroRate = np.zeros((10,25))
+    HitCfloorRate = np.zeros((10,25))
+    for j in range(10):
+        this_type = type_list[j]
+        iLvlZero = this_type.iLvlNow_hist == 0.
+        HitCfloor = this_type.HitCfloor_hist == 1.
+        iLvlZeroSum = np.sum(iLvlZero*this_type.CumLivPrb_hist,axis=1)
+        HitCfloorSum = np.sum(HitCfloor*this_type.CumLivPrb_hist,axis=1)
+        PopSum = np.sum(this_type.CumLivPrb_hist,axis=1)
+        iLvlZeroRate[j,:] = iLvlZeroSum/PopSum
+        HitCfloorRate[j,:] = HitCfloorSum/PopSum
+    
     # Calculate median (pseudo) bank balances for each type
     bLvl_init_median = np.zeros(10)
     for n in range(10):
@@ -244,8 +291,48 @@ def makeValidationFigures(params,use_cohorts):
     for t in range(15):
         SimHealthPctiles[t,:] = getPercentiles(hLvlHist[t,:],weights=WeightAdj[t,:],percentiles=pctiles)
         
-    # Plot PDV of total medical expenses by health at median wealth at age 69-70 by income quintile and sex
+        
+    # Plot the probability of purchasing zero health investment by age, sex, and income
     colors = ['b','r','g','c','m']
+    AgeVec = np.linspace(67.,95.,num=15)
+    for n in range(5):
+        plt.plot(AgeVec,iLvlZeroRate[n,:15],'-'+colors[n])
+    plt.xlabel('Age')
+    plt.ylabel(r'Prob[$n_{it}=0$]')
+    plt.title('Probability of Buying No Health Investment, Women')
+    plt.legend(['Bottom quintile','Second quintile','Third quintile','Fourth quintile','Top quintile'])
+    plt.savefig('./Figures/ZeroInvstWomen.pdf')
+    plt.show()
+    for n in range(5):
+        plt.plot(AgeVec,iLvlZeroRate[n+5,:15],'-'+colors[n])
+    plt.xlabel('Age')
+    plt.ylabel(r'Prob[$n_{it}=0$]')
+    plt.title('Probability of Buying No Health Investment, Men')
+    plt.savefig('./Figures/ZeroInvstMen.pdf')
+    plt.show()
+    
+    # Plot the probability of hitting the consumption floor by age, sex, and income
+    colors = ['b','r','g','c','m']
+    AgeVec = np.linspace(67.,95.,num=15)
+    for n in range(5):
+        plt.plot(AgeVec,HitCfloorRate[n,:15],'-'+colors[n])
+    plt.xlabel('Age')
+    plt.ylabel(r'Prob[$c_{it}={c}$]')
+    plt.title('Probability of Using Consumption Floor, Women')
+    plt.legend(['Bottom quintile','Second quintile','Third quintile','Fourth quintile','Top quintile'])
+    plt.savefig('./Figures/cFloorWomen.pdf')
+    plt.show()
+    for n in range(5):
+        plt.plot(AgeVec,HitCfloorRate[n+5,:15],'-'+colors[n])
+    plt.xlabel('Age')
+    plt.ylabel(r'Prob[$c_{it}={c}$]')
+    plt.title('Probability of Using Consumption Floor, Men')
+    plt.savefig('./Figures/cFloorMen.pdf')
+    plt.show()
+        
+    
+        
+    # Plot PDV of total medical expenses by health at median wealth at age 69-70 by income quintile and sex
     t = 2
     H = np.linspace(0.0,1.0,201)
     for n in range(5):
@@ -273,6 +360,35 @@ def makeValidationFigures(params,use_cohorts):
     plt.savefig('./Figures/TotalMedPDVbyIncomeMen.pdf')
     plt.show()
     
+    # Plot PDV of OOP medical expenses by health at median wealth at age 69-70 by income quintile and sex
+    colors = ['b','r','g','c','m']
+    t = 2
+    H = np.linspace(0.0,1.0,201)
+    for n in range(5):
+        B = bLvl_init_median[n]*np.ones_like(H)
+        M = type_list[n].solution[t].OOPmedPDVfunc(B,H)
+        plt.plot(H,M,color=colors[n])
+    plt.xlim([0.,1.])
+    plt.ylim([0.,None])
+    plt.xlabel(r'Health capital $h_{it}$')
+    plt.ylabel('PDV OOP medical expenses, $10,000 (y2000)')
+    #plt.legend(['Bottom quintile','Second quintile','Third quintile','Fourth quintile','Top quintile'])
+    plt.title('OOP Medical Expenses by Health and Income, Women')
+    plt.savefig('./Figures/OOPmedPDVbyIncomeWomen.pdf')
+    plt.show()
+    for n in range(5,10):
+        B = bLvl_init_median[n]*np.ones_like(H)
+        M = type_list[n].solution[t].OOPmedPDVfunc(B,H)
+        plt.plot(H,M,color=colors[n-5])
+    plt.xlim([0.,1.])
+    plt.ylim([0.,None])
+    plt.xlabel(r'Health capital $h_{it}$')
+    plt.ylabel('PDV total medical care, $10,000 (y2000)')
+    #plt.legend(['Bottom quintile','Second quintile','Third quintile','Fourth quintile','Top quintile'])
+    plt.title('OOP Medical Expenses by Health and Income, Men')
+    plt.savefig('./Figures/OOPmedPDVbyIncomeMen.pdf')
+    plt.show()
+    
     # Plot life expectancy by health at median wealth at age 69-70 by income quintile and sex
     colors = ['b','r','g','c','m']
     t = 2
@@ -282,7 +398,7 @@ def makeValidationFigures(params,use_cohorts):
         M = type_list[n].solution[t].ExpectedLifeFunc(B,H)
         plt.plot(H,M,color=colors[n])
     plt.xlim([0.,1.])
-    plt.ylim([0.,None])
+    plt.ylim([0.,20.])
     plt.xlabel(r'Health capital $h_{it}$')
     plt.ylabel('Remaining years of life expectancy')
     plt.legend(['Bottom quintile','Second quintile','Third quintile','Fourth quintile','Top quintile'])
@@ -294,7 +410,7 @@ def makeValidationFigures(params,use_cohorts):
         M = type_list[n].solution[t].ExpectedLifeFunc(B,H)
         plt.plot(H,M,color=colors[n-5])
     plt.xlim([0.,1.])
-    plt.ylim([0.,None])
+    plt.ylim([0.,20.])
     plt.xlabel(r'Health capital $h_{it}$')
     plt.ylabel('Remaining years of life expectancy')
     plt.legend(['Bottom quintile','Second quintile','Third quintile','Fourth quintile','Top quintile'])
@@ -311,7 +427,6 @@ def makeValidationFigures(params,use_cohorts):
         DataHealthPctiles[t,:] = getPercentiles(h_temp,percentiles=pctiles)
         
     # Plot deciles of health by by age
-    AgeVec = np.linspace(67.,95.,num=15)
     plt.plot(AgeVec,SimHealthPctiles,'-k')
     plt.plot(AgeVec,DataHealthPctiles,'--k')
     plt.ylim(0.,1.)

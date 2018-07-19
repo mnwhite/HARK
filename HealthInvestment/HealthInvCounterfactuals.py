@@ -446,6 +446,8 @@ def runCounterfactuals(name,Parameters,Policies):
     WTPs = np.zeros(N)
     LifeDiffsByIncome = np.zeros((N,5))
     WTPsByIncome = np.zeros((N,5))
+    GovtDiffsByIncome = np.zeros((N,5))
+    OOPmedDiffsByIncome = np.zeros((N,5))
     
     for n in range(N):
         # Enact the policy for all of the agents
@@ -459,11 +461,15 @@ def runCounterfactuals(name,Parameters,Policies):
         # Calculate differences and store overall means in the arrays
         TotalMedDiff = TotalMedCounterfactual.subtract(TotalMedBaseline)
         OOPmedDiff = OOPmedCounterfactual.subtract(OOPmedBaseline)
+        for i in range(5):
+            OOPmedDiffsByIncome[n,i] = OOPmedDiff.byIncome[i]
         LifeDiff = ExpectedLifeCounterfactual.subtract(ExpectedLifeBaseline)
         MedicareDiff = MedicareCounterfactual.subtract(MedicareBaseline)
         SubsidyDiff = SubsidyCounterfactual.subtract(SubsidyBaseline)
         WelfareDiff = WelfareCounterfactual.subtract(WelfareBaseline)
         GovtDiff = GovtCounterfactual.subtract(GovtBaseline)
+        for i in range(5):
+            GovtDiffsByIncome[n,i] = GovtDiff.byIncome[i]
         TotalMedDiffs[n] = TotalMedDiff.overall
         OOPmedDiffs[n] = OOPmedDiff.overall
         LifeDiffs[n] = LifeDiff.overall
@@ -481,7 +487,7 @@ def runCounterfactuals(name,Parameters,Policies):
     # If there is only one counterfactual policy, return the full set of mean-diffs.
     # If there is more than one, return vectors of overall mean-diffs.
     if len(Policies) > 1:
-        return [TotalMedDiffs, OOPmedDiffs, LifeDiffs, MedicareDiffs, SubsidyDiffs, WelfareDiffs, GovtDiffs, WTPs, LifeDiffsByIncome, WTPsByIncome]
+        return [TotalMedDiffs, OOPmedDiffs, LifeDiffs, MedicareDiffs, SubsidyDiffs, WelfareDiffs, GovtDiffs, WTPs, LifeDiffsByIncome, WTPsByIncome, GovtDiffsByIncome, OOPmedDiffsByIncome]
     else:
         return [TotalMedDiff, OOPmedDiff, LifeDiff, MedicareDiff, SubsidyDiff, WelfareDiff, GovtDiff, WTPcounterfactual, ExpectedLifeBaseline]
     
@@ -571,6 +577,8 @@ def runOptimalPolicies(name, Parameters, LifePriceVec):
     WTPs = np.zeros(N)
     LifeDiffsByIncome = np.zeros((N,5))
     WTPsByIncome = np.zeros((N,5))
+    GovtDiffsByIncome = np.zeros((N,5))
+    OOPmedDiffsByIncome = np.zeros((N,5))
     
     # Loop through the values of LifePriceVec and fill in the output
     for n in range(N):
@@ -579,6 +587,8 @@ def runOptimalPolicies(name, Parameters, LifePriceVec):
         
         TotalMedDiffs[n] = TotalMedDiff.overall
         OOPmedDiffs[n] = OOPmedDiff.overall
+        for i in range(5):
+            OOPmedDiffsByIncome[n,i] = OOPmedDiff.byIncome[i]
         LifeDiffs[n] = LifeDiff.overall
         for i in range(5):
             LifeDiffsByIncome[n,i] = LifeDiff.byIncome[i]
@@ -586,12 +596,14 @@ def runOptimalPolicies(name, Parameters, LifePriceVec):
         SubsidyDiffs[n] = SubsidyDiff.overall
         WelfareDiffs[n] = WelfareDiff.overall
         GovtDiffs[n] = GovtDiff.overall
+        for i in range(5):
+            GovtDiffsByIncome[n,i] = GovtDiff.byIncome[i]
         WTPs[n] = WTPcounterfactual.overall
         for i in range(5):
             WTPsByIncome[n,i] = WTPcounterfactual.byIncome[i]
         print('Finished counterfactual policy ' + str(n+1) + ' of ' + str(N) + ' for ' + name +  '.')
         
-    return [TotalMedDiffs, OOPmedDiffs, LifeDiffs, MedicareDiffs, SubsidyDiffs, WelfareDiffs, GovtDiffs, WTPs, LifeDiffsByIncome, WTPsByIncome]
+    return [TotalMedDiffs, OOPmedDiffs, LifeDiffs, MedicareDiffs, SubsidyDiffs, WelfareDiffs, GovtDiffs, WTPs, LifeDiffsByIncome, WTPsByIncome, GovtDiffsByIncome, OOPmedDiffsByIncome]
 
 
 if __name__ == '__main__':
@@ -622,7 +634,7 @@ if __name__ == '__main__':
     if run_universal:
         # Run an experiment in which a direct universal subsidy is used
         PolicyList = []
-        SubsidyVec = np.linspace(0,0.6,N_policies)
+        SubsidyVec = np.linspace(0.0,0.6,N_policies)
         for x in SubsidyVec:
             PolicyList.append(SubsidyPolicy(Subsidy0=10*[x],Subsidy1=10*[0.0]))
         t_start = clock()
@@ -634,7 +646,7 @@ if __name__ == '__main__':
     if run_preventive:
         # Run an experiment in which only preventive care is subsidized
         PolicyList = []
-        SubsidyVec = np.linspace(0,0.6,N_policies)
+        SubsidyVec = np.linspace(0.0,0.6,N_policies)
         for x in SubsidyVec:
             PolicyList.append(SubsidyPolicy(Subsidy0=10*[x], SubsidyHealthCutoff=10*[0.5], PreventiveSubsidy=10*[True]))
         t_start = clock()
@@ -646,7 +658,7 @@ if __name__ == '__main__':
     if run_curative:
         # Run an experiment in which only curative care is subsidized
         PolicyList = []
-        SubsidyVec = np.linspace(0,0.6,N_policies)
+        SubsidyVec = np.linspace(0.0,0.6,N_policies)
         for x in SubsidyVec:
             PolicyList.append(SubsidyPolicy(Subsidy0=10*[x], SubsidyHealthCutoff=10*[0.5], PreventiveSubsidy=10*[False]))
         t_start = clock()
