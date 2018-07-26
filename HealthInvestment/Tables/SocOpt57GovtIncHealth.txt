@@ -1,0 +1,19 @@
+\begin{table} 
+ \caption{Change in PDV of Total Government Expenses by Income and Health, Socially optimal policy, $\pi_L=\$57,500$}
+ \label{table:SocOpt57GovtIH}
+\centering 
+\begin{tabular}{l c c c c c} 
+\hline \hline 
+Income & \multicolumn{5}{c}{Range of Health $h$} \\ 
+Quintile & $(0,0.25]$ & $(0.25,0.5]$ & $(0.5,0.75]$ & $(0.75,1.0]$ & All \\ 
+\hline 
+Bottom & \$-78 & \$101 & \$548 & \$1895 & \$385 \\ 
+Second & \$1270 & \$1742 & \$3423 & \$5134 & \$3155 \\ 
+Third  & \$1057 & \$3610 & \$6608 & \$10123 & \$7288 \\ 
+Fourth & \$-2466 & \$-652 & \$1455 & \$4653 & \$2011 \\ 
+Top    & \$-14248 & \$-15300 & \$-13879 & \$-12419 & \$-13934\\ 
+\hline 
+All    & \$-882 & \$-992 & \$-139 & \$1213 & \$-40 \\ 
+\hline \hline 
+\end{tabular} 
+\end{table} 

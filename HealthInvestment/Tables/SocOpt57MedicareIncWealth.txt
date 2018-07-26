@@ -1,0 +1,17 @@
+\begin{table} 
+ \caption{Change in PDV of Medicare Costs by Income and Wealth, Socially optimal policy, $\pi_L=\$57,500$}
+ \label{table:SocOpt57MedicareIW} 
+\centering 
+\begin{tabular}{l c c c c c} 
+\hline \hline 
+Income & \multicolumn{5}{c}{Wealth Quintile} \\ 
+Quintile & Bottom & Second & Third & Fourth & Top \\ 
+\hline 
+Bottom & \$0 & \$0 & \$0 & \$41 & \$954 \\ 
+Second & \$1085 & \$1319 & \$1389 & \$1579 & \$6326 \\ 
+Third  & \$4141 & \$4724 & \$5029 & \$5821 & \$7136 \\ 
+Fourth & \$-45 & \$589 & \$805 & \$1658 & \$1802 \\ 
+Top    & \$-6320 & \$-6786 & \$-5497 & \$-6092 & \$-6250 \\ 
+\hline \hline 
+\end{tabular} 
+\end{table} 

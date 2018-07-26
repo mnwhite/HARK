@@ -1,0 +1,17 @@
+\begin{table} 
+ \caption{Change in Remaining Life Expectancy (Years) by Income and Wealth, Socially optimal policy, $\pi_L=\$57,500$}
+ \label{table:SocOpt57ExpLifeIW} 
+\centering 
+\begin{tabular}{l c c c c c} 
+\hline \hline 
+Income & \multicolumn{5}{c}{Wealth Quintile} \\ 
+Quintile & Bottom & Second & Third & Fourth & Top \\ 
+\hline 
+Bottom & 0.00 & -0.00 & 0.00 & 0.01 & 0.12 \\ 
+Second & 0.15 & 0.18 & 0.15 & 0.18 & 0.49 \\ 
+Third  & 0.72 & 0.64 & 0.58 & 0.44 & 0.35 \\ 
+Fourth & 0.05 & 0.07 & 0.09 & 0.10 & 0.10 \\ 
+Top    & -0.18 & -0.14 & -0.11 & -0.10 & -0.07 \\ 
+\hline \hline 
+\end{tabular} 
+\end{table} 

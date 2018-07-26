@@ -1,0 +1,19 @@
+\begin{table} 
+ \caption{Change in PDV of Welfare Payments by Income and Health, Socially optimal policy, $\pi_L=\$57,500$}
+ \label{table:SocOpt57WelfareIH}
+\centering 
+\begin{tabular}{l c c c c c} 
+\hline \hline 
+Income & \multicolumn{5}{c}{Range of Health $h$} \\ 
+Quintile & $(0,0.25]$ & $(0.25,0.5]$ & $(0.5,0.75]$ & $(0.75,1.0]$ & All \\ 
+\hline 
+Bottom & \$-20 & \$-7 & \$-35 & \$-160 & \$-31 \\ 
+Second & \$-28 & \$-110 & \$-250 & \$-277 & \$-150 \\ 
+Third  & \$-405 & \$-879 & \$-1378 & \$-1798 & \$-1113 \\ 
+Fourth & \$76 & \$26 & \$-38 & \$-109 & \$-51 \\ 
+Top    & \$128 & \$122 & \$131 & \$94 & \$100\\ 
+\hline 
+All    & \$-65 & \$-196 & \$-348 & \$-465 & \$-260 \\ 
+\hline \hline 
+\end{tabular} 
+\end{table} 

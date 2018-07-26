@@ -1,0 +1,17 @@
+\begin{table} 
+ \caption{Change in PDV of OOP Medical Expenses by Income and Wealth, Socially optimal policy, $\pi_L=\$57,500$}
+ \label{table:SocOpt57OOPmedIW} 
+\centering 
+\begin{tabular}{l c c c c c} 
+\hline \hline 
+Income & \multicolumn{5}{c}{Wealth Quintile} \\ 
+Quintile & Bottom & Second & Third & Fourth & Top \\ 
+\hline 
+Bottom & \$0 & \$0 & \$0 & \$-18 & \$-115 \\ 
+Second & \$15 & \$73 & \$31 & \$-10 & \$-844 \\ 
+Third  & \$336 & \$-38 & \$-201 & \$-722 & \$-1650 \\ 
+Fourth & \$21 & \$-166 & \$-166 & \$-486 & \$-433 \\ 
+Top    & \$3808 & \$5517 & \$4452 & \$5807 & \$7803 \\ 
+\hline \hline 
+\end{tabular} 
+\end{table} 

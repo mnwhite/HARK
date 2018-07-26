@@ -1,0 +1,19 @@
+\begin{table} 
+ \caption{PDV of Direct Subsidy Expenses by Income and Health, Socially optimal policy, $\pi_L=\$57,500$}
+ \label{table:SocOpt57SubsidyIH}
+\centering 
+\begin{tabular}{l c c c c c} 
+\hline \hline 
+Income & \multicolumn{5}{c}{Range of Health $h$} \\ 
+Quintile & $(0,0.25]$ & $(0.25,0.5]$ & $(0.5,0.75]$ & $(0.75,1.0]$ & All \\ 
+\hline 
+Bottom & \$1 & \$42 & \$234 & \$869 & \$176 \\ 
+Second & \$267 & \$476 & \$1138 & \$1985 & \$1011 \\ 
+Third  & \$506 & \$1386 & \$2740 & \$4461 & \$3023 \\ 
+Fourth & \$-755 & \$-150 & \$837 & \$2314 & \$1074 \\ 
+Top    & \$-7642 & \$-8654 & \$-7787 & \$-7036 & \$-7833\\ 
+\hline 
+All    & \$-483 & \$-774 & \$-448 & \$166 & \$-413 \\ 
+\hline \hline 
+\end{tabular} 
+\end{table} 

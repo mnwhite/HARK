@@ -544,5 +544,5 @@ def makeCounterfactualSummaryTables(means,spec_name,file_base,label):
     
     for i in range(8):
         makeCounterfactualSummaryTablesOneVar(means[i],var_names[i],spec_name, file_base + var_codes[i], label + var_codes[i],convert[i])
-    makeTableBySexIncHealth(means[8], var_names[8], var_codes[8], label + var_codes[8], convert[8])
+    #makeTableBySexIncHealth(means[8], var_names[8], var_codes[8], label + var_codes[8], convert[8])
           

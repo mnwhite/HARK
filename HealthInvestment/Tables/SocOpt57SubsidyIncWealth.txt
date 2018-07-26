@@ -1,0 +1,17 @@
+\begin{table} 
+ \caption{PDV of Direct Subsidy Expenses by Income and Wealth, Socially optimal policy, $\pi_L=\$57,500$}
+ \label{table:SocOpt57SubsidyIW} 
+\centering 
+\begin{tabular}{l c c c c c} 
+\hline \hline 
+Income & \multicolumn{5}{c}{Wealth Quintile} \\ 
+Quintile & Bottom & Second & Third & Fourth & Top \\ 
+\hline 
+Bottom & \$0 & \$0 & \$0 & \$53 & \$684 \\ 
+Second & \$367 & \$357 & \$416 & \$572 & \$3508 \\ 
+Third  & \$1671 & \$2426 & \$2664 & \$3429 & \$4873 \\ 
+Fourth & \$328 & \$758 & \$938 & \$1585 & \$1658 \\ 
+Top    & \$-6144 & \$-7978 & \$-6475 & \$-8048 & \$-10061 \\ 
+\hline \hline 
+\end{tabular} 
+\end{table} 

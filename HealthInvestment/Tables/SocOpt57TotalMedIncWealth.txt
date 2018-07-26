@@ -1,0 +1,17 @@
+\begin{table} 
+ \caption{Change in PDV of Total Medical Expenses by Income and Wealth, Socially optimal policy, $\pi_L=\$57,500$}
+ \label{table:SocOpt57TotalMedIW} 
+\centering 
+\begin{tabular}{l c c c c c} 
+\hline \hline 
+Income & \multicolumn{5}{c}{Wealth Quintile} \\ 
+Quintile & Bottom & Second & Third & Fourth & Top \\ 
+\hline 
+Bottom & \$0 & \$0 & \$0 & \$53 & \$1415 \\ 
+Second & \$1388 & \$1661 & \$1769 & \$2037 & \$8559 \\ 
+Third  & \$4368 & \$5722 & \$6278 & \$7837 & \$9906 \\ 
+Fourth & \$245 & \$1134 & \$1516 & \$2705 & \$2987 \\ 
+Top    & \$-8450 & \$-9137 & \$-7413 & \$-8267 & \$-8477 \\ 
+\hline \hline 
+\end{tabular} 
+\end{table} 

@@ -948,24 +948,26 @@ def objectiveFunctionWrapper(param_vec):
 
 if __name__ == '__main__':
 
-#    i=0
+#    i=5
 #    param_dict = convertVecToDict(Params.test_param_vec)
 #    MyTypes = makeMultiTypeSimple(param_dict)
 #    t_start = clock()
 #    MyTypes[i].estimationAction()
 #    t_end = clock()
 #    print('Processing one agent type took ' + str(t_end-t_start) + ' seconds.')
-
-#    t=0
-#    bMax = 100.
-#    MyTypes[i].plotxFuncByHealth(t,Dev=0.,bMax=bMax)
-#    MyTypes[i].plotxFuncByMedShk(t,hLvl=0.9,bMax=bMax)
-#    MyTypes[i].plotcFuncByHealth(t,Dev=0.,bMax=bMax)
-#    MyTypes[i].plotcFuncByMedShk(t,hLvl=0.9,bMax=bMax)
-#    MyTypes[i].plotMedFuncByHealth(t,Dev=0.,bMax=bMax)
-#    MyTypes[i].plotMedFuncByMedShk(t,hLvl=0.9,bMax=bMax)
-#    MyTypes[i].plotiFuncByHealth(t,Dev=0.,bMax=bMax)
-#    MyTypes[i].plotiFuncByMedShk(t,hLvl=0.9,bMax=bMax)
+#
+#    t = 15
+#    h = 0.5
+#    d = 0.
+#    bMax = 20.
+#    MyTypes[i].plotxFuncByHealth(t,Dev=d,bMax=bMax)
+#    MyTypes[i].plotxFuncByMedShk(t,hLvl=h,bMax=bMax)
+#    MyTypes[i].plotcFuncByHealth(t,Dev=d,bMax=bMax)
+#    MyTypes[i].plotcFuncByMedShk(t,hLvl=h,bMax=bMax)
+#    MyTypes[i].plotMedFuncByHealth(t,Dev=d,bMax=bMax)
+#    MyTypes[i].plotMedFuncByMedShk(t,hLvl=h,bMax=bMax)
+#    MyTypes[i].plotiFuncByHealth(t,Dev=d,bMax=bMax)
+#    MyTypes[i].plotiFuncByMedShk(t,hLvl=d,bMax=bMax)
 #    MyTypes[i].plotvFuncByHealth(t,bMax=bMax)
 #    MyTypes[i].plotdvdbFuncByHealth(t,bMax=bMax)
 #    #MyTypes[i].plotdvdhFuncByHealth(t,bMax=bMax)
@@ -1004,9 +1006,9 @@ if __name__ == '__main__':
 
 
     # Choose what kind of work to do:
-    test_obj_func = True
-    plot_model_fit = True
-    save_figs = True
+    test_obj_func = False
+    plot_model_fit = False
+    save_figs = False
     perturb_one_param = False
     perturb_two_params = False
     estimate_model = False

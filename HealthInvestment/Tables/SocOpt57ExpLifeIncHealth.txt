@@ -1,0 +1,19 @@
+\begin{table} 
+ \caption{Change in Remaining Life Expectancy (Years) by Income and Health, Socially optimal policy, $\pi_L=\$57,500$}
+ \label{table:SocOpt57ExpLifeIH}
+\centering 
+\begin{tabular}{l c c c c c} 
+\hline \hline 
+Income & \multicolumn{5}{c}{Range of Health $h$} \\ 
+Quintile & $(0,0.25]$ & $(0.25,0.5]$ & $(0.5,0.75]$ & $(0.75,1.0]$ & All \\ 
+\hline 
+Bottom & -0.01 & 0.01 & 0.04 & 0.17 & 0.03 \\ 
+Second & 0.07 & 0.15 & 0.28 & 0.34 & 0.23 \\ 
+Third  & 0.13 & 0.34 & 0.57 & 0.84 & 0.55 \\ 
+Fourth & -0.04 & 0.00 & 0.05 & 0.15 & 0.08 \\ 
+Top    & -0.11 & -0.11 & -0.12 & -0.11 & -0.12\\ 
+\hline 
+All    & 0.02 & 0.09 & 0.18 & 0.26 & 0.16 \\ 
+\hline \hline 
+\end{tabular} 
+\end{table} 

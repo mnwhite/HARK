@@ -1,0 +1,19 @@
+\begin{table} 
+ \caption{Willingness to Pay for Policy by Income and Health, Socially optimal policy, $\pi_L=\$57,500$}
+ \label{table:SocOpt57WTPIH}
+\centering 
+\begin{tabular}{l c c c c c} 
+\hline \hline 
+Income & \multicolumn{5}{c}{Range of Health $h$} \\ 
+Quintile & $(0,0.25]$ & $(0.25,0.5]$ & $(0.5,0.75]$ & $(0.75,1.0]$ & All \\ 
+\hline 
+Bottom & \$45 & \$1 & \$-37 & \$-145 & \$-26 \\ 
+Second & \$18 & \$-62 & \$144 & \$595 & \$168 \\ 
+Third  & \$96 & \$528 & \$1101 & \$1710 & \$1280 \\ 
+Fourth & \$-739 & \$-275 & \$467 & \$1541 & \$619 \\ 
+Top    & \$-7900 & \$-8819 & \$-7825 & \$-7025 & \$-7908\\ 
+\hline 
+All    & \$-612 & \$-1131 & \$-1142 & \$-946 & \$-1093 \\ 
+\hline \hline 
+\end{tabular} 
+\end{table} 

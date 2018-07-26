@@ -9,7 +9,7 @@ import csv
 from MakeTables import makeInsuranceTable, makeHealthProbitTable
 
 # Choose state grid sizes and bounds (exogenously chosen)
-Hcount = 16
+Hcount = 20
 aXtraCount = 48
 hCount = 2*(Hcount-1)+1
 bNrmCount = 2*aXtraCount

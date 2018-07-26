@@ -201,6 +201,14 @@ def makeCounterfactualFigures(data,x_vals,x_label,title_base,file_base):
                      'Change in PDV of Per Capita OOP Medical Costs by Income',
                      True, file_base + 'OOPchangeByInc')
     
+    # Plot total medical care by income
+    makeSimpleFigure([data[12][:,i] for i in range(5)],
+                     quintile_names,
+                     old_colors,
+                     x_vals, x_label, [None, None], False,
+                     'Change in PDV of Per Capita Total Medical Costs by Income',
+                     True, file_base + 'TotalMedChangeByInc')
+    
     # Plot government cost per additional additional year of life
     CostPerYear = data[6]/data[2]
     CostPerYear[data[2] < 0.] = np.nan
@@ -340,7 +348,7 @@ def makeValidationFigures(params,use_cohorts):
         M = type_list[n].solution[t].TotalMedPDVfunc(B,H)
         plt.plot(H,M,color=colors[n])
     plt.xlim([0.,1.])
-    plt.ylim([0.,None])
+    plt.ylim([0.,17])
     plt.xlabel(r'Health capital $h_{it}$')
     plt.ylabel('PDV total medical care, $10,000 (y2000)')
     plt.legend(['Bottom quintile','Second quintile','Third quintile','Fourth quintile','Top quintile'])
@@ -352,10 +360,10 @@ def makeValidationFigures(params,use_cohorts):
         M = type_list[n].solution[t].TotalMedPDVfunc(B,H)
         plt.plot(H,M,color=colors[n-5])
     plt.xlim([0.,1.])
-    plt.ylim([0.,None])
+    plt.ylim([0.,17])
     plt.xlabel(r'Health capital $h_{it}$')
     plt.ylabel('PDV total medical care, $10,000 (y2000)')
-    plt.legend(['Bottom quintile','Second quintile','Third quintile','Fourth quintile','Top quintile'])
+    #plt.legend(['Bottom quintile','Second quintile','Third quintile','Fourth quintile','Top quintile'])
     plt.title('Total Medical Expenses by Health and Income, Men')
     plt.savefig('./Figures/TotalMedPDVbyIncomeMen.pdf')
     plt.show()
@@ -369,7 +377,7 @@ def makeValidationFigures(params,use_cohorts):
         M = type_list[n].solution[t].OOPmedPDVfunc(B,H)
         plt.plot(H,M,color=colors[n])
     plt.xlim([0.,1.])
-    plt.ylim([0.,None])
+    plt.ylim([0.,3.5])
     plt.xlabel(r'Health capital $h_{it}$')
     plt.ylabel('PDV OOP medical expenses, $10,000 (y2000)')
     #plt.legend(['Bottom quintile','Second quintile','Third quintile','Fourth quintile','Top quintile'])
@@ -381,7 +389,7 @@ def makeValidationFigures(params,use_cohorts):
         M = type_list[n].solution[t].OOPmedPDVfunc(B,H)
         plt.plot(H,M,color=colors[n-5])
     plt.xlim([0.,1.])
-    plt.ylim([0.,None])
+    plt.ylim([0.,3.5])
     plt.xlabel(r'Health capital $h_{it}$')
     plt.ylabel('PDV total medical care, $10,000 (y2000)')
     #plt.legend(['Bottom quintile','Second quintile','Third quintile','Fourth quintile','Top quintile'])
@@ -653,6 +661,61 @@ def makeValidationFigures(params,use_cohorts):
     plt.legend(['Estimated health production function','Pointwise 95% confidence bounds'],loc=4)
     plt.savefig('./Figures/HealthProdFunc.pdf')
     plt.show()
+    
+    
+def makeCopayFigures(TypeList, filename, title_text=''):
+    '''
+    Make plots of baseline and counterfactual coinsurance rates by health and
+    type at ages 65, 75, and 85.
+    
+    Parameters
+    ----------
+    TypeList : [AgentType]
+        List of ten types of agents used in the counterfactuals.
+    filename : str
+        Base of name of file to save figures as PDFs.
+    title_text : str
+        Additional text in title of figures.
+        
+    Returns
+    -------
+    None
+    '''
+    income_colors = ['b','r','g','c','m']
+    Ages = [0,5,10]
+    HealthVec = np.linspace(0.,1.,200)
+    
+    for j in Ages:
+        Age = 65 + 2*j
+        
+        # Plot baseline and counterfactual coinsurance rate for women by income and health
+        for i in range(5):
+            plt.plot(HealthVec, TypeList[i].CopayInvstFunc[j](HealthVec), '-'+income_colors[i])
+        for i in range(5):
+            plt.plot(HealthVec, TypeList[i].CopayMedFunc[j](HealthVec), '--'+income_colors[i])
+        plt.xlim([0.,1.])
+        plt.ylim([0.,1.02])
+        plt.xlabel(r'Health capital $h_{it}$')
+        plt.ylabel(r'Coinsurance rate $q_{it}$')
+        plt.title(r'Coinsurance rates for women at age ' + str(Age) + ', ' + title_text)
+        if j==0:
+            plt.legend(['Bottom quintile','Second quintile','Third quintile','Fourth quintile','Top quintile'],loc=2)
+        plt.savefig('./Figures/' + filename + 'CopayWomen' + str(Age) + '.pdf')
+        plt.show()
+        
+        # Plot baseline and counterfactual coinsurance rate for men by income and health
+        for i in range(5):
+            plt.plot(HealthVec, TypeList[i+5].CopayInvstFunc[j](HealthVec), '-'+income_colors[i])
+        for i in range(5):
+            plt.plot(HealthVec, TypeList[i+5].CopayMedFunc[j](HealthVec), '--'+income_colors[i])
+            plt.xlim([0.,1.])
+        plt.ylim([0.,1.02])
+        plt.xlabel(r'Health capital $h_{it}$')
+        plt.ylabel(r'Coinsurance rate $q_{it}$')
+        plt.title(r'Coinsurance rates for men at age ' + str(Age) + ', ' + title_text)
+        #plt.legend(['Bottom quintile','Second quintile','Third quintile','Fourth quintile','Top quintile'],loc=2)
+        plt.savefig('./Figures/' + filename + 'CopayMen' + str(Age) + '.pdf')
+        plt.show()
     
 
 

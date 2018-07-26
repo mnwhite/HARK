@@ -1,0 +1,17 @@
+\begin{table} 
+ \caption{Change in PDV of Welfare Payments by Income and Wealth, Socially optimal policy, $\pi_L=\$57,500$}
+ \label{table:SocOpt57WelfareIW} 
+\centering 
+\begin{tabular}{l c c c c c} 
+\hline \hline 
+Income & \multicolumn{5}{c}{Wealth Quintile} \\ 
+Quintile & Bottom & Second & Third & Fourth & Top \\ 
+\hline 
+Bottom & \$0 & \$0 & \$0 & \$-23 & \$-108 \\ 
+Second & \$-80 & \$-88 & \$-67 & \$-104 & \$-432 \\ 
+Third  & \$-1780 & \$-1390 & \$-1215 & \$-690 & \$-453 \\ 
+Fourth & \$-60 & \$-47 & \$-60 & \$-52 & \$-40 \\ 
+Top    & \$206 & \$109 & \$106 & \$65 & \$31 \\ 
+\hline \hline 
+\end{tabular} 
+\end{table} 

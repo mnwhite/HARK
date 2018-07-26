@@ -1,0 +1,19 @@
+\begin{table} 
+ \caption{Change in PDV of Total Medical Expenses by Income and Health, Socially optimal policy, $\pi_L=\$57,500$}
+ \label{table:SocOpt57TotalMedIH}
+\centering 
+\begin{tabular}{l c c c c c} 
+\hline \hline 
+Income & \multicolumn{5}{c}{Range of Health $h$} \\ 
+Quintile & $(0,0.25]$ & $(0.25,0.5]$ & $(0.5,0.75]$ & $(0.75,1.0]$ & All \\ 
+\hline 
+Bottom & \$-90 & \$89 & \$497 & \$1718 & \$353 \\ 
+Second & \$1241 & \$1729 & \$3288 & \$4682 & \$3018 \\ 
+Third  & \$1023 & \$3526 & \$6325 & \$9620 & \$6826 \\ 
+Fourth & \$-2046 & \$-469 & \$1208 & \$3909 & \$1758 \\ 
+Top    & \$-8644 & \$-8918 & \$-8395 & \$-7485 & \$-8369\\ 
+\hline 
+All    & \$-454 & \$-126 & \$773 & \$2112 & \$850 \\ 
+\hline \hline 
+\end{tabular} 
+\end{table} 

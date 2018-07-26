@@ -1,0 +1,17 @@
+\begin{table} 
+ \caption{Change in PDV of Total Government Expenses by Income and Wealth, Socially optimal policy, $\pi_L=\$57,500$}
+ \label{table:SocOpt57GovtIW} 
+\centering 
+\begin{tabular}{l c c c c c} 
+\hline \hline 
+Income & \multicolumn{5}{c}{Wealth Quintile} \\ 
+Quintile & Bottom & Second & Third & Fourth & Top \\ 
+\hline 
+Bottom & \$0 & \$0 & \$0 & \$71 & \$1530 \\ 
+Second & \$1373 & \$1588 & \$1738 & \$2047 & \$9402 \\ 
+Third  & \$4031 & \$5760 & \$6478 & \$8559 & \$11556 \\ 
+Fourth & \$223 & \$1300 & \$1683 & \$3191 & \$3420 \\ 
+Top    & \$-12258 & \$-14654 & \$-11866 & \$-14075 & \$-16280 \\ 
+\hline \hline 
+\end{tabular} 
+\end{table} 

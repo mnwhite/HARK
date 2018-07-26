@@ -1,0 +1,17 @@
+\begin{table} 
+ \caption{Willingness to Pay for Policy by Income and Wealth, Socially optimal policy, $\pi_L=\$57,500$}
+ \label{table:SocOpt57WTPIW} 
+\centering 
+\begin{tabular}{l c c c c c} 
+\hline \hline 
+Income & \multicolumn{5}{c}{Wealth Quintile} \\ 
+Quintile & Bottom & Second & Third & Fourth & Top \\ 
+\hline 
+Bottom & \$0 & \$0 & \$0 & \$13 & \$-119 \\ 
+Second & \$38 & \$27 & \$75 & \$-9 & \$743 \\ 
+Third  & \$523 & \$916 & \$977 & \$1473 & \$2469 \\ 
+Fourth & \$35 & \$435 & \$498 & \$1043 & \$1012 \\ 
+Top    & \$-6522 & \$-8297 & \$-6399 & \$-7956 & \$-9939 \\ 
+\hline \hline 
+\end{tabular} 
+\end{table} 

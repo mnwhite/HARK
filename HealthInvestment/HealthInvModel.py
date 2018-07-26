@@ -554,7 +554,7 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,CRRAmed,IncomeNext,IncomeNo
     # Use a fixed point loop to find optimal health investment (unconstrained).
     # Coinsurance rate appears in the FOC for iLvl, but it depends on hLvl.
     # Need to do a search for iLvl,hLvl that satisfies the FOC and transition equation.
-    tol = 1e-5
+    tol = 1e-6
     LoopCount = 0
     MaxLoops = 20
     diff = np.ones_like(MargValueRatio)
@@ -1443,7 +1443,7 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
             CopaySocOpt = dvdH/(dvda*dWdH) # coinsurance rate that *would have* made agent choose "socially optimal" health investment  
             CopaySocOpt[CopaySocOpt > 1.] = 1.
             CopaySocOpt[dvdH < 0.] = np.nan
-            CopaySocOpt[dWdH < 0.] = np.nan
+            CopaySocOpt[dWdH < 0.] = 1.0
             
             # Store socially optimal values
             self.iLvlSocOpt = iLvlSocOpt
