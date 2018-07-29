@@ -948,7 +948,7 @@ def objectiveFunctionWrapper(param_vec):
 
 if __name__ == '__main__':
 
-#    i=5
+#    i=0
 #    param_dict = convertVecToDict(Params.test_param_vec)
 #    MyTypes = makeMultiTypeSimple(param_dict)
 #    t_start = clock()
@@ -956,8 +956,8 @@ if __name__ == '__main__':
 #    t_end = clock()
 #    print('Processing one agent type took ' + str(t_end-t_start) + ' seconds.')
 #
-#    t = 15
-#    h = 0.5
+#    t = 0
+#    h = 0.6
 #    d = 0.
 #    bMax = 20.
 #    MyTypes[i].plotxFuncByHealth(t,Dev=d,bMax=bMax)
@@ -1006,9 +1006,9 @@ if __name__ == '__main__':
 
 
     # Choose what kind of work to do:
-    test_obj_func = False
-    plot_model_fit = False
-    save_figs = False
+    test_obj_func = True
+    plot_model_fit = True
+    save_figs = True
     perturb_one_param = False
     perturb_two_params = False
     estimate_model = False
@@ -1079,6 +1079,17 @@ if __name__ == '__main__':
         plt.title('Out-of-pocket medical spending by income and wealth quintile, [7(b)]')
         if save_figs:
             plt.savefig('./Figures/OOPcoeffByIncWealth.pdf')
+        plt.show()
+        
+        # Make the same figure but with data moments only (and dashed lines)
+        for i in range(5):
+            plt.plot(np.arange(1,6),Data.AvgOOPResidualByIncWealth[i,:], '--' + income_colors[i])
+        plt.xlabel('Wealth quintile')
+        plt.ylabel(r'Coeff on income-wealth quintile $\daleth_d[k,\ell]$, \$10k')
+        plt.xticks(np.arange(1,6),['Bottom','Second','Third','Fourth','Top'])
+        plt.title('"Residual OOP" coefficients by income and wealth quintile')
+        if save_figs:
+            plt.savefig('./Figures/OOPcoeffByIncWealthDataOnly.pdf')
         plt.show()
         
         # Plot model fit of mean out of pocket medical spending by age-income

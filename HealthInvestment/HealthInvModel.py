@@ -635,9 +635,10 @@ def solveHealthInvestment(solution_next,CRRA,DiscFac,CRRAmed,IncomeNext,IncomeNo
     while (points_left > 0) and (LoopCount < MaxLoops):
         hGuess = hCnst[these] # Get current guess of beginning of period health
         x = xLvlArrayCnst[these] # Get relevant expenditure values
+        EffPriceMed = MedPrice*CopayMedFunc(hGuess) # Calculate effective coinsurance rate
         EffPriceInvst = MedPrice*CopayInvstFunc(hGuess) # Calculate effective coinsurance rate
         Shk = np.exp(MedShkMeanFunc(hGuess) + DevArrayCnst[these]*MedShkStdFunc(hGuess))
-        q = np.exp(-bFromxFunc(x,EffPriceInvst*Shk)) # Get transformed consumption shares
+        q = np.exp(-bFromxFunc(x,EffPriceMed*Shk)) # Get transformed consumption shares
         cLvl = x/(1. + q) # Calculate consumption given expenditure and transformed consumption share
         dvdH = EndOfPrddvdHCnstAdj[these] # Get relevant end of period marginal value of post-health
         ImpliedMargHealthProd = uP(cLvl)*EffPriceInvst/dvdH # Calculate what the marginal product of health investment must be for cLvl to be optimal
@@ -1646,8 +1647,8 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         B = np.linspace(bMin,bMax,300)
         some_ones = np.ones_like(B)
         for hLvl in hSet:
-            #MedShk = np.exp(self.MedShkMeanFunc[t](hLvl) + Dev*self.MedShkStdFunc(hLvl))
-            I = self.solution[t].PolicyFunc.iFunc(B,hLvl*some_ones,Dev*some_ones)
+            MedShk = np.exp(self.MedShkMeanFunc[t](hLvl) + Dev*self.MedShkStdFunc(hLvl))
+            I = self.solution[t].PolicyFunc.iFunc(B,hLvl*some_ones,MedShk*some_ones)
             plt.plot(B,I)
         plt.xlabel('Market resources bLvl')
         plt.ylabel('Investment level iLvl')
@@ -1675,8 +1676,8 @@ class HealthInvestmentConsumerType(IndShockConsumerType):
         B = np.linspace(bMin,bMax,300)
         some_ones = np.ones_like(B)
         for Dev in DevSet:
-            #MedShk = np.exp(self.MedShkMeanFunc[t](hLvl) + Dev*self.MedShkStdFunc(hLvl))
-            I = self.solution[t].PolicyFunc.iFunc(B,hLvl*some_ones,Dev*some_ones)
+            MedShk = np.exp(self.MedShkMeanFunc[t](hLvl) + Dev*self.MedShkStdFunc(hLvl))
+            I = self.solution[t].PolicyFunc.iFunc(B,hLvl*some_ones,MedShk*some_ones)
             plt.plot(B,I)
         plt.xlabel('Market resources bLvl')
         plt.ylabel('Investment level iLvl')

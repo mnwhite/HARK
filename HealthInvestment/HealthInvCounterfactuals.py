@@ -611,8 +611,8 @@ if __name__ == '__main__':
     run_universal   = False
     run_preventive  = False
     run_curative    = False
-    run_flat_copay  = False
-    run_optimal     = True
+    run_flat_copay  = True
+    run_optimal     = False
     N_policies      = 51
     
     

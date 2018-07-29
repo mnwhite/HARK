@@ -337,6 +337,40 @@ def makeValidationFigures(params,use_cohorts):
     plt.title('Probability of Using Consumption Floor, Men')
     plt.savefig('./Figures/cFloorMen.pdf')
     plt.show()
+    
+    # Plot health investment as a function of market resources by type, holding h and Dev fixed
+    B = np.linspace(0.,50.,201)
+    some_ones = np.ones_like(B)
+    hLvl = 0.6
+    Dev = 0.0
+    t = 0
+    Age = str(65 + 2*t)
+    for i in range(5):
+        this_type = type_list[i]
+        MedShk = np.exp(this_type.MedShkMeanFunc[t](hLvl) + Dev*this_type.MedShkStdFunc(hLvl))
+        I = np.maximum(this_type.solution[t].PolicyFunc.iFunc(B,hLvl*some_ones,MedShk*some_ones),0.0)
+        plt.plot(B,I,'-'+colors[i])
+    plt.xlabel(r'Bank balances $b_{it}$, \$10,000 (y2000)')
+    plt.ylabel(r'Health investment $n_{it}$, \$10,000 (y2000)')
+    plt.xlim([0.,50.])
+    plt.ylim([-0.01,0.65])
+    #plt.legend(['Bottom quintile','Second quintile','Third quintile','Fourth quintile','Top quintile'])
+    plt.title('Health Investment Function at Age ' + Age + ' by Income, Women')
+    plt.savefig('./Figures/iFuncWomen.pdf')
+    plt.show()
+    for i in range(5):
+        this_type = type_list[i+5]
+        MedShk = np.exp(this_type.MedShkMeanFunc[t](hLvl) + Dev*this_type.MedShkStdFunc(hLvl))
+        I = np.maximum(this_type.solution[t].PolicyFunc.iFunc(B,hLvl*some_ones,MedShk*some_ones),0.0)
+        plt.plot(B,I,'-'+colors[i])
+    plt.xlabel(r'Bank balances $b_{it}$, \$10,000 (y2000)')
+    plt.ylabel(r'Health investment $n_{it}$, \$10,000 (y2000)')
+    plt.xlim([0.,50.])
+    plt.ylim([-0.01,0.65])
+    plt.legend(['Bottom quintile','Second quintile','Third quintile','Fourth quintile','Top quintile'],loc=4)
+    plt.title('Health Investment Function at Age ' + Age + ' by Income, Men')
+    plt.savefig('./Figures/iFuncMen.pdf')
+    plt.show()
         
     
         
