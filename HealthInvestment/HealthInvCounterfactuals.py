@@ -407,7 +407,7 @@ def runCounterfactuals(name,Parameters,Policies):
     Agents = makeMultiTypeCounterfactual(param_dict)
     
     # Solve the baseline model and get arrays of outcome variables
-    multiThreadCommands(Agents,['runBaselineAction()'],num_jobs=5)
+    multiThreadCommands(Agents,['runBaselineAction()'],num_jobs=10)
     TotalMedBaseline, OOPmedBaseline, ExpectedLifeBaseline, MedicareBaseline, SubsidyBaseline, WelfareBaseline, GovtBaseline, trash = calcSubpopMeans(Agents)
     for this_type in Agents:
         this_type.ValueBaseline = copy(this_type.ValueArray)
@@ -633,11 +633,11 @@ if __name__ == '__main__':
         for x in SubsidyVec:
             PolicyList.append(SubsidyPolicy(Subsidy0=10*[x],Subsidy1=10*[0.0]))
         t_start = clock()
-        Out = runCounterfactuals('universal subsidy experiment',Params.test_param_vec,PolicyList)
+        Out = runCounterfactuals('universal voucher experiment',Params.test_param_vec,PolicyList)
         t_end = clock()
         
-        print('The universal subsidy experiment took ' + str(t_end-t_start) + ' seconds.')
-        makeCounterfactualFigures(Out,SubsidyVec,'Universal subsidy, $10,000 (y2000)', 'universal subsidy', 'UniversalSub')
+        print('The universal voucher experiment took ' + str(t_end-t_start) + ' seconds.')
+        makeCounterfactualFigures(Out,SubsidyVec,'Universal voucher, $10,000 (y2000)', 'universal voucher', 'UniversalSub')
        
     if run_preventive:
         # Run an experiment in which only preventive care is subsidized
@@ -646,11 +646,11 @@ if __name__ == '__main__':
         for x in SubsidyVec:
             PolicyList.append(SubsidyPolicy(Subsidy0=10*[x], SubsidyHealthCutoff=10*[0.5], PreventiveSubsidy=10*[True]))
         t_start = clock()
-        Out = runCounterfactuals('preventive care subsidy experiment',Params.test_param_vec,PolicyList)
+        Out = runCounterfactuals('preventive care voucher experiment',Params.test_param_vec,PolicyList)
         t_end = clock()
         
-        print('The preventive care subsidy experiment took ' + str(t_end-t_start) + ' seconds.')
-        makeCounterfactualFigures(Out,SubsidyVec,'Preventive care subsidy, $10,000 (y2000)', 'preventive care subsidy', 'PreventiveSub')
+        print('The preventive care voucher experiment took ' + str(t_end-t_start) + ' seconds.')
+        makeCounterfactualFigures(Out,SubsidyVec,'Preventive care voucher, $10,000 (y2000)', 'preventive care voucher', 'PreventiveSub')
 
     if run_curative:
         # Run an experiment in which only curative care is subsidized
@@ -659,11 +659,11 @@ if __name__ == '__main__':
         for x in SubsidyVec:
             PolicyList.append(SubsidyPolicy(Subsidy0=10*[x], SubsidyHealthCutoff=10*[0.5], PreventiveSubsidy=10*[False]))
         t_start = clock()
-        Out = runCounterfactuals('curative care subsidy experiment',Params.test_param_vec,PolicyList)
+        Out = runCounterfactuals('curative care voucher experiment',Params.test_param_vec,PolicyList)
         t_end = clock()
         
-        print('The curative care subsidy experiment took ' + str(t_end-t_start) + ' seconds.')
-        makeCounterfactualFigures(Out,SubsidyVec,'Curative care subsidy, $10,000 (y2000 USD)', 'curative care subsidy', 'CurativeSub')
+        print('The curative care voucher experiment took ' + str(t_end-t_start) + ' seconds.')
+        makeCounterfactualFigures(Out,SubsidyVec,'Curative care voucher, $10,000 (y2000 USD)', 'curative care voucher', 'CurativeSub')
         
     if run_flat_copay:
         # Run an experiment in which the coinsurance rate on health investment is varied
@@ -676,7 +676,7 @@ if __name__ == '__main__':
         t_end = clock()
         
         print('The flat coinsurance rate experiment took ' + str(t_end-t_start) + ' seconds.')
-        makeCounterfactualFigures(Out,CopayVec, r'Coinsurance rate for health investment $q^{n}$', 'flat copay', 'FlatCopayInvst')
+        makeCounterfactualFigures(Out,CopayVec, r'Coinsurance rate for health investment $\bar{q}$', 'flat copay', 'FlatCopayInvst')
         
     if run_optimal:    
         # Run an experiment using the "optimal" investment policy NEED TO DO
@@ -692,7 +692,7 @@ if __name__ == '__main__':
         t_end = clock()
         
         print('The "socially optimal policy" experiment took ' + str(t_end-t_start) + ' seconds.')
-        makeCounterfactualFigures(Out, LifePriceVec, r'Value of a year of life $P_L$, \$10,000 (y2000)', 'socially optimal', 'SocOptByLifePrice')
+        makeCounterfactualFigures(Out, LifePriceVec, r'Value of a year of life $\pi_L$, \$10,000 (y2000)', 'socially optimal', 'SocOptByLifePrice')
         
         
         

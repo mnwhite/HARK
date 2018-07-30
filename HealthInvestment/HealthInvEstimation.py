@@ -215,7 +215,7 @@ def processSimulatedTypes(params,use_cohorts):
     else:
         type_list = makeMultiTypeSimple(params)
         
-    multiThreadCommands(type_list,['estimationAction()'],num_jobs=5)
+    multiThreadCommands(type_list,['estimationAction()'],num_jobs=10)
     return type_list
 
 
@@ -1251,7 +1251,7 @@ if __name__ == '__main__':
         for h in range(5):
             plt.plot(AgeVec, Data.HealthByHealthAge[h,:], '.' + income_colors[h])
         plt.legend(['Bottom quintile','Second quintile','Third quintile','Fourth quintile','Top quintile'],loc=1)
-        plt.title('Mean health by health quintile [2(c)]')
+        plt.title('Mean health by health quintile [2(b)]')
         plt.ylabel(r'Health capital $h_{it}$')
         plt.xlabel('Age')
         plt.ylim([0.2,0.9])
@@ -1265,7 +1265,7 @@ if __name__ == '__main__':
         for i in range(5):
             plt.plot(AgeVec, Data.HealthByIncAge[i,:], '.' + income_colors[i])
         plt.legend(['Bottom quintile','Second quintile','Third quintile','Fourth quintile','Top quintile'],loc=1)
-        plt.title('Mean health by income quintile, [2(b)]')
+        plt.title('Mean health by income quintile, [2(c)]')
         plt.ylabel(r'Health capital $h_{it}$')
         plt.xlabel('Age')
         plt.ylim([0.39,0.75])

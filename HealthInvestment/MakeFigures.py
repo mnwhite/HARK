@@ -218,7 +218,7 @@ def makeCounterfactualFigures(data,x_vals,x_label,title_base,file_base):
     makeSimpleFigure(TEMP,
                      ['Overall'] + quintile_names,
                      ['k'] + old_colors,
-                     x_vals, x_label, [-5., 15.], False,
+                     x_vals, x_label, [-5., 15.], True,
                      'Government Cost Per Year of Life Added',
                      True, file_base + 'CostPerYear')
                           
@@ -339,7 +339,7 @@ def makeValidationFigures(params,use_cohorts):
     plt.show()
     
     # Plot health investment as a function of market resources by type, holding h and Dev fixed
-    B = np.linspace(0.,50.,201)
+    B = np.linspace(1.,50.,201)
     some_ones = np.ones_like(B)
     hLvl = 0.6
     Dev = 0.0
@@ -352,7 +352,7 @@ def makeValidationFigures(params,use_cohorts):
         plt.plot(B,I,'-'+colors[i])
     plt.xlabel(r'Bank balances $b_{it}$, \$10,000 (y2000)')
     plt.ylabel(r'Health investment $n_{it}$, \$10,000 (y2000)')
-    plt.xlim([0.,50.])
+    plt.xlim([1.,50.])
     plt.ylim([-0.01,0.65])
     #plt.legend(['Bottom quintile','Second quintile','Third quintile','Fourth quintile','Top quintile'])
     plt.title('Health Investment Function at Age ' + Age + ' by Income, Women')
@@ -365,7 +365,7 @@ def makeValidationFigures(params,use_cohorts):
         plt.plot(B,I,'-'+colors[i])
     plt.xlabel(r'Bank balances $b_{it}$, \$10,000 (y2000)')
     plt.ylabel(r'Health investment $n_{it}$, \$10,000 (y2000)')
-    plt.xlim([0.,50.])
+    plt.xlim([1.,50.])
     plt.ylim([-0.01,0.65])
     plt.legend(['Bottom quintile','Second quintile','Third quintile','Fourth quintile','Top quintile'],loc=4)
     plt.title('Health Investment Function at Age ' + Age + ' by Income, Men')
@@ -373,7 +373,6 @@ def makeValidationFigures(params,use_cohorts):
     plt.show()
         
     
-        
     # Plot PDV of total medical expenses by health at median wealth at age 69-70 by income quintile and sex
     t = 2
     H = np.linspace(0.0,1.0,201)
