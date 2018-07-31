@@ -1006,10 +1006,10 @@ if __name__ == '__main__':
 
 
     # Choose what kind of work to do:
-    test_obj_func = True
-    plot_model_fit = True
-    save_figs = True
-    perturb_one_param = False
+    test_obj_func = False
+    plot_model_fit = False
+    save_figs = False
+    perturb_one_param = True
     perturb_two_params = False
     estimate_model = False
     calc_std_errs = False
@@ -1324,10 +1324,10 @@ if __name__ == '__main__':
 
     if perturb_one_param:
         # Test model identification by perturbing one parameter at a time
-        param_i = 25
-        param_min = -2.2
-        param_max = -2.1
-        N = 21
+        param_i = 3
+        param_min = 2.0
+        param_max = 2.35
+        N = 51
         perturb_vec = np.linspace(param_min,param_max,num=N)
         fit_vec = np.zeros(N) + np.nan
         for j in range(N):
@@ -1338,6 +1338,7 @@ if __name__ == '__main__':
         plt.plot(perturb_vec,fit_vec)
         plt.xlabel(Params.param_names[param_i])
         plt.ylabel('Sum of squared moment differences')
+        plt.savefig('./Figures/Perturb' + Params.param_names[param_i] + '.pdf')
         plt.show()
 
 
