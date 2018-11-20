@@ -1008,47 +1008,6 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
             # Add the value function to the list for this health
             vFuncsThisHealthCopay.append(ValueFunc3D(vNvrsFunc,CRRA)) # Recurve value function
             
-#            # Find the critical med shock where Cfloor binds for each (mLvl,pLvl) value
-#            xFunc_temp = xFuncNow # Assume zero deductible for now, will fix later
-#            CritShkFunc = CritShkFuncList[k]
-#            mMinArray_temp = np.tile(np.reshape(mLvlMinNow(pLvlGrid),(1,pLvlCount)),(aLvlCount,1))
-#            pLvlArray_temp = np.tile(np.reshape(pLvlGrid,(1,pLvlCount)),(aLvlCount,1))
-#            mLvlArray_temp = mMinArray_temp + np.tile(np.reshape(aXtraGrid,(aLvlCount,1)),(1,pLvlCount))*pLvlArray_temp + Cfloor
-#            CritShkArray = 1e-8*np.ones_like(mLvlArray_temp) # Current guess of critical shock for each (mLvl,pLvl)
-#            DiffArray = np.ones_like(mLvlArray_temp) # Relative change in crit shock guess this iteration
-#            Unresolved = np.ones_like(mLvlArray_temp,dtype=bool) # Indicator for which points are still unresolved
-#            UnresolvedCount = Unresolved.size # Number of points whose CritShk has not been found
-#            DiffTol = 1e-5 # Convergence tolerance for the search
-#            LoopCount = 0
-#            LoopMax = 30
-#            while (UnresolvedCount > 0) and (LoopCount < LoopMax): # Loop until all points have converged on CritShk
-#                CritShkPrev = CritShkArray[Unresolved]
-#                mLvl_temp = mLvlArray_temp[Unresolved]                
-#                if LoopCount > 30: # Use Newton's method after a few iterations
-#                    xLvl_temp = np.minimum(xFunc_temp(mLvl_temp,pLvlArray_temp[Unresolved],CritShkPrev),mLvl_temp)
-#                    CritShk_temp = np.minimum(CritShkFunc(xLvl_temp),MedShkMax)
-#                    Target_diff = CritShk_temp - CritShkPrev # This is the expression we want to be zero
-#                    Target_slope = xFunc_temp.derivativeZ(mLvl_temp,pLvlArray_temp[Unresolved],CritShkPrev)*CritShkFunc.derivative(xLvl_temp) - 1.
-#                    CritShkNew = CritShkPrev - Target_diff/Target_slope
-#                    DiffNew = np.abs(CritShkNew/CritShkPrev - 1.)
-#                else: # Use fixed point iteration for first few iterations
-#                    xLvl_temp = np.minimum(xFunc_temp(mLvl_temp,pLvlArray_temp[Unresolved],CritShkPrev),mLvl_temp)
-#                    CritShkNew = np.minimum(CritShkFunc(xLvl_temp),MedShkMax)
-#                    DiffNew = np.abs(CritShkNew/CritShkPrev - 1.)                
-#                DiffArray[Unresolved] = DiffNew
-#                CritShkArray[Unresolved] = CritShkNew
-#                Unresolved[Unresolved] = DiffNew > DiffTol
-#                UnresolvedCount = np.sum(Unresolved)
-#                LoopCount += 1
-#                
-#            # Construct a function that yields the critical medical shock where the Cfloor begins to bind (for given mLvl,pLvl)
-#            CritShkFunc_by_pLvl = []
-#            for i in range(pLvlCount):
-#                m_temp = np.insert(mLvlArray_temp[:,i],0,Cfloor)
-#                Shk_temp = np.insert(CritShkArray[:,i],0,0.0)
-#                CritShkFunc_by_pLvl.append(LinearInterp(m_temp,Shk_temp))
-#            CritShkFuncsThisHealthCopay.append(LinearInterpOnInterp1D(CritShkFunc_by_pLvl,pLvlGrid))            
-            
         # Set up state grids to prepare for the medical shock integration step
         tempArray    = np.tile(np.reshape(aXtraGrid,(aLvlCount,1,1)),(1,pLvlCount,MedCount))
         mMinArray    = np.tile(np.reshape(mLvlMinNow(pLvlGrid),(1,pLvlCount,1)),(aLvlCount,1,MedCount))
@@ -1162,21 +1121,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
             # Integrate (marginal) value across medical shocks
             vArray   = np.sum(vArrayBig*ShkPrbsArray,axis=2) + CfloorPrbArray*np.tile(np.reshape(vFloorBypLvl,(1,pLvlCount)),(aLvlCount,1))
             vParray  = np.sum(vParrayBig*ShkPrbsArray,axis=2)
-                
-#            # Make a second array of shocks and probabilities *beyond* the critical shock (only relevant for AV)
-#            ZadjAltArray = np.maximum(ZcritArray - ZgridBase[1],0.) # Should always be non-negative
-#            ZshkAltArray = np.minimum(np.tile(np.reshape(ZgridBase[1:],(1,1,MedCount-1)),(aLvlCount,pLvlCount,1)) + np.tile(np.reshape(ZadjAltArray,(aLvlCount,pLvlCount,1)),(1,1,MedCount-1)),6.)
-#            MedShkAltArray = np.exp(ZshkAltArray*MedShkStd[h] + MedShkAvg[h])
-#            TempPrbAltArray = norm.pdf(ZshkAltArray)
-#            ReweightAltArray = np.sum(TempPrbAltArray,axis=2)
-#            ShkPrbsAltArray = TempPrbAltArray*np.tile(np.reshape(ReweightAltArray,(aLvlCount,pLvlCount,1)),(1,1,MedCount-1))
-#            
-#            # Find medical care at each "alternative shock" beyond the critical shock
-#            xLvlAlt = DfuncList[Copay_idx](Cfloor*np.ones_like(MedShkAltArray),MedShkAltArray)
-#            b_temp  = bFromxFuncList[Copay_idx](xLvlAlt,MedShkAltArray) # transformed consumption ratio
-#            q_temp  = np.exp(-b_temp)
-#            MedArrayAlt = xLvlAlt*q_temp/(1.+q_temp)
-            
+                         
             # Calculate actuarial value at each (mLvl,pLvl), combining shocks above and below the critical value
             AVarrayBig = MedArrayBig*MedPrice - Contract.OOPfunc(MedArrayBig) # realized "actuarial value" below critical shock
 #            AVarrayAlt = MedArrayAlt*MedPrice - Contract.OOPfunc(MedArrayAlt) # realized "actuarial value" above critical shock
@@ -1321,7 +1266,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkDstn,MedShkAvg,MedShk
     
     # Return the solution for this period
     t_end = clock()
-    #print('Solving a period of the problem took ' + str(t_end-t_start) + ' seconds, fix count = ' + str(JDfixCount))
+    print('Solving a period of the problem took ' + str(t_end-t_start) + ' seconds, fix count = ' + str(JDfixCount))
     return solution_now
     
 ####################################################################################################
