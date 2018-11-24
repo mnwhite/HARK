@@ -12,7 +12,7 @@ from InsuranceSelectionModel import MedInsuranceContract, InsSelConsumerType, In
 from LoadDataMoments import data_moments, moment_weights
 from ActuarialRules import flatActuarialRule, exclusionaryActuarialRule, healthRatedActuarialRule, ageHealthRatedActuarialRule, ageRatedActuarialRule
 from HARKinterpolation import ConstantFunction
-from HARKutilities import approxUniform, getPercentiles, approxMeanOneLognormal
+from HARKutilities import approxUniform, getPercentiles, approxMeanOneLognormal, plotFuncs
 from HARKcore import Market, HARKobject
 from HARKparallel import multiThreadCommands, multiThreadCommandsFake
 
@@ -452,7 +452,7 @@ class DynInsSelMarket(Market):
             ThisType.IncomeQuintiles = IncomeQuintiles
                     
                                
-def makeDynInsSelType(CRRAcon,CRRAmed,DiscFac,ChoiceShkMag,MedShkMeanAgeParams,MedShkMeanVGparams,
+def makeDynInsSelType(CRRAcon,MedCurve,DiscFac,ChoiceShkMag,MedShkMeanAgeParams,MedShkMeanVGparams,
                       MedShkMeanGDparams,MedShkMeanFRparams,MedShkMeanPRparams,MedShkStdAgeParams,
                       MedShkStdVGparams,MedShkStdGDparams,MedShkStdFRparams,MedShkStdPRparams,
                       PremiumSubsidy,EducType,InsChoiceType,ContractCount):
@@ -463,7 +463,7 @@ def makeDynInsSelType(CRRAcon,CRRAmed,DiscFac,ChoiceShkMag,MedShkMeanAgeParams,M
     ----------
     CRRAcon : float
         Coefficient of relative risk aversion for consumption.
-    CRRAmed : float
+    MedCurve : float
         Coefficient of relative risk aversion for medical care.
     DiscFac : float
         Intertemporal discount factor.
@@ -521,7 +521,7 @@ def makeDynInsSelType(CRRAcon,CRRAmed,DiscFac,ChoiceShkMag,MedShkMeanAgeParams,M
     #DiscFac_time_vary = np.linspace(DiscFac-0.00,DiscFac,25).tolist() + 70*[DiscFac]  
         
     TypeDict['CRRA'] = CRRAcon
-    TypeDict['CRRAmed'] = CRRAmed
+    TypeDict['MedCurve'] = MedCurve
     TypeDict['DiscFac'] = DiscFac_time_vary
     TypeDict['ChoiceShkMag'] = Params.AgeCount*[ChoiceShkMag]
                           
@@ -669,7 +669,7 @@ def makeMarketFromParams(ParamArray,ActuarialRule,PremiumArray,InsChoiceType,Sub
     # Unpack the parameters
     DiscFac = ParamArray[0]
     CRRAcon = ParamArray[1]
-    CRRAmed = ParamArray[2]
+    MedCurve = ParamArray[2]
     ChoiceShkMag = np.exp(ParamArray[3])
     SubsidyZeroRate = 1.0/(1.0 + np.exp(ParamArray[4]))
     SubsidyAvg = np.exp(ParamArray[5])
@@ -705,7 +705,7 @@ def makeMarketFromParams(ParamArray,ActuarialRule,PremiumArray,InsChoiceType,Sub
     i = 0
     for j in range(SubsidyArray.size):
         for k in range(3):
-            AgentList.append(makeDynInsSelType(CRRAcon,CRRAmed,DiscFac,ChoiceShkMag,MedShkMeanAgeParams,
+            AgentList.append(makeDynInsSelType(CRRAcon,MedCurve,DiscFac,ChoiceShkMag,MedShkMeanAgeParams,
                       MedShkMeanVGparams,MedShkMeanGDparams,MedShkMeanFRparams,MedShkMeanPRparams,
                       MedShkStdAgeParams,MedShkStdVGparams,MedShkStdGDparams,MedShkStdFRparams,
                       MedShkStdPRparams,SubsidyArray[j],k,InsChoiceType,ContractCount))
@@ -993,26 +993,26 @@ if __name__ == '__main__':
     t_end = clock()
     print('Making the agents took ' + mystr(t_end-t_start) + ' seconds.')
     
-    t_start = clock()
+#    t_start = clock()
     MyType = MyMarket.agents[2] 
-    MyType.solve()
-    t_end = clock()
-    print('Solving and simulating one agent type took ' + str(t_end-t_start) + ' seconds.')
-       
-    t = 0
-    p = 3.0    
-    h = 4        
-    MedShk = 1.0e-1
-    z = 0
-    
-    MyType.plotvFunc(t,p,decurve=False)
-    MyType.plotvPfunc(t,p,decurve=False)
-    MyType.plotvFuncByContract(t,h,p)
-    MyType.plotcFuncByContract(t,h,p,MedShk)
-    MyType.plotcFuncByMedShk(t,h,z,p)
-    MyType.plotMedFuncByMedShk(t,h,z,p)
-    MyType.plotxFuncByMedShk(t,h,z,p)
-    MyType.plotcEffFuncByMedShk(t,h,z,p)
+#    MyType.solve()
+#    t_end = clock()
+#    print('Solving and simulating one agent type took ' + str(t_end-t_start) + ' seconds.')
+#       
+#    t = 0
+#    p = 3.0    
+#    h = 4        
+#    MedShk = 1.0e-1
+#    z = 0
+#    
+#    MyType.plotvFunc(t,p,decurve=False)
+#    MyType.plotvPfunc(t,p,decurve=False)
+#    MyType.plotvFuncByContract(t,h,p)
+#    MyType.plotcFuncByContract(t,h,p,MedShk)
+#    MyType.plotcFuncByMedShk(t,h,z,p)
+#    MyType.plotMedFuncByMedShk(t,h,z,p)
+#    MyType.plotxFuncByMedShk(t,h,z,p)
+#    MyType.plotcEffFuncByMedShk(t,h,z,p)
     
 #    MyMarket.reset()
 #    MyMarket.sow()

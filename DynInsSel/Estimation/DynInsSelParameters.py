@@ -37,9 +37,9 @@ pLvlPctiles = np.concatenate(([0.001, 0.005, 0.01, 0.03], np.linspace(0.05, 0.95
 pLvlInitStd = 0.4                   # Initial standard deviation of (log) permanent income
 pLvlInitMean = 0.0                  # Initial average of log permanent income
 PermIncCorr = 1.00                  # Serial correlation coefficient for permanent income
-MedShkCount = 5                     # Number of medical shock points in "body"
-MedShkCountTail = [2,8]             # Number of medical shock points in "upper tail"
-MedShkTailBound = [0.05,0.98]       # Boundaries of body (in CDF terms)
+MedShkCount = 25                    # Number of medical shock points
+DevMin = -3.                        # Minimum standard deviations below MedShk mean
+DevMax = 5.                         # Maximum standard deviations above MedShk mean
 MedPrice = 1.0                      # Relative price of a unit of medical care
 AgentCount = 10000                  # Number of agents of this type (only matters for simulation)
 DeductibleList = [0.06,0.05,0.04,0.03,0.02] # List of deductibles for working-age insurance contracts
@@ -402,8 +402,8 @@ BasicDictionary = { 'Rfree': Rfree,
                     'pLvlInitMean': pLvlInitMean,
                     'PermIncCorr': PermIncCorr,
                     'MedShkCount': MedShkCount,
-                    'MedShkCountTail': MedShkCountTail,
-                    'MedShkTailBound': MedShkTailBound,
+                    'DevMin' : DevMin,
+                    'DevMax' : DevMax,
                     'ZeroMedShkPrb': ZeroMedShkPrb,
                     'MedPrice': T_cycle*[MedPrice],
                     'MrkvArray': MrkvArray,
@@ -436,8 +436,8 @@ CollegeDictionary['pLvlNextFuncRet'] = RetirementFunc_c
 
 # Make a test parameter vector for estimation
 test_param_vec = np.array([0.90, # DiscFac
-                           4.8,  # CRRAcon
-                           8.0,  # CRRAmed 
+                           1.8,  # CRRAcon
+                           5.0,  # MedCurve 
                           -8.5,  # ChoiceShkMag in log
                            2.6,  # SubsidyZeroRate scaler
                          -1.51,  # SubsidyAvg
