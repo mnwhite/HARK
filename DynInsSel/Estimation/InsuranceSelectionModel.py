@@ -757,7 +757,7 @@ def solveInsuranceSelectionStatic(solution_next,MedShkDstn,CRRA,MedPrice,xLvlGri
 
 
 def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMedShkPrb,MedShkCount,DevMin,DevMax,
-                            LivPrb,DiscFac,CRRA,CRRAmed,Cfloor,Rfree,MedPrice,pLvlNextFunc,BoroCnstArt,aXtraGrid,
+                            LivPrb,DiscFac,CRRA,CRRAmed,BequestScale,BequestShift,Cfloor,Rfree,MedPrice,pLvlNextFunc,BoroCnstArt,aXtraGrid,
                             pLvlGrid,ContractList,MrkvArray,ChoiceShkMag,EffPriceList,bFromxFunc,CubicBool):
     '''
     Solves one period of the insurance selection model.
@@ -790,9 +790,13 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
     DiscFac : float
         Intertemporal discount factor for future utility.        
     CRRA : float
-        Coefficient of relative risk aversion for composite consumption.
+        Coefficient of relative risk aversion for consumption.
     CRRAmed : float
-        Effective consumption curvature parameter for medical care.
+        Coefficient of relative risk aversion for medical care.
+    BequestShift : float
+        Shifter in bequest motive function.
+    BequestScale : float
+        Scale of bequest motive function.
     Cfloor : float
         Floor on effective consumption, set by policy.
     Rfree : np.array
@@ -855,6 +859,8 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
     uPinv = lambda x : utilityP_inv(x,CRRA)
     uinvP = lambda x : utility_invP(x,CRRA)
     uinv = lambda x : utility_inv(x,CRRA)
+    BequestMotive = lambda x : BequestScale*utility(x+BequestShift,CRRA)
+    BequestMotiveP = lambda x : BequestScale*utilityP(x+BequestShift,CRRA)
     
     # For each future health state, find the minimum allowable end of period assets by permanent income    
     aLvlMinCond = np.zeros((pLvlCount,HealthCount))
@@ -940,10 +946,11 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
         # Set up a temporary health transition array
         HealthTran_temp = np.tile(np.reshape(MrkvArray[h,:],(1,1,HealthCount)),(pLvlCount,aLvlCount+1,1))
         DiscFacEff = DiscFac*LivPrb[h] # "effective" discount factor
+        DiePrb = (1.-LivPrb[h])
         
         # Weight future health states according to the transition probabilities
-        EndOfPrdv[:,:,h]  = DiscFacEff*np.sum(EndOfPrdvCond*HealthTran_temp,axis=2)
-        EndOfPrdvP[:,:,h] = DiscFacEff*np.sum(EndOfPrdvPcond*HealthTran_temp,axis=2)
+        EndOfPrdv[:,:,h]  = DiscFacEff*np.sum(EndOfPrdvCond*HealthTran_temp,axis=2) + DiePrb*BequestMotive(aLvlNow)
+        EndOfPrdvP[:,:,h] = DiscFacEff*np.sum(EndOfPrdvPcond*HealthTran_temp,axis=2) + DiePrb*BequestMotiveP(aLvlNow)
         if CubicBool:
             EndOfPrdvPP[:,:,h] = DiscFacEff*np.sum(EndOfPrdvPPcond*HealthTran_temp,axis=2)
             
@@ -1315,7 +1322,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
     medical care.
     '''
     _time_vary = ['DiscFac','LivPrb','MedPrice','ContractList','MrkvArray','ChoiceShkMag','MedShkAvg','MedShkStd','ZeroMedShkPrb']
-    _time_inv = ['CRRA','CRRAmed','Cfloor','Rfree','BoroCnstArt','CubicBool','MedShkCount','DevMin','DevMax']
+    _time_inv = ['CRRA','CRRAmed','BequestScale','BequestShift','Cfloor','Rfree','BoroCnstArt','CubicBool','MedShkCount','DevMin','DevMax']
     
     def __init__(self,cycles=1,time_flow=True,**kwds):
         '''

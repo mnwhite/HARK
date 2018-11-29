@@ -452,9 +452,9 @@ class DynInsSelMarket(Market):
             ThisType.IncomeQuintiles = IncomeQuintiles
                     
                                
-def makeDynInsSelType(CRRAcon,MedCurve,DiscFac,ChoiceShkMag,MedShkMeanAgeParams,MedShkMeanVGparams,
-                      MedShkMeanGDparams,MedShkMeanFRparams,MedShkMeanPRparams,MedShkStdAgeParams,
-                      MedShkStdVGparams,MedShkStdGDparams,MedShkStdFRparams,MedShkStdPRparams,
+def makeDynInsSelType(CRRAcon,MedCurve,DiscFac,BequestShift,BequestScale,ChoiceShkMag,
+                      MedShkMeanAgeParams,MedShkMeanVGparams,MedShkMeanGDparams,MedShkMeanFRparams,MedShkMeanPRparams,
+                      MedShkStdAgeParams,MedShkStdVGparams,MedShkStdGDparams,MedShkStdFRparams,MedShkStdPRparams,
                       PremiumSubsidy,EducType,InsChoiceType,ContractCount):
     '''
     Makes an InsSelConsumerType using (human-organized) structural parameters for the estimation.
@@ -467,6 +467,10 @@ def makeDynInsSelType(CRRAcon,MedCurve,DiscFac,ChoiceShkMag,MedShkMeanAgeParams,
         Coefficient of relative risk aversion for medical care.
     DiscFac : float
         Intertemporal discount factor.
+    BequestShift : float
+        Shifter in bequest motive function.
+    BequestScale : float
+        Scale of bequest motive function.
     ChoiceShkMag : float
         Standard deviation of preference shocks over insurance contracts.
     MedShkMeanAgeParams : [float]
@@ -522,6 +526,8 @@ def makeDynInsSelType(CRRAcon,MedCurve,DiscFac,ChoiceShkMag,MedShkMeanAgeParams,
         
     TypeDict['CRRA'] = CRRAcon
     TypeDict['MedCurve'] = MedCurve
+    TypeDict['BequestShift'] = BequestShift
+    TypeDict['BequestScale'] = BequestScale
     TypeDict['DiscFac'] = DiscFac_time_vary
     TypeDict['ChoiceShkMag'] = Params.AgeCount*[ChoiceShkMag]
                           
@@ -644,7 +650,7 @@ def makeMarketFromParams(ParamArray,ActuarialRule,PremiumArray,InsChoiceType,Sub
     Parameters
     ----------
     ParamArray : np.array
-        Array of size 33, representing all of the structural parameters.
+        Array of size 35, representing all of the structural parameters.
     ActuarialRule : function
         Function representing how insurance market outcomes are translated into
         premiums.  Will be installed as the millRule attribute of the market.
@@ -674,16 +680,18 @@ def makeMarketFromParams(ParamArray,ActuarialRule,PremiumArray,InsChoiceType,Sub
     SubsidyZeroRate = 1.0/(1.0 + np.exp(ParamArray[4]))
     SubsidyAvg = np.exp(ParamArray[5])
     SubsidyWidth = SubsidyAvg/(1.0 + np.exp(ParamArray[6]))
-    MedShkMeanAgeParams = ParamArray[7:12]
-    MedShkMeanVGparams = ParamArray[12:14]
-    MedShkMeanGDparams = ParamArray[14:16]
-    MedShkMeanFRparams = ParamArray[16:18]
-    MedShkMeanPRparams = ParamArray[18:20]
-    MedShkStdAgeParams = ParamArray[20:25]
-    MedShkStdVGparams = ParamArray[25:27]
-    MedShkStdGDparams = ParamArray[27:29]
-    MedShkStdFRparams = ParamArray[29:31]
-    MedShkStdPRparams = ParamArray[31:33]
+    BequestShift = ParamArray[7]
+    BequestScale = ParamArray[8]
+    MedShkMeanAgeParams = ParamArray[9:14]
+    MedShkMeanVGparams = ParamArray[14:16]
+    MedShkMeanGDparams = ParamArray[16:18]
+    MedShkMeanFRparams = ParamArray[18:20]
+    MedShkMeanPRparams = ParamArray[20:22]
+    MedShkStdAgeParams = ParamArray[22:27]
+    MedShkStdVGparams = ParamArray[27:29]
+    MedShkStdGDparams = ParamArray[29:31]
+    MedShkStdFRparams = ParamArray[31:33]
+    MedShkStdPRparams = ParamArray[33:35]
     
     # Make the array of premium subsidies (trivial if there is no insurance choice)
     if InsChoiceType > 0:
@@ -705,7 +713,7 @@ def makeMarketFromParams(ParamArray,ActuarialRule,PremiumArray,InsChoiceType,Sub
     i = 0
     for j in range(SubsidyArray.size):
         for k in range(3):
-            AgentList.append(makeDynInsSelType(CRRAcon,MedCurve,DiscFac,ChoiceShkMag,MedShkMeanAgeParams,
+            AgentList.append(makeDynInsSelType(CRRAcon,MedCurve,DiscFac,BequestShift,BequestScale,ChoiceShkMag,MedShkMeanAgeParams,
                       MedShkMeanVGparams,MedShkMeanGDparams,MedShkMeanFRparams,MedShkMeanPRparams,
                       MedShkStdAgeParams,MedShkStdVGparams,MedShkStdGDparams,MedShkStdFRparams,
                       MedShkStdPRparams,SubsidyArray[j],k,InsChoiceType,ContractCount))

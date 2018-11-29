@@ -445,6 +445,8 @@ test_param_vec = np.array([0.90, # DiscFac
                            2.6,  # SubsidyZeroRate scaler
                          -1.51,  # SubsidyAvg
                           -3.0,  # SubsidyWidth scaler
+                          10.0,  # BequestShift shifter for bequest motive
+                           3.0,  # BequestScale scale of bequest motive
                          -5.35,  # MedShkMean constant coefficient
                         0.0030,  # MedShkMean linear age coefficient
                        0.00110,  # MedShkMean quadratic age coefficient
