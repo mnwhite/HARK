@@ -72,8 +72,8 @@ class DynInsSelType(BaseType):
         quasi-static model is ever used, but I forget how at this point.
         '''
         self.initializeSim()
-        self.simulate()
-        self.postSim()
+        #self.simulate()
+        #self.postSim()
         #self.deleteSolution()
         
     def initializeSim(self):
@@ -987,16 +987,16 @@ if __name__ == '__main__':
     
     MyMarket = makeMarketFromParams(Params.test_param_vec,flatActuarialRule,Premiums_init,InsChoice,SubsidyTypeCount,CRRAtypeCount,ZeroSubsidyBool)
     MyMarket.Premiums = Premiums_init_short
-    multiThreadCommands(MyMarket.agents,['update()','makeShockHistory()'])
+    multiThreadCommandsFake(MyMarket.agents,['update()','makeShockHistory()'])
     MyMarket.getIncomeQuintiles()
     multiThreadCommandsFake(MyMarket.agents,['makeIncBoolArray()'])
     t_end = clock()
     print('Making the agents took ' + mystr(t_end-t_start) + ' seconds.')
     
-#    t_start = clock()
+    t_start = clock()
     MyType = MyMarket.agents[2] 
-#    MyType.solve()
-#    t_end = clock()
+    MyType.solve()
+    t_end = clock()
 #    print('Solving and simulating one agent type took ' + str(t_end-t_start) + ' seconds.')
 #       
 #    t = 0

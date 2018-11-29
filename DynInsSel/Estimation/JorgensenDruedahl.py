@@ -48,7 +48,7 @@ class JDfixer(object):
         
         # Make buffers
         self.mLvlData_buf = ctx.create_buffer(cl.CL_MEM_READ_WRITE | cl.CL_MEM_COPY_HOST_PTR,data_temp)
-        self.MedShkData_buf = ctx.create_buffer(cl.CL_MEM_READ_WRITE | cl.CL_MEM_COPY_HOST_PTR,data_temp)
+        self.DevData_buf = ctx.create_buffer(cl.CL_MEM_READ_WRITE | cl.CL_MEM_COPY_HOST_PTR,data_temp)
         self.ValueData_buf = ctx.create_buffer(cl.CL_MEM_READ_WRITE | cl.CL_MEM_COPY_HOST_PTR,data_temp)
         self.xLvlData_buf = ctx.create_buffer(cl.CL_MEM_READ_WRITE | cl.CL_MEM_COPY_HOST_PTR,data_temp)
         self.mGridDense_buf = ctx.create_buffer(cl.CL_MEM_READ_WRITE | cl.CL_MEM_COPY_HOST_PTR,np.zeros(mGridDenseSize))
@@ -60,7 +60,7 @@ class JDfixer(object):
         # Make the kernel and assign buffers
         self.JDkernel = program.get_kernel('doJorgensenDruedahlFix')
         self.JDkernel.set_args(self.mLvlData_buf,
-                      self.MedShkData_buf,
+                      self.DevData_buf,
                       self.ValueData_buf,
                       self.xLvlData_buf,
                       self.mGridDense_buf,
@@ -76,7 +76,7 @@ class JDfixer(object):
         # Make arrays to hold the output
         bad_value = 0.0
         even_worse_value = -1e10
-        xLvlOut = np.tile(np.reshape(mGridDense,(self.mGridDenseSize,1)),(1,self.ShkGridDenseSize)).flatten() # Spend all as a default
+        xLvlOut = np.tile(np.reshape(mGridDense,(self.mGridDenseSize,1)),(1,self.DevGridDenseSize)).flatten() # Spend all as a default
         ValueOut = bad_value*np.ones_like(xLvlOut)
         
         # Process the spending and value data just a bit
@@ -112,7 +112,7 @@ class JDfixer(object):
         queue.read_buffer(self.ValueOut_buf,ValueOut)
     
         # Transform xLvlOut into a BilinearInterp and return it
-        xLvlNow = np.concatenate((np.zeros((1,self.DevGridDenseSize)),np.reshape(xLvlOut,(self.mGridDenseSize,self.ShkGridDenseSize))),axis=0)
+        xLvlNow = np.concatenate((np.zeros((1,self.DevGridDenseSize)),np.reshape(xLvlOut,(self.mGridDenseSize,self.DevGridDenseSize))),axis=0)
         xFunc_this_pLvl = BilinearInterp(xLvlNow,np.insert(mGridDense,0,0.0),DevGridDense)
         return xFunc_this_pLvl
         

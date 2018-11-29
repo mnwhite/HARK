@@ -276,7 +276,7 @@ class InsuranceSelectionSolution(HARKobject):
         self.vPfunc.append(vPfunc)
         self.vPPfunc.append(vPPfunc)
         self.AVfunc.append(AVfunc)
-        self.CritDevFunc(CritDevFunc)
+        self.CritDevFunc.append(CritDevFunc)
         self.hLvl.append(hLvl)
 
 
@@ -382,7 +382,7 @@ class InsSelPolicyFunc(HARKobject):
         self.PolicyFuncFullPrice = PolicyFuncFullPrice
         self.PolicyFuncCopay = PolicyFuncCopay
         self.Contract = Contract
-        self.CRRA = self.CRRA
+        self.CRRA = CRRA
         self.OptionCost = Contract.Deductible*(1.0-Contract.Copay)
                
     def __call__(self,mLvl,pLvl,Dev):
@@ -426,7 +426,7 @@ class InsSelPolicyFunc(HARKobject):
         xLvl[ZeroShk] = cLvl[ZeroShk]
         
         # Get value of paying full price or paying "option cost" to pay coinsurance rate
-        these = np.logical_not[ZeroShk]
+        these = np.logical_not(ZeroShk)
         mTemp = mLvl[these]
         mTempAlt = mTemp-self.OptionCost
         pTemp = pLvl[these]
@@ -522,7 +522,7 @@ class InsSelPolicyFunc(HARKobject):
         vP[ZeroShk] = self.cFuncZeroShk(mLvl[ZeroShk],pLvl[ZeroShk])**(-self.CRRA)
         
         # Get value of paying full price or paying "option cost" to pay coinsurance rate
-        these = np.logical_not[ZeroShk]
+        these = np.logical_not(ZeroShk)
         mTemp = mLvl[these]
         mTempAlt = mTemp-self.OptionCost
         pTemp = pLvl[these]
@@ -652,6 +652,7 @@ class MedInsuranceContract(HARKobject):
         self.Deductible = Deductible
         self.Copay = Copay
         self.MedPrice = MedPrice
+        self.OptionCost = Deductible*(1.0-Copay)
         
         # Define an out-of-pocket spending function that maps quantity of care purchased to OOP cost
         kink_point = Deductible/MedPrice
@@ -757,7 +758,7 @@ def solveInsuranceSelectionStatic(solution_next,MedShkDstn,CRRA,MedPrice,xLvlGri
 
 def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMedShkPrb,MedShkCount,DevMin,DevMax,
                             LivPrb,DiscFac,CRRA,CRRAmed,Cfloor,Rfree,MedPrice,pLvlNextFunc,BoroCnstArt,aXtraGrid,
-                            pLvlGrid,ContractList,MrkvArray,ChoiceShkMag,CopayList,bFromxFunc,CubicBool):
+                            pLvlGrid,ContractList,MrkvArray,ChoiceShkMag,EffPriceList,bFromxFunc,CubicBool):
     '''
     Solves one period of the insurance selection model.
     
@@ -818,7 +819,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
     ChoiceShkMag : float
         Magnitude of T1EV preference shocks for each insurance contract when making selection.
         Shocks are applied to pseudo-inverse value of contracts.
-    CopayList : [float]
+    EffPriceList : [float]
         Set of coinsurance rates across all contracts in ContractList, including 1.0 (full price).
     bFromxFunc : function
         Transformed consumption share as a function of total expenditure and effective
@@ -996,8 +997,8 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
         vFuncZeroShk = ValueFunc2D(vNvrsFuncZeroShk, CRRA)
             
         # For each coinsurance rate, make policy and value functions (for this health state)
-        for k in range(len(CopayList)):
-            MedPriceEff = CopayList[k]
+        for k in range(len(EffPriceList)):
+            MedPriceEff = EffPriceList[k]
             
             # Calculate endogenous gridpoints and controls
             cLvlNow = EndOfPrdvPnvrs_tiled
@@ -1044,7 +1045,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
             xFuncNow = CompositeFunc3D(xFuncNowCnst,xFuncNowUnc,ConstraintSeam)
             
             # Make a policy function for this coinsurance rate and health state
-            PolicyFuncsThisHealthCopay.append(cAndMedFunc(xFuncNow,bFromxFunc,MedPriceEff))
+            PolicyFuncsThisHealthCopay.append(cAndMedFunc(xFuncNow, bFromxFunc, MedShkAvg[h], MedShkStd[h], MedPriceEff))
             
             # Calculate pseudo inverse value on a grid of states for this coinsurance rate
             pLvlArray = np.tile(np.reshape(pLvlGrid,(1,pCount,1)),(MedShkCount,1,mCount-1))
@@ -1096,8 +1097,8 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
             # Set and unpack the contract of interest
             Contract = ContractList[h][z]
             Copay = Contract.Copay
-            FullPrice_idx = np.argwhere(np.array(CopayList)==MedPrice)[0][0]
-            Copay_idx = np.argwhere(np.array(CopayList)==Copay*MedPrice)[0][0]
+            FullPrice_idx = np.argwhere(np.array(EffPriceList)==MedPrice)[0][0]
+            Copay_idx = np.argwhere(np.array(EffPriceList)==Copay*MedPrice)[0][0]
             
             # Get the value and policy functions for this contract
             vFuncFullPrice = vFuncsThisHealthCopay[FullPrice_idx]
@@ -1138,7 +1139,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
                            
             # Get value and marginal value at an array of states
             vArrayBig, vParrayBig, vPParrayBig = PolicyFuncsThisHealth[-1].evalvAndvPandvPP(mLvlArray,pLvlArray,DevArray)
-            ConArrayBig, MedArrayBig = PolicyFuncsThisHealth[-1](mLvlArray,pLvlArray,DevArray)
+            ConArrayBig, MedArrayBig, xLvlArrayBig = PolicyFuncsThisHealth[-1](mLvlArray,pLvlArray,DevArray)
             
             # Calculate expected value when hitting Cfloor (use truncated lognormal formula)
             mu = (1.-1./CRRAmed)*MedShkAvg[h] # underlying mean of lognormal shocks
@@ -1336,7 +1337,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         '''
         # Initialize a basic AgentType
         AgentType.__init__(self,solution_terminal=deepcopy(self.solution_terminal_),
-                           cycles=cycles,time_flow=time_flow,pseudo_terminal=False,**kwds)
+                           cycles=cycles,time_flow=time_flow,pseudo_terminal=True,**kwds)
         self.solveOnePeriod = solveInsuranceSelection # Choose correct solver
         self.poststate_vars = ['aLvlNow']
         self.time_vary = copy(InsSelConsumerType._time_vary)
@@ -1479,6 +1480,37 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         self.addToTimeInv('CRRAmed','bFromxFunc')
         
         
+    def updateEffPriceList(self):
+        '''
+        Constructs the time-varying attribute EffPriceList.
+        
+        Parameters
+        ----------
+        None
+        
+        Returns
+        -------
+        None
+        '''
+        orig_time = self.time_flow
+        self.timeFwd()
+        
+        EffPriceList = [] # Effective medical care price for each period in the cycle
+        for t in range(self.T_cycle):
+            MedPrice = self.MedPrice[t]
+            EffPriceList_temp = [MedPrice]
+            for h in range(len(self.ContractList[t])):
+                for Contract in self.ContractList[t][h]:
+                    EffPriceList_temp.append(Contract.Copay*MedPrice)
+            EffPriceList.append(np.unique(np.array(EffPriceList_temp)))
+            
+        self.EffPriceList = EffPriceList
+        self.addToTimeVary('EffPriceList')
+        
+        if not orig_time:
+            self.timeRev()
+        
+        
     def updateUninsuredPremium(self,MandateTaxRate=0.):
         '''
         Create the attribute UninsuredPremiumFunc, a function that will be used
@@ -1520,7 +1552,16 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         -------
         None
         '''
-        pass
+        ZeroFunc = ConstantFunction(0.)
+        solution_now = InsuranceSelectionSolution(mLvlMin=ZeroFunc)
+        
+        HealthCount = self.MrkvArray[-1].shape[1]
+        for h in range(HealthCount):
+            solution_now.appendSolution(vFunc=ZeroFunc,vPfunc=ZeroFunc,hLvl=ZeroFunc,AVfunc=[],
+                                        policyFunc=[],vFuncByContract=[],
+                                        CritDevFunc=[])
+        
+        self.solution_terminal = solution_now
                 
         
     def update(self):
@@ -1550,6 +1591,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         
         self.updateFirstOrderConditionFuncs()
         self.updateUninsuredPremium()
+        self.updateEffPriceList()
         
     def preSolve(self):
         self.update()
@@ -1625,9 +1667,9 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
                 mu = self.MedShkAvg[t_cycle][h]
                 DevDraws = drawNormal(N=N,seed=self.RNG.randint(0,2**31-1))
                 
-                zero_prb = self.ZeroMedShkPrb[t_cycle,h]
+                zero_prb = self.ZeroMedShkPrb[t_cycle][h]
                 zero_med = drawBernoulli(N=N,p=zero_prb,seed=self.RNG.randint(0,2**31-1))
-                DevDraws[zero_med] = -np.exp
+                DevDraws[zero_med] = -np.inf
                 MedShkDraws = np.exp(mu + sigma*DevDraws)
                 DevNow[these] = DevDraws
                 MedShkNow[these] = MedShkDraws
@@ -1757,6 +1799,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
             # For each contract, get controls for agents who buy it
             c_temp = np.zeros(N) + np.nan
             Med_temp = np.zeros(N) + np.nan
+            x_temp = np.zeros(N) + np.nan
             OOP_temp = np.zeros(N) + np.nan
             Prem_temp = np.zeros(N) + np.nan
             CritDev_temp = np.zeros(N) + np.nan
@@ -1768,7 +1811,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
                 idx = z_choice == z
                 Prem_temp[idx] = ThisContract.Premium(m_temp[idx],p_temp[idx])
                 m_minus_prem = m_temp[idx]-Prem_temp[idx]
-                c_temp[idx],Med_temp[idx] = self.solution[t].policyFunc[h][z](m_minus_prem,p_temp[idx],Dev_temp[idx])
+                c_temp[idx],Med_temp[idx],x_temp[idx] = self.solution[t].policyFunc[h][z](m_minus_prem,p_temp[idx],Dev_temp[idx])
                 CritDev_temp[idx] = self.solution[t].CritDevFunc[h][z](m_minus_prem,p_temp[idx])
                 EffPrice_temp[idx] = ThisContract.Copay*MedPriceNow
                 Med_temp[idx] = np.maximum(Med_temp[idx],0.0) # Prevents numeric glitching
@@ -1777,7 +1820,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
             # Store the controls for this health
             cLvlNow[these] = c_temp
             MedLvlNow[these] = Med_temp
-            xLvlNow[these] = c_temp + OOP_temp
+            xLvlNow[these] = x_temp
             OOPnow[these] = OOP_temp
             PremNow[these] = Prem_temp
             ContractNow[these] = z_choice

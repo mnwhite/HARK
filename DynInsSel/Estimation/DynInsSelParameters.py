@@ -376,6 +376,9 @@ ZeroMedShkPrb[:,2] = ZeroMedShkPrb[:,4] - 0.2503833
 ZeroMedShkPrb[:,1] = ZeroMedShkPrb[:,4] - 0.3943548 
 ZeroMedShkPrb[:,0] = ZeroMedShkPrb[:,4] - 0.7203905 
 ZeroMedShkPrb = norm.cdf(ZeroMedShkPrb)
+ZeroMedShkPrb_list = []
+for j in range(ZeroMedShkPrb.shape[0]):
+    ZeroMedShkPrb_list.append(ZeroMedShkPrb[j,:])
     
 # Make a basic dictionary with parameters that never change
 BasicDictionary = { 'Rfree': Rfree,
@@ -404,7 +407,7 @@ BasicDictionary = { 'Rfree': Rfree,
                     'MedShkCount': MedShkCount,
                     'DevMin' : DevMin,
                     'DevMax' : DevMax,
-                    'ZeroMedShkPrb': ZeroMedShkPrb,
+                    'ZeroMedShkPrb': ZeroMedShkPrb_list,
                     'MedPrice': T_cycle*[MedPrice],
                     'MrkvArray': MrkvArray,
                     'MrkvPrbsInit': HealthPrbsInit,
