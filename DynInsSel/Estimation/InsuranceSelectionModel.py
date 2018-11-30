@@ -357,13 +357,13 @@ class InsSelPolicyFunc(HARKobject):
         ValueFuncCopay : ValueFunc3D
             Value function (over market resources after premiums / "option cost", permanent income,
             and medical shock) when the individual pays the coinsurance rate for care.
-        cFuncZeroShk : ValueFunc2D
+        cFuncZeroShk : HARKinterpolator2D
             Consumption function (over market resources after premiums and permanent income) when
             medical needs shock is zero (Dev = -np.inf).
-        PolicyFuncFullPrice : MedShockPolicyFunc
+        PolicyFuncFullPrice : cAndMedFunc
             Policy function when paying full price for care, including consumption and medical care,
             defined over market resources (after option cost), permanent income, and medical shock.
-        PolicyFuncFullPrice : MedShockPolicyFunc
+        PolicyFuncFullPrice : cAndMedFunc
             Policy function when paying the coinsurance rate for care, including consumption and
             medical care, defined over market resources, permanent income, and medical shock.
         Contract : MedInsuranceContract
@@ -935,7 +935,9 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
         EndOfPrdvCond[:,:,h]   = np.sum(tempv*ShkPrbs_tiled,axis=0)
         if CubicBool:
             EndOfPrdvPPcond[:,:,h] = Rfree[h]*Rfree[h]*np.sum(vPPfuncNext(mLvlNext,pLvlNext)*ShkPrbs_tiled,axis=0)
-        #print(np.argwhere(tempvP == 0.))
+
+#        if np.any(np.isnan(tempvP)):
+#            print(np.argwhere(np.isnan(tempvP)))
         
     # Calculate end of period value and marginal value conditional on each current health state
     EndOfPrdv = np.zeros((pLvlCount,aLvlCount+1,HealthCount))
@@ -983,6 +985,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
         EndOfPrdvPnvrs_tiled = np.tile(np.reshape(EndOfPrdvPnvrs,(1,pCount,mCount)),(MedShkCount,1,1))
         MedShkVals_tiled  = np.tile(np.reshape(MedShkVals,(MedShkCount,1,1)),(1,pCount,mCount))
         DevGrid_tiled  = np.tile(np.reshape(DevGrid,(MedShkCount,1,1)),(1,pCount,mCount))
+        
         #print(np.sum(np.isnan(EndOfPrdvPnvrs_tiled)),np.sum(np.isinf(EndOfPrdvPnvrs_tiled)))
         
         # Make consumption, value, and marginal value functions for when there is zero medical need shock
@@ -1002,6 +1005,8 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
         cFuncZeroShk = LinearInterpOnInterp1D(cFunc_by_pLvl_ZeroShk,pLvlGrid)
         vNvrsFuncZeroShk = LinearInterpOnInterp1D(vNvrsFunc_by_pLvl_ZeroShk,pLvlGrid)
         vFuncZeroShk = ValueFunc2D(vNvrsFuncZeroShk, CRRA)
+        
+        #print(np.sum(np.isnan(cLvlNow)),np.sum(np.isnan(EndOfPrdv[:,:,h])))
             
         # For each coinsurance rate, make policy and value functions (for this health state)
         for k in range(len(EffPriceList)):
@@ -1043,10 +1048,10 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
                         m_temp = mLvlNow[j,i,:] - mLvlNow[j,i,0]
                         x_temp = xLvlNow[j,i,:]
                         temp_list.append(LinearInterp(m_temp,x_temp))
-                    xFunc_by_pLvl.append(LinearInterpOnInterp1D(temp_list,MedShkVals))
+                    xFunc_by_pLvl.append(LinearInterpOnInterp1D(temp_list,DevGrid))
             
             # Combine the many expenditure functions into a single one and adjust for the natural borrowing constraint
-            ConstraintSeam = BilinearInterp((mLvlNow[:,:,0]).transpose(),pLvlGrid,MedShkVals)
+            ConstraintSeam = BilinearInterp((mLvlNow[:,:,0]).transpose(),pLvlGrid,DevGrid)
             xFuncNowUncBase = TwistFuncB(LinearInterpOnInterp2D(xFunc_by_pLvl,pLvlGrid))
             xFuncNowUnc = VariableLowerBoundFunc3Dalt(xFuncNowUncBase,ConstraintSeam)
             xFuncNow = CompositeFunc3D(xFuncNowCnst,xFuncNowUnc,ConstraintSeam)
@@ -1061,7 +1066,8 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
             if pLvlGrid[0] == 0.0:  # mLvl turns out badly if pLvl is 0 at bottom
                 mLvlArray[:,0,:] = np.tile(aXtraGrid,(MedShkCount,1))
             MedShkArray = np.tile(np.reshape(MedShkVals,(MedShkCount,1,1)),(1,pCount,mCount-1))
-            cLvlArray,MedLvlArray,xLvlArray = PolicyFuncsThisHealthCopay[-1](mLvlArray,pLvlArray,MedShkArray)
+            DevArray = np.tile(np.reshape(DevGrid,(MedShkCount,1,1)),(1,pCount,mCount-1))
+            cLvlArray,MedLvlArray,xLvlArray = PolicyFuncsThisHealthCopay[-1](mLvlArray,pLvlArray,DevArray)
             aLvlArray = np.abs(mLvlArray - xLvlArray) # OCCASIONAL VIOLATIONS BY 1E-18 !!!
             vNow = u(cLvlArray) + uMed(MedLvlArray/MedShkArray) + EndOfPrdvFunc(aLvlArray,pLvlArray)
             vNvrsNow  = np.concatenate((np.zeros((MedShkCount,pCount,1)),uinv(vNow)),axis=2)
@@ -1091,7 +1097,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
             
         # Calculate value and marginal value when medical needs shock is zero
         vArrayZeroShk = vFuncZeroShk(mLvlArray[:,:,0],pLvlArray[:,:,0])
-        vParrayZeroShk = cFuncZeroShk(mLvlArray[:,:,0],pLvlArray[:,:,0])
+        vParrayZeroShk = cFuncZeroShk(mLvlArray[:,:,0],pLvlArray[:,:,0])**(-CRRA)
                 
         # For each insurance contract available in this state, "integrate" across medical need
         # shocks to get policy and (marginal) value functions for each contract
@@ -1155,19 +1161,27 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
             ExpectedAdjShkAtCfloor = -0.5*np.exp(mu+(sigma**2)*0.5)*(erfc(np.sqrt(0.5)*(sigma-CritDevArray))-2.0)/CritShkPrbArray
             ExpectedUMedatCfloor = ExpectedAdjShkAtCfloor*C1
             vFloor_expected = u(Cfloor) + EndOfPrdvFunc(np.zeros_like(m_temp),p_temp) + ExpectedUMedatCfloor
-                        
+                
+            # Calculate value for portions of the state space where mLvl <= Cfloor, so Cfloor always binds
+            vFloorBypLvl = u(Cfloor) + C1*np.exp(mu+(sigma**2)*0.5) + EndOfPrdvFunc(np.zeros_like(pLvlGrid),pLvlGrid)
+            vNvrsFloorBypLvl = uinv(vFloorBypLvl)
+            vFloor_tiled = np.tile(np.reshape(vFloorBypLvl,(1,pLvlCount,1)),(aLvlCount,1,MedShkCount))
+            vArrayBig = np.maximum(vArrayBig,vFloor_tiled) # This prevents tiny little non-monotonicities in vFunc
+            
+            #print(np.sum(np.isnan(vArrayBig)),np.sum(np.isnan(vArrayZeroShk)),np.sum(np.isnan(vFloor_expected)),np.sum(np.isnan(CritShkPrbArray)))
+            temp = np.isnan(vParrayBig)
+            if np.sum(temp) > 0:
+                print(np.sum(temp))
+                print(np.argwhere(temp))
+            
             # Integrate (marginal) value across medical shocks
             vArray   = np.sum(vArrayBig*MedShkPrbArray,axis=2) + ZeroMedShkPrb[h]*vArrayZeroShk + (1.0-ZeroMedShkPrb[h])*CritShkPrbArray*vFloor_expected
             vParray  = np.sum(vParrayBig*MedShkPrbArray,axis=2)+ ZeroMedShkPrb[h]*vParrayZeroShk + (1.0-ZeroMedShkPrb[h])*CritShkPrbArray*0.0
-                         
+            
             # Calculate actuarial value at each (mLvl,pLvl), combining shocks above and below the critical value
             AVarrayBig = MedArrayBig*MedPrice - Contract.OOPfunc(MedArrayBig) # realized "actuarial value" below critical shock
             ExpectedMedatCfloor = (Copay*MedPrice)**(-1./CRRAmed)*ExpectedAdjShkAtCfloor*Cfloor**(CRRA/CRRAmed) # Use truncated lognormal formula
             AVarray  = np.sum(AVarrayBig*MedShkPrbArray,axis=2) + (1.0-ZeroMedShkPrb[h])*CritShkPrbArray*ExpectedMedatCfloor
-            
-            # Calculate value for portions of the state space where mLvl <= Cfloor, so Cfloor always binds
-            vFloorBypLvl = u(Cfloor) + C1*np.exp(mu+(sigma**2)*0.5) + EndOfPrdvFunc(np.zeros_like(pLvlGrid),pLvlGrid)
-            vNvrsFloorBypLvl = uinv(vFloorBypLvl)
             
             # Construct pseudo-inverse arrays of vNvrs and vPnvrs, adding some data at the bottom
             mLvlArray_temp = mLvlArray[:,:,0]
@@ -1977,7 +1991,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         if Z is None:
             Z = range(len(self.solution[t].policyFunc[h]))
         for z in Z:
-            cLvl,MedLvl = self.solution[t].policyFunc[h][z](mLvl,p*np.ones_like(mLvl),MedShk*np.ones_like(mLvl))
+            cLvl,MedLvl,xLvl = self.solution[t].policyFunc[h][z](mLvl,p*np.ones_like(mLvl),MedShk*np.ones_like(mLvl))
             plt.plot(mLvl,cLvl)
         plt.xlabel('Market resources mLvl')
         plt.ylabel('Consumption c(mLvl)')
@@ -1998,12 +2012,12 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
             plt.savefig('../Figures/' + savename + '.pdf')
         plt.show()
         
-    def plotcFuncByMedShk(self,t,h,z,p,mMin=0.0,mMax=10.0,MedShkSet=None,savename=None):        
+    def plotcFuncByDev(self,t,h,z,p,mMin=0.0,mMax=10.0,DevSet=None,savename=None):        
         mLvl = np.linspace(mMin,mMax,200)
-        if MedShkSet is None:
-            MedShkSet = self.MedShkDstn[t][h][1]
-        for MedShk in MedShkSet:            
-            cLvl,MedLvl = self.solution[t].policyFunc[h][z](mLvl,p*np.ones_like(mLvl),MedShk*np.ones_like(mLvl))
+        if DevSet is None:
+            DevSet = np.linspace(self.DevMin,self.DevMax,self.MedShkCount)
+        for Dev in DevSet:            
+            cLvl = self.solution[t].policyFunc[h][z].cFunc(mLvl,p*np.ones_like(mLvl),Dev*np.ones_like(mLvl))
             plt.plot(mLvl,cLvl)
         plt.xlabel('Market resources mLvl')
         plt.ylabel('Consumption c(mLvl)')
@@ -2012,12 +2026,12 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
             plt.savefig('../Figures/' + savename + '.pdf')
         plt.show()
         
-    def plotMedFuncByMedShk(self,t,h,z,p,mMin=0.0,mMax=10.0,MedShkSet=None,savename=None):        
+    def plotMedFuncByDev(self,t,h,z,p,mMin=0.0,mMax=10.0,DevSet=None,savename=None):        
         mLvl = np.linspace(mMin,mMax,200)
-        if MedShkSet is None:
-            MedShkSet = self.MedShkDstn[t][h][1]
-        for MedShk in MedShkSet:            
-            cLvl,MedLvl = self.solution[t].policyFunc[h][z](mLvl,p*np.ones_like(mLvl),MedShk*np.ones_like(mLvl))
+        if DevSet is None:
+            DevSet = np.linspace(self.DevMin,self.DevMax,self.MedShkCount)
+        for Dev in DevSet:            
+            MedLvl = self.solution[t].policyFunc[h][z].MedFunc(mLvl,p*np.ones_like(mLvl),Dev*np.ones_like(mLvl))
             plt.plot(mLvl,MedLvl)
         plt.xlabel('Market resources mLvl')
         plt.ylabel('Medical care Med(mLvl)')
@@ -2026,30 +2040,15 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
             plt.savefig('../Figures/' + savename + '.pdf')
         plt.show()
         
-    def plotxFuncByMedShk(self,t,h,z,p,mMin=0.0,mMax=10.0,MedShkSet=None,savename=None):        
+    def plotxFuncByDev(self,t,h,z,p,mMin=0.0,mMax=10.0,DevSet=None,savename=None):        
         mLvl = np.linspace(mMin,mMax,200)
-        if MedShkSet is None:
-            MedShkSet = self.MedShkDstn[t][h][1]
-        for MedShk in MedShkSet:            
-            xLvl = self.solution[t].policyFunc[h][z].xFunc(mLvl,p*np.ones_like(mLvl),MedShk*np.ones_like(mLvl))
+        if DevSet is None:
+            DevSet = np.linspace(self.DevMin,self.DevMax,self.MedShkCount)
+        for Dev in DevSet:            
+            xLvl = self.solution[t].policyFunc[h][z].xFunc(mLvl,p*np.ones_like(mLvl),Dev*np.ones_like(mLvl))
             plt.plot(mLvl,xLvl)
         plt.xlabel('Market resources mLvl')
         plt.ylabel('Expenditure x(mLvl)')
-        plt.ylim(ymin=0.0)
-        if savename is not None:
-            plt.savefig('../Figures/' + savename + '.pdf')
-        plt.show()
-        
-    def plotcEffFuncByMedShk(self,t,h,z,p,mMin=0.0,mMax=10.0,MedShkSet=None,savename=None):        
-        mLvl = np.linspace(mMin,mMax,200)
-        if MedShkSet is None:
-            MedShkSet = self.MedShkDstn[t][h][1]
-        for MedShk in MedShkSet:            
-            cLvl,MedLvl = self.solution[t].policyFunc[h][z](mLvl,p*np.ones_like(mLvl),MedShk*np.ones_like(mLvl))
-            cEffLvl = (1. - np.exp(-(MedLvl+1e-10)/MedShk))**self.CRRAmed*cLvl
-            plt.plot(mLvl,cEffLvl)
-        plt.xlabel('Market resources mLvl')
-        plt.ylabel('Effective consumption C(mLvl)')
         plt.ylim(ymin=0.0)
         if savename is not None:
             plt.savefig('../Figures/' + savename + '.pdf')

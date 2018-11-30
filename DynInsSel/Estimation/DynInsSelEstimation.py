@@ -521,8 +521,8 @@ def makeDynInsSelType(CRRAcon,MedCurve,DiscFac,BequestShift,BequestScale,ChoiceS
         assert False, 'EducType must be 0, 1, or 2!'
         
     # Make a timepath of discount factors
-    DiscFac_time_vary = np.linspace(DiscFac-0.25,DiscFac,25).tolist() + 70*[DiscFac]
-    #DiscFac_time_vary = np.linspace(DiscFac-0.00,DiscFac,25).tolist() + 70*[DiscFac]  
+    #DiscFac_time_vary = np.linspace(DiscFac-0.25,DiscFac,25).tolist() + 70*[DiscFac]
+    DiscFac_time_vary = np.linspace(DiscFac-0.00,DiscFac,25).tolist() + 70*[DiscFac]  
         
     TypeDict['CRRA'] = CRRAcon
     TypeDict['MedCurve'] = MedCurve
@@ -1005,22 +1005,22 @@ if __name__ == '__main__':
     MyType = MyMarket.agents[2] 
     MyType.solve()
     t_end = clock()
-#    print('Solving and simulating one agent type took ' + str(t_end-t_start) + ' seconds.')
-#       
-#    t = 0
-#    p = 3.0    
-#    h = 4        
-#    MedShk = 1.0e-1
-#    z = 0
-#    
-#    MyType.plotvFunc(t,p,decurve=False)
-#    MyType.plotvPfunc(t,p,decurve=False)
-#    MyType.plotvFuncByContract(t,h,p)
-#    MyType.plotcFuncByContract(t,h,p,MedShk)
-#    MyType.plotcFuncByMedShk(t,h,z,p)
-#    MyType.plotMedFuncByMedShk(t,h,z,p)
-#    MyType.plotxFuncByMedShk(t,h,z,p)
-#    MyType.plotcEffFuncByMedShk(t,h,z,p)
+    print('Solving and simulating one agent type took ' + str(t_end-t_start) + ' seconds.')
+       
+    t = 0
+    p = 3.0    
+    h = 4        
+    Dev = 0.0
+    z = 0
+    
+    MyType.plotvFunc(t,p,decurve=False)
+    MyType.plotvPfunc(t,p,decurve=False)
+    MyType.plotvFuncByContract(t,h,p)
+    MyType.plotcFuncByContract(t,h,p,Dev)
+    MyType.plotcFuncByDev(t,h,z,p)
+    MyType.plotMedFuncByDev(t,h,z,p)
+    MyType.plotxFuncByDev(t,h,z,p)
+
     
 #    MyMarket.reset()
 #    MyMarket.sow()

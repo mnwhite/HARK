@@ -18,7 +18,6 @@ StaticBool = False
 # Calibrated / other parameters (grid sizes, etc)
 Cfloor = 0.24                       # Effective consumption floor
 Rfree = 5*[1.03]                    # Interest factor on assets
-DiscFac = 0.96                      # Intertemporal discount factor
 aXtraMin = 0.001                    # Minimum end-of-period "assets above minimum" value
 aXtraMax = 40                       # Minimum end-of-period "assets above minimum" value               
 aXtraExtra = [0.005,0.01]           # Some other value of "assets above minimum" to add to the grid, not used
@@ -37,9 +36,9 @@ pLvlPctiles = np.concatenate(([0.001, 0.005, 0.01, 0.03], np.linspace(0.05, 0.95
 pLvlInitStd = 0.4                   # Initial standard deviation of (log) permanent income
 pLvlInitMean = 0.0                  # Initial average of log permanent income
 PermIncCorr = 1.00                  # Serial correlation coefficient for permanent income
-MedShkCount = 25                    # Number of medical shock points
-DevMin = -3.                        # Minimum standard deviations below MedShk mean
-DevMax = 5.                         # Maximum standard deviations above MedShk mean
+MedShkCount = 21                    # Number of medical shock points
+DevMin = -2.5                       # Minimum standard deviations below MedShk mean
+DevMax = 4.5                        # Maximum standard deviations above MedShk mean
 MedPrice = 1.0                      # Relative price of a unit of medical care
 AgentCount = 10000                  # Number of agents of this type (only matters for simulation)
 DeductibleList = [0.06,0.05,0.04,0.03,0.02] # List of deductibles for working-age insurance contracts
@@ -220,6 +219,7 @@ for t in range(40):
     LivPrb.append(LivPrbYoung[:,t+1])
 for t in range(55):
     LivPrb.append(LivPrbOld[:,t+15])
+LivPrb[-1] = np.array([0.,0.,0.,0.,0.])
     
 # Make education-specific health transitions, estimated directly from the MEPS
 f1 = lambda x :  .1780641*x - .0094783*x**2 + .0001773*x**3 - 1.12e-06*x**4
@@ -438,7 +438,7 @@ CollegeDictionary['pLvlInitMean'] = pLvlInitMean_c
 CollegeDictionary['pLvlNextFuncRet'] = RetirementFunc_c
 
 # Make a test parameter vector for estimation
-test_param_vec = np.array([0.90, # DiscFac
+test_param_vec = np.array([0.95, # DiscFac
                            1.8,  # CRRAcon
                            5.0,  # MedCurve 
                           -8.5,  # ChoiceShkMag in log
