@@ -36,9 +36,9 @@ pLvlPctiles = np.concatenate(([0.001, 0.005, 0.01, 0.03], np.linspace(0.05, 0.95
 pLvlInitStd = 0.4                   # Initial standard deviation of (log) permanent income
 pLvlInitMean = 0.0                  # Initial average of log permanent income
 PermIncCorr = 1.00                  # Serial correlation coefficient for permanent income
-MedShkCount = 21                    # Number of medical shock points
-DevMin = -2.5                       # Minimum standard deviations below MedShk mean
-DevMax = 4.5                        # Maximum standard deviations above MedShk mean
+MedShkCount = 25                    # Number of medical shock points
+DevMin = -3.0                       # Minimum standard deviations below MedShk mean
+DevMax = 5.0                        # Maximum standard deviations above MedShk mean
 MedPrice = 1.0                      # Relative price of a unit of medical care
 AgentCount = 10000                  # Number of agents of this type (only matters for simulation)
 DeductibleList = [0.06,0.05,0.04,0.03,0.02] # List of deductibles for working-age insurance contracts
@@ -438,8 +438,8 @@ CollegeDictionary['pLvlInitMean'] = pLvlInitMean_c
 CollegeDictionary['pLvlNextFuncRet'] = RetirementFunc_c
 
 # Make a test parameter vector for estimation
-test_param_vec = np.array([0.95, # DiscFac
-                           1.8,  # CRRAcon
+test_param_vec = np.array([0.97, # DiscFac
+                           2.0,  # CRRAcon
                            5.0,  # MedCurve 
                           -8.5,  # ChoiceShkMag in log
                            2.6,  # SubsidyZeroRate scaler
@@ -447,7 +447,7 @@ test_param_vec = np.array([0.95, # DiscFac
                           -3.0,  # SubsidyWidth scaler
                           10.0,  # BequestShift shifter for bequest motive
                            3.0,  # BequestScale scale of bequest motive
-                         -5.35,  # MedShkMean constant coefficient
+                         -3.9,   # MedShkMean constant coefficient
                         0.0030,  # MedShkMean linear age coefficient
                        0.00110,  # MedShkMean quadratic age coefficient
                     -0.0000020,  # MedShkMean cubic age coefficient
@@ -460,8 +460,8 @@ test_param_vec = np.array([0.95, # DiscFac
                          0.001,  # MedShkMean "fair" linear coefficient
                            1.5,  # MedShkMean "poor" constant coefficient
                         -0.016,  # MedShkMean "poor" linear coefficient
-                          0.42,  # MedShkStd constant coefficient
-                         0.000,  # MedShkStd linear age coefficient
+                          0.48,  # MedShkStd constant coefficient
+                        -0.001,  # MedShkStd linear age coefficient
                            0.0,  # MedShkStd quadratic age coefficient
                            0.0,  # MedShkStd cubic age coefficient
                            0.0,  # MedShkStd quartic age coefficient

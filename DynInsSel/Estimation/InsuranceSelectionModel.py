@@ -1168,11 +1168,11 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
             vFloor_tiled = np.tile(np.reshape(vFloorBypLvl,(1,pLvlCount,1)),(aLvlCount,1,MedShkCount))
             vArrayBig = np.maximum(vArrayBig,vFloor_tiled) # This prevents tiny little non-monotonicities in vFunc
             
-            #print(np.sum(np.isnan(vArrayBig)),np.sum(np.isnan(vArrayZeroShk)),np.sum(np.isnan(vFloor_expected)),np.sum(np.isnan(CritShkPrbArray)))
-            temp = np.isnan(vParrayBig)
-            if np.sum(temp) > 0:
-                print(np.sum(temp))
-                print(np.argwhere(temp))
+#            print(np.sum(np.isnan(vArrayBig)),np.sum(np.isnan(vArrayZeroShk)),np.sum(np.isnan(vFloor_expected)),np.sum(np.isnan(CritShkPrbArray)))
+#            temp = np.isnan(vParrayBig)
+#            if np.sum(temp) > 0:
+#                print(np.sum(temp))
+#                print(np.argwhere(temp))
             
             # Integrate (marginal) value across medical shocks
             vArray   = np.sum(vArrayBig*MedShkPrbArray,axis=2) + ZeroMedShkPrb[h]*vArrayZeroShk + (1.0-ZeroMedShkPrb[h])*CritShkPrbArray*vFloor_expected
@@ -1323,7 +1323,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
     
     # Return the solution for this period
     t_end = clock()
-    print('Solving a period of the problem took ' + str(t_end-t_start) + ' seconds, fix count = ' + str(JDfixCount))
+    #print('Solving a period of the problem took ' + str(t_end-t_start) + ' seconds, fix count = ' + str(JDfixCount))
     return solution_now
     
 ####################################################################################################
@@ -1854,7 +1854,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         aLvlNow[NeedHelp] = 0.
         cLvlNow[NeedHelp] = self.Cfloor
         MedLvlNow[NeedHelp] = self.Cfloor**(self.CRRA/self.CRRAmed)*EffPriceNow[NeedHelp]**(-1./self.CRRAmed)*MedShkNow[NeedHelp]**(1.-1/self.CRRAmed)
-        OOPnow[NeedHelp] = np.maximum(mLvlNow[NeedHelp] - PremNow[NeedHelp] - self.ConFloor, 0.0)
+        OOPnow[NeedHelp] = np.maximum(mLvlNow[NeedHelp] - PremNow[NeedHelp] - self.Cfloor, 0.0)
         WelfareNow = np.zeros_like(mLvlNow)
 #        WelfareNow[NeedHelp] = Welfare
 #       NEED TO CALCULATE WELFARE!
