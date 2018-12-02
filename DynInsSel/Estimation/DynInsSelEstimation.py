@@ -782,7 +782,7 @@ def objectiveFunction(Parameters):
     
     MyMarket = makeMarketFromParams(Parameters,flatActuarialRule,Premiums_init,InsChoice,SubsidyTypeCount,CRRAtypeCount,ZeroSubsidyBool)
     MyMarket.Premiums = Premiums_init_short
-    multiThreadCommands(MyMarket.agents,['update()','makeShockHistory()'])
+    multiThreadCommandsFake(MyMarket.agents,['update()','makeShockHistory()'])
     MyMarket.getIncomeQuintiles()
     multiThreadCommandsFake(MyMarket.agents,['makeIncBoolArray()'])
     

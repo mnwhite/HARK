@@ -1639,7 +1639,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         
         # Make initial permanent income and asset levels, etc
         pLvlInit = np.exp(self.pLvlInitMean)*drawMeanOneLognormal(N=self.AgentCount,sigma=self.pLvlInitStd,seed=self.RNG.randint(0,2**31-1))
-        self.aLvlInit = 0.3*pLvlInit
+        self.aLvlInit = 0.01*pLvlInit
         pLvlNow = pLvlInit
         Live = np.ones(self.AgentCount,dtype=bool)
         Dead = np.logical_not(Live)
