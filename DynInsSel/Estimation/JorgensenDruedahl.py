@@ -25,6 +25,7 @@ ctx = platforms.create_some_context()
 queue = ctx.create_queue(ctx.devices[0])
 program = ctx.create_program(program_code)
 JDkernel = program.get_kernel('doJorgensenDruedahlFix')
+JDkernel_simple = program.get_kernel('doJorgensenDruedahlSimpleFix')
 
 class JDfixer(object):
     '''
