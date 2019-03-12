@@ -1060,7 +1060,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
             mMinArray = np.tile(np.reshape(mLvlMinNow(pLvlGrid),(1,pCount,1)),(MedShkCount,1,mCount-1))
             mLvlArray = mMinArray + np.tile(np.reshape(aXtraGrid,(1,1,mCount-1)),(MedShkCount,pCount,1))*pLvlArray
             if pLvlGrid[0] == 0.0:  # mLvl turns out badly if pLvl is 0 at bottom
-                mLvlArray[:,0,:] = np.tile(aXtraGrid,(MedShkCount,1))
+                mLvlArray[:,0,:] = mLvlArray[:,1,:]
             MedShkArray = np.tile(np.reshape(MedShkVals,(MedShkCount,1,1)),(1,pCount,mCount-1))
             DevArray = np.tile(np.reshape(DevGrid,(MedShkCount,1,1)),(1,pCount,mCount-1))
             cLvlArray,MedLvlArray,xLvlArray = PolicyFuncsThisHealthCopay[-1](mLvlArray,pLvlArray,DevArray)
@@ -1165,13 +1165,14 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
             vArrayBig = np.maximum(vArrayBig,vFloor_tiled) # This prevents tiny little non-monotonicities in vFunc
             
             print(np.sum(np.isnan(vArrayBig)),np.sum(np.isnan(vArrayZeroShk)),np.sum(np.isnan(vFloor_expected)),np.sum(np.isnan(CritShkPrbArray)))
-            temp = np.isnan(vParrayBig)
-            if np.sum(temp) > 0:
-                print(np.sum(temp))
-                X = np.where(temp)
-                print(mLvlArray[X])
-                print(pLvlArray[X])
-                print(DevArray[X])
+            #temp = np.isnan(vArrayBig)
+            #if np.sum(temp) > 0:
+                #print(np.sum(temp))
+                #X = np.argwhere(temp)
+                #print(X)
+                #print(mLvlArray[X])
+                #print(pLvlArray[X])
+                #print(DevArray[X])
             
             # Integrate (marginal) value across medical shocks
             vArray   = np.sum(vArrayBig*MedShkPrbArray,axis=2) + ZeroMedShkPrb[h]*vArrayZeroShk + (1.0-ZeroMedShkPrb[h])*CritShkPrbArray*vFloor_expected

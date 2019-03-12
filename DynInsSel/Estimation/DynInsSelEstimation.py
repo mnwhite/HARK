@@ -1014,14 +1014,15 @@ if __name__ == '__main__':
     Dev = 0.0
     z = 0
     
-    MyType.plotvFunc(t,p,decurve=False,mMax=20.)
-    MyType.plotvPfunc(t,p,decurve=False,mMax=20.)
-    MyType.plotvFuncByContract(t,h,p,mMax=20.)
-    MyType.plotcFuncByContract(t,h,p,Dev,mMax=20.)
-    MyType.plotcFuncByDev(t,h,z,p,mMax=20.)
-    MyType.plotMedFuncByDev(t,h,z,p,mMax=20.)
-    MyType.plotxFuncByDev(t,h,z,p,mMax=20.)
-    MyType.plotAVfuncByContract(t,h,p,mMin=0.0,mMax=10.0,Z=None)
+    mTop = 10.
+    MyType.plotvFunc(t,p,decurve=False,mMax=mTop)
+    MyType.plotvPfunc(t,p,decurve=False,mMax=mTop)
+    MyType.plotvFuncByContract(t,h,p,mMax=mTop)
+    MyType.plotcFuncByContract(t,h,p,Dev,mMax=mTop)
+    MyType.plotcFuncByDev(t,h,z,p,mMax=mTop)
+    MyType.plotMedFuncByDev(t,h,z,p,mMax=mTop)
+    MyType.plotxFuncByDev(t,h,z,p,mMax=mTop)
+    MyType.plotAVfuncByContract(t,h,p,mMax=mTop)
 #
 #    
 #    MyMarket.reset()
