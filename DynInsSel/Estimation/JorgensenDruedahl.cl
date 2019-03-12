@@ -64,7 +64,6 @@ __kernel void doJorgensenDruedahlFix(
     int DevGridDenseSize = IntegerInputs[3];
     int ThreadCount = IntegerInputs[4];
 
-    
     /* Initialize this thread's id and get this thread's constant (mLvl,Dev) identity */
     int Gid = get_global_id(0);     /* global thread id */
     if (Gid >= ThreadCount) {

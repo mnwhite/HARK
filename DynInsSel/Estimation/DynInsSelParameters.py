@@ -358,7 +358,7 @@ class RetirementFunc(object):
         else:
             LogAIMEhigh = -self.high_slope*Diff + self.high_intercept
         AIME[high] = np.exp(LogAIMEhigh)
-        pLvlNext = SSbenefitFunc(AIME)
+        pLvlNext = np.maximum(SSbenefitFunc(AIME),0.1)
         return pLvlNext
 
 AIMEmax = None # Regular: 10.68

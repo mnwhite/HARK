@@ -21,7 +21,7 @@ from ConsIndShockModel import ValueFunc
 from ConsPersistentShockModel import ValueFunc2D, MargValueFunc2D
 from ConsMarkovModel import MarkovConsumerType
 from ConsIndShockModel import constructLognormalIncomeProcessUnemployment
-from JorgensenDruedahl import makeGridDenser, JDfixer
+from JorgensenDruedahl import makeGridDenser, JDfixer, JDfixerSimple
 import matplotlib.pyplot as plt
 from scipy.stats import norm
 from scipy.special import erfc
@@ -840,6 +840,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
     # Get sizes of arrays
     mLvl_aug_factor = 3
     MedShk_aug_factor = 3
+    pLvl_aug_factor = 4
     pLvlCount = pLvlGrid.size
     aLvlCount   = aXtraGrid.size
     HealthCount = len(LivPrb) # number of discrete health states
@@ -848,9 +849,13 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
     DevGrid = np.linspace(DevMin,DevMax,MedShkCount)
     DevGridDense = makeGridDenser(DevGrid,MedShk_aug_factor)
     
+    # Make dense grid for pLvl (only used when MedShk=0)
+    pGridDense = makeGridDenser(pLvlGrid,pLvl_aug_factor)
+    
     # Make a JDfixer instance to use when necessary
     mGridDenseBase = makeGridDenser(aXtraGrid,mLvl_aug_factor)
     MyJDfixer = JDfixer(aLvlCount+1,MedShkCount,mGridDenseBase.size,DevGridDense.size)
+    MyJDfixerZeroShk = JDfixerSimple(aLvlCount+1,pLvlGrid.size,mGridDenseBase.size,pGridDense.size,CRRA)
     
     # Define utility function derivatives and inverses
     u = lambda x : utility(x,CRRA)
@@ -979,6 +984,8 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
         EndOfPrdvNvrsFuncBase = LinearInterpOnInterp1D(EndOfPrdvNvrsFunc_by_pLvl,pLvlGrid)
         EndOfPrdvNvrsFunc = EndOfPrdvNvrsFuncBase
         EndOfPrdvFunc = ValueFunc2D(EndOfPrdvNvrsFunc,CRRA)
+        EndOfPrdvNvrsFunc_Cnst = LinearInterp(pLvlGrid,uinv(EndOfPrdv[:,0,h]))
+        EndOfPrdvFunc_Cnst = ValueFunc(EndOfPrdvNvrsFunc_Cnst,CRRA)
         
         # Make tiled versions of end-of-period marginal value and medical needs shocks
         EndOfPrdvPnvrs = uPinv(EndOfPrdvP[:,:,h])
@@ -989,23 +996,12 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
         #print(np.sum(np.isnan(EndOfPrdvPnvrs_tiled)),np.sum(np.isinf(EndOfPrdvPnvrs_tiled)))
         
         # Make consumption, value, and marginal value functions for when there is zero medical need shock
-        cFunc_by_pLvl_ZeroShk = []
-        vNvrsFunc_by_pLvl_ZeroShk = []
-        cLvlNow = np.maximum(EndOfPrdvPnvrs, Cfloor)
-        mLvlNow = aLvlNow + cLvlNow
-        vNow = u(cLvlNow) + EndOfPrdv[:,:,h]
-        for j in range(pCount):
-            cFunc_by_pLvl_ZeroShk.append(LinearInterp(np.insert(mLvlNow[j,:],0,0.0),np.insert(cLvlNow[j,:],0,0.0)))
-            m_cnst = np.linspace(0.01,0.9,10)*mLvlNow[j,0]
-            v_cnst = u(m_cnst) + EndOfPrdv[j,0,h]
-            m_temp = np.concatenate(([0.],m_cnst,mLvlNow[j,:]))
-            v_temp = np.concatenate((v_cnst,vNow[j,:]))
-            vNvrs_temp = np.concatenate(([0.],uinv(v_temp)))
-            vNvrsFunc_by_pLvl_ZeroShk.append(LinearInterp(m_temp,vNvrs_temp))
-        cFuncZeroShk = LinearInterpOnInterp1D(cFunc_by_pLvl_ZeroShk,pLvlGrid)
-        vNvrsFuncZeroShk = LinearInterpOnInterp1D(vNvrsFunc_by_pLvl_ZeroShk,pLvlGrid)
-        vFuncZeroShk = ValueFunc2D(vNvrsFuncZeroShk, CRRA)
-        
+        cLvl_data = EndOfPrdvPnvrs.transpose()
+        mLvl_data = aLvlNow.transpose() + cLvl_data
+        pLvl_data = pLvlNow.transpose()
+        v_data = u(cLvl_data) + EndOfPrdv[:,:,h].transpose()
+        vNvrs_data = uinv(v_data)
+        cFuncZeroShk, vFuncZeroShk = MyJDfixerZeroShk(mLvl_data,pLvl_data,vNvrs_data,cLvl_data,mGridDenseBase,pGridDense,EndOfPrdvFunc_Cnst)
         #print(np.sum(np.isnan(cLvlNow)),np.sum(np.isnan(EndOfPrdv[:,:,h])))
             
         # For each coinsurance rate, make policy and value functions (for this health state)
@@ -1168,11 +1164,14 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
             vFloor_tiled = np.tile(np.reshape(vFloorBypLvl,(1,pLvlCount,1)),(aLvlCount,1,MedShkCount))
             vArrayBig = np.maximum(vArrayBig,vFloor_tiled) # This prevents tiny little non-monotonicities in vFunc
             
-#            print(np.sum(np.isnan(vArrayBig)),np.sum(np.isnan(vArrayZeroShk)),np.sum(np.isnan(vFloor_expected)),np.sum(np.isnan(CritShkPrbArray)))
-#            temp = np.isnan(vParrayBig)
-#            if np.sum(temp) > 0:
-#                print(np.sum(temp))
-#                print(np.argwhere(temp))
+            print(np.sum(np.isnan(vArrayBig)),np.sum(np.isnan(vArrayZeroShk)),np.sum(np.isnan(vFloor_expected)),np.sum(np.isnan(CritShkPrbArray)))
+            temp = np.isnan(vParrayBig)
+            if np.sum(temp) > 0:
+                print(np.sum(temp))
+                X = np.where(temp)
+                print(mLvlArray[X])
+                print(pLvlArray[X])
+                print(DevArray[X])
             
             # Integrate (marginal) value across medical shocks
             vArray   = np.sum(vArrayBig*MedShkPrbArray,axis=2) + ZeroMedShkPrb[h]*vArrayZeroShk + (1.0-ZeroMedShkPrb[h])*CritShkPrbArray*vFloor_expected
