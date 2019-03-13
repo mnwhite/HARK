@@ -1106,6 +1106,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
             # Set and unpack the contract of interest
             Contract = ContractList[h][z]
             Copay = Contract.Copay
+            OptionCost = Contract.OptionCost
             FullPrice_idx = np.argwhere(np.array(EffPriceList)==MedPrice)[0][0]
             Copay_idx = np.argwhere(np.array(EffPriceList)==Copay*MedPrice)[0][0]
             
@@ -1164,7 +1165,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
             vFloor_tiled = np.tile(np.reshape(vFloorBypLvl,(1,pLvlCount,1)),(aLvlCount,1,MedShkCount))
             vArrayBig = np.maximum(vArrayBig,vFloor_tiled) # This prevents tiny little non-monotonicities in vFunc
             
-            print(np.sum(np.isnan(vArrayBig)),np.sum(np.isnan(vArrayZeroShk)),np.sum(np.isnan(vFloor_expected)),np.sum(np.isnan(CritShkPrbArray)))
+            #print(np.sum(np.isnan(vArrayBig)),np.sum(np.isnan(vArrayZeroShk)),np.sum(np.isnan(vFloor_expected)),np.sum(np.isnan(CritShkPrbArray)))
             #temp = np.isnan(vArrayBig)
             #if np.sum(temp) > 0:
                 #print(np.sum(temp))
@@ -1181,7 +1182,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
             # Calculate actuarial value at each (mLvl,pLvl), combining shocks above and below the critical value
             AVarrayBig = MedArrayBig*MedPrice - Contract.OOPfunc(MedArrayBig) # realized "actuarial value" below critical shock
             ExpectedMedatCfloor = (Copay*MedPrice)**(-1./CRRAmed)*ExpectedAdjShkAtCfloor*Cfloor**(CRRA/CRRAmed) # Use truncated lognormal formula
-            AVarray  = np.sum(AVarrayBig*MedShkPrbArray,axis=2) + (1.0-ZeroMedShkPrb[h])*CritShkPrbArray*ExpectedMedatCfloor
+            AVarray  = np.sum(AVarrayBig*MedShkPrbArray,axis=2) + (1.0-ZeroMedShkPrb[h])*CritShkPrbArray*(ExpectedMedatCfloor*(1.-Copay) - OptionCost)
             
             # Construct pseudo-inverse arrays of vNvrs and vPnvrs, adding some data at the bottom
             mLvlArray_temp = mLvlArray[:,:,0]
@@ -1323,7 +1324,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
     
     # Return the solution for this period
     t_end = clock()
-    print('Solving a period of the problem took ' + str(t_end-t_start) + ' seconds, fix count = ' + str(JDfixCount))
+    #print('Solving a period of the problem took ' + str(t_end-t_start) + ' seconds, fix count = ' + str(JDfixCount))
     return solution_now
     
 ####################################################################################################
