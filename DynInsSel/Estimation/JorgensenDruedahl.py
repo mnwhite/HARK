@@ -225,15 +225,12 @@ class JDfixerSimple(object):
             mLvl_temp = mLvlNow[:,j]
             cLvl_temp = cLvlNow[:,j]
             vNvrs_temp= vNvrsNow[:,j]
-            if j < 0:
-                plt.plot(mLvl_temp,cLvl_temp)
             cFunc_by_pLvl_ZeroShk.append(LinearInterp(mLvl_temp,cLvl_temp))
             vNvrsFunc_by_pLvl_ZeroShk.append(LinearInterp(mLvl_temp,vNvrs_temp))
         cFuncZeroShk = LinearInterpOnInterp1D(cFunc_by_pLvl_ZeroShk,pGridDense)
         vNvrsFuncZeroShk = LinearInterpOnInterp1D(vNvrsFunc_by_pLvl_ZeroShk,pGridDense)
         vFuncZeroShk = ValueFunc2D(vNvrsFuncZeroShk, self.CRRA)
         
-        #plt.show()
         return cFuncZeroShk, vFuncZeroShk
         
     

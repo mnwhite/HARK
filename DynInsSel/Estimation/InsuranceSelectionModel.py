@@ -129,26 +129,18 @@ class TransConShareFunc(HARKobject):
         return b
 
 
-class LogOnLogFunc2D(HARKobject):
+class RescaledFunc2D(HARKobject):
     '''
-    A class for 2D interpolated functions in which both the first argument and
-    the output are transformed through the natural log function.  This tends to
-    smooth out functions whose gridpoints have disparate spacing.  Takes as its
-    only argument a 2D function (whose x-domain and range are both R_+).
+    A class for representing 2D functions f(x,y) with the properties lim_{x --> -inf} f(x,y) = g(y)
+    and lim_{x --> inf} f(x,y) = 0.
     '''
-    distance_criteria = ['func']
-    
-    def __init__(self,func):
-        self.func = func
+    def __init__(self,ScaledFunc,LimitFunc):
+        self.ScaledFunc = ScaledFunc
+        self.LimitFunc  = LimitFunc
         
     def __call__(self,x,y):
-        return np.exp(self.func(np.log(x),y))
-    
-    def derivativeX(self,x,y):
-        return self.func.derivativeX(np.log(x),y)/x*self.__call__(x,y)
-    
-    def derivativeY(self,x,y):
-        return self.func.derivativeY(np.log(x),y)*self.__call__(x,y) 
+        temp = self.ScaledFunc(x,y)
+        return self.LimitFunc(y)/(1. + np.exp(temp))
 
 
 class InsuranceSelectionSolution(HARKobject):
@@ -996,8 +988,6 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
         MedShkVals_tiled  = np.tile(np.reshape(MedShkVals,(MedShkCount,1,1)),(1,pCount,mCount))
         DevGrid_tiled  = np.tile(np.reshape(DevGrid,(MedShkCount,1,1)),(1,pCount,mCount))
         
-        #print(np.sum(np.isnan(EndOfPrdvPnvrs_tiled)),np.sum(np.isinf(EndOfPrdvPnvrs_tiled)))
-        
         # Make consumption, value, and marginal value functions for when there is zero medical need shock
         cLvl_data = EndOfPrdvPnvrs.transpose()
         mLvl_data = aLvlNow.transpose() + cLvl_data
@@ -1005,7 +995,6 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
         v_data = u(cLvl_data) + EndOfPrdv[:,:,h].transpose()
         vNvrs_data = uinv(v_data)
         cFuncZeroShk, vFuncZeroShk = MyJDfixerZeroShk(mLvl_data,pLvl_data,vNvrs_data,cLvl_data,mGridDenseBase,pGridDense,EndOfPrdvFunc_Cnst)
-        #print(np.sum(np.isnan(cLvlNow)),np.sum(np.isnan(EndOfPrdv[:,:,h])))
             
         # For each coinsurance rate, make policy and value functions (for this health state)
         for k in range(len(EffPriceList)):
@@ -1070,21 +1059,30 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
             aLvlArray = np.abs(mLvlArray - xLvlArray) # OCCASIONAL VIOLATIONS BY 1E-18 !!!
             EndOfPrdvArray = EndOfPrdvFunc(aLvlArray,pLvlArray)
             vNow = u(cLvlArray) + uMed(MedLvlArray/MedShkArray) + EndOfPrdvArray
-            vNvrsNow  = np.concatenate((np.zeros((MedShkCount,pCount,1)),uinv(vNow)),axis=2)
+            vNvrsNow  = uinv(vNow)
             
-            #if np.sum(np.isnan(vNow)) > 0 and h==0:
-                #print(np.sum(np.isnan(vNow)),np.sum(np.isnan(cLvlArray)),np.sum(np.isnan(MedLvlArray)),np.sum(np.isnan(EndOfPrdvArray)))
-                #X = np.where(np.isnan(vNow))
-                #print(cLvlArray[X])
-                #print(aLvlArray[X])
+            # Calculate "candidate" v_ZeroShk values from consuming all expenditure with zero MedShk
+            v_ZeroShk_cand = np.max(u(xLvlArray) + EndOfPrdvArray,axis=0)
                 
             # Loop over each permanent income level and mLvl and make a vNvrsFunc over MedShk for each
-            vNvrsFunc_by_pLvl = [] # Initialize the empty list of lists of vNvrsFuncs
+            vNvrsFunc_by_pLvl = [] # Initialize the empty list of vNvrsFuncs
+            #vNvrsFuncZeroShk_by_pLvl = [] # Initialize the empty list
             for i in range(pCount):
                 m_temp = np.insert(mLvlArray[0,i,:],0,0.0)
-                vNvrsFunc_by_pLvl.append(BilinearInterp(vNvrsNow[:,i,:],DevGrid,m_temp))
+                v_ZeroShk_orig = vFuncZeroShk(mLvlArray[0,i,:],pLvlGrid[i]*np.ones(mCount-1))
+                v_ZeroShk = np.maximum(v_ZeroShk_orig,v_ZeroShk_cand[i,:])
+                vNvrs_ZeroShk = uinv(v_ZeroShk)
+                vNvrs_ZeroShk_tiled = np.tile(np.reshape(vNvrs_ZeroShk,(1,mCount-1)),(MedShkCount,1))
+                vNvrsFuncZeroShk_this_pLvl = LinearInterp(m_temp,np.insert(vNvrs_ZeroShk,0,0.0))
+                vNvrsScaled = np.log(vNvrs_ZeroShk_tiled/vNvrsNow[:,i,:] - 1.)
+                vNvrsScaledFunc = BilinearInterp(vNvrsScaled,DevGrid,mLvlArray[0,i,:])
+                vNvrsFunc_by_pLvl.append(RescaledFunc2D(vNvrsScaledFunc,vNvrsFuncZeroShk_this_pLvl))
+                #vNvrsFunc_by_pLvl.append(BilinearInterp(vNvrsNow[:,i,:],DevGrid,mLvlArray[0,i,:]))
+                                
             vNvrsFuncBase = LinearInterpOnInterp2D(vNvrsFunc_by_pLvl,pLvlGrid) # Combine across all pLvls
             vNvrsFunc = TwistFuncA(vNvrsFuncBase) # Change input order from (MedShk,mLvl,pLvl) to (mLvl,pLvl,MedShk)
+            #vNvrsFuncZeroShk = LinearInterpOnInterp1D(vNvrsFuncZeroShk_by_pLvl,pLvlGrid)
+            #vFuncZeroShk = ValueFunc2D(vNvrsFuncZeroShk,CRRA)
             
             # Add the value function to the list for this health
             vFuncsThisHealthCopay.append(ValueFunc3D(vNvrsFunc,CRRA)) # Recurve value function
@@ -1200,7 +1198,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
             vPnvrsArray   = uPinv(vParray)
             vNvrsArray    = np.concatenate((np.tile(np.reshape(vNvrsFloorBypLvl,(1,pLvlCount)),(2,1)),uinv(vArray)),axis=0)
             
-#            if h==0:
+#            if h==2:
 #                for j in range(8):
 #                    plt.plot(mLvlArray_temp[:,j],uinv(vArray[:,j]))
 #                    #plt.plot(mLvlArray_temp[:,j],np.sum(MedShkPrbArray[:,j,:],axis=1))
