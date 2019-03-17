@@ -822,7 +822,7 @@ if __name__ == '__main__':
         plt.plot(Age[0:40],MyMarket.data_moments[0:40],'.k')
         plt.xlabel('Age')
         plt.ylabel('Median wealth/income ratio')
-        plt.savefig('../Figures/WealthFitByAge.pdf')
+        #plt.savefig('../Figures/WealthFitByAge.pdf')
         plt.show()
     
     plt.plot(Age,MyMarket.LogTotalMedMeanByAge)
@@ -830,7 +830,7 @@ if __name__ == '__main__':
     plt.xlabel('Age')
     plt.ylabel('Mean log total (nonzero) medical expenses')
     plt.xlim((25,85))
-    plt.savefig('../Figures/MeanTotalMedFitByAge.pdf')
+    #plt.savefig('../Figures/MeanTotalMedFitByAge.pdf')
     plt.show()
 
     plt.plot(Age,MyMarket.LogTotalMedStdByAge)
@@ -838,7 +838,7 @@ if __name__ == '__main__':
     plt.xlabel('Age')
     plt.ylabel('Stdev log total (nonzero) medical expenses')
     plt.xlim((25,85))
-    plt.savefig('../Figures/StdevTotalMedFitByAge.pdf')
+    #plt.savefig('../Figures/StdevTotalMedFitByAge.pdf')
     plt.show()
     
     # Make a "detrender" based on quadratic fit of data moments
@@ -856,7 +856,7 @@ if __name__ == '__main__':
     plt.ylabel('Detrended mean log total (nonzero) medical expenses')
     plt.title('Medical expenses by age group and health status')
     plt.xlim((25,85))
-    plt.savefig('../Figures/MeanTotalMedFitByAgeHealth.pdf')
+    #plt.savefig('../Figures/MeanTotalMedFitByAgeHealth.pdf')
     plt.show()
     
     plt.plot(Age5year,MyMarket.LogTotalMedStdByAgeHealth)
@@ -870,7 +870,7 @@ if __name__ == '__main__':
     plt.ylabel('Stdev log total (nonzero) medical expenses')
     plt.title('Medical expenses by age group and health status')
     plt.xlim((25,85))
-    plt.savefig('../Figures/StdevTotalMedFitByAgeHealth.pdf')
+    #plt.savefig('../Figures/StdevTotalMedFitByAgeHealth.pdf')
     plt.show()
         
     plt.plot(Age5year[:8],MyMarket.LogTotalMedMeanByAgeIncome - np.tile(np.reshape(LogMedMeanAdj[:8],(8,1)),(1,5)))
@@ -884,7 +884,7 @@ if __name__ == '__main__':
     plt.ylabel('Detrended mean log total (nonzero) medical expenses')
     plt.title('Medical expenses by age group and income quintile')
     plt.xlim((25,65))
-    plt.savefig('../Figures/MeanTotalMedFitByAgeIncome.pdf')
+    #plt.savefig('../Figures/MeanTotalMedFitByAgeIncome.pdf')
     plt.show()
     
     plt.plot(Age5year[:8],MyMarket.LogTotalMedStdByAgeIncome)
@@ -898,7 +898,7 @@ if __name__ == '__main__':
     plt.ylabel('Stdev log total (nonzero) medical expenses')
     plt.title('Medical expenses by age group and income quintile')
     plt.xlim((25,65))
-    plt.savefig('../Figures/StdevTotalMedFitByAgeIncome.pdf')
+    #plt.savefig('../Figures/StdevTotalMedFitByAgeIncome.pdf')
     plt.show()
     
     plt.plot(Age[0:40],MyMarket.InsuredRateByAge,'-b')
@@ -906,7 +906,7 @@ if __name__ == '__main__':
     plt.xlabel('Age')
     plt.ylabel('ESI uptake rate')
     plt.xlim((25,65))
-    plt.savefig('../Figures/ESIuptakeFitByAge.pdf')
+    #plt.savefig('../Figures/ESIuptakeFitByAge.pdf')
     plt.show()
     
     plt.plot(Age5year[:8],MyMarket.InsuredRateByAgeIncome)
@@ -919,7 +919,7 @@ if __name__ == '__main__':
     plt.xlabel('Age')
     plt.ylabel('ESI uptake rate')
     plt.xlim((25,65))
-    plt.savefig('../Figures/ESIuptakeFitByAgeIncome.pdf')
+    #plt.savefig('../Figures/ESIuptakeFitByAgeIncome.pdf')
     plt.show()
     
     plt.plot(Age[0:40],MyMarket.PremiumMeanByAge,'-b')
@@ -927,7 +927,7 @@ if __name__ == '__main__':
     plt.xlabel('Age')
     plt.ylabel('Mean out-of-pocket premiums paid')
     plt.xlim((25,65))
-    plt.savefig('../Figures/OOPpremiumFitByAge.pdf')
+    #plt.savefig('../Figures/OOPpremiumFitByAge.pdf')
     plt.show()
 #    
 #    plt.plot(Age[0:40],MyMarket.PremiumStdByAge,'-b')
@@ -942,7 +942,7 @@ if __name__ == '__main__':
     plt.xlabel('Age')
     plt.ylabel('Pct insured with zero employer contribution')
     plt.xlim((25,65))
-    plt.savefig('../Figures/ZeroEmpContrShareFitByAge.pdf')
+    #plt.savefig('../Figures/ZeroEmpContrShareFitByAge.pdf')
     plt.show()
     
     plt.plot(Age,MyMarket.OOPshareByAge,'-b')
@@ -950,7 +950,7 @@ if __name__ == '__main__':
     plt.xlabel('Age')
     plt.ylabel('Share of medical expenses paid out-of-pocket')
     plt.xlim((25,85))
-    plt.savefig('../Figures/OOPshareFitByAge.pdf')
+    #plt.savefig('../Figures/OOPshareFitByAge.pdf')
     plt.show()
     
      
@@ -1003,7 +1003,7 @@ if __name__ == '__main__':
 #    print('Making the agents took ' + mystr(t_end-t_start) + ' seconds.')
 #    
 #    t_start = clock()
-#    MyType = MyMarket.agents[0] 
+#    MyType = MyMarket.agents[1] 
 #    MyType.solve()
 #    t_end = clock()
 #    print('Solving and simulating one agent type took ' + str(t_end-t_start) + ' seconds.')

@@ -16,12 +16,12 @@ AgentCountTotal = 100000
 StaticBool = False
 
 # Calibrated / other parameters (grid sizes, etc)
-Cfloor = 0.24                       # Effective consumption floor
+Cfloor = 0.20                       # Effective consumption floor
 Rfree = 5*[1.03]                    # Interest factor on assets
 aXtraMin = 0.001                    # Minimum end-of-period "assets above minimum" value
-aXtraMax = 40                       # Minimum end-of-period "assets above minimum" value               
+aXtraMax = 15                       # Minimum end-of-period "assets above minimum" value               
 aXtraExtra = [0.005,0.01]           # Some other value of "assets above minimum" to add to the grid, not used
-aXtraNestFac = 2                    # Exponential nesting factor when constructing "assets above minimum" grid
+aXtraNestFac = 1                    # Exponential nesting factor when constructing "assets above minimum" grid
 aXtraCount = 32                     # Number of points in the grid of "assets above minimum"
 PermShkCount = 5                    # Number of points in discrete approximation to permanent income shocks
 TranShkCount = 5                    # Number of points in discrete approximation to transitory income shocks
@@ -35,7 +35,7 @@ DecurveBool = True                  # "Decurve" value through the inverse utilit
 pLvlPctiles = np.concatenate(([0.001, 0.005, 0.01, 0.03], np.linspace(0.05, 0.95, num=12),[0.97, 0.99, 0.995, 0.999]))
 pLvlInitStd = 0.4                   # Initial standard deviation of (log) permanent income
 pLvlInitMean = 0.0                  # Initial average of log permanent income
-PermIncCorr = 1.00                  # Serial correlation coefficient for permanent income
+PermIncCorr = 1.0                  # Serial correlation coefficient for permanent income
 MedShkCount = 25                    # Number of medical shock points
 DevMin = -3.0                       # Minimum standard deviations below MedShk mean
 DevMax = 5.0                        # Maximum standard deviations above MedShk mean
@@ -177,8 +177,10 @@ working_T = 40
 AgeCount = retired_T + working_T
 T_cycle = retired_T + working_T
 TranShkStd = (np.concatenate((np.linspace(0.1,0.12,4), 0.12*np.ones(4), np.linspace(0.12,0.075,15), np.linspace(0.074,0.007,16), np.zeros(retired_T+1))))**0.5
+#TranShkStd = np.concatenate([0.2*np.ones(working_T-1),np.zeros(retired_T+1)])
 TranShkStd = np.ndarray.tolist(TranShkStd)
 PermShkStd = np.concatenate((((0.00011342*(np.linspace(24,64.75,working_T-1)-47)**2 + 0.01))**0.5,np.zeros(retired_T+1)))
+#PermShkStd = np.concatenate([0.15*np.ones(working_T-1),np.zeros(retired_T+1)])
 PermShkStd[31:39] = PermShkStd[30] # Don't extrapolate permanent shock stdev
 PermShkStd = np.ndarray.tolist(PermShkStd)
 TranShkStdAllHealth = []
@@ -438,8 +440,8 @@ CollegeDictionary['pLvlInitMean'] = pLvlInitMean_c
 CollegeDictionary['pLvlNextFuncRet'] = RetirementFunc_c
 
 # Make a test parameter vector for estimation
-test_param_vec = np.array([0.97, # DiscFac
-                           2.0,  # CRRAcon
+test_param_vec = np.array([0.94, # DiscFac
+                           3.0,  # CRRAcon
                            8.0,  # MedCurve 
                           -8.5,  # ChoiceShkMag in log
                            2.6,  # SubsidyZeroRate scaler
@@ -447,18 +449,18 @@ test_param_vec = np.array([0.97, # DiscFac
                           -3.0,  # SubsidyWidth scaler
                           10.0,  # BequestShift shifter for bequest motive
                            3.0,  # BequestScale scale of bequest motive
-                         -3.60,  # MedShkMean constant coefficient
-                        0.0035,  # MedShkMean linear age coefficient
-                       0.00110,  # MedShkMean quadratic age coefficient
+                         -3.45,  # MedShkMean constant coefficient
+                        0.0055,  # MedShkMean linear age coefficient
+                       0.00103,  # MedShkMean quadratic age coefficient
                     -0.0000020,  # MedShkMean cubic age coefficient
                    -0.00000013,  # MedShkMean quartic age coefficient
                           0.25,  # MedShkMean "very good" constant coefficient
                         0.0025,  # MedShkMean "very good" linear coefficient
                           0.30,  # MedShkMean "good" constant coefficient
                         0.0000,  # MedShkMean "good" linear coefficient
-                          0.45,  # MedShkMean "fair" constant coefficient
-                         0.001,  # MedShkMean "fair" linear coefficient
-                          1.50,  # MedShkMean "poor" constant coefficient
+                          0.50,  # MedShkMean "fair" constant coefficient
+                       -0.0010,  # MedShkMean "fair" linear coefficient
+                          1.35,  # MedShkMean "poor" constant coefficient
                         -0.017,  # MedShkMean "poor" linear coefficient
                           0.43,  # MedShkStd constant coefficient
                         -0.001,  # MedShkStd linear age coefficient
