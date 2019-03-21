@@ -16,10 +16,10 @@ AgentCountTotal = 100000
 StaticBool = False
 
 # Calibrated / other parameters (grid sizes, etc)
-Cfloor = 0.20                       # Effective consumption floor
+Cfloor = 0.20                       # Consumption floor
 Rfree = 5*[1.03]                    # Interest factor on assets
 aXtraMin = 0.001                    # Minimum end-of-period "assets above minimum" value
-aXtraMax = 15                       # Minimum end-of-period "assets above minimum" value               
+aXtraMax = 16                       # Minimum end-of-period "assets above minimum" value               
 aXtraExtra = [0.005,0.01]           # Some other value of "assets above minimum" to add to the grid, not used
 aXtraNestFac = 1                    # Exponential nesting factor when constructing "assets above minimum" grid
 aXtraCount = 32                     # Number of points in the grid of "assets above minimum"
@@ -440,8 +440,8 @@ CollegeDictionary['pLvlInitMean'] = pLvlInitMean_c
 CollegeDictionary['pLvlNextFuncRet'] = RetirementFunc_c
 
 # Make a test parameter vector for estimation
-test_param_vec = np.array([0.94, # DiscFac
-                           3.0,  # CRRAcon
+test_param_vec = np.array([0.92, # DiscFac
+                           3.3,  # CRRAcon
                            8.0,  # MedCurve 
                           -8.5,  # ChoiceShkMag in log
                            2.6,  # SubsidyZeroRate scaler
@@ -450,9 +450,9 @@ test_param_vec = np.array([0.94, # DiscFac
                           10.0,  # BequestShift shifter for bequest motive
                            3.0,  # BequestScale scale of bequest motive
                          -3.45,  # MedShkMean constant coefficient
-                        0.0055,  # MedShkMean linear age coefficient
-                       0.00103,  # MedShkMean quadratic age coefficient
-                    -0.0000020,  # MedShkMean cubic age coefficient
+                        0.0045,  # MedShkMean linear age coefficient
+                       0.00101,  # MedShkMean quadratic age coefficient
+                    -0.0000019,  # MedShkMean cubic age coefficient
                    -0.00000013,  # MedShkMean quartic age coefficient
                           0.25,  # MedShkMean "very good" constant coefficient
                         0.0025,  # MedShkMean "very good" linear coefficient
@@ -461,8 +461,8 @@ test_param_vec = np.array([0.94, # DiscFac
                           0.50,  # MedShkMean "fair" constant coefficient
                        -0.0010,  # MedShkMean "fair" linear coefficient
                           1.35,  # MedShkMean "poor" constant coefficient
-                        -0.017,  # MedShkMean "poor" linear coefficient
-                          0.43,  # MedShkStd constant coefficient
+                        -0.014,  # MedShkMean "poor" linear coefficient
+                          0.40,  # MedShkStd constant coefficient
                         -0.001,  # MedShkStd linear age coefficient
                            0.0,  # MedShkStd quadratic age coefficient
                            0.0,  # MedShkStd cubic age coefficient

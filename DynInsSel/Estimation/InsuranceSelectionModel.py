@@ -933,12 +933,6 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
         if CubicBool:
             EndOfPrdvPPcond[:,:,h] = Rfree[h]*Rfree[h]*np.sum(vPPfuncNext(mLvlNext,pLvlNext)*ShkPrbs_tiled,axis=0)
         
-        #temp = np.isnan(tempv)
-        #if np.any(temp) and h==0:
-            #print(np.sum(temp))
-            #X = np.where(temp)
-            #print(h,mLvlNext[X],pLvlNext[X])
-        
     # Calculate end of period value and marginal value conditional on each current health state
     EndOfPrdv = np.zeros((pLvlCount,aLvlCount+1,HealthCount))
     EndOfPrdvP = np.zeros((pLvlCount,aLvlCount+1,HealthCount))
@@ -958,6 +952,23 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
             
     # Calculate human wealth conditional on each current health state 
     hLvlGrid = (np.dot(MrkvArray,hLvlCond.transpose())).transpose()
+    if np.all(LivPrb == 0.):
+        hLvlGrid[:,:] = 0.
+    hLvlGrid_adj = copy(hLvlGrid)
+    for h in range(HealthCount):
+        hLvlGrid_adj[:,h] *= LivPrb[h]
+        hLvlGrid_adj[:,h] += (1.-LivPrb[h])*BequestShift
+        #hLvlGrid_adj[:,h] = BequestShift
+    #print(hLvlGrid_adj[:,2])
+    
+    # Compute bounding MPC (and pseudo inverse MPC) in each state this period
+    try:
+        MPCminNvrsNext = solution_next.MPCminNvrs
+    except:
+        MPCminNvrsNext = np.ones(HealthCount)
+    temp = ((1.-LivPrb)*BequestScale + DiscFac*LivPrb*np.dot(MrkvArray,(MPCminNvrsNext*Rfree)**(1.-CRRA)))**(1./CRRA)
+    MPCminNow = 1./(1. + temp)
+    MPCminNvrsNow = MPCminNow**(-CRRA/(1.-CRRA))
     
     # Loop through current health states to solve the period at each one
     solution_now = InsuranceSelectionSolution(mLvlMin=mLvlMinNow)
@@ -1169,16 +1180,6 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
             vFloor_tiled = np.tile(np.reshape(vFloorBypLvl,(1,pLvlCount,1)),(aLvlCount,1,MedShkCount))
             vArrayBig = np.maximum(vArrayBig,vFloor_tiled) # This prevents tiny little non-monotonicities in vFunc
             
-            #print(np.sum(np.isnan(vArrayBig)),np.sum(np.isnan(vArrayZeroShk)),np.sum(np.isnan(vFloor_expected)),np.sum(np.isnan(CritShkPrbArray)))
-            #temp = np.isnan(vArrayBig)
-            #if np.sum(temp) > 0 and h==0:
-                #print(np.sum(temp))
-                #X = np.argwhere(temp)
-                #print(X)
-                #print(mLvlArray[X])
-                #print(pLvlArray[X])
-                #print(DevArray[X])
-            
             # Integrate (marginal) value across medical shocks
             vArrayMain = np.sum(vArrayBig*MedShkPrbArray,axis=2)
             vArray   = vArrayMain + ZeroMedShkPrb[h]*vArrayZeroShk + (1.0-ZeroMedShkPrb[h])*CritShkPrbArray*vFloor_expected
@@ -1197,13 +1198,6 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
             mGrid_small_C = np.concatenate((np.zeros((1,pLvlCount)),mLvlArray_temp),axis=0) # for AV
             vPnvrsArray   = uPinv(vParray)
             vNvrsArray    = np.concatenate((np.tile(np.reshape(vNvrsFloorBypLvl,(1,pLvlCount)),(2,1)),uinv(vArray)),axis=0)
-            
-#            if h==2:
-#                for j in range(8):
-#                    plt.plot(mLvlArray_temp[:,j],uinv(vArray[:,j]))
-#                    #plt.plot(mLvlArray_temp[:,j],np.sum(MedShkPrbArray[:,j,:],axis=1))
-#                    #plt.plot(mLvlArray_temp[:,j],np.max(vArrayBig[:,j,:],axis=1))
-#                plt.show()
             
             # Construct the pseudo-inverse value and marginal value functions over mLvl,pLvl
             vNvrsFunc_by_pLvl = []
@@ -1333,6 +1327,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
         solution_now.appendSolution(vFunc=vFunc,vPfunc=vPfunc,hLvl=hLvl_h,AVfunc=AVfuncsThisHealth,
                                         policyFunc=PolicyFuncsThisHealth,vFuncByContract=vFuncsThisHealth,
                                         CritDevFunc=CritDevFuncsThisHealth)
+        solution_now.MPCminNvrs = MPCminNvrsNow
     
     # Return the solution for this period
     t_end = clock()
