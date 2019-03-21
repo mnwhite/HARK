@@ -384,6 +384,7 @@ for j in range(ZeroMedShkPrb.shape[0]):
     
 # Make a basic dictionary with parameters that never change
 BasicDictionary = { 'Rfree': Rfree,
+                    'Cfloor': Cfloor,
                     'LivPrb': LivPrb,
                     'aXtraMin': aXtraMin,
                     'aXtraMax': aXtraMax,
@@ -416,7 +417,9 @@ BasicDictionary = { 'Rfree': Rfree,
                     'T_cycle': T_cycle,
                     'T_sim': T_sim,
                     'AgentCount': AgentCount,
-                    'Cfloor': Cfloor
+                    'do_sim': True,
+                    'del_soln': True,
+                    'verbosity': 0
                     }
 
 # Make education-specific dictionaries

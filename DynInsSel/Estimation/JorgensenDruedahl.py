@@ -100,16 +100,6 @@ class JDfixer(object):
         queue.write_buffer(self.xLvlOut_buf,xLvlOut)
         queue.write_buffer(self.ValueOut_buf,ValueOut)
         
-#        self.JDkernel.set_args(self.mLvlData_buf, # Unclear this is necessary
-#                      self.DevData_buf,
-#                      self.ValueData_buf,
-#                      self.xLvlData_buf,
-#                      self.mGridDense_buf,
-#                      self.DevGridDense_buf,
-#                      self.xLvlOut_buf,
-#                      self.ValueOut_buf,
-#                      self.IntegerInputs_buf)
-        
         # Run the kernel and unpack the output
         queue.execute_kernel(self.JDkernel, [16*(self.ThreadCount/16 + 1)], [16])
         queue.read_buffer(self.xLvlOut_buf,xLvlOut)
@@ -183,10 +173,6 @@ class JDfixerSimple(object):
         mLvlOut = mGrid_tiled*pGrid_tiled
         if pGridDense[0] == 0.:
             mLvlOut[:,0] = mLvlOut[:,1]
-            
-        #for j in range(5):
-        #    plt.plot(mLvlData[:,j],cLvlData[:,j])
-        #plt.show()
         
         # Make arrays to hold the output
         ValueOut = (uinv(u(mLvlOut) + EndOfPrdvFunc_Cnst(pGrid_tiled))).flatten() # Consume all as default

@@ -7,12 +7,13 @@ sys.path.insert(0,'../../')
 
 import numpy as np
 import DynInsSelParameters as Params
+from time import clock
 from copy import copy, deepcopy
 from InsuranceSelectionModel import MedInsuranceContract, InsSelConsumerType, InsSelStaticConsumerType
 from LoadDataMoments import data_moments, moment_weights
-from ActuarialRules import flatActuarialRule, exclusionaryActuarialRule, healthRatedActuarialRule, ageHealthRatedActuarialRule, ageRatedActuarialRule
+from ActuarialRules import flatActuarialRule
 from HARKinterpolation import ConstantFunction
-from HARKutilities import approxUniform, getPercentiles, approxMeanOneLognormal, plotFuncs
+from HARKutilities import approxUniform, getPercentiles, approxMeanOneLognormal
 from HARKcore import Market, HARKobject
 from HARKparallel import multiThreadCommands, multiThreadCommandsFake
 
@@ -71,11 +72,16 @@ class DynInsSelType(BaseType):
         using less hard drive time.  This method should be different if the
         quasi-static model is ever used, but I forget how at this point.
         '''
-        #pass
-        self.initializeSim()
-        self.simulate()
-        self.postSim()
-        self.deleteSolution()
+        t0 = clock()
+        if self.do_sim:
+            self.initializeSim()
+            self.simulate()
+            self.postSim()
+        if self.del_soln:
+            self.deleteSolution()
+        t1 = clock()
+        if self.verbosity > 0:
+            print('Simulating this agent type took ' + str(t1 - t0) + ' seconds.')
         
     def initializeSim(self):
         '''
@@ -804,7 +810,6 @@ def objectiveFunction(Parameters):
     
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
-    from time import clock
     mystr = lambda number : "{:.4f}".format(number)
     
     # This short block is for actually testing the objective function
@@ -1003,7 +1008,10 @@ if __name__ == '__main__':
 #    print('Making the agents took ' + mystr(t_end-t_start) + ' seconds.')
 #    
 #    t_start = clock()
-#    MyType = MyMarket.agents[1] 
+#    MyType = MyMarket.agents[1]
+#    MyType.del_soln = False
+#    MyType.do_sim = True
+#    MyType.verbosity = 10
 #    MyType.solve()
 #    t_end = clock()
 #    print('Solving and simulating one agent type took ' + str(t_end-t_start) + ' seconds.')
@@ -1013,7 +1021,7 @@ if __name__ == '__main__':
 #    h = 4        
 #    Dev = 0.0
 #    z = 0
-    
+#    
 #    mTop = 10.
 #    MyType.plotvFunc(t,p,decurve=False,mMax=mTop)
 #    MyType.plotvPfunc(t,p,decurve=False,mMax=mTop)
@@ -1023,8 +1031,8 @@ if __name__ == '__main__':
 #    MyType.plotMedFuncByDev(t,h,z,p,mMax=mTop)
 #    MyType.plotxFuncByDev(t,h,z,p,mMax=mTop)
 #    MyType.plotAVfuncByContract(t,h,p,mMax=mTop)
-#
-#    
+
+    
 #    MyMarket.reset()
 #    MyMarket.sow()
 #    MyType.calcExpInsPayByContract()

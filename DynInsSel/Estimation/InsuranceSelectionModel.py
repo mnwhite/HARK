@@ -750,7 +750,7 @@ def solveInsuranceSelectionStatic(solution_next,MedShkDstn,CRRA,MedPrice,xLvlGri
 
 def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMedShkPrb,MedShkCount,DevMin,DevMax,
                             LivPrb,DiscFac,CRRA,CRRAmed,BequestScale,BequestShift,Cfloor,Rfree,MedPrice,pLvlNextFunc,BoroCnstArt,aXtraGrid,
-                            pLvlGrid,ContractList,MrkvArray,ChoiceShkMag,EffPriceList,bFromxFunc,CubicBool):
+                            pLvlGrid,ContractList,MrkvArray,ChoiceShkMag,EffPriceList,bFromxFunc,CubicBool,verbosity):
     '''
     Solves one period of the insurance selection model.
     
@@ -820,14 +820,18 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
     bFromxFunc : function
         Transformed consumption share as a function of total expenditure and effective
         medical need shock.
-    CubicBool: boolean
+    CubicBool : boolean
         An indicator for whether the solver should use cubic or linear interpolation.
+    verbosity : int
+        How much output to print to screen during solution.  If solve is being called
+        inside of a joblib spawned process, this must be 0.
                     
     Returns
     -------
     solution : InsuranceSelectionSolution
     '''
     t_start = clock()
+    t0 = clock()
     
     # Get sizes of arrays
     mLvl_aug_factor = 3
@@ -970,10 +974,18 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
     MPCminNow = 1./(1. + temp)
     MPCminNvrsNow = MPCminNow**(-CRRA/(1.-CRRA))
     
+    t1 = clock()
+    FutureExpectations_time = t1 - t0
+    
     # Loop through current health states to solve the period at each one
     solution_now = InsuranceSelectionSolution(mLvlMin=mLvlMinNow)
     JDfixCount = 0
+    SolutionConstruction_time = 0.
+    MedShkIntegration_time = 0.
+    UpperEnvelope_time = 0.
     for h in range(HealthCount):
+        t0 = clock() # Beginning of solution construction step
+        
         mCount           = EndOfPrdvP.shape[1]
         pCount           = EndOfPrdvP.shape[0]
         MedShkVals       = np.exp(MedShkAvg[h] + MedShkStd[h]*DevGrid)
@@ -1026,7 +1038,6 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
             xFunc_by_pLvl = [] # Initialize the empty list of lists of 1D xFuncs
             for i in range(pCount):
                 if NeedsJDfix[i]:
-                    #t0 = clock()
                     aLvl_temp = aLvlNow_tiled[:,i,:]
                     pLvl_temp = pLvlGrid[i]*np.ones_like(aLvl_temp)
                     vNvrs_data = (uinv(u(cLvlNow[:,i,:]) + uMed(MedLvlNow[:,i,:]/MedShkVals_tiled[:,i,:]) + EndOfPrdvFunc(aLvl_temp,pLvl_temp))).transpose()
@@ -1039,8 +1050,6 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
                     mGridDense = mGridDenseBase*pLvl_i
                     xFunc_by_pLvl.append(MyJDfixer(mLvl_data,Dev_data,vNvrs_data,xLvl_data,mGridDense,DevGridDense))
                     mLvlNow[:,i,0] = 0.0 # This fixes the "seam" problem so there are no NaNs
-                    #t1 = clock()
-                    #print('JD fix took ' + str(t1-t0) + ' seconds.')
                 else:
                     temp_list = []
                     for j in range(MedShkCount):
@@ -1077,7 +1086,6 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
                 
             # Loop over each permanent income level and mLvl and make a vNvrsFunc over MedShk for each
             vNvrsFunc_by_pLvl = [] # Initialize the empty list of vNvrsFuncs
-            #vNvrsFuncZeroShk_by_pLvl = [] # Initialize the empty list
             for i in range(pCount):
                 m_temp = np.insert(mLvlArray[0,i,:],0,0.0)
                 v_ZeroShk_orig = vFuncZeroShk(mLvlArray[0,i,:],pLvlGrid[i]*np.ones(mCount-1))
@@ -1088,15 +1096,14 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
                 vNvrsScaled = np.log(vNvrs_ZeroShk_tiled/vNvrsNow[:,i,:] - 1.)
                 vNvrsScaledFunc = BilinearInterp(vNvrsScaled,DevGrid,mLvlArray[0,i,:])
                 vNvrsFunc_by_pLvl.append(RescaledFunc2D(vNvrsScaledFunc,vNvrsFuncZeroShk_this_pLvl))
-                #vNvrsFunc_by_pLvl.append(BilinearInterp(vNvrsNow[:,i,:],DevGrid,mLvlArray[0,i,:]))
                                 
             vNvrsFuncBase = LinearInterpOnInterp2D(vNvrsFunc_by_pLvl,pLvlGrid) # Combine across all pLvls
             vNvrsFunc = TwistFuncA(vNvrsFuncBase) # Change input order from (MedShk,mLvl,pLvl) to (mLvl,pLvl,MedShk)
-            #vNvrsFuncZeroShk = LinearInterpOnInterp1D(vNvrsFuncZeroShk_by_pLvl,pLvlGrid)
-            #vFuncZeroShk = ValueFunc2D(vNvrsFuncZeroShk,CRRA)
             
             # Add the value function to the list for this health
             vFuncsThisHealthCopay.append(ValueFunc3D(vNvrsFunc,CRRA)) # Recurve value function
+            
+        t1 = clock() # End of solution construction step, beginning of MedShk integration step
             
         # Set up state grids to prepare for the medical shock integration step
         tempArray    = np.tile(np.reshape(aXtraGrid,(aLvlCount,1,1)),(1,pLvlCount,MedShkCount))
@@ -1231,6 +1238,8 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
             vFuncsThisHealth.append(ValueFunc2D(vNvrsFunc,CRRA))
             vPfuncsThisHealth.append(CompositeFunc2D(vPfuncLower,vPfuncUpper,vPfuncSeam))
             AVfuncsThisHealth.append(AVfunc)
+            
+        t2 = clock() # End of MedShk integration step, beginning of upper envelope step
         
         # If there is only one contract, then value and marginal value functions are trivial.
         if len(ContractList[h]) == 1:
@@ -1327,11 +1336,23 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
         solution_now.appendSolution(vFunc=vFunc,vPfunc=vPfunc,hLvl=hLvl_h,AVfunc=AVfuncsThisHealth,
                                         policyFunc=PolicyFuncsThisHealth,vFuncByContract=vFuncsThisHealth,
                                         CritDevFunc=CritDevFuncsThisHealth)
-        solution_now.MPCminNvrs = MPCminNvrsNow
+        t3 = clock() # End of upper envelope step
+        
+        SolutionConstruction_time += (t1-t0)
+        MedShkIntegration_time += (t2-t1)
+        UpperEnvelope_time += (t3-t2)
     
     # Return the solution for this period
+    solution_now.MPCminNvrs = MPCminNvrsNow
     t_end = clock()
-    #print('Solving a period of the problem took ' + str(t_end-t_start) + ' seconds, fix count = ' + str(JDfixCount))
+    if verbosity > 0:
+        print('Solving a period of the problem took ' + str(t_end-t_start) + ' seconds, fix count = ' + str(JDfixCount))
+    if verbosity > 5:
+        print('Computing expectations over income shocks took ' + str(FutureExpectations_time) + ' seconds.')
+        print('Constructing policy functions for each health-copay took ' + str(SolutionConstruction_time) + ' seconds.')
+        print('Integrating over MedShk for each health-contract took ' + str(MedShkIntegration_time) + ' seconds.')
+        print('Finding the upper envelope among contracts took ' + str(FutureExpectations_time) + ' seconds.\n')
+        
     return solution_now
     
 ####################################################################################################
@@ -1344,7 +1365,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
     medical care.
     '''
     _time_vary = ['DiscFac','LivPrb','MedPrice','ContractList','MrkvArray','ChoiceShkMag','MedShkAvg','MedShkStd','ZeroMedShkPrb']
-    _time_inv = ['CRRA','CRRAmed','BequestScale','BequestShift','Cfloor','Rfree','BoroCnstArt','CubicBool','MedShkCount','DevMin','DevMax']
+    _time_inv = ['CRRA','CRRAmed','BequestScale','BequestShift','Cfloor','Rfree','BoroCnstArt','CubicBool','MedShkCount','DevMin','DevMax','verbosity']
     
     def __init__(self,cycles=1,time_flow=True,**kwds):
         '''
