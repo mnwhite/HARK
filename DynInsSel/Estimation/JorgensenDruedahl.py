@@ -7,8 +7,6 @@ import sys
 import os
 import numpy as np
 import opencl4py as cl
-import matplotlib.pyplot as plt
-#from copy import copy
 os.environ["PYOPENCL_CTX"] = "0:1" # This is where you choose a device number
 sys.path.insert(0, os.path.abspath('../'))
 sys.path.insert(0,'../../')
