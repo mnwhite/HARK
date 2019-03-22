@@ -105,7 +105,7 @@ __kernel void evalValueFunc(
     kk = max(min(kk,DevGridSize-1),1);
     gamma = (Dev - convert_float(kk-1)*DevStep)/DevStep;
 
-    /* Find query point's lower index */
+    /* Find query point's mNrm index for lower pLvl index */
     mNrm = mLvl/pLo;
     ii = findIndex(mNrmGrid,0,mNrmGridSize-1,mNrm);
 
@@ -113,12 +113,20 @@ __kernel void evalValueFunc(
     mLo = mNrmGrid[ii-1];
     mHi = mNrmGrid[ii];
     alpha = (mNrm-mLo)/(mHi-mLo);
+    if mNrm < mNrmGrid[0] {
+        ii_alt = 1;
+        alpha_alt = mNrm/mNrmLo; /* always mNrmLo = mNrmGrid[0] here */
+    }
+    else {
+        ii_alt = ii+1;
+        alpha_alt = alpha;
+    }
 
     /* Find query point's vNvrsZeroShk for lower index */
-    idx = (jj-1)*mNrmGridSize + ii;
+    idx = (jj-1)*mNrmGridSize + ii_alt;
     vLo = vNvrsZeroShkData[idx - 1];
     vHi = vNvrsZeroShkData[idx];
-    vNvrsZeroShk = vLo + alpha*(vHi - vLo);
+    vNvrsZeroShk = vLo + alpha_alt*(vHi - vLo);
 
     /* Find query point's rescaled vNvrs for lower index */
     idx = kk*mNrmGridSize*pLvlGridSize + (jj-1)*mNrmGridSize + ii;
@@ -141,12 +149,20 @@ __kernel void evalValueFunc(
     mLo = mNrmGrid[ii-1];
     mHi = mNrmGrid[ii];
     alpha = (mNrm-mLo)/(mHi-mLo);
+    if mNrm < mNrmGrid[0] {
+        ii_alt = 1;
+        alpha_alt = mNrm/mNrmLo; /* always mNrmLo = mNrmGrid[0] here */
+    }
+    else {
+        ii_alt = ii+1;
+        alpha_alt = alpha;
+    }
 
     /* Find query point's vNvrsZeroShk for upper index */
-    idx = (jj)*mNrmGridSize + ii;
+    idx = (jj)*mNrmGridSize + ii_alt;
     vLo = vNvrsZeroShkData[idx - 1];
     vHi = vNvrsZeroShkData[idx];
-    vNvrsZeroShk = vLo + alpha*(vHi - vLo);
+    vNvrsZeroShk = vLo + alpha_alt*(vHi - vLo);
 
     /* Find query point's rescaled vNvrs for upper index */
     idx = kk*mNrmGridSize*pLvlGridSize + (jj)*mNrmGridSize + ii;
@@ -166,7 +182,3 @@ __kernel void evalValueFunc(
     Value = powr(vNvrs,1.0-CRRA)/(1.0-CRRA);
     ValueOut[Gid] = Value;
 }
-
-    
-
-    

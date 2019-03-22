@@ -22,6 +22,7 @@ from ConsPersistentShockModel import ValueFunc2D, MargValueFunc2D
 from ConsMarkovModel import MarkovConsumerType
 from ConsIndShockModel import constructLognormalIncomeProcessUnemployment
 from JorgensenDruedahl import makeGridDenser, JDfixer, JDfixerSimple
+from ValueFuncCL import ValueFuncCL
 import matplotlib.pyplot as plt
 from scipy.stats import norm
 from scipy.special import erfc
@@ -1083,19 +1084,23 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
             
             # Calculate "candidate" v_ZeroShk values from consuming all expenditure with zero MedShk
             v_ZeroShk_cand = np.max(u(xLvlArray) + EndOfPrdvArray,axis=0)
+            v_ZeroShk_orig = vFuncZeroShk(mLvlArray[0,:,:], pLvlArray[0,:,:])
+            
+            # Modify v_ZeroShk so that it is greater than all non-zero MedShk values (fixes small numeric problems)
+            v_ZeroShk = np.maximum(v_ZeroShk_orig,v_ZeroShk_cand[i,:])
+            vNvrs_ZeroShk = uinv(v_ZeroShk) # "Modified" vNvrs with zero medical need shock
+            vNvrs_ZeroShk_tiled = np.tile(np.reshape(vNvrs_ZeroShk,(1,pCount,mCount-1)),(MedShkCount,1,1))
+            vNvrsScaled = np.log(vNvrs_ZeroShk_tiled/vNvrsNow - 1.) # "Rescaled" vNvrs relative to ZeroShk
                 
             # Loop over each permanent income level and mLvl and make a vNvrsFunc over MedShk for each
             vNvrsFunc_by_pLvl = [] # Initialize the empty list of vNvrsFuncs
             for i in range(pCount):
                 m_temp = np.insert(mLvlArray[0,i,:],0,0.0)
-                v_ZeroShk_orig = vFuncZeroShk(mLvlArray[0,i,:],pLvlGrid[i]*np.ones(mCount-1))
-                v_ZeroShk = np.maximum(v_ZeroShk_orig,v_ZeroShk_cand[i,:])
-                vNvrs_ZeroShk = uinv(v_ZeroShk)
-                vNvrsFuncZeroShk_this_pLvl = LinearInterp(m_temp,np.insert(vNvrs_ZeroShk,0,0.0))
-                vNvrs_ZeroShk_tiled = np.tile(np.reshape(vNvrs_ZeroShk,(1,mCount-1)),(MedShkCount,1))
-                vNvrsScaled = np.log(vNvrs_ZeroShk_tiled/vNvrsNow[:,i,:] - 1.)
-                vNvrsScaledFunc = BilinearInterp(vNvrsScaled,DevGrid,mLvlArray[0,i,:])
-                vNvrsFunc_by_pLvl.append(RescaledFunc2D(vNvrsScaledFunc,vNvrsFuncZeroShk_this_pLvl))
+                vNvrsFuncZeroShk_this_pLvl = LinearInterp(m_temp,np.insert(vNvrs_ZeroShk[i,:],0,0.0))
+                vNvrsScaledFunc_this_pLvl = BilinearInterp(vNvrsScaled[:,i,:],DevGrid,mLvlArray[0,i,:])
+                vNvrsFunc_by_pLvl.append(RescaledFunc2D(vNvrsScaledFunc_this_pLvl,vNvrsFuncZeroShk_this_pLvl))
+                
+            vFunc_this_health_copay = ValueFuncCL(aXtraGrid,pLvlGrid,vNvrs_ZeroShk,vNvrsScaled,CRRA,DevMin,DevMax,MedShkCount)
                                 
             vNvrsFuncBase = LinearInterpOnInterp2D(vNvrsFunc_by_pLvl,pLvlGrid) # Combine across all pLvls
             vNvrsFunc = TwistFuncA(vNvrsFuncBase) # Change input order from (MedShk,mLvl,pLvl) to (mLvl,pLvl,MedShk)

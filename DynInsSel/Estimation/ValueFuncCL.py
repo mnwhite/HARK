@@ -34,7 +34,7 @@ class ValueFuncCL(object):
     pLvlGrid : np.array
         Array of permanent income levels.
     vNvrsZeroShkData : np.array
-        2D array of pseudo-inverse value when MedShk=0 of shape (pLvlGrid.size,mNrmGrid.size).
+        2D array of pseudo-inverse value when MedShk=0 of shape (pLvlGrid.size,mNrmGrid.size+1).
     vNvrsRescaledData : np.array
         3D array of rescaled pseudo-inverse value of shape (DevCount,pLvlGrid.size,mNrmGrid.size).
     CRRA : float
@@ -52,7 +52,7 @@ class ValueFuncCL(object):
     '''
     def __init__(self,mNrmGrid,pLvlGrid,vNvrsZeroShkData,vNvrsRescaledData,CRRA,DevMin,DevMax,DevCount):
         # Make two short vectors of inputs
-        self.IntergerInputs = np.array([mNrmGrid.size,pLvlGrid.size,DevCount,0],dtype=np.int32) # Last element will be overwritten
+        self.IntegerInputs = np.array([mNrmGrid.size,pLvlGrid.size,DevCount,0],dtype=np.int32) # Last element will be overwritten
         DoubleInputs = np.array([CRRA,DevMin,DevMax])
         
         # Make buffers
