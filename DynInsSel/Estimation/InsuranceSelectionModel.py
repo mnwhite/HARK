@@ -1091,22 +1091,11 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
             vNvrs_ZeroShk = uinv(v_ZeroShk) # "Modified" vNvrs with zero medical need shock
             vNvrs_ZeroShk_tiled = np.tile(np.reshape(vNvrs_ZeroShk,(1,pCount,mCount-1)),(MedShkCount,1,1))
             vNvrsScaled = np.log(vNvrs_ZeroShk_tiled/vNvrsNow - 1.) # "Rescaled" vNvrs relative to ZeroShk
-                
-            # Loop over each permanent income level and mLvl and make a vNvrsFunc over MedShk for each
-            vNvrsFunc_by_pLvl = [] # Initialize the empty list of vNvrsFuncs
-            for i in range(pCount):
-                m_temp = np.insert(mLvlArray[0,i,:],0,0.0)
-                vNvrsFuncZeroShk_this_pLvl = LinearInterp(m_temp,np.insert(vNvrs_ZeroShk[i,:],0,0.0))
-                vNvrsScaledFunc_this_pLvl = BilinearInterp(vNvrsScaled[:,i,:],DevGrid,mLvlArray[0,i,:])
-                vNvrsFunc_by_pLvl.append(RescaledFunc2D(vNvrsScaledFunc_this_pLvl,vNvrsFuncZeroShk_this_pLvl))
-                
-            vFunc_this_health_copay = ValueFuncCL(aXtraGrid,pLvlGrid,vNvrs_ZeroShk,vNvrsScaled,CRRA,DevMin,DevMax,MedShkCount)
-                                
-            vNvrsFuncBase = LinearInterpOnInterp2D(vNvrsFunc_by_pLvl,pLvlGrid) # Combine across all pLvls
-            vNvrsFunc = TwistFuncA(vNvrsFuncBase) # Change input order from (MedShk,mLvl,pLvl) to (mLvl,pLvl,MedShk)
+            vNvrs_ZeroShk_plus = np.concatenate((np.zeros((pCount,1)),vNvrs_ZeroShk),axis=1)
             
             # Add the value function to the list for this health
-            vFuncsThisHealthCopay.append(ValueFunc3D(vNvrsFunc,CRRA)) # Recurve value function
+            vFunc_this_health_copay = ValueFuncCL(aXtraGrid,pLvlGrid,vNvrs_ZeroShk_plus,vNvrsScaled,CRRA,DevMin,DevMax,MedShkCount)
+            vFuncsThisHealthCopay.append(vFunc_this_health_copay)
             
         t1 = clock() # End of solution construction step, beginning of MedShk integration step
             

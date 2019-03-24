@@ -73,49 +73,55 @@ __kernel void evalValueFunc(
     double Dev  = DevQuery[Gid];
 
     /* Initialize some variables */
-    int ii;     /* mNrm index */
-    int jj;     /* pLvl index */
-    int kk;     /* Dev index */
-    int idx;
-    double mNrm;
-    double mLo;
-    double mHi;
-    double pHi;
-    double pLo;
-    double alpha;
-    double beta;
-    double gamma;
-    double vLo;
-    double vHi;
-    double vNvrsZeroShk;
-    double vNvrsRescaled;
-    double vNvrsLo;
-    double vNvrsHi;
-    double vNvrs;
-    double Value;
+    int ii;      /* mNrm index for vNvrsRescaled*/
+    int ii_alt;  /* mNrm index for vNvrsZeroShk */
+    int jj;      /* pLvl index */
+    int kk;      /* Dev index */
+    int idx;     /* overall index in vNvrsRescaled */
+    double mNrm; /* normalized market resources */
+    double mLo;  /* market resources at lower gridpoint */
+    double mHi;  /* market resources at upper gridpoint */
+    double pLo;  /* permanent income at lower gridpoint */
+    double pHi;  /* permanent income at upper gridpoint */
+    double DevExtra;
+    double alpha;/* proportion weight for mNrm on vNvrsRescaled */
+    double alpha_alt; /* proportion weight for mNrm on vNvrsZeroShk */
+    double beta; /* proportion weight for pLvl */
+    double gamma;/* proportion weight for Dev */
+    double vLo;  /* lower vNvrs value */
+    double vHi;  /* upper vNvrs value */
+    double vNvrsZeroShk; /* vNvrs value when MedShk=0 at this (mLvl,pLvl) */
+    double vNvrsRescaled;/* vNvrs at (mLvl,pLvl,Dev) rescaled to vNvrsZeroShk */
+    double vNvrsLo; /* vNvrs at lower pLvl gridpoint*/
+    double vNvrsHi; /* vNvrs at upper pLvl gridpoint */
+    double vNvrs;   /* final vNvrs level */
+    double Value;   /* final value level */
 
     /* Find query point's pLvl index and relative weight*/
     jj = findIndex(pLvlGrid,0,pLvlGridSize-1,pLvl);
+    jj = max(min(jj,pLvlGridSize-1),1);
     pLo = pLvlGrid[jj-1];
     pHi = pLvlGrid[jj];
     beta = (pLvl - pLo)/(pHi - pLo);
 
     /* Find query point's Dev index and relative weight */
-    kk = convert_int(floor((Dev - DevMin)/DevStep));
+    DevExtra = Dev - DevMin;
+    kk = convert_int(ceil(DevExtra /DevStep));
     kk = max(min(kk,DevGridSize-1),1);
-    gamma = (Dev - convert_float(kk-1)*DevStep)/DevStep;
+    gamma = (DevExtra - convert_float(kk-1)*DevStep)/DevStep;
 
     /* Find query point's mNrm index for lower pLvl index */
     mNrm = mLvl/pLo;
     ii = findIndex(mNrmGrid,0,mNrmGridSize-1,mNrm);
+    ii = max(min(ii,mNrmGridSize-1),1);
 
     /* Find query point's mNrm relative weight for lower index */
     mLo = mNrmGrid[ii-1];
     mHi = mNrmGrid[ii];
     alpha = (mNrm-mLo)/(mHi-mLo);
-    if mNrm < mNrmGrid[0] {
+    if (mNrm < mNrmGrid[0]) {
         ii_alt = 1;
-        alpha_alt = mNrm/mNrmLo; /* always mNrmLo = mNrmGrid[0] here */
+        alpha_alt = mNrm/mLo; /* always mLo = mNrmGrid[0] here */
     }
     else {
         ii_alt = ii+1;
@@ -123,7 +129,7 @@ __kernel void evalValueFunc(
     }
 
     /* Find query point's vNvrsZeroShk for lower index */
-    idx = (jj-1)*mNrmGridSize + ii_alt;
+    idx = (jj-1)*(mNrmGridSize+1) + ii_alt;
     vLo = vNvrsZeroShkData[idx - 1];
     vHi = vNvrsZeroShkData[idx];
     vNvrsZeroShk = vLo + alpha_alt*(vHi - vLo);
@@ -144,14 +150,15 @@ __kernel void evalValueFunc(
     /* Find query point's upper index */
     mNrm = mLvl/pHi;
     ii = findIndex(mNrmGrid,0,mNrmGridSize-1,mNrm);
+    ii = max(min(ii,mNrmGridSize-1),1);
 
     /* Find query point's mNrm relative weight for upper index */
     mLo = mNrmGrid[ii-1];
     mHi = mNrmGrid[ii];
     alpha = (mNrm-mLo)/(mHi-mLo);
-    if mNrm < mNrmGrid[0] {
+    if (mNrm < mNrmGrid[0]) {
         ii_alt = 1;
-        alpha_alt = mNrm/mNrmLo; /* always mNrmLo = mNrmGrid[0] here */
+        alpha_alt = mNrm/mLo; /* always mLo = mNrmGrid[0] here */
     }
     else {
         ii_alt = ii+1;
@@ -159,7 +166,7 @@ __kernel void evalValueFunc(
     }
 
     /* Find query point's vNvrsZeroShk for upper index */
-    idx = (jj)*mNrmGridSize + ii_alt;
+    idx = (jj)*(mNrmGridSize+1) + ii_alt;
     vLo = vNvrsZeroShkData[idx - 1];
     vHi = vNvrsZeroShkData[idx];
     vNvrsZeroShk = vLo + alpha_alt*(vHi - vLo);

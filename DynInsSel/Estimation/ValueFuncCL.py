@@ -55,6 +55,11 @@ class ValueFuncCL(object):
         self.IntegerInputs = np.array([mNrmGrid.size,pLvlGrid.size,DevCount,0],dtype=np.int32) # Last element will be overwritten
         DoubleInputs = np.array([CRRA,DevMin,DevMax])
         
+        #print('mNrmGrid',mNrmGrid.shape)
+        #print('pLvlGrid',pLvlGrid.shape)
+        #print('vNvrsZeroShkData',vNvrsZeroShkData.shape)
+        #print('vNvrsRescaledData',vNvrsRescaledData.shape)
+        
         # Make buffers
         self.mNrmGrid_buf = ctx.create_buffer(cl.CL_MEM_READ_ONLY | cl.CL_MEM_COPY_HOST_PTR,mNrmGrid)
         self.pLvlGrid_buf = ctx.create_buffer(cl.CL_MEM_READ_ONLY | cl.CL_MEM_COPY_HOST_PTR,pLvlGrid)
@@ -87,26 +92,30 @@ class ValueFuncCL(object):
         queue.write_buffer(self.IntegerInputs_buf,self.IntegerInputs)
         ValueOut = np.zeros(N)
         
-        # Make query and return buffers
-        mLvlQuery_buf = ctx.create_buffer(cl.CL_MEM_READ_ONLY | cl.CL_MEM_COPY_HOST_PTR,mLvl.flatten())
-        pLvlQuery_buf = ctx.create_buffer(cl.CL_MEM_READ_ONLY | cl.CL_MEM_COPY_HOST_PTR,pLvl.flatten())
-        DevQuery_buf  = ctx.create_buffer(cl.CL_MEM_READ_ONLY | cl.CL_MEM_COPY_HOST_PTR,Dev.flatten())
-        ValueOut_buf  = ctx.create_buffer(cl.CL_MEM_READ_ONLY | cl.CL_MEM_COPY_HOST_PTR,ValueOut)
-        
-        # Assign buffers to kernel arguments
-        vFuncKernel.set_args(self.mNrmGrid_buf,
-                             self.pLvlGrid_buf,
-                             self.vNvrsZerkShkData_buf,
-                             self.vNvrsRescaledData_buf,
-                             mLvlQuery_buf,
-                             pLvlQuery_buf,
-                             DevQuery_buf,
-                             ValueOut_buf,
-                             self.DoubleInputs_buf,
-                             self.IntegerInputs_buf)
-        
-        # Execute the kernel, extract and reshape the output
-        queue.execute_kernel(vFuncKernel, [16*(N/16 + 1)], [16])
-        queue.read_buffer(self.ValueOut_buf,ValueOut)
-        v = np.reshape(ValueOut, orig_shape)
+        if N > 0:
+            # Make query and return buffers
+            mLvlQuery_buf = ctx.create_buffer(cl.CL_MEM_READ_ONLY | cl.CL_MEM_COPY_HOST_PTR,mLvl.flatten())
+            pLvlQuery_buf = ctx.create_buffer(cl.CL_MEM_READ_ONLY | cl.CL_MEM_COPY_HOST_PTR,pLvl.flatten())
+            DevQuery_buf  = ctx.create_buffer(cl.CL_MEM_READ_ONLY | cl.CL_MEM_COPY_HOST_PTR,Dev.flatten())
+            ValueOut_buf  = ctx.create_buffer(cl.CL_MEM_READ_ONLY | cl.CL_MEM_COPY_HOST_PTR,ValueOut)
+            
+            # Assign buffers to kernel arguments
+            vFuncKernel.set_args(self.mNrmGrid_buf,
+                                 self.pLvlGrid_buf,
+                                 self.vNvrsZeroShkData_buf,
+                                 self.vNvrsRescaledData_buf,
+                                 mLvlQuery_buf,
+                                 pLvlQuery_buf,
+                                 DevQuery_buf,
+                                 ValueOut_buf,
+                                 self.DoubleInputs_buf,
+                                 self.IntegerInputs_buf)
+            
+            # Execute the kernel, extract and reshape the output
+            queue.execute_kernel(vFuncKernel, [16*(N/16 + 1)], [16])
+            queue.read_buffer(ValueOut_buf,ValueOut)
+            v = np.reshape(ValueOut, orig_shape)
+        else:
+            v = np.array([]) # Trivial case
+            
         return v
