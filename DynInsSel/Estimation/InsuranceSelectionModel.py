@@ -1031,13 +1031,22 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
             aLvlNow_tiled = np.tile(np.reshape(aLvlNow,(1,pCount,mCount)),(MedShkCount,1,1))
             mLvlNow = xLvlNow + aLvlNow_tiled
                 
-            # Loop over each permanent income level and medical shock and make an xFunc
+            # Determine which pLvls will need the G2EGM convexity fix
             NonMonotonic = np.any((xLvlNow[:,:,1:]-xLvlNow[:,:,:-1]) < 0.,axis=(0,2)) # whether each pLvl has non-monotonic pattern in mLvl gridpoints
             HasNaNs = np.any(np.isnan(xLvlNow),axis=(0,2)) # whether each pLvl contains any NaNs due to future vP=0.0
             NeedsJDfix = np.logical_or(NonMonotonic,HasNaNs)
             JDfixCount += np.sum(NeedsJDfix)
-            xFunc_by_pLvl = [] # Initialize the empty list of lists of 1D xFuncs
+            
+            # Loop over each permanent income level and medical shock and make an xFunc
+            xFunc_by_pLvl = [] # Initialize the empty list of 2D xFuncs
+            mNrmGrid = mGridDenseBase
+            mCountAlt = mNrmGrid.size
+            xLvlArray = np.zeros(((MedShkCount,pCount,mCountAlt)))
             for i in range(pCount):
+                pLvl_i = pLvlGrid[i]
+                if pLvl_i == 0.0:
+                    pLvl_i = pLvlGrid[i+1]
+                mGridDense = mGridDenseBase*pLvl_i
                 if NeedsJDfix[i]:
                     aLvl_temp = aLvlNow_tiled[:,i,:]
                     pLvl_temp = pLvlGrid[i]*np.ones_like(aLvl_temp)
@@ -1045,23 +1054,31 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
                     mLvl_data = mLvlNow[:,i,:].transpose()
                     xLvl_data = xLvlNow[:,i,:].transpose()
                     Dev_data = DevGrid_tiled[:,i,:].transpose()
-                    pLvl_i = pLvlGrid[i]
-                    if pLvl_i == 0.0:
-                        pLvl_i = pLvlGrid[i+1]
-                    mGridDense = mGridDenseBase*pLvl_i
-                    xFunc_by_pLvl.append(MyJDfixer(mLvl_data,Dev_data,vNvrs_data,xLvl_data,mGridDense,DevGridDense))
+                    xFunc_this_pLvl, xLvlArray[:,i,:] = MyJDfixer(mLvl_data,Dev_data,vNvrs_data,xLvl_data,mGridDense,DevGridDense)
+                    xFunc_by_pLvl.append(xFunc_this_pLvl)
+                    #for j in range(MedShkCount):
+                    #    xLvlArray[j,i,:] = temp[j,:]
+                    #    plt.plot(mGridDense,temp[j,:])
+                    #plt.show()
+                    #xLvlArray[:,i,:] = xFunc_by_pLvl[-1](np.tile(np.reshape(mGridDense,(1,mCountAlt)),(MedShkCount,1)),np.tile(np.reshape(DevGrid,(MedShkCount,1)),(1,mCountAlt)))
                     mLvlNow[:,i,0] = 0.0 # This fixes the "seam" problem so there are no NaNs
                 else:
-                    temp_list = []
+                    tempArray = np.zeros((mCountAlt,MedShkCount))
                     for j in range(MedShkCount):
                         m_temp = mLvlNow[j,i,:] - mLvlNow[j,i,0]
                         x_temp = xLvlNow[j,i,:]
-                        temp_list.append(LinearInterp(m_temp,x_temp))
-                    xFunc_by_pLvl.append(LinearInterpOnInterp1D(temp_list,DevGrid))
-            
+                        xFunc_temp = LinearInterp(np.insert(m_temp,0,0.0),np.insert(x_temp,0,0.0))
+                        tempArray[:,j] = xFunc_temp(mGridDense)
+                        idx = np.searchsorted(mGridDense,mLvlNow[j,i,0])
+                        #those = np.logical_not(these)
+                        xLvlArray[j,i,idx:] = xFunc_temp(mGridDense[idx:] - mLvlNow[j,i,0])
+                        xLvlArray[j,i,:idx] = mGridDense[:idx]
+                    #xFunc_by_pLvl.append(LinearInterpOnInterp1D(temp_list,DevGrid))
+                    xFunc_by_pLvl.append(BilinearInterp(tempArray,mGridDense,DevGrid))
+                
             # Combine the many expenditure functions into a single one and adjust for the natural borrowing constraint
-            ConstraintSeam = BilinearInterp((mLvlNow[:,:,0]).transpose(),pLvlGrid,DevGrid)
             xFuncNowUncBase = TwistFuncB(LinearInterpOnInterp2D(xFunc_by_pLvl,pLvlGrid))
+            ConstraintSeam = BilinearInterp((mLvlNow[:,:,0]).transpose(),pLvlGrid,DevGrid)
             xFuncNowUnc = VariableLowerBoundFunc3Dalt(xFuncNowUncBase,ConstraintSeam)
             xFuncNow = CompositeFunc3D(xFuncNowCnst,xFuncNowUnc,ConstraintSeam)
             
@@ -1069,14 +1086,22 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
             PolicyFuncsThisHealthCopay.append(cAndMedFunc(xFuncNow, bFromxFunc, MedShkAvg[h], MedShkStd[h], MedPriceEff))
             
             # Calculate pseudo inverse value on a grid of states for this coinsurance rate
-            pLvlArray = np.tile(np.reshape(pLvlGrid,(1,pCount,1)),(MedShkCount,1,mCount-1))
-            mMinArray = np.tile(np.reshape(mLvlMinNow(pLvlGrid),(1,pCount,1)),(MedShkCount,1,mCount-1))
-            mLvlArray = mMinArray + np.tile(np.reshape(aXtraGrid,(1,1,mCount-1)),(MedShkCount,pCount,1))*pLvlArray
+            pLvlArray = np.tile(np.reshape(pLvlGrid,(1,pCount,1)),(MedShkCount,1,mCountAlt))
+            mMinArray = np.tile(np.reshape(mLvlMinNow(pLvlGrid),(1,pCount,1)),(MedShkCount,1,mCountAlt))
+            mLvlArray = mMinArray + np.tile(np.reshape(mNrmGrid,(1,1,mCountAlt)),(MedShkCount,pCount,1))*pLvlArray
             if pLvlGrid[0] == 0.0:  # mLvl turns out badly if pLvl is 0 at bottom
                 mLvlArray[:,0,:] = mLvlArray[:,1,:]
-            MedShkArray = np.tile(np.reshape(MedShkVals,(MedShkCount,1,1)),(1,pCount,mCount-1))
-            DevArray = np.tile(np.reshape(DevGrid,(MedShkCount,1,1)),(1,pCount,mCount-1))
-            cLvlArray,MedLvlArray,xLvlArray = PolicyFuncsThisHealthCopay[-1](mLvlArray,pLvlArray,DevArray)
+            MedShkArray = np.tile(np.reshape(MedShkVals,(MedShkCount,1,1)),(1,pCount,mCountAlt))
+            DevArray = np.tile(np.reshape(DevGrid,(MedShkCount,1,1)),(1,pCount,mCountAlt))
+            
+#            cLvlArray,MedLvlArray,xLvlArray = PolicyFuncsThisHealthCopay[-1](mLvlArray,pLvlArray,DevArray)
+            
+#            xLvlArray = xFuncNow(mLvlArray,pLvlArray,DevArray)
+            cShareTrans = bFromxFunc(xLvlArray,MedShkArray*MedPriceEff)
+            q = np.exp(-cShareTrans)
+            cLvlArray = xLvlArray/(1.+q)
+            MedLvlArray = xLvlArray/MedPriceEff*q/(1.+q)
+            
             aLvlArray = np.abs(mLvlArray - xLvlArray) # OCCASIONAL VIOLATIONS BY 1E-18 !!!
             EndOfPrdvArray = EndOfPrdvFunc(aLvlArray,pLvlArray)
             vNow = u(cLvlArray) + uMed(MedLvlArray/MedShkArray) + EndOfPrdvArray
@@ -1089,12 +1114,12 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
             # Modify v_ZeroShk so that it is greater than all non-zero MedShk values (fixes small numeric problems)
             v_ZeroShk = np.maximum(v_ZeroShk_orig,v_ZeroShk_cand[i,:])
             vNvrs_ZeroShk = uinv(v_ZeroShk) # "Modified" vNvrs with zero medical need shock
-            vNvrs_ZeroShk_tiled = np.tile(np.reshape(vNvrs_ZeroShk,(1,pCount,mCount-1)),(MedShkCount,1,1))
+            vNvrs_ZeroShk_tiled = np.tile(np.reshape(vNvrs_ZeroShk,(1,pCount,mCountAlt)),(MedShkCount,1,1))
             vNvrsScaled = np.log(vNvrs_ZeroShk_tiled/vNvrsNow - 1.) # "Rescaled" vNvrs relative to ZeroShk
             vNvrs_ZeroShk_plus = np.concatenate((np.zeros((pCount,1)),vNvrs_ZeroShk),axis=1)
             
             # Add the value function to the list for this health
-            vFunc_this_health_copay = ValueFuncCL(aXtraGrid,pLvlGrid,vNvrs_ZeroShk_plus,vNvrsScaled,CRRA,DevMin,DevMax,MedShkCount)
+            vFunc_this_health_copay = ValueFuncCL(mNrmGrid,pLvlGrid,vNvrs_ZeroShk_plus,vNvrsScaled,CRRA,DevMin,DevMax,MedShkCount)
             vFuncsThisHealthCopay.append(vFunc_this_health_copay)
             
         t1 = clock() # End of solution construction step, beginning of MedShk integration step

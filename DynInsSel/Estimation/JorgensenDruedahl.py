@@ -107,9 +107,10 @@ class JDfixer(object):
             print('Found some NaNs!')
     
         # Transform xLvlOut into a BilinearInterp and return it
-        xLvlNow = np.concatenate((np.zeros((1,self.DevGridDenseSize)),np.reshape(xLvlOut,(self.mGridDenseSize,self.DevGridDenseSize))),axis=0)
+        xLvlOut_reshaped = np.reshape(xLvlOut,(self.mGridDenseSize,self.DevGridDenseSize))
+        xLvlNow = np.concatenate((np.zeros((1,self.DevGridDenseSize)),xLvlOut_reshaped),axis=0)
         xFunc_this_pLvl = BilinearInterp(xLvlNow,np.insert(mGridDense,0,0.0),DevGridDense)
-        return xFunc_this_pLvl
+        return xFunc_this_pLvl, (xLvlOut_reshaped[:,np.arange(0,self.DevGridDenseSize,3)]).transpose()
     
     
     

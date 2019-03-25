@@ -1015,13 +1015,13 @@ if __name__ == '__main__':
         t_start = clock()
         MyType = MyMarket.agents[1]
         MyType.del_soln = False
-        MyType.do_sim = False
+        MyType.do_sim = True
         MyType.verbosity = 10
         MyType.solve()
         t_end = clock()
         print('Solving and simulating one agent type took ' + str(t_end-t_start) + ' seconds.')
            
-        t = 1
+        t = 0
         p = 3.0    
         h = 4        
         Dev = 0.0
