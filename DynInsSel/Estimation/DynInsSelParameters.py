@@ -191,17 +191,17 @@ MrkvArray = MrkvArray[7:] # Begin at age 25, dropping first 7 years
 
 # Make an age-varying list of ESImrkvArray
 ESImrkvArray_list = []
-for t in range(39):
+for t in range(working_T-1):
     ESImrkvArray_list.append(copy(ESImrkvArray))
 ESImrkvArray_list.append(np.array([[1.],[1.],[1.]]))
-for t in range(55):
+for t in range(retired_T):
     ESImrkvArray_list.append(np.array([[1.]]))
 
 # Reformat LivPrb into a lifeycle list, from age 25 to 120
 LivPrb = []
-for t in range(40):
+for t in range(working_T):
     LivPrb.append(LivPrbYoung[:,t+1])
-for t in range(55):
+for t in range(retired_T):
     LivPrb.append(LivPrbOld[:,t+15])
 LivPrb[-1] = np.array([0.,0.,0.,0.,0.])
     
@@ -293,7 +293,7 @@ PermGroFac_c = PermGroFac_c_base[1:] + 31*[PermGroFac_c_base[-1]]
 PermGroFac_dx = []
 PermGroFac_hx = []
 PermGroFac_cx = []
-for t in range(95):
+for t in range(working_T + retired_T):
     if t < working_T:
         PermGroFac_dx.append(5*[PermGroFac_d[t]+1.0])
         PermGroFac_hx.append(5*[PermGroFac_h[t]+1.0])

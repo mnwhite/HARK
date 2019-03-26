@@ -614,20 +614,22 @@ def makeDynInsSelType(CRRAcon,MedCurve,DiscFac,BequestShift,BequestScale,ChoiceS
             WorkingContractList.append(MedInsuranceContract(ConstantFunction(Premium),Deductible,Copay,Params.MedPrice))
     elif InsChoiceType == 1:
         WorkingContractList.append(MedInsuranceContract(ConstantFunction(0.0),0.0,1.0,Params.MedPrice))
-        #Premium = max([PremiumArray[0] - PremiumSubsidy,0.0])
         Premium = 0. # Will be changed by installPremiumFuncs
         Copay = 0.08
         Deductible = 0.04
         WorkingContractList.append(MedInsuranceContract(ConstantFunction(Premium),Deductible,Copay,Params.MedPrice))
     else:
         WorkingContractList.append(MedInsuranceContract(ConstantFunction(0.0),0.00,0.1,Params.MedPrice))
-        
+    
+    IndMarketContractList = [MedInsuranceContract(ConstantFunction(0.0),0.0,1.0,Params.MedPrice)]
     RetiredContractList = [MedInsuranceContract(ConstantFunction(0.0),0.0,0.12,Params.MedPrice)]
     
     ContractList = []
     for t in range(Params.working_T):
         ContractList_t = []
-        for h in range(5):
+        for h in range(5): # distribute individual market contracts
+            ContractList_t.append(deepcopy(IndMarketContractList))
+        for h in range(10): # distribute ESI contracts
             ContractList_t.append(deepcopy(WorkingContractList))
         ContractList.append(ContractList_t)
     for t in range(Params.retired_T):
@@ -636,7 +638,7 @@ def makeDynInsSelType(CRRAcon,MedCurve,DiscFac,BequestShift,BequestScale,ChoiceS
             ContractList_t.append(deepcopy(RetiredContractList))
         ContractList.append(ContractList_t)
     
-    TypeDict['ContractList'] = ContractList # Params.working_T*[5*[WorkingContractList]] + Params.retired_T*[5*[RetiredContractList]]
+    TypeDict['ContractList'] = ContractList
     
     # Make and return a DynInsSelType
     ThisType = DynInsSelType(**TypeDict)
@@ -715,10 +717,10 @@ def makeMarketFromParams(ParamArray,ActuarialRule,PremiumArray,InsChoiceType):
     
     for i in range(len(AgentList)):
         AgentList[i].seed = i # Assign different seeds to each type
-    StateCount = AgentList[0].MrkvArray[0].shape[0]
             
     # Construct an initial nested list for premiums
     PremiumFuncs_init = []
+    StateCount = 15
     for t in range(60):
         PremiumFuncBase_t = []
         for z in range(ContractCount):
@@ -786,8 +788,8 @@ if __name__ == '__main__':
     import matplotlib.pyplot as plt
     mystr = lambda number : "{:.4f}".format(number)
     
-    test_obj_func = True
-    test_one_type = False
+    test_obj_func = False
+    test_one_type = True
     test_static_model = False
     
     if test_obj_func:
@@ -995,16 +997,25 @@ if __name__ == '__main__':
            
         t = 0
         p = 3.0    
-        h = 4        
+        h = 9        
         Dev = 0.0
         z = 0
         
         mTop = 10.
-        MyType.plotvFunc(t,p,decurve=False,mMax=mTop)
-        MyType.plotvPfunc(t,p,decurve=False,mMax=mTop)
-        MyType.plotvFuncByContract(t,h,p,mMax=mTop)
-        MyType.plotcFuncByContract(t,h,p,Dev,mMax=mTop)
-        MyType.plotcFuncByDev(t,h,z,p,mMax=mTop)
-        MyType.plotMedFuncByDev(t,h,z,p,mMax=mTop)
-        MyType.plotxFuncByDev(t,h,z,p,mMax=mTop)
-        MyType.plotAVfuncByContract(t,h,p,mMax=mTop)
+        print('Individual market:')
+        MyType.plotvFunc(t,p,H=[0,1,2,3,4],decurve=False,mMax=mTop)
+        MyType.plotvPfunc(t,p,H=[0,1,2,3,4],decurve=False,mMax=mTop)
+        if t < 40:
+            print('ESI paying full price:')
+            MyType.plotvFunc(t,p,H=[5,6,7,8,9],decurve=False,mMax=mTop)
+            MyType.plotvPfunc(t,p,H=[5,6,7,8,9],decurve=False,mMax=mTop)
+            print('ESI with employer contribution:')
+            MyType.plotvFunc(t,p,H=[10,11,12,13,14],decurve=False,mMax=mTop)
+            MyType.plotvPfunc(t,p,H=[10,11,12,13,14],decurve=False,mMax=mTop)
+        
+        #MyType.plotvFuncByContract(t,h,p,mMax=mTop)
+        #MyType.plotcFuncByContract(t,h,p,Dev,mMax=mTop)
+        #MyType.plotcFuncByDev(t,h,z,p,mMax=mTop)
+        #MyType.plotMedFuncByDev(t,h,z,p,mMax=mTop)
+        #MyType.plotxFuncByDev(t,h,z,p,mMax=mTop)
+        #MyType.plotAVfuncByContract(t,h,p,mMax=mTop)

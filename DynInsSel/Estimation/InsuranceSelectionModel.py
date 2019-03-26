@@ -843,8 +843,8 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
     aLvlCount = aXtraGrid.size
     
     # Construct the overall MrkvArray from HealthMrkvArray and ESImrkvArray
-    MrkvArray = HealthMrkvArray
-    MrkvArray_alt = combineIndepMrkvArrays(ESImrkvArray,HealthMrkvArray)
+    #MrkvArray = HealthMrkvArray
+    MrkvArray = combineIndepMrkvArrays(ESImrkvArray,HealthMrkvArray)
     StateCountNow  = MrkvArray.shape[0] # number of discrete states this period
     StateCountNext = MrkvArray.shape[1] # number of discrete states next period
     
@@ -873,15 +873,17 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
     # For each future health state, find the minimum allowable end of period assets by permanent income    
     aLvlMinCond = np.zeros((pLvlCount,StateCountNext))
     for h in range(StateCountNext):
+        h_alt = np.mod(h,5)
+        
         # Unpack the inputs conditional on future health state
-        PermShkValsNext  = IncomeDstn[h][1]
-        TranShkValsNext  = IncomeDstn[h][2]
+        PermShkValsNext  = IncomeDstn[h_alt][1]
+        TranShkValsNext  = IncomeDstn[h_alt][2]
         IncShkCount = PermShkValsNext.size
         PermShkVals_tiled = np.tile(np.reshape(PermShkValsNext,(1,IncShkCount)),(pLvlCount,1))
         TranShkVals_tiled = np.tile(np.reshape(TranShkValsNext,(1,IncShkCount)),(pLvlCount,1))
         pLvlGrid_tiled = np.tile(np.reshape(pLvlGrid,(pLvlCount,1)),(1,IncShkCount))
         pLvlNext = pLvlNextFunc(pLvlGrid_tiled)*PermShkVals_tiled
-        aLvlMin_cand = (solution_next.mLvlMin(pLvlNext) - pLvlNext*TranShkVals_tiled)/Rfree[h]
+        aLvlMin_cand = (solution_next.mLvlMin(pLvlNext) - pLvlNext*TranShkVals_tiled)/Rfree[h_alt]
         aLvlMinCond[:,h] = np.min(aLvlMin_cand,axis=1)
     aLvlMin = np.max(aLvlMinCond,axis=1) # Actual minimum acceptable assets is largest among health-conditional values
     
@@ -903,17 +905,19 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
     EndOfPrdvPcond = np.zeros((pLvlCount,aLvlCount+1,StateCountNext))
     hLvlCond = np.zeros((pLvlCount,StateCountNext))
     for h in range(StateCountNext):
+        h_alt = np.mod(h,5)
+        
         # Unpack the inputs conditional on future health state
-        ShkPrbsNext      = IncomeDstn[h][0]
-        PermShkValsNext  = IncomeDstn[h][1]
-        TranShkValsNext  = IncomeDstn[h][2]
+        ShkPrbsNext      = IncomeDstn[h_alt][0]
+        PermShkValsNext  = IncomeDstn[h_alt][1]
+        TranShkValsNext  = IncomeDstn[h_alt][2]
         ShkCount         = PermShkValsNext.size
         vPfuncNext       = solution_next.vPfunc[h]      
         vFuncNext        = solution_next.vFunc[h]
         
         # Calculate human wealth conditional on achieving this future health state
         PermIncNext   = np.tile(pLvlNextFunc(pLvlGrid),(ShkCount,1))*np.tile(PermShkValsNext,(pLvlCount,1)).transpose()
-        hLvlCond[:,h] = 1.0/Rfree[h]*np.sum((np.tile(TranShkValsNext,(pLvlCount,1)).transpose()*PermIncNext + solution_next.hLvl[h](PermIncNext))*np.tile(ShkPrbsNext,(pLvlCount,1)).transpose(),axis=0)
+        hLvlCond[:,h] = 1.0/Rfree[h_alt]*np.sum((np.tile(TranShkValsNext,(pLvlCount,1)).transpose()*PermIncNext + solution_next.hLvl[h](PermIncNext))*np.tile(ShkPrbsNext,(pLvlCount,1)).transpose(),axis=0)
         
         # Make arrays of current end of period states
         aNrmGrid    = np.insert(aXtraGrid,0,0.0)
@@ -932,22 +936,24 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
         
         # Make grids of future states conditional on achieving this future health state
         pLvlNext = pLvlNextFunc(pLvlNow_tiled)*PermShkVals_tiled
-        mLvlNext = Rfree[h]*aLvlNow_tiled + pLvlNext*TranShkVals_tiled
+        mLvlNext = Rfree[h_alt]*aLvlNow_tiled + pLvlNext*TranShkVals_tiled
         
         # Calculate future-health-conditional end of period value and marginal value
         tempv = vFuncNext(mLvlNext,pLvlNext)
         tempvP = vPfuncNext(mLvlNext,pLvlNext)
-        EndOfPrdvPcond[:,:,h]  = Rfree[h]*np.sum(tempvP*ShkPrbs_tiled,axis=0)
+        EndOfPrdvPcond[:,:,h]  = Rfree[h_alt]*np.sum(tempvP*ShkPrbs_tiled,axis=0)
         EndOfPrdvCond[:,:,h]   = np.sum(tempv*ShkPrbs_tiled,axis=0)
         
     # Calculate end of period value and marginal value conditional on each current health state
     EndOfPrdv = np.zeros((pLvlCount,aLvlCount+1,StateCountNow))
     EndOfPrdvP = np.zeros((pLvlCount,aLvlCount+1,StateCountNow))
     for h in range(StateCountNow):
+        h_alt = np.mod(h,5) # Alternate state index, very hacky
+        
         # Set up a temporary health transition array
         HealthTran_temp = np.tile(np.reshape(MrkvArray[h,:],(1,1,StateCountNext)),(pLvlCount,aLvlCount+1,1))
-        DiscFacEff = DiscFac*LivPrb[h] # "effective" discount factor
-        DiePrb = (1.-LivPrb[h])
+        DiscFacEff = DiscFac*LivPrb[h_alt] # "effective" discount factor
+        DiePrb = (1.-LivPrb[h_alt])
         
         # Weight future health states according to the transition probabilities
         EndOfPrdv[:,:,h]  = DiscFacEff*np.sum(EndOfPrdvCond*HealthTran_temp,axis=2) + DiePrb*BequestMotive(aLvlNow)
@@ -959,17 +965,17 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
         hLvlGrid[:,:] = 0.
     hLvlGrid_adj = copy(hLvlGrid)
     for h in range(StateCountNow):
-        hLvlGrid_adj[:,h] *= LivPrb[h]
-        hLvlGrid_adj[:,h] += (1.-LivPrb[h])*BequestShift
+        hLvlGrid_adj[:,h] *= LivPrb[h_alt]
+        hLvlGrid_adj[:,h] += (1.-LivPrb[h_alt])*BequestShift
     
-    # Compute bounding MPC (and pseudo inverse MPC) in each state this period
-    try:
-        MPCminNvrsNext = solution_next.MPCminNvrs
-    except:
-        MPCminNvrsNext = np.ones(StateCountNow)
-    temp = ((1.-LivPrb)*BequestScale + DiscFac*LivPrb*np.dot(MrkvArray,(MPCminNvrsNext*Rfree)**(1.-CRRA)))**(1./CRRA)
-    MPCminNow = 1./(1. + temp)
-    MPCminNvrsNow = MPCminNow**(-CRRA/(1.-CRRA))
+#    # Compute bounding MPC (and pseudo inverse MPC) in each state this period
+#    try:
+#        MPCminNvrsNext = solution_next.MPCminNvrs
+#    except:
+#        MPCminNvrsNext = np.ones(StateCountNow)
+#    temp = ((1.-LivPrb)*BequestScale + DiscFac*LivPrb*np.dot(MrkvArray,(MPCminNvrsNext*Rfree)**(1.-CRRA)))**(1./CRRA)
+#    MPCminNow = 1./(1. + temp)
+#    MPCminNvrsNow = MPCminNow**(-CRRA/(1.-CRRA))
     
     t1 = clock()
     FutureExpectations_time = t1 - t0
@@ -982,10 +988,11 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
     UpperEnvelope_time = 0.
     for h in range(StateCountNow):
         t0 = clock() # Beginning of solution construction step
+        h_alt = np.mod(h,5)
         
         mCount           = EndOfPrdvP.shape[1]
         pCount           = EndOfPrdvP.shape[0]
-        MedShkVals       = np.exp(MedShkAvg[h] + MedShkStd[h]*DevGrid)
+        MedShkVals       = np.exp(MedShkAvg[h_alt] + MedShkStd[h_alt]*DevGrid)
         PolicyFuncsThisHealthCopay = []
         vFuncsThisHealthCopay = []
         
@@ -1072,7 +1079,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
             xFuncNow = CompositeFunc3D(xFuncNowCnst,xFuncNowUnc,ConstraintSeam)
             
             # Make a policy function for this coinsurance rate and health state
-            PolicyFuncsThisHealthCopay.append(cAndMedFunc(xFuncNow, bFromxFunc, MedShkAvg[h], MedShkStd[h], MedPriceEff))
+            PolicyFuncsThisHealthCopay.append(cAndMedFunc(xFuncNow, bFromxFunc, MedShkAvg[h_alt], MedShkStd[h_alt], MedPriceEff))
             
             # Calculate pseudo inverse value on a grid of states for this coinsurance rate
             pLvlArray = np.tile(np.reshape(pLvlGrid,(1,pCount,1)),(MedShkCount,1,mCountAlt))
@@ -1148,7 +1155,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
             m_temp_alt = m_temp - Contract.OptionCost
             LogCritShk = (CRRAmed - CRRA)/(CRRAmed - 1.)*np.log(Cfloor) + CRRAmed/(CRRAmed - 1.)*np.log(m_temp_alt/Cfloor - 1.) - np.log(MedPrice*Copay)
             LogCritShk[np.isnan(LogCritShk)] = -np.inf
-            CritDevArray = (LogCritShk - MedShkAvg[h])/MedShkStd[h]
+            CritDevArray = (LogCritShk - MedShkAvg[h_alt])/MedShkStd[h_alt]
             CritDevArray = np.maximum(CritDevArray,DevMin) # Apply lower bound for grid
             CritDevFunc_by_pLvl = []
             for j in range(pCount):
@@ -1169,7 +1176,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
             # Calculate probabilities of all of the medical shocks
             BasePrbArray = norm.pdf(DevArray)
             SumPrbArray = np.sum(BasePrbArray,axis=2)
-            AdjArray = np.tile(np.reshape((1.0-ZeroMedShkPrb[h])*(1.0-CritShkPrbArray)/SumPrbArray,(aLvlCount,pLvlCount,1)),(1,1,MedShkCount))
+            AdjArray = np.tile(np.reshape((1.0-ZeroMedShkPrb[h_alt])*(1.0-CritShkPrbArray)/SumPrbArray,(aLvlCount,pLvlCount,1)),(1,1,MedShkCount))
             MedShkPrbArray = BasePrbArray*AdjArray
                            
             # Get value and marginal value at an array of states
@@ -1177,8 +1184,8 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
             ConArrayBig, MedArrayBig, xLvlArrayBig = PolicyFuncsThisHealth[-1](mLvlArray,pLvlArray,DevArray)
             
             # Calculate expected value when hitting Cfloor (use truncated lognormal formula)
-            mu = (1.-1./CRRAmed)*MedShkAvg[h] # underlying mean of lognormal shocks
-            sigma = (1.-1./CRRAmed)*MedShkStd[h] # underlying std of lognormal shocks
+            mu = (1.-1./CRRAmed)*MedShkAvg[h_alt] # underlying mean of lognormal shocks
+            sigma = (1.-1./CRRAmed)*MedShkStd[h_alt] # underlying std of lognormal shocks
             C1 = (MedPrice*Copay)**(1.-1./CRRAmed)*Cfloor**(CRRA/CRRAmed - CRRA)/(1.-CRRAmed) # constant factor
             ExpectedAdjShkAtCfloor = -0.5*np.exp(mu+(sigma**2)*0.5)*(erfc(np.sqrt(0.5)*(sigma-CritDevArray))-2.0)/CritShkPrbArray
             ExpectedUMedatCfloor = ExpectedAdjShkAtCfloor*C1
@@ -1194,13 +1201,13 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
             
             # Integrate (marginal) value across medical shocks
             vArrayMain = np.sum(vArrayBig*MedShkPrbArray,axis=2)
-            vArray   = vArrayMain + ZeroMedShkPrb[h]*vArrayZeroShk + (1.0-ZeroMedShkPrb[h])*CritShkPrbArray*vFloor_expected
-            vParray  = np.sum(vParrayBig*MedShkPrbArray,axis=2) + ZeroMedShkPrb[h]*vParrayZeroShk + (1.0-ZeroMedShkPrb[h])*CritShkPrbArray*0.0
+            vArray   = vArrayMain + ZeroMedShkPrb[h_alt]*vArrayZeroShk + (1.0-ZeroMedShkPrb[h_alt])*CritShkPrbArray*vFloor_expected
+            vParray  = np.sum(vParrayBig*MedShkPrbArray,axis=2) + ZeroMedShkPrb[h_alt]*vParrayZeroShk + (1.0-ZeroMedShkPrb[h_alt])*CritShkPrbArray*0.0
             
             # Calculate actuarial value at each (mLvl,pLvl), combining shocks above and below the critical value
             AVarrayBig = MedArrayBig*MedPrice - Contract.OOPfunc(MedArrayBig) # realized "actuarial value" below critical shock
             ExpectedMedatCfloor = (Copay*MedPrice)**(-1./CRRAmed)*ExpectedAdjShkAtCfloor*Cfloor**(CRRA/CRRAmed) # Use truncated lognormal formula
-            AVarray  = np.sum(AVarrayBig*MedShkPrbArray,axis=2) + (1.0-ZeroMedShkPrb[h])*CritShkPrbArray*(ExpectedMedatCfloor*(1.-Copay) - OptionCost)
+            AVarray  = np.sum(AVarrayBig*MedShkPrbArray,axis=2) + (1.0-ZeroMedShkPrb[h_alt])*CritShkPrbArray*(ExpectedMedatCfloor*(1.-Copay) - OptionCost)
             
             # Construct pseudo-inverse arrays of vNvrs and vPnvrs, adding some data at the bottom
             mLvlArray_temp = mLvlArray[:,:,0]
@@ -1343,7 +1350,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
         UpperEnvelope_time += (t3-t2)
     
     # Return the solution for this period
-    solution_now.MPCminNvrs = MPCminNvrsNow
+#    solution_now.MPCminNvrs = MPCminNvrsNow
     t_end = clock()
     if verbosity > 0:
         print('Solving a period of the problem took ' + str(t_end-t_start) + ' seconds, fix count = ' + str(JDfixCount))
@@ -1492,19 +1499,40 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         
         # Loop through each age-state-contract, filling in the updated premium in ContractList
         for t in range(T):
-            StateCount = len(self.ContractList[t])
-            for h in range(StateCount):
+            #StateCount = len(self.ContractList[t])
+            for h in range(5): # Do individual market or retired premiums
                 ContractCount = len(self.ContractList[t][h])
                 for z in range(ContractCount):
                     if z == 0:
-                        PremiumFunc = self.UninsuredPremiumFunc
+                        if t < T_retire:
+                            PremiumFunc = self.UninsuredPremiumFunc
+                        else:
+                            PremiumFunc = ConstantFunction(0.0)
                     else:
                         PremiumFunc = self.PremiumFuncs[t][h][z]
-                    if PremiumFunc.__class__.__name__ == 'ConstantFunction':
-                        NetPremium = np.maximum(PremiumFunc.value - (t < T_retire)*self.PremiumSubsidy, 0.0)
-                        self.ContractList[t][h][z].Premium = ConstantFunction(NetPremium)
-                    else: # If not a constant function, forget PremiumSubsidy and just install as is
+            
+            if t < T_retire:
+                for h in range(5,10): # Do ESI market with no employer contribution
+                    ContractCount = len(self.ContractList[t][h])
+                    for z in range(ContractCount):
+                        if z == 0:
+                            PremiumFunc = self.UninsuredPremiumFunc
+                        else:
+                            PremiumFunc = self.PremiumFuncs[t][h][z]
                         self.ContractList[t][h][z].Premium = PremiumFunc
+                            
+                for h in range(10,15): # Do ESI market *with* employer contribution
+                    ContractCount = len(self.ContractList[t][h])
+                    for z in range(ContractCount):
+                        if z == 0:
+                            PremiumFunc = self.UninsuredPremiumFunc
+                        else:
+                            PremiumFunc = self.PremiumFuncs[t][h][z]
+                        if PremiumFunc.__class__.__name__ == 'ConstantFunction':
+                            NetPremium = np.maximum(PremiumFunc.value - (t < T_retire)*self.PremiumSubsidy, 0.0)
+                            self.ContractList[t][h][z].Premium = ConstantFunction(NetPremium)
+                        else:
+                            self.ContractList[t][h][z].Premium = PremiumFunc
                         
         # Restore the original flow of time
         if not time_orig:
@@ -1591,8 +1619,6 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         '''
         Solve for the terminal period solution.  For the sake of simplicity, assume that the last
         non-terminal period's data is also used for the terminal period (this can be changed later).
-        
-        REWRITE THIS ENTIRELY
         
         Parameters
         ----------
@@ -1962,7 +1988,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
     def plotvFunc(self,t,p,mMin=0.0,mMax=10.0,H=None,decurve=True,savename=None):
         mLvl = np.linspace(mMin,mMax,200)
         if H is None:
-            H = range(len(self.LivPrb[0]))
+            H = range(len(self.solution[t].vFunc))
         for h in H:
             if decurve:
                 f = lambda x : self.solution[t].vFunc[h].func(x,p*np.ones_like(x))
@@ -1981,7 +2007,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
     def plotvPfunc(self,t,p,mMin=0.0,mMax=10.0,H=None,decurve=True,savename=None):
         mLvl = np.linspace(mMin,mMax,200)
         if H is None:
-            H = range(len(self.LivPrb[0]))
+            H = range(len(self.solution[t].vFunc))
         for h in H:
             if decurve:
                 f = lambda x : self.solution[t].vPfunc[h].UpperFunc.cFunc(x,p*np.ones_like(x))
@@ -2006,8 +2032,6 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
             f = lambda x : self.solution[t].vFuncByContract[h][z].func(x,p*np.ones_like(x))
             Prem = self.ContractList[t][h][z].Premium(0.,0.) # Need to fix this if want to see IM in action
             plt.plot(mLvl+Prem,f(mLvl))
-        #f = lambda x : self.solution[t].vFunc[h].func(x,p*np.ones_like(x))
-        #plt.plot(mLvl,f(mLvl),'-k')
         plt.xlabel('Market resources mLvl')
         plt.ylabel('Contract pseudo-inverse value uinv(v(mLvl))')
         plt.ylim(ymin=0.0)
