@@ -111,7 +111,7 @@ class JDfixer(object):
         xLvlNow = np.concatenate((np.zeros((1,self.DevGridDenseSize)),xLvlOut_reshaped),axis=0)
         xFunc_this_pLvl = BilinearInterp(xLvlNow,np.insert(mGridDense,0,0.0),DevGridDense)
         return xFunc_this_pLvl, (xLvlOut_reshaped[:,np.arange(0,self.DevGridDenseSize,3)]).transpose()
-    
+        # TODO: The 3 in the line above should be MedShk_aug_factor
     
     
 class JDfixerSimple(object):

@@ -1056,11 +1056,6 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
                     Dev_data = DevGrid_tiled[:,i,:].transpose()
                     xFunc_this_pLvl, xLvlArray[:,i,:] = MyJDfixer(mLvl_data,Dev_data,vNvrs_data,xLvl_data,mGridDense,DevGridDense)
                     xFunc_by_pLvl.append(xFunc_this_pLvl)
-                    #for j in range(MedShkCount):
-                    #    xLvlArray[j,i,:] = temp[j,:]
-                    #    plt.plot(mGridDense,temp[j,:])
-                    #plt.show()
-                    #xLvlArray[:,i,:] = xFunc_by_pLvl[-1](np.tile(np.reshape(mGridDense,(1,mCountAlt)),(MedShkCount,1)),np.tile(np.reshape(DevGrid,(MedShkCount,1)),(1,mCountAlt)))
                     mLvlNow[:,i,0] = 0.0 # This fixes the "seam" problem so there are no NaNs
                 else:
                     tempArray = np.zeros((mCountAlt,MedShkCount))
@@ -1070,10 +1065,8 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
                         xFunc_temp = LinearInterp(np.insert(m_temp,0,0.0),np.insert(x_temp,0,0.0))
                         tempArray[:,j] = xFunc_temp(mGridDense)
                         idx = np.searchsorted(mGridDense,mLvlNow[j,i,0])
-                        #those = np.logical_not(these)
                         xLvlArray[j,i,idx:] = xFunc_temp(mGridDense[idx:] - mLvlNow[j,i,0])
                         xLvlArray[j,i,:idx] = mGridDense[:idx]
-                    #xFunc_by_pLvl.append(LinearInterpOnInterp1D(temp_list,DevGrid))
                     xFunc_by_pLvl.append(BilinearInterp(tempArray,mGridDense,DevGrid))
                 
             # Combine the many expenditure functions into a single one and adjust for the natural borrowing constraint
@@ -1092,16 +1085,11 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
             if pLvlGrid[0] == 0.0:  # mLvl turns out badly if pLvl is 0 at bottom
                 mLvlArray[:,0,:] = mLvlArray[:,1,:]
             MedShkArray = np.tile(np.reshape(MedShkVals,(MedShkCount,1,1)),(1,pCount,mCountAlt))
-            DevArray = np.tile(np.reshape(DevGrid,(MedShkCount,1,1)),(1,pCount,mCountAlt))
-            
-#            cLvlArray,MedLvlArray,xLvlArray = PolicyFuncsThisHealthCopay[-1](mLvlArray,pLvlArray,DevArray)
-            
-#            xLvlArray = xFuncNow(mLvlArray,pLvlArray,DevArray)
+            DevArray = np.tile(np.reshape(DevGrid,(MedShkCount,1,1)),(1,pCount,mCountAlt))            
             cShareTrans = bFromxFunc(xLvlArray,MedShkArray*MedPriceEff)
             q = np.exp(-cShareTrans)
             cLvlArray = xLvlArray/(1.+q)
-            MedLvlArray = xLvlArray/MedPriceEff*q/(1.+q)
-            
+            MedLvlArray = xLvlArray/MedPriceEff*q/(1.+q)            
             aLvlArray = np.abs(mLvlArray - xLvlArray) # OCCASIONAL VIOLATIONS BY 1E-18 !!!
             EndOfPrdvArray = EndOfPrdvFunc(aLvlArray,pLvlArray)
             vNow = u(cLvlArray) + uMed(MedLvlArray/MedShkArray) + EndOfPrdvArray
@@ -1205,6 +1193,8 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
             vNvrsFloorBypLvl = uinv(vFloorBypLvl)
             vFloor_tiled = np.tile(np.reshape(vFloorBypLvl,(1,pLvlCount,1)),(aLvlCount,1,MedShkCount))
             vArrayBig = np.maximum(vArrayBig,vFloor_tiled) # This prevents tiny little non-monotonicities in vFunc
+            if z == 0:
+                vNvrsFloorBypLvl_default = vNvrsFloorBypLvl # This is for the "default" or "null" or "free" contract
             
             # Integrate (marginal) value across medical shocks
             vArrayMain = np.sum(vArrayBig*MedShkPrbArray,axis=2)
@@ -1262,7 +1252,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
         
         # If there is only one contract, then value and marginal value functions are trivial.
         if len(ContractList[h]) == 1:
-            vFunc = vFuncsThisHealth[0] # only element
+            vFunc = vFuncsThisHealth[0]   # only element
             vPfunc = vPfuncsThisHealth[0] # only element
         else: # If there is more than one contract available, take expectation over choice shock.
             mLvlGrid = mGridDenseBase
@@ -1323,7 +1313,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
                     vPnvrsArray[these] = vPnvrsArrayBig[:,:,z][these]
                         
             # Make value and marginal value functions for the very beginning of the period, before choice shocks are drawn
-            vNvrsArray_plus = np.concatenate((np.tile(np.reshape(vNvrsFloorBypLvl,(1,pLvlCount)),(2,1)),vNvrsArray),axis=0)
+            vNvrsArray_plus = np.concatenate((np.tile(np.reshape(vNvrsFloorBypLvl_default,(1,pLvlCount)),(2,1)),vNvrsArray),axis=0)
             vNvrsFuncs_by_pLvl = []
             vPfuncs_Lower_by_pLvl = []
             vPnvrsFuncs_Upper_by_pLvl = []

@@ -55,11 +55,6 @@ class ValueFuncCL(object):
         self.IntegerInputs = np.array([mNrmGrid.size,pLvlGrid.size,DevCount,0],dtype=np.int32) # Last element will be overwritten
         DoubleInputs = np.array([CRRA,DevMin,DevMax])
         
-        #print('mNrmGrid',mNrmGrid.shape)
-        #print('pLvlGrid',pLvlGrid.shape)
-        #print('vNvrsZeroShkData',vNvrsZeroShkData.shape)
-        #print('vNvrsRescaledData',vNvrsRescaledData.shape)
-        
         # Make buffers
         self.mNrmGrid_buf = ctx.create_buffer(cl.CL_MEM_READ_ONLY | cl.CL_MEM_COPY_HOST_PTR,mNrmGrid)
         self.pLvlGrid_buf = ctx.create_buffer(cl.CL_MEM_READ_ONLY | cl.CL_MEM_COPY_HOST_PTR,pLvlGrid)
