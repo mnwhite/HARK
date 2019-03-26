@@ -15,7 +15,7 @@ from ConsIndShockModel import ConsumerSolution
 from HARKinterpolation import BilinearInterpOnInterp1D, TrilinearInterp, BilinearInterp, CubicInterp,\
                               LinearInterp, LowerEnvelope3D, UpperEnvelope, LinearInterpOnInterp1D,\
                               VariableLowerBoundFunc3D
-from ConsPersistentShockModel import ConsPersistentShockSolver, PersistentShockConsumerType,\
+from ConsGenIncProcessModel import ConsGenIncProcessSolver, PersistentShockConsumerType,\
                                      ValueFunc2D, MargValueFunc2D, MargMargValueFunc2D, \
                                      VariableLowerBoundFunc2D
 from copy import copy, deepcopy
@@ -82,11 +82,9 @@ class MedShockPolicyFunc(HARKobject):
                 elif MedShk == 0.0: 
                     bOpt = np.nan # Placeholder for when MedShk = 0
                 else:
-                    optMedZeroFunc = lambda q : (MedShk/MedPrice)**(-1.0/CRRAcon)*(xLvl/MedPrice*(q/(1.+q)))**(CRRAmed/CRRAcon) - (xLvl/(1.+q))
+                    optMedZeroFunc = lambda q : 1. + CRRAmed/(MedPrice*MedShk)*xLvl/(1.+q) - np.exp((xLvl/MedPrice*q/(1.+q))/MedShk)
                     optFuncTransformed = lambda b : optMedZeroFunc(tempf(b))
-                    #cLvl = brentq(optMedZeroFunc,0.0,xLvl) # Find solution to FOC
-                    #bOpt = newton(optFuncTransformed,0.0,maxiter=200)
-                    bOpt = brentq(optFuncTransformed,-700.0,700.0)
+                    bOpt = brentq(optFuncTransformed,-100.0,100.0)
                 bGrid[i,j] = bOpt
 
         # Fill in the missing values
@@ -98,22 +96,6 @@ class MedShockPolicyFunc(HARKobject):
         # Construct the consumption function and medical care function
         if xLvlCubicBool:
             raise NotImplementedError(), 'Cubic interpolation in x dimension must be fixed'
-#            if MedShkCubicBool:
-#                raise NotImplementedError(), 'Bicubic interpolation not yet implemented'
-#            else:
-#                xLvlGrid_tiled   = np.tile(np.reshape(xLvlGrid,(xLvlGrid.size,1)),
-#                                           (1,MedShkGrid.size))
-#                MedShkGrid_tiled = np.tile(np.reshape(MedShkGrid,(1,MedShkGrid.size)),
-#                                           (xLvlGrid.size,1))
-#                dfdx = (CRRAmed/(CRRAcon*MedPrice))*(MedShkGrid_tiled/MedPrice)**(-1.0/CRRAcon)*\
-#                       ((xLvlGrid_tiled - cLvlGrid)/MedPrice)**(CRRAmed/CRRAcon - 1.0)
-#                dcdx = dfdx/(dfdx + 1.0)
-#                dcdx[0,:] = dcdx[1,:] # approximation; function goes crazy otherwise
-#                dcdx[:,0] = 1.0 # no Med when MedShk=0, so all x is c
-#                cFromxFunc_by_MedShk = []
-#                for j in range(MedShkGrid.size):
-#                    cFromxFunc_by_MedShk.append(CubicInterp(xLvlGrid,cLvlGrid[:,j],dcdx[:,j]))
-#                cFunc = LinearInterpOnInterp1D(cFromxFunc_by_MedShk,MedShkGrid)
         else:
             bFunc = BilinearInterp(bGrid,xLvlGrid,MedShkGrid)
         self.bFunc = bFunc
@@ -562,6 +544,7 @@ class MedShockConsumerType(PersistentShockConsumerType):
         '''
         self.updateIncomeProcess()
         self.updateAssetsGrid()
+        self.updatepLvlNextFunc()
         self.updatePermIncGrid()
         self.updateMedShockProcess()
         self.updateSolutionTerminal()
@@ -699,8 +682,8 @@ class MedShockConsumerType(PersistentShockConsumerType):
         PersistentShockConsumerType.updatePermIncGrid(self)
         for j in range(len(self.pLvlGrid)): # Then add 0 to the bottom of each pLvlGrid
             this_grid = self.pLvlGrid[j]
-            this_grid = np.insert(this_grid,0,np.min(this_grid)*0.5)
-            self.pLvlGrid[j] = np.insert(this_grid,0,np.min(this_grid)*0.0)
+            extra_grid = np.linspace(0.,this_grid[0],num=0,endpoint=False)
+            self.pLvlGrid[j] = np.concatenate((extra_grid,this_grid))
         
     def getShocks(self):
         '''
@@ -769,7 +752,7 @@ class MedShockConsumerType(PersistentShockConsumerType):
         
 ###############################################################################
         
-class ConsMedShockSolver(ConsPersistentShockSolver):
+class ConsMedShockSolver(ConsGenIncProcessSolver):
     '''
     Class for solving the one period problem for the "medical shocks" model, in
     which consumers receive shocks to permanent and transitory income as well as
@@ -829,7 +812,7 @@ class ConsMedShockSolver(ConsPersistentShockSolver):
         -------
         None
         '''
-        ConsPersistentShockSolver.__init__(self,solution_next,IncomeDstn,LivPrb,DiscFac,CRRA,Rfree,
+        ConsGenIncProcessSolver.__init__(self,solution_next,IncomeDstn,LivPrb,DiscFac,CRRA,Rfree,
                  PermGroFac,PermIncCorr,BoroCnstArt,aXtraGrid,pLvlGrid,vFuncBool,CubicBool)
         self.MedShkDstn = MedShkDstn
         self.MedPrice   = MedPrice
@@ -864,7 +847,7 @@ class ConsMedShockSolver(ConsPersistentShockSolver):
         None
         '''
         # Run basic version of this method
-        ConsPersistentShockSolver.setAndUpdateValues(self,self.solution_next,self.IncomeDstn,
+        ConsGenIncProcessSolver.setAndUpdateValues(self,self.solution_next,self.IncomeDstn,
                                                      self.LivPrb,self.DiscFac)
         
         # Also unpack the medical shock distribution
@@ -886,7 +869,7 @@ class ConsMedShockSolver(ConsPersistentShockSolver):
         -------
         none
         '''
-        ConsPersistentShockSolver.defUtilityFuncs(self) # Do basic version
+        ConsGenIncProcessSolver.defUtilityFuncs(self) # Do basic version
         self.uMedPinv = lambda Med : utilityP_inv(Med,gam=self.CRRAmed)
         self.uMed     = lambda Med : utility(Med,gam=self.CRRAmed)
         self.uMedPP   = lambda Med : utilityPP(Med,gam=self.CRRAmed)

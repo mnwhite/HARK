@@ -8,7 +8,7 @@ import os
 # Choose which classes of moments will actually be used in estimation
 use_data_weights = False # Whether to use moment weights from data or just all ones
 MomentBools = np.array([
-               True,  #WealthRatioByAge
+               False, #WealthRatioByAge
                True,  #MeanLogTotalMedByAge
                False, #StdevLogTotalMedByAge
                False, #InsuredRateByAge
@@ -24,6 +24,7 @@ MomentBools = np.array([
                False, #MeanPremiumByAgeIncome
                False, #MeanLogOOPmedByAge
                False, #StdevLogOOPmedByAge
+               False, #OOPshareByAge
               ])
 
 # Load the moments by one-year age groups into a CSV reader object
@@ -44,6 +45,7 @@ InsuredRateByAge = np.zeros(40) + np.nan
 MeanPremiumByAge = np.zeros(40) + np.nan
 StdevPremiumByAge = np.zeros(40) + np.nan
 NoPremShareRateByAge = np.zeros(40) + np.nan
+OOPshareByAge = np.zeros(60) + np.nan
 OOPmomentWeightsByAge = np.zeros(60) + np.nan
 totMomentWeightsByAge = np.zeros(60) + np.nan
 premMomentWeightsByAge = np.zeros(40) + np.nan
@@ -53,15 +55,16 @@ for j in range(60):
     MeanLogTotalMedByAge[j] = float(raw_moments[j][2])
     StdevLogOOPmedByAge[j] = float(raw_moments[j][3])
     StdevLogTotalMedByAge[j] = float(raw_moments[j][4])
-    OOPmomentWeightsByAge[j] = float(raw_moments[j][9])
-    totMomentWeightsByAge[j] = float(raw_moments[j][10])
+    OOPshareByAge[j] = float(raw_moments[j][9])
+    OOPmomentWeightsByAge[j] = float(raw_moments[j][10])
+    totMomentWeightsByAge[j] = float(raw_moments[j][11])
     if j < 40:
         InsuredRateByAge[j] = float(raw_moments[j][5])
         MeanPremiumByAge[j] = float(raw_moments[j][6])
         StdevPremiumByAge[j] = float(raw_moments[j][7])
         NoPremShareRateByAge[j] = float(raw_moments[j][8])
-        premMomentWeightsByAge[j] = float(raw_moments[j][11])
-        otherMomentWeightsByAge[j] = float(raw_moments[j][12])    
+        premMomentWeightsByAge[j] = float(raw_moments[j][12])
+        otherMomentWeightsByAge[j] = float(raw_moments[j][13])    
 
 # Load the moments by five-year age groups and income quintile into a CSV reader object
 data_location = os.path.dirname(os.path.abspath(__file__))
@@ -145,8 +148,10 @@ f.close()
 
 # Store the moments for wealth-to-income ratio by age
 WealthRatioByAge = np.zeros(40) + np.nan
+WealthMomentWeightsByAge = np.zeros(40) + np.nan
 for j in range(40):
     WealthRatioByAge[j] = float(raw_moments[j][1])
+    WealthMomentWeightsByAge[j] = float(raw_moments[j][2])
 
 
 # Load the moments for wealth-to-income ratio by age and income quintile
@@ -158,10 +163,12 @@ f.close()
 
 # Store the moments for wealth-to-income ratio by age
 WealthRatioByAgeIncome = np.zeros((8,5)) + np.nan
+WealthMomentWeightsByAgeIncome = np.zeros((8,5)) + np.nan
 for j in range(40):
     i = int(raw_moments[j][1])-1
     k = int(raw_moments[j][0])-1
     WealthRatioByAgeIncome[i,k] = float(raw_moments[j][2])
+    WealthMomentWeightsByAgeIncome[i,k] = float(raw_moments[j][3])
   
 # Combine all data moments into a single 1D array
 MomentList = [WealthRatioByAge,
@@ -179,13 +186,14 @@ MomentList = [WealthRatioByAge,
               InsuredRateByAgeIncome.flatten(),
               MeanPremiumByAgeIncome.flatten(),
               MeanLogOOPmedByAge.flatten(),
-              StdevLogOOPmedByAge.flatten()]
+              StdevLogOOPmedByAge.flatten(),
+              OOPshareByAge]
 data_moments = np.hstack(MomentList)
 
 # Construct the vector of moment weights
 if use_data_weights:
     moment_weights = np.zeros_like(data_moments) + np.nan
-    moment_weights[0:40]    = np.nan # NEED TO GET THESE FROM SCF
+    moment_weights[0:40]    = WealthMomentWeightsByAge
     moment_weights[40:100]  = totMomentWeightsByAge
     moment_weights[100:160] = totMomentWeightsByAge
     moment_weights[160:200] = otherMomentWeightsByAge
@@ -194,13 +202,14 @@ if use_data_weights:
     moment_weights[280:320] = premMomentWeightsByAge
     moment_weights[320:380] = totMomentWeightsByAgeHealth.flatten()
     moment_weights[380:440] = totMomentWeightsByAgeHealth.flatten()
-    moment_weights[440:480] = np.nan # NEED TO GET THESE FROM SCF
+    moment_weights[440:480] = WealthMomentWeightsByAgeIncome.flatten()
     moment_weights[480:520] = totMomentWeightsByAgeIncome.flatten()
     moment_weights[520:560] = totMomentWeightsByAgeIncome.flatten()
     moment_weights[560:600] = otherMomentWeightsByAgeIncome.flatten()
     moment_weights[600:640] = premMomentWeightsByAgeIncome.flatten()
     moment_weights[640:700] = OOPmomentWeightsByAge
     moment_weights[700:760] = OOPmomentWeightsByAge
+    moment_weights[760:820] = otherMomentWeightsByAge
     
 else:
     moment_weights = np.ones_like(data_moments)
@@ -238,6 +247,8 @@ if not MomentBools[14]:
     moment_weights[640:700] = 0.0
 if not MomentBools[15]:
     moment_weights[700:760] = 0.0
+if not MomentBools[16]:
+    moment_weights[760:820] = 0.0
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
@@ -333,6 +344,13 @@ if __name__ == '__main__':
     plt.savefig('MeanLogTotalMedByAgeHealth.pdf')
     plt.show()
     
+    plt.plot(OneYearAgeLong,OOPshareByAge,'.k')
+    plt.xlabel('Age')
+    plt.ylabel('Out-of-pocket medical spending share')
+    plt.ylim([0.0,0.25])
+    plt.savefig('OOPshareByAge.pdf')
+    plt.show()
+    
     plt.plot(OneYearAgeLong,StdevLogOOPmedByAge,'.k')
     plt.plot(FiveYearAgeLong,StdevLogOOPmedByAgeHealth)
     plt.xlabel('Age')
@@ -380,5 +398,11 @@ if __name__ == '__main__':
     plt.ylabel('Pct ESI buyers with no employer contribution')
     plt.legend(['Overall average','Poor health','Fair health','Good health','Very good health','Excellent health'],loc=0,fontsize=8)
     plt.savefig('NoPremShareByAgeHealth.pdf')
+    plt.show()
+    
+    plt.plot(OneYearAge,NoPremShareRateByAge,'.k')
+    plt.xlabel('Age')
+    plt.ylabel('Pct ESI buyers with no employer contribution')
+    plt.savefig('NoPremShareByAge.pdf')
     plt.show()
 
