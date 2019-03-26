@@ -9,7 +9,7 @@ from copy import copy, deepcopy
 from time import clock
 
 from HARKcore import HARKobject, AgentType
-from HARKutilities import CRRAutility, CRRAutilityP, CRRAutilityPP, CRRAutilityP_inv,\
+from HARKutilities import CRRAutility, CRRAutilityP, CRRAutilityPP, CRRAutilityP_inv, combineIndepMrkvArrays,\
                           CRRAutility_invP, CRRAutility_inv, CRRAutilityP_invP, NullFunc, makeGridExpMult
 from HARKinterpolation import LinearInterp, CubicInterp, LinearInterpOnInterp1D, LinearInterpOnInterp2D,\
                               UpperEnvelope, TrilinearInterp, ConstantFunction, CompositeFunc2D, \
@@ -296,7 +296,6 @@ class ValueFunc3D(HARKobject):
         -------
         None
         '''
-        #self.vFuncNvrs = deepcopy(vFuncNvrs)
         self.vFuncNvrs = vFuncNvrs
         self.CRRA = CRRA
         
@@ -751,7 +750,7 @@ def solveInsuranceSelectionStatic(solution_next,MedShkDstn,CRRA,MedPrice,xLvlGri
 
 def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMedShkPrb,MedShkCount,DevMin,DevMax,
                             LivPrb,DiscFac,CRRA,CRRAmed,BequestScale,BequestShift,Cfloor,Rfree,MedPrice,pLvlNextFunc,BoroCnstArt,aXtraGrid,
-                            pLvlGrid,ContractList,MrkvArray,ChoiceShkMag,EffPriceList,bFromxFunc,verbosity):
+                            pLvlGrid,ContractList,HealthMrkvArray,ESImrkvArray,ChoiceShkMag,EffPriceList,bFromxFunc,verbosity):
     '''
     Solves one period of the insurance selection model.
     
@@ -809,10 +808,14 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
         Array of permanent income levels at which to solve the problem.
     ContractList : [[MedInsuranceContract]]
         Lists of medical insurance contracts for each discrete health state (list of lists).
-    MrkvArray : numpy.array
-        An MxN array representing a Markov transition matrix between discrete
-        health states conditional on survival.  The i,j-th element of MrkvArray
+    HealthMrkvArray : numpy.array
+        An NxN array representing a Markov transition matrix among discrete health
+        states conditional on survival.  The i,j-th element of HealthMrkvArray
         is the probability of moving from state i in period t to state j in period t+1.
+    ESImrkvArray : numpy.array
+        A KxL array representing a Markov transition matrix among discrete ESI states.
+        The i,j-th element of ESImrkvArray is the probability of moving from state i
+        in period t to state j in period t+1.
     ChoiceShkMag : float
         Magnitude of T1EV preference shocks for each insurance contract when making selection.
         Shocks are applied to pseudo-inverse value of contracts.
@@ -838,6 +841,10 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
     pLvl_aug_factor = 4
     pLvlCount = pLvlGrid.size
     aLvlCount = aXtraGrid.size
+    
+    # Construct the overall MrkvArray from HealthMrkvArray and ESImrkvArray
+    MrkvArray = HealthMrkvArray
+    MrkvArray_alt = combineIndepMrkvArrays(ESImrkvArray,HealthMrkvArray)
     StateCountNow  = MrkvArray.shape[0] # number of discrete states this period
     StateCountNext = MrkvArray.shape[1] # number of discrete states next period
     
@@ -1357,7 +1364,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
     insurance contract, they learn their medical need shock and choose levels of consumption and
     medical care.
     '''
-    _time_vary = ['DiscFac','LivPrb','MedPrice','ContractList','MrkvArray','ChoiceShkMag','MedShkAvg','MedShkStd','ZeroMedShkPrb']
+    _time_vary = ['DiscFac','LivPrb','MedPrice','ContractList','HealthMrkvArray','ESImrkvArray','ChoiceShkMag','MedShkAvg','MedShkStd','ZeroMedShkPrb']
     _time_inv = ['CRRA','CRRAmed','BequestScale','BequestShift','Cfloor','Rfree','BoroCnstArt','MedShkCount','DevMin','DevMax','verbosity']
     
     def __init__(self,cycles=1,time_flow=True,**kwds):

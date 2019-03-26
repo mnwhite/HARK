@@ -1086,6 +1086,37 @@ def epanechnikovKernel(x,ref_x,h=1.0):
     return out
 
 
+def combineIndepMrkvArrays(MrkvA,MrkvB):
+    '''
+    Generates a combined Markov array from two Markov arrays that are assumed to
+    be independent of each other.
+    
+    Parameters
+    ----------
+    MrkvA : np.array
+        Transition probability array of shape (K,L).
+    MrkvB : np.array
+        Transition probability array of shape (M,N).
+        
+    Returns
+    -------
+    MrkvC : np.array
+        Combined transition probability array of shape (KM,LN).  Order of states
+        is (k=0,m=0), (k=0,m=1), etc.
+    '''
+    (K,L) = MrkvA.shape
+    (M,N) = MrkvB.shape
+    MrkvC = np.zeros((K*M,L*N)) + np.nan
+    for k in range(K):
+        i_bot = M*k
+        i_top = M*(k+1)
+        for l in range(L):
+            j_bot = N*l
+            j_top = N*(l+1)
+            MrkvC[i_bot:i_top,j_bot:j_top] = MrkvA[k,l]*MrkvB
+    return MrkvC
+
+
 # ==============================================================================
 # ============== Some basic plotting tools  ====================================
 # ==============================================================================

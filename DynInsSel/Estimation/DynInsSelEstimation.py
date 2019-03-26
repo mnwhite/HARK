@@ -649,9 +649,9 @@ def makeDynInsSelType(CRRAcon,MedCurve,DiscFac,BequestShift,BequestScale,ChoiceS
     return ThisType
         
 
-def makeMarketFromParams(ParamArray,ActuarialRule,PremiumArray,InsChoiceType,SubsidyTypeCount,CRRAtypeCount,ZeroSubsidyBool):
+def makeMarketFromParams(ParamArray,ActuarialRule,PremiumArray,InsChoiceType):
     '''
-    Makes a list of 3 or 24 DynInsSelTypes, to be used for estimation.
+    Makes a list of DynInsSelTypes, to be used for estimation.
     
     Parameters
     ----------
@@ -683,9 +683,9 @@ def makeMarketFromParams(ParamArray,ActuarialRule,PremiumArray,InsChoiceType,Sub
     CRRAcon = ParamArray[1]
     MedCurve = ParamArray[2]
     ChoiceShkMag = np.exp(ParamArray[3])
-    SubsidyZeroRate = 1.0/(1.0 + np.exp(ParamArray[4]))
-    SubsidyAvg = np.exp(ParamArray[5])
-    SubsidyWidth = SubsidyAvg/(1.0 + np.exp(ParamArray[6]))
+    #SubsidyZeroRate = 1.0/(1.0 + np.exp(ParamArray[4]))
+    EmpContr = np.exp(ParamArray[5])
+    #SubsidyWidth = SubsidyAvg/(1.0 + np.exp(ParamArray[6]))
     BequestShift = ParamArray[7]
     BequestScale = ParamArray[8]
     MedShkMeanAgeParams = ParamArray[9:14]
@@ -699,42 +699,20 @@ def makeMarketFromParams(ParamArray,ActuarialRule,PremiumArray,InsChoiceType,Sub
     MedShkStdFRparams = ParamArray[31:33]
     MedShkStdPRparams = ParamArray[33:35]
     
-    # Make the array of premium subsidies (trivial if there is no insurance choice)
-    if InsChoiceType > 0:
-        Temp = approxUniform(SubsidyTypeCount,SubsidyAvg-SubsidyWidth,SubsidyAvg+SubsidyWidth)
-        SubsidyArray = Temp[1]
-        WeightArray  = Temp[0]
-        if ZeroSubsidyBool and SubsidyZeroRate > 0.0: 
-            SubsidyArray = np.insert(SubsidyArray,0,0.0)
-            WeightArray  = np.insert(WeightArray*(1.0-SubsidyZeroRate),0,SubsidyZeroRate)
-            if SubsidyTypeCount == 0: # If no one gets a subsidy...
-                WeightArray = np.array([1.0]) # Need to manually set this weight to 1.0
-    else:
-        SubsidyArray = np.array([0.0])
-        WeightArray  = np.array([1.0])
-    
     # Make the list of types
     AgentList = []
     ContractCount = PremiumArray.shape[1]
     i = 0
-    for j in range(SubsidyArray.size):
-        for k in range(3):
-            AgentList.append(makeDynInsSelType(CRRAcon,MedCurve,DiscFac,BequestShift,BequestScale,ChoiceShkMag,MedShkMeanAgeParams,
-                      MedShkMeanVGparams,MedShkMeanGDparams,MedShkMeanFRparams,MedShkMeanPRparams,
-                      MedShkStdAgeParams,MedShkStdVGparams,MedShkStdGDparams,MedShkStdFRparams,
-                      MedShkStdPRparams,SubsidyArray[j],k,InsChoiceType,ContractCount))
-            AgentList[-1].Weight = WeightArray[j]*Params.EducWeight[k]
-            AgentList[-1].AgentCount = int(round(AgentList[-1].Weight*Params.AgentCountTotal))
-            i += 1
-    if CRRAtypeCount > 1: # Replicate the list of agent types if there is variation by CRRA
-        AgentListNew = []
-        CRRAlist = approxMeanOneLognormal(N=CRRAtypeCount,sigma=1.0)[1]*CRRAcon
-        for j in range(CRRAtypeCount):
-            TempList = deepcopy(AgentList)
-            for ThisType in TempList:
-                ThisType.CRRA = CRRAlist[j]
-            AgentListNew += TempList
-        AgentList = AgentListNew
+    for k in range(3):
+        ThisAgent = makeDynInsSelType(CRRAcon,MedCurve,DiscFac,BequestShift,BequestScale,ChoiceShkMag,MedShkMeanAgeParams,
+                  MedShkMeanVGparams,MedShkMeanGDparams,MedShkMeanFRparams,MedShkMeanPRparams,
+                  MedShkStdAgeParams,MedShkStdVGparams,MedShkStdGDparams,MedShkStdFRparams,
+                  MedShkStdPRparams,EmpContr,k,InsChoiceType,ContractCount)
+        ThisAgent.Weight = Params.EducWeight[k]
+        ThisAgent.AgentCount = int(round(ThisAgent.Weight*Params.AgentCountTotal))
+        AgentList.append(ThisAgent)
+        i += 1
+    
     for i in range(len(AgentList)):
         AgentList[i].seed = i # Assign different seeds to each type
     StateCount = AgentList[0].MrkvArray[0].shape[0]
@@ -771,9 +749,6 @@ def objectiveFunction(Parameters):
     '''
     EvalType = 0  # Number of times to do a static search for eqbm premiums
     InsChoice = 1 # Extent of insurance choice
-    SubsidyTypeCount = 1 # Number of discrete non-zero subsidy levels
-    CRRAtypeCount = 1 # Number of CRRA types (DON'T USE)
-    ZeroSubsidyBool = True # Whether to include a zero subsidy type
     TestPremiums = True # Whether to start with the test premium level
     
     if TestPremiums:
@@ -786,7 +761,7 @@ def objectiveFunction(Parameters):
     Premiums_init = np.tile(np.reshape(Premiums_init_short,(1,Premiums_init_short.size)),(40,1))
     Premiums_init = np.vstack((Premiums_init,np.zeros((20,ContractCounts[InsChoice]+1))))
     
-    MyMarket = makeMarketFromParams(Parameters,flatActuarialRule,Premiums_init,InsChoice,SubsidyTypeCount,CRRAtypeCount,ZeroSubsidyBool)
+    MyMarket = makeMarketFromParams(Parameters,flatActuarialRule,Premiums_init,InsChoice)
     MyMarket.Premiums = Premiums_init_short
     multiThreadCommandsFake(MyMarket.agents,['update()','makeShockHistory()'])
     MyMarket.getIncomeQuintiles()
@@ -989,9 +964,6 @@ if __name__ == '__main__':
         t_start = clock()
         EvalType = 1 # Number of times to do a static search for eqbm premiums
         InsChoice = 1 # Extent of insurance choice
-        SubsidyTypeCount = 0 # Number of discrete non-zero subsidy levels
-        CRRAtypeCount = 1 # Number of CRRA types (DON'T USE)
-        ZeroSubsidyBool = True # Whether to include a zero subsidy type
         TestPremiums = True # Whether to start with the test premium level
         
         if TestPremiums:
@@ -1004,7 +976,7 @@ if __name__ == '__main__':
         Premiums_init = np.tile(np.reshape(Premiums_init_short,(1,Premiums_init_short.size)),(40,1))
         Premiums_init = np.vstack((Premiums_init,np.zeros((20,ContractCounts[InsChoice]+1))))
         
-        MyMarket = makeMarketFromParams(Params.test_param_vec,flatActuarialRule,Premiums_init,InsChoice,SubsidyTypeCount,CRRAtypeCount,ZeroSubsidyBool)
+        MyMarket = makeMarketFromParams(Params.test_param_vec,flatActuarialRule,Premiums_init,InsChoice)
         MyMarket.Premiums = Premiums_init_short
         multiThreadCommandsFake(MyMarket.agents,['update()','makeShockHistory()'])
         MyMarket.getIncomeQuintiles()
