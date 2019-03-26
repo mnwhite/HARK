@@ -870,11 +870,13 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
         # Unpack the inputs conditional on future health state
         PermShkValsNext  = IncomeDstn[h][1]
         TranShkValsNext  = IncomeDstn[h][2]
-        PermShkMinNext   = np.min(PermShkValsNext)    
-        TranShkMinNext   = np.min(TranShkValsNext)
-        PermIncMinNext = PermShkMinNext*pLvlNextFunc(pLvlGrid)
-        IncLvlMinNext  = PermIncMinNext*TranShkMinNext
-        aLvlMinCond[:,h] = (solution_next.mLvlMin(PermIncMinNext) - IncLvlMinNext)/Rfree[h]
+        IncShkCount = PermShkValsNext.size
+        PermShkVals_tiled = np.tile(np.reshape(PermShkValsNext,(1,IncShkCount)),(pLvlCount,1))
+        TranShkVals_tiled = np.tile(np.reshape(TranShkValsNext,(1,IncShkCount)),(pLvlCount,1))
+        pLvlGrid_tiled = np.tile(np.reshape(pLvlGrid,(pLvlCount,1)),(1,IncShkCount))
+        pLvlNext = pLvlNextFunc(pLvlGrid_tiled)*PermShkVals_tiled
+        aLvlMin_cand = (solution_next.mLvlMin(pLvlNext) - pLvlNext*TranShkVals_tiled)/Rfree[h]
+        aLvlMinCond[:,h] = np.min(aLvlMin_cand,axis=1)
     aLvlMin = np.max(aLvlMinCond,axis=1) # Actual minimum acceptable assets is largest among health-conditional values
     
     # Make natural and artificial borrowing constraint and the constrained spending function
@@ -963,8 +965,6 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
     for h in range(HealthCount):
         hLvlGrid_adj[:,h] *= LivPrb[h]
         hLvlGrid_adj[:,h] += (1.-LivPrb[h])*BequestShift
-        #hLvlGrid_adj[:,h] = BequestShift
-    #print(hLvlGrid_adj[:,2])
     
     # Compute bounding MPC (and pseudo inverse MPC) in each state this period
     try:
@@ -1304,14 +1304,12 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
                 vNvrsParray = np.sum(ContractPrbs*vNvrsParrayBig,axis=2)
                 vPnvrsArray = uPinv(vNvrsParray)*vNvrsArray
             else:
-                z_choice = np.argmax(vNvrsArrayBig,axis=2)
-                vNvrsArray = np.zeros((mLvlCount,pLvlCount))
-                vPnvrsArray = np.zeros((mLvlCount,pLvlCount))
-                for z in range(len(ContractList[h])): ### THIS CAN BE ACCELERATED WITHOUT THE LOOP #####
-                    these = z_choice == z
-                    vNvrsArray[these] = vNvrsArrayBig[:,:,z][these]
-                    vPnvrsArray[these] = vPnvrsArrayBig[:,:,z][these]
-                        
+                z_idx = np.argmax(vNvrsArrayBig,axis=2)
+                m_idx = np.tile(np.reshape(np.arange(mLvlCount),(mLvlCount,1)),(1,pLvlCount))
+                p_idx = np.tile(np.reshape(np.arange(pLvlCount),(1,pLvlCount)),(mLvlCount,1))
+                vNvrsArray  = vNvrsArrayBig[m_idx,p_idx,z_idx]
+                vPnvrsArray = vPnvrsArrayBig[m_idx,p_idx,z_idx]
+                                        
             # Make value and marginal value functions for the very beginning of the period, before choice shocks are drawn
             vNvrsArray_plus = np.concatenate((np.tile(np.reshape(vNvrsFloorBypLvl_default,(1,pLvlCount)),(2,1)),vNvrsArray),axis=0)
             vNvrsFuncs_by_pLvl = []
