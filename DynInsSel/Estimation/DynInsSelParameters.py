@@ -100,7 +100,7 @@ MrkvArrayOld = np.array([[0.450,0.367,0.183,0.000,0.000],
 
 # Make a trivial array of transition probabilities among ESI states.
 # Order: No ESI, ESI with no emp contribution, ESI with emp contribution
-ESImrkvArray = np.array([[0.8,0.1,0.1],[0.03,0.80,0.17],[0.01,0.12,0.87]])
+ESImrkvArray = np.array([[0.8,0.1,0.1],[0.03,0.80,0.17],[0.01,0.015,0.975]])
     
 # Make survival probabilities by health state and age based on a probit on HRS data for ages 50-119
 AgeMortParams = [-2.757652,.044746,-.0010514,.0000312,-1.62e-07]  # MEN ONLY
@@ -135,9 +135,12 @@ DiePrbBiannual = 1.0 - (1.0 - DiePrb[:-1])*(1.0 - DiePrb[1:])
 
 # Specify the initial distribution of health at age 24-26, taken directly from MEPS data
 HealthPrbsInit = [0.003,0.036,0.196,0.348,0.417]
-HealthPrbsInit_d = [0.004,0.063,0.304,0.297,0.332]
-HealthPrbsInit_h = [0.004,0.042,0.202,0.346,0.406]
-HealthPrbsInit_c = [0.003,0.019,0.163,0.363,0.452]
+HealthPrbsInit_d = np.array([0.004,0.063,0.304,0.297,0.332])
+HealthPrbsInit_h = np.array([0.004,0.042,0.202,0.346,0.406])
+HealthPrbsInit_c = np.array([0.003,0.019,0.163,0.363,0.452])
+MrkvPrbsInit_d = np.concatenate([0.3*HealthPrbsInit_d,0.05*HealthPrbsInit_d,0.65*HealthPrbsInit_d])
+MrkvPrbsInit_h = np.concatenate([0.2*HealthPrbsInit_h,0.05*HealthPrbsInit_h,0.75*HealthPrbsInit_h])
+MrkvPrbsInit_c = np.concatenate([0.1*HealthPrbsInit_c,0.05*HealthPrbsInit_c,0.85*HealthPrbsInit_c])
 EducWeight = [0.080,0.566,0.354]
 
 # Solve for survival probabilities at each health state for ages 24-60 by quasi-simulation
@@ -408,26 +411,26 @@ BasicDictionary = { 'Rfree': Rfree,
 # Make education-specific dictionaries
 DropoutDictionary = copy(BasicDictionary)
 DropoutDictionary['PermGroFac'] = PermGroFac_dx
-DropoutDictionary['MrkvPrbsInit'] = HealthPrbsInit_d
-DropoutDictionary['MrkvArray'] = MrkvArray_d
+DropoutDictionary['MrkvPrbsInit'] = MrkvPrbsInit_d
+DropoutDictionary['HealthMrkvArray'] = MrkvArray_d
 DropoutDictionary['pLvlInitMean'] = pLvlInitMean_d
 DropoutDictionary['pLvlNextFuncRet'] = RetirementFunc_d
 HighschoolDictionary = copy(BasicDictionary)
 HighschoolDictionary['PermGroFac'] = PermGroFac_hx
-HighschoolDictionary['MrkvPrbsInit'] = HealthPrbsInit_h
-HighschoolDictionary['MrkvArray'] = MrkvArray_h
+HighschoolDictionary['MrkvPrbsInit'] = MrkvPrbsInit_h
+HighschoolDictionary['HealthMrkvArray'] = MrkvArray_h
 HighschoolDictionary['pLvlInitMean'] = pLvlInitMean_h
 HighschoolDictionary['pLvlNextFuncRet'] = RetirementFunc_h
 CollegeDictionary = copy(BasicDictionary)
 CollegeDictionary['PermGroFac'] = PermGroFac_cx
-CollegeDictionary['MrkvPrbsInit'] = HealthPrbsInit_c
-CollegeDictionary['MrkvArray'] = MrkvArray_c
+CollegeDictionary['MrkvPrbsInit'] = MrkvPrbsInit_c
+CollegeDictionary['HealthMrkvArray'] = MrkvArray_c
 CollegeDictionary['pLvlInitMean'] = pLvlInitMean_c
 CollegeDictionary['pLvlNextFuncRet'] = RetirementFunc_c
 
 # Make a test parameter vector for estimation
-test_param_vec = np.array([0.92, # DiscFac
-                           3.3,  # CRRAcon
+test_param_vec = np.array([0.925, # DiscFac
+                           2.8,  # CRRAcon
                            8.0,  # MedCurve 
                           -8.5,  # ChoiceShkMag in log
                            2.6,  # SubsidyZeroRate scaler
@@ -438,14 +441,14 @@ test_param_vec = np.array([0.92, # DiscFac
                          -3.45,  # MedShkMean constant coefficient
                         0.0045,  # MedShkMean linear age coefficient
                        0.00101,  # MedShkMean quadratic age coefficient
-                    -0.0000019,  # MedShkMean cubic age coefficient
-                   -0.00000013,  # MedShkMean quartic age coefficient
+                    -0.0000018,  # MedShkMean cubic age coefficient
+                   -0.00000012,  # MedShkMean quartic age coefficient
                           0.25,  # MedShkMean "very good" constant coefficient
                         0.0025,  # MedShkMean "very good" linear coefficient
                           0.30,  # MedShkMean "good" constant coefficient
                         0.0000,  # MedShkMean "good" linear coefficient
                           0.50,  # MedShkMean "fair" constant coefficient
-                       -0.0010,  # MedShkMean "fair" linear coefficient
+                       -0.0011,  # MedShkMean "fair" linear coefficient
                           1.35,  # MedShkMean "poor" constant coefficient
                         -0.014,  # MedShkMean "poor" linear coefficient
                           0.40,  # MedShkStd constant coefficient

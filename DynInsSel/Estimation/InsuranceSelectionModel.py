@@ -1449,7 +1449,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
                          IncUnemp = IncUnemp,
                          UnempPrbRet = UnempPrbRet, 
                          IncUnempRet = IncUnempRet)
-        for h in range(self.MrkvArray[0].shape[0]):
+        for h in range(self.HealthMrkvArray[0].shape[0]):
             parameter_object(PermShkStd=PermShkStd[h], TranShkStd=TranShkStd[h])
             IncomeDstn_temp, PermShkDstn_temp, TranShkDstn_temp = constructLognormalIncomeProcessUnemployment(parameter_object)
             for t in range(T_cycle):
@@ -1631,7 +1631,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         ZeroFunc = ConstantFunction(0.)
         solution_now = InsuranceSelectionSolution(mLvlMin=ZeroFunc)
         
-        HealthCount = self.MrkvArray[-1].shape[1]
+        HealthCount = 5
         for h in range(HealthCount):
             solution_now.appendSolution(vFunc=ZeroFunc,vPfunc=ZeroFunc,hLvl=ZeroFunc,AVfunc=[],
                                         policyFunc=[],vFuncByContract=[],
@@ -1686,7 +1686,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         -------
         None
         '''
-        # Make initial health state (Markov states)
+        # Make initial Markov state
         N = self.AgentCount
         base_draws = drawUniform(N,seed=self.RNG.randint(0,2**31-1))
         Cutoffs = np.cumsum(np.array(self.MrkvPrbsInit))
@@ -1720,14 +1720,19 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
             pLvlHist[t,Live] = pLvlNow[Live]
             MrkvHist[t,Live] = MrkvNow[Live]
             IncomeHist[t,:] = pLvlNow*TranShkNow
+            
+            MrkvArrayCombined = combineIndepMrkvArrays(self.ESImrkvArray[t_cycle],self.HealthMrkvArray[t_cycle])
+            StateCountNow = MrkvArrayCombined.shape[0]
+            StateCountNext = MrkvArrayCombined.shape[1]
 
             # Get income and medical shocks for next period in each health state
             PermShkNow[:] = np.nan
             TranShkNow[:] = np.nan
             MedShkNow[:] = np.nan
             DevNow[:] = np.nan
+            HealthNow = np.mod(MrkvNow,5)
             for h in range(5):
-                these = MrkvNow == h
+                these = HealthNow == h
                 N = np.sum(these)
                 
                 # First income shocks for next period...
@@ -1756,7 +1761,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
             pLvlNow = self.pLvlNextFunc[t](pLvlNow)*PermShkNow
             
             # Determine which agents die based on their mortality probability
-            LivPrb_temp = self.LivPrb[t_cycle][MrkvNow[Live]]
+            LivPrb_temp = self.LivPrb[t_cycle][HealthNow[Live]]
             LivPrbAll = np.zeros_like(pLvlNow)
             LivPrbAll[Live] = LivPrb_temp
             MortShkNow = drawUniform(N=self.AgentCount,seed=self.RNG.randint(0,2**31-1))
@@ -1764,12 +1769,12 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
             Live = np.logical_not(Dead)
             
             # Draw health states for survivors next period
-            events = np.arange(5)
-            MrkvNext = MrkvNow
-            for h in range(5):
+            MrkvNext = copy(MrkvNow)
+            for h in range(StateCountNow):
                 these = MrkvNow == h
+                events = np.arange(StateCountNext)
                 N = np.sum(these)
-                probs = self.MrkvArray[t_cycle][h,:]
+                probs = MrkvArrayCombined[h,:]
                 idx = drawDiscrete(N=N,P=probs,X=events,seed=self.RNG.randint(0,2**31-1)).astype(int)
                 MrkvNext[these] = idx
             MrkvNext[Dead] = -1 # Actually kill those who died
@@ -1783,7 +1788,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         # Make boolean arrays for health state for all agents
         HealthBoolArray = np.zeros((self.T_sim,self.AgentCount,5),dtype=bool)
         for h in range(5):
-            HealthBoolArray[:,:,h] = MrkvHist == h
+            HealthBoolArray[:,:,h] = np.mod(MrkvHist,5) == h
         self.HealthBoolArray = HealthBoolArray
         self.LiveBoolArray = np.any(HealthBoolArray,axis=2)
             
@@ -1825,10 +1830,12 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         '''
         t = self.t_sim
         MedPriceNow = self.MedPrice[t]
+        MrkvArrayCombined = combineIndepMrkvArrays(self.ESImrkvArray[t],self.HealthMrkvArray[t])
+        StateCountNow = MrkvArrayCombined.shape[0]
         
         # Get state and shock vectors for (living) agents
         mLvlNow = self.aLvlNow + self.IncomeHist[t,:]
-        HealthNow = self.MrkvHist[t,:]
+        MrkvNow = self.MrkvHist[t,:]
         pLvlNow = self.pLvlHist[t,:]
         MedShkNow = self.MedShkHist[t,:]
         DevNow = self.DevHist[t,:]
@@ -1843,8 +1850,8 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         EffPriceNow = np.zeros_like(mLvlNow) + np.nan
         CritDevNow = np.zeros_like(mLvlNow) + np.nan
         ContractNow = -np.ones(self.AgentCount,dtype=int)
-        for h in range(5):
-            these = HealthNow == h
+        for h in range(StateCountNow):
+            these = MrkvNow == h
             N = np.sum(these)
             Z = len(self.solution[t].policyFunc[h])
             
@@ -1932,6 +1939,8 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         in the attribute PremiumFuncs, which does not necessarily contain the
         premium functions used to solve the dynamic problem.  This function is
         called as part of marketAction to find "statically stable" premiums.
+        
+        THIS NEEDS TO BE REWRITTEN
         
         Parameters
         ----------

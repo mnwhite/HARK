@@ -30,8 +30,7 @@ class DynInsSelType(BaseType):
         '''
         Makes the attribute IncQuintBoolArray, specifying which income quintile
         each agent is in for each period of life.  Should only be run after the
-        economy runs the method getIncomeQuintiles().  Also makes the attribute
-        HealthBoolArray, indicating health by age.
+        economy runs the method getIncomeQuintiles().
         
         Parameters
         ----------
@@ -263,6 +262,7 @@ class DynInsSelMarket(Market):
             OOPmedSum = 0.0
             LiveCount = 0.0
             InsuredCount = 0.0
+            OfferedCount = 0.0
             ZeroCount = 0.0
             for ThisType in Agents:
                 these = ThisType.LiveBoolArray[t,:]
@@ -278,8 +278,8 @@ class DynInsSelMarket(Market):
                     OOPmedSum += np.sum(ThisType.OOPmedHist[t,ThisType.InsuredBoolArray[t,:]])
                     temp = np.sum(ThisType.InsuredBoolArray[t,:])
                     InsuredCount += temp
-                    if ThisType.ZeroSubsidyBool:
-                        ZeroCount += temp
+                    OfferedCount += np.sum(ThisType.MrkvHist[t,:] >= 5)
+                    ZeroCount += np.sum(np.logical_and(ThisType.InsuredBoolArray[t,:], ThisType.MrkvHist[t,:] <= 9))
                 else:
                     TotalMedSum += np.sum(ThisType.TotalMedHist[t,these])
                     OOPmedSum += np.sum(ThisType.OOPmedHist[t,these])
@@ -289,7 +289,7 @@ class DynInsSelMarket(Market):
                 PremiumArray = np.hstack(PremiumList)
                 PremiumMeanByAge[t] = np.mean(PremiumArray)
                 PremiumStdByAge[t] = np.std(PremiumArray)
-                InsuredRateByAge[t] = InsuredCount/LiveCount
+                InsuredRateByAge[t] = InsuredCount/OfferedCount
                 if InsuredCount > 0.0:
                     ZeroSubsidyRateByAge[t] = ZeroCount/InsuredCount
                 else:
@@ -338,10 +338,12 @@ class DynInsSelMarket(Market):
                 PremiumList = []
                 LiveCount = 0.0
                 InsuredCount = 0.0
+                OfferedCount = 0.0
                 for ThisType in Agents:
                     these = ThisType.IncQuintBoolArray[bot:top,:,i]
                     those = np.logical_and(these,ThisType.TotalMedHist[bot:top,:]>0.0)
                     LiveCount += np.sum(ThisType.LiveBoolArray[bot:top,:][these])
+                    OfferedCount += np.sum(ThisType.MrkvHist[bot:top,:][these] >= 5)
                     LogTotalMedList.append(np.log(ThisType.TotalMedHist[bot:top,:][those]))
                     WealthRatioList.append(ThisType.WealthRatioHist[bot:top,:][these])
                     these = np.logical_and(ThisType.InsuredBoolArray[bot:top,:],these)
@@ -352,7 +354,7 @@ class DynInsSelMarket(Market):
                 WealthMedianByAgeIncome[a,i] = np.median(WealthRatioArray)
                 PremiumArray = np.hstack(PremiumList)
                 PremiumMeanByAgeIncome[a,i] = np.mean(PremiumArray)
-                InsuredRateByAgeIncome[a,i] = InsuredCount/LiveCount
+                InsuredRateByAgeIncome[a,i] = InsuredCount/OfferedCount
                 LogTotalMedArray = np.hstack(LogTotalMedList)
                 LogTotalMedMeanByAgeIncome[a,i] = np.mean(LogTotalMedArray)
                 LogTotalMedStdByAgeIncome[a,i] = np.std(LogTotalMedArray)
@@ -740,7 +742,7 @@ def makeMarketFromParams(ParamArray,ActuarialRule,PremiumArray,InsChoiceType):
     for this_agent in InsuranceMarket.agents:
         setattr(this_agent,'PremiumFuncs',PremiumFuncs_init)
     
-    print('I made an insurance market with ' + str(len(InsuranceMarket.agents)) + ' agent types!')
+    #print('I made an insurance market with ' + str(len(InsuranceMarket.agents)) + ' agent types!')
     return InsuranceMarket
 
 
@@ -788,8 +790,8 @@ if __name__ == '__main__':
     import matplotlib.pyplot as plt
     mystr = lambda number : "{:.4f}".format(number)
     
-    test_obj_func = False
-    test_one_type = True
+    test_obj_func = True
+    test_one_type = False
     test_static_model = False
     
     if test_obj_func:
@@ -987,7 +989,7 @@ if __name__ == '__main__':
         print('Making the agents took ' + mystr(t_end-t_start) + ' seconds.')
         
         t_start = clock()
-        MyType = MyMarket.agents[1]
+        MyType = MyMarket.agents[2]
         MyType.del_soln = False
         MyType.do_sim = True
         MyType.verbosity = 10
@@ -1000,8 +1002,8 @@ if __name__ == '__main__':
         h = 9        
         Dev = 0.0
         z = 0
-        
         mTop = 10.
+        
         print('Individual market:')
         MyType.plotvFunc(t,p,H=[0,1,2,3,4],decurve=False,mMax=mTop)
         MyType.plotvPfunc(t,p,H=[0,1,2,3,4],decurve=False,mMax=mTop)
