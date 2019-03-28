@@ -461,7 +461,7 @@ class DynInsSelMarket(Market):
             ThisType.IncomeQuintiles = IncomeQuintiles
                     
                                
-def makeDynInsSelType(CRRAcon,MedCurve,DiscFac,BequestShift,BequestScale,ChoiceShkMag,
+def makeDynInsSelType(CRRAcon,MedCurve,DiscFac,BequestShift,BequestScale,Cfloor,ChoiceShkMag,
                       MedShkMeanAgeParams,MedShkMeanVGparams,MedShkMeanGDparams,MedShkMeanFRparams,MedShkMeanPRparams,
                       MedShkStdAgeParams,MedShkStdVGparams,MedShkStdGDparams,MedShkStdFRparams,MedShkStdPRparams,
                       PremiumSubsidy,EducType,InsChoiceType,ContractCount):
@@ -480,6 +480,8 @@ def makeDynInsSelType(CRRAcon,MedCurve,DiscFac,BequestShift,BequestScale,ChoiceS
         Shifter in bequest motive function.
     BequestScale : float
         Scale of bequest motive function.
+    Cfloor : float
+        Minimum level of consumption that government will allow individual to suffer.
     ChoiceShkMag : float
         Standard deviation of preference shocks over insurance contracts.
     MedShkMeanAgeParams : [float]
@@ -538,6 +540,7 @@ def makeDynInsSelType(CRRAcon,MedCurve,DiscFac,BequestShift,BequestScale,ChoiceS
     TypeDict['BequestScale'] = BequestScale
     TypeDict['DiscFac'] = DiscFac_time_vary
     TypeDict['ChoiceShkMag'] = Params.AgeCount*[ChoiceShkMag]
+    TypeDict['Cfloor'] = Cfloor
                           
     # Make arrays of medical shock means and standard deviations
     Taper = 1
@@ -687,6 +690,7 @@ def makeMarketFromParams(ParamArray,ActuarialRule,PremiumArray,InsChoiceType):
     CRRAcon = ParamArray[1]
     MedCurve = ParamArray[2]
     ChoiceShkMag = np.exp(ParamArray[3])
+    Cfloor = ParamArray[4]
     #SubsidyZeroRate = 1.0/(1.0 + np.exp(ParamArray[4]))
     EmpContr = np.exp(ParamArray[5])
     #SubsidyWidth = SubsidyAvg/(1.0 + np.exp(ParamArray[6]))
@@ -708,7 +712,7 @@ def makeMarketFromParams(ParamArray,ActuarialRule,PremiumArray,InsChoiceType):
     ContractCount = PremiumArray.shape[1]
     i = 0
     for k in range(3):
-        ThisAgent = makeDynInsSelType(CRRAcon,MedCurve,DiscFac,BequestShift,BequestScale,ChoiceShkMag,MedShkMeanAgeParams,
+        ThisAgent = makeDynInsSelType(CRRAcon,MedCurve,DiscFac,BequestShift,BequestScale,Cfloor,ChoiceShkMag,MedShkMeanAgeParams,
                   MedShkMeanVGparams,MedShkMeanGDparams,MedShkMeanFRparams,MedShkMeanPRparams,
                   MedShkStdAgeParams,MedShkStdVGparams,MedShkStdGDparams,MedShkStdFRparams,
                   MedShkStdPRparams,EmpContr,k,InsChoiceType,ContractCount)

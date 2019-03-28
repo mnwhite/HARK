@@ -16,7 +16,6 @@ AgentCountTotal = 100000
 StaticBool = False
 
 # Calibrated / other parameters (grid sizes, etc)
-Cfloor = 0.20                       # Consumption floor
 Rfree = 5*[1.03]                    # Interest factor on assets
 aXtraMin = 0.001                    # Minimum end-of-period "assets above minimum" value
 aXtraMax = 16                       # Minimum end-of-period "assets above minimum" value               
@@ -44,63 +43,12 @@ AgentCount = 10000                  # Number of agents of this type (only matter
 DeductibleList = [0.06,0.05,0.04,0.03,0.02] # List of deductibles for working-age insurance contracts
 T_sim = 60                          # Number of periods to simulate (age 25 to 84)
 
-# These are the results of ordered probits of h_t and age on h_t+1 using MEPS data
-f1 = lambda x : .0579051*x -.0046128*x**2 + .0001069*x**3 - 7.85e-07*x**4
-f2 = lambda x : -.0111249*x - .0010771*x**2 + .0000325*x**3 - 2.53e-07*x**4
-f3 = lambda x : -.0068616*x - .0006085*x**2 + .0000169*x**3 - 1.35e-07*x**4
-f4 = lambda x : -.0176393*x - .0002275*x**2 + .0000157*x**3 - 1.68e-07*x**4
-f5 = lambda x : -.0002997*x -.0009072*x**2 + .0000311*x**3 - 2.96e-07*x**4
-cuts1 = np.array([-.3176859, .5868993,1.416312,2.028111])
-cuts2 = np.array([-2.028909,-.6592757,.4080535,1.13179])
-cuts3 = np.array([-2.517836,-1.475572,-.0567525,.8971419])
-cuts4 = np.array([-2.88919,-2.089985,-.9015471,.4327963])
-cuts5 = np.array([-2.865663,-2.172939,-1.207311,-.3371267])
-
-# Fill in the Markov array at each age (probably could have written this more cleverly but meh)
-MrkvArrayYoung = np.zeros([67,5,5]) + np.nan
-Age = np.arange(67,dtype=float)
-fitted = f1(Age)
-MrkvArrayYoung[:,0,0] = norm.cdf(cuts1[0] - fitted) - norm.cdf(-np.inf  - fitted)
-MrkvArrayYoung[:,0,1] = norm.cdf(cuts1[1] - fitted) - norm.cdf(cuts1[0] - fitted)
-MrkvArrayYoung[:,0,2] = norm.cdf(cuts1[2] - fitted) - norm.cdf(cuts1[1] - fitted)
-MrkvArrayYoung[:,0,3] = norm.cdf(cuts1[3] - fitted) - norm.cdf(cuts1[2] - fitted)
-MrkvArrayYoung[:,0,4] = norm.cdf(np.inf   - fitted) - norm.cdf(cuts1[3] - fitted)
-fitted = f2(Age)
-MrkvArrayYoung[:,1,0] = norm.cdf(cuts2[0] - fitted) - norm.cdf(-np.inf  - fitted)
-MrkvArrayYoung[:,1,1] = norm.cdf(cuts2[1] - fitted) - norm.cdf(cuts2[0] - fitted)
-MrkvArrayYoung[:,1,2] = norm.cdf(cuts2[2] - fitted) - norm.cdf(cuts2[1] - fitted)
-MrkvArrayYoung[:,1,3] = norm.cdf(cuts2[3] - fitted) - norm.cdf(cuts2[2] - fitted)
-MrkvArrayYoung[:,1,4] = norm.cdf(np.inf   - fitted) - norm.cdf(cuts2[3] - fitted)
-fitted = f3(Age)
-MrkvArrayYoung[:,2,0] = norm.cdf(cuts3[0] - fitted) - norm.cdf(-np.inf  - fitted)
-MrkvArrayYoung[:,2,1] = norm.cdf(cuts3[1] - fitted) - norm.cdf(cuts3[0] - fitted)
-MrkvArrayYoung[:,2,2] = norm.cdf(cuts3[2] - fitted) - norm.cdf(cuts3[1] - fitted)
-MrkvArrayYoung[:,2,3] = norm.cdf(cuts3[3] - fitted) - norm.cdf(cuts3[2] - fitted)
-MrkvArrayYoung[:,2,4] = norm.cdf(np.inf   - fitted) - norm.cdf(cuts3[3] - fitted)
-fitted = f4(Age)
-MrkvArrayYoung[:,3,0] = norm.cdf(cuts4[0] - fitted) - norm.cdf(-np.inf  - fitted)
-MrkvArrayYoung[:,3,1] = norm.cdf(cuts4[1] - fitted) - norm.cdf(cuts4[0] - fitted)
-MrkvArrayYoung[:,3,2] = norm.cdf(cuts4[2] - fitted) - norm.cdf(cuts4[1] - fitted)
-MrkvArrayYoung[:,3,3] = norm.cdf(cuts4[3] - fitted) - norm.cdf(cuts4[2] - fitted)
-MrkvArrayYoung[:,3,4] = norm.cdf(np.inf   - fitted) - norm.cdf(cuts4[3] - fitted)
-fitted = f5(Age)
-MrkvArrayYoung[:,4,0] = norm.cdf(cuts5[0] - fitted) - norm.cdf(-np.inf  - fitted)
-MrkvArrayYoung[:,4,1] = norm.cdf(cuts5[1] - fitted) - norm.cdf(cuts5[0] - fitted)
-MrkvArrayYoung[:,4,2] = norm.cdf(cuts5[2] - fitted) - norm.cdf(cuts5[1] - fitted)
-MrkvArrayYoung[:,4,3] = norm.cdf(cuts5[3] - fitted) - norm.cdf(cuts5[2] - fitted)
-MrkvArrayYoung[:,4,4] = norm.cdf(np.inf   - fitted) - norm.cdf(cuts5[3] - fitted)
-# MrkvArrayYoung runs from age 18 to age 84
-
-# Make the array of health transitions after age 85
-MrkvArrayOld = np.array([[0.450,0.367,0.183,0.000,0.000],
-                        [0.140,0.445,0.290,0.115,0.010],
-                        [0.060,0.182,0.497,0.208,0.053],
-                        [0.032,0.090,0.389,0.342,0.147],
-                        [0.000,0.061,0.231,0.285,0.423]])
 
 # Make a trivial array of transition probabilities among ESI states.
 # Order: No ESI, ESI with no emp contribution, ESI with emp contribution
-ESImrkvArray = np.array([[0.8,0.1,0.1],[0.03,0.80,0.17],[0.01,0.015,0.975]])
+ESImrkvArray = np.array([[0.8,0.1,0.1],
+                         [0.03,0.80,0.17],
+                         [0.01,0.015,0.975]])
     
 # Make survival probabilities by health state and age based on a probit on HRS data for ages 50-119
 AgeMortParams = [-2.757652,.044746,-.0010514,.0000312,-1.62e-07]  # MEN ONLY
@@ -143,39 +91,15 @@ MrkvPrbsInit_h = np.concatenate([0.2*HealthPrbsInit_h,0.05*HealthPrbsInit_h,0.75
 MrkvPrbsInit_c = np.concatenate([0.1*HealthPrbsInit_c,0.05*HealthPrbsInit_c,0.85*HealthPrbsInit_c])
 EducWeight = [0.080,0.566,0.354]
 
-# Solve for survival probabilities at each health state for ages 24-60 by quasi-simulation
-HealthDstnNow = np.array(HealthPrbsInit)
-LivPrbYoung = np.zeros((5,60)) + np.nan
-omega_vec = np.zeros(60)
-HealthDstnHist = np.zeros((5,95))
-for t in range(95):
-    P = HealthDstnNow # For convenient typing
-    DiePrbFunc = lambda q : P[0]*norm.cdf(q + HealthMortCum[3]) + P[1]*norm.cdf(q + HealthMortCum[2]) + P[2]*norm.cdf(q + HealthMortCum[1]) + P[3]*norm.cdf(q + HealthMortCum[0]) + P[4]*norm.cdf(q)
-    LivPrbOut = lambda q : (1. - np.array([norm.cdf(q + HealthMortCum[3]),norm.cdf(q + HealthMortCum[2]),norm.cdf(q + HealthMortCum[1]),norm.cdf(q + HealthMortCum[0]),norm.cdf(q)]))**0.5
-    ObjFunc = lambda q : DiePrbBiannual[t] - DiePrbFunc(q)
-    if t < 60:
-        omega_t = newton(ObjFunc,-3.)
-        omega_vec[t] = omega_t
-        LivPrbYoung[:,t] = LivPrbOut(omega_t)
-        HealthDstnTemp = HealthDstnNow*LivPrbYoung[:,t] # Kill agents by health type
-        HealthDstnNow = HealthDstnTemp/np.sum(HealthDstnTemp) # Renormalize to a stochastic vector
-        HealthDstnNow = np.dot(HealthDstnNow,MrkvArrayYoung[t+6,:,:]) # Apply health transitions to survivors
-    else:
-        HealthDstnTemp = HealthDstnNow*LivPrbOld[:,t-26] # Kill agents by health type
-        HealthDstnNow = HealthDstnTemp/np.sum(HealthDstnTemp) # Renormalize to a stochastic vector
-        HealthDstnNow = np.dot(HealthDstnNow,MrkvArrayOld[:,:]) # Apply health transitions to survivors
-    HealthDstnHist[:,t] = HealthDstnNow
-
 # Make the income shock standard deviations by age, from age 25-120
+# These might need revising
 retired_T = 55
 working_T = 40
 AgeCount = retired_T + working_T
 T_cycle = retired_T + working_T
 TranShkStd = (np.concatenate((np.linspace(0.1,0.12,4), 0.12*np.ones(4), np.linspace(0.12,0.075,15), np.linspace(0.074,0.007,16), np.zeros(retired_T+1))))**0.5
-#TranShkStd = np.concatenate([0.2*np.ones(working_T-1),np.zeros(retired_T+1)])
 TranShkStd = np.ndarray.tolist(TranShkStd)
 PermShkStd = np.concatenate((((0.00011342*(np.linspace(24,64.75,working_T-1)-47)**2 + 0.01))**0.5,np.zeros(retired_T+1)))
-#PermShkStd = np.concatenate([0.15*np.ones(working_T-1),np.zeros(retired_T+1)])
 PermShkStd[31:39] = PermShkStd[30] # Don't extrapolate permanent shock stdev
 PermShkStd = np.ndarray.tolist(PermShkStd)
 TranShkStdAllHealth = []
@@ -184,14 +108,6 @@ for t in range(AgeCount):
     TranShkStdAllHealth.append(5*[TranShkStd[t]])
     PermShkStdAllHealth.append(5*[PermShkStd[t]])
 
-# Reformat the Markov array into a lifecycle list, from age 18 to 120
-MrkvArray = []
-for t in range(67): # Until age 85
-    MrkvArray.append(MrkvArrayYoung[t,:,:])
-for t in range(35): # Until age ~120
-    MrkvArray.append(MrkvArrayOld)
-MrkvArray = MrkvArray[7:] # Begin at age 25, dropping first 7 years
-
 # Make an age-varying list of ESImrkvArray
 ESImrkvArray_list = []
 for t in range(working_T-1):
@@ -199,14 +115,6 @@ for t in range(working_T-1):
 ESImrkvArray_list.append(np.array([[1.],[1.],[1.]]))
 for t in range(retired_T):
     ESImrkvArray_list.append(np.array([[1.]]))
-
-# Reformat LivPrb into a lifeycle list, from age 25 to 120
-LivPrb = []
-for t in range(working_T):
-    LivPrb.append(LivPrbYoung[:,t+1])
-for t in range(retired_T):
-    LivPrb.append(LivPrbOld[:,t+15])
-LivPrb[-1] = np.array([0.,0.,0.,0.,0.])
     
 # Make education-specific health transitions, estimated directly from the MEPS
 f1 = lambda x :  .1780641*x - .0094783*x**2 + .0001773*x**3 - 1.12e-06*x**4
@@ -265,6 +173,13 @@ for j in range(3):
     MrkvArrayByEduc[:,4,3,j] = norm.cdf(cuts5[3] - fitted) - norm.cdf(cuts5[2] - fitted)
     MrkvArrayByEduc[:,4,4,j] = norm.cdf(np.inf   - fitted) - norm.cdf(cuts5[3] - fitted)
     
+# Make the array of health transitions after age 85
+MrkvArrayOld = np.array([[0.450,0.367,0.183,0.000,0.000],
+                        [0.140,0.445,0.290,0.115,0.010],
+                        [0.060,0.182,0.497,0.208,0.053],
+                        [0.032,0.090,0.389,0.342,0.147],
+                        [0.000,0.061,0.231,0.285,0.423]])
+    
 # Reformat the Markov array into lifecycle lists by education, from age 18 to 120
 MrkvArray_d = []
 MrkvArray_h = []
@@ -280,6 +195,37 @@ for t in range(35): # Until age ~120
 MrkvArray_d = MrkvArray_d[7:] # Begin at age 25, dropping first 7 years
 MrkvArray_h = MrkvArray_h[7:]
 MrkvArray_c = MrkvArray_c[7:]
+
+# Solve for survival probabilities at each health state for ages 24-60 by quasi-simulation
+HealthDstnNow = np.array(HealthPrbsInit)
+LivPrbYoung = np.zeros((5,60)) + np.nan
+omega_vec = np.zeros(60)
+HealthDstnHist = np.zeros((5,95))
+for t in range(95):
+    P = HealthDstnNow # For convenient typing
+    DiePrbFunc = lambda q : P[0]*norm.cdf(q + HealthMortCum[3]) + P[1]*norm.cdf(q + HealthMortCum[2]) + P[2]*norm.cdf(q + HealthMortCum[1]) + P[3]*norm.cdf(q + HealthMortCum[0]) + P[4]*norm.cdf(q)
+    LivPrbOut = lambda q : (1. - np.array([norm.cdf(q + HealthMortCum[3]),norm.cdf(q + HealthMortCum[2]),norm.cdf(q + HealthMortCum[1]),norm.cdf(q + HealthMortCum[0]),norm.cdf(q)]))**0.5
+    ObjFunc = lambda q : DiePrbBiannual[t] - DiePrbFunc(q)
+    if t < 60:
+        omega_t = newton(ObjFunc,-3.)
+        omega_vec[t] = omega_t
+        LivPrbYoung[:,t] = LivPrbOut(omega_t)
+        HealthDstnTemp = HealthDstnNow*LivPrbYoung[:,t] # Kill agents by health type
+        HealthDstnNow = HealthDstnTemp/np.sum(HealthDstnTemp) # Renormalize to a stochastic vector
+        HealthDstnNow = np.dot(HealthDstnNow,MrkvArrayByEduc[t+6,:,:,1]) # Apply health transitions to survivors
+    else:
+        HealthDstnTemp = HealthDstnNow*LivPrbOld[:,t-26] # Kill agents by health type
+        HealthDstnNow = HealthDstnTemp/np.sum(HealthDstnTemp) # Renormalize to a stochastic vector
+        HealthDstnNow = np.dot(HealthDstnNow,MrkvArrayOld[:,:]) # Apply health transitions to survivors
+    HealthDstnHist[:,t] = HealthDstnNow
+    
+# Reformat LivPrb into a lifeycle list, from age 25 to 120
+LivPrb = []
+for t in range(working_T):
+    LivPrb.append(LivPrbYoung[:,t+1])
+for t in range(retired_T):
+    LivPrb.append(LivPrbOld[:,t+15])
+LivPrb[-1] = np.array([0.,0.,0.,0.,0.])
 
 # Semi-arbitrary initial income levels (grab from data later)
 pLvlInitMean_d = np.log(2.0)
@@ -369,7 +315,6 @@ for j in range(ZeroMedShkPrb.shape[0]):
     
 # Make a basic dictionary with parameters that never change
 BasicDictionary = { 'Rfree': Rfree,
-                    'Cfloor': Cfloor,
                     'LivPrb': LivPrb,
                     'aXtraMin': aXtraMin,
                     'aXtraMax': aXtraMax,
@@ -397,7 +342,6 @@ BasicDictionary = { 'Rfree': Rfree,
                     'DevMax' : DevMax,
                     'ZeroMedShkPrb': ZeroMedShkPrb_list,
                     'MedPrice': T_cycle*[MedPrice],
-                    'HealthMrkvArray': MrkvArray,
                     'ESImrkvArray': ESImrkvArray_list,
                     'MrkvPrbsInit': HealthPrbsInit,
                     'T_cycle': T_cycle,
@@ -429,11 +373,11 @@ CollegeDictionary['pLvlInitMean'] = pLvlInitMean_c
 CollegeDictionary['pLvlNextFuncRet'] = RetirementFunc_c
 
 # Make a test parameter vector for estimation
-test_param_vec = np.array([0.925, # DiscFac
+test_param_vec = np.array([0.925,# DiscFac
                            2.8,  # CRRAcon
                            8.0,  # MedCurve 
                           -8.5,  # ChoiceShkMag in log
-                           2.6,  # SubsidyZeroRate scaler
+                           0.2,  # Cfloor
                          -1.51,  # SubsidyAvg
                           -3.0,  # SubsidyWidth scaler
                           10.0,  # BequestShift shifter for bequest motive
