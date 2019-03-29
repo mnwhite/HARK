@@ -42,13 +42,212 @@ MedPrice = 1.0                      # Relative price of a unit of medical care
 AgentCount = 10000                  # Number of agents of this type (only matters for simulation)
 DeductibleList = [0.06,0.05,0.04,0.03,0.02] # List of deductibles for working-age insurance contracts
 T_sim = 60                          # Number of periods to simulate (age 25 to 84)
+retired_T = 55
+working_T = 40
 
 
+class PolynomialFunction():
+    '''
+    A simple class for representing polynomial functions.
+    '''
+    def __init__(self,coeffs):
+        self.coeffs = coeffs
+        self.N = len(coeffs)
+        
+    def __call__(self,x):
+        try:
+            shape_orig = x.shape
+            z = x.flatten()
+        except:
+            shape_orig = None
+            z = x
+        
+        out = np.zeros_like(z) + self.coeffs[-1]
+        for n in range(self.N-2,-1,-1):
+            out *= z
+            out += self.coeffs[n]
+        
+        if shape_orig is not None:
+            return np.reshape(out,shape_orig)
+        else:
+            return out
+        
+        
+class ESImarkovFunction():
+    '''
+    A class for representing transition probabilities among ESI states as a function
+    of (log) permanent income.
+    '''
+    def __init__(self,ESItoNoneFunc,NoneToESIfunc,ContrToFullFunc,FullToContrFunc,EmpContrShare):
+        self.ESItoNoneFunc = ESItoNoneFunc
+        self.NoneToESIfunc = NoneToESIfunc
+        self.ContrToFullFunc = ContrToFullFunc
+        self.FullToContrFunc = FullToContrFunc
+        self.EmpContrShare = EmpContrShare
+        
+    def __call__(self,pLvl):
+        '''
+        Generate a 3D array of transition probabilities among ESI states by pLvl.
+        '''
+        try:
+            N = pLvl.size
+        except:
+            N = 1
+        pLog = np.log(pLvl)
+        ESImrkvArray = np.zeros((N,3,3))
+        
+        # Get probabilities of transitioning out of ESI
+        ESItoNone = norm.cdf(self.ESItoNoneFunc(pLog))
+        StayESI = 1.0 - ESItoNone
+        ESImrkvArray[:,1,0] = ESItoNone
+        ESImrkvArray[:,2,0] = ESItoNone
+        
+        # Get probabilities of transitioning into ESI
+        NoneToESI = norm.cdf(self.NoneToESIfunc(pLog))
+        StayNone = 1.0 - NoneToESI
+        ESImrkvArray[:,0,0] = StayNone
+        ESImrkvArray[:,0,1] = NoneToESI*(1.0-self.EmpContrShare)
+        ESImrkvArray[:,0,2] = NoneToESI*self.EmpContrShare
+        
+        # Get probabilities of switching from getting employer contribution
+        ContrToFull = norm.cdf(self.ContrToFullFunc(pLog))
+        StayContr = 1.0 - ContrToFull
+        ESImrkvArray[:,2,1] = ContrToFull*StayESI
+        ESImrkvArray[:,2,2] = StayContr*StayESI
+        
+        # get probabilities of switching from paying full premium for ESI
+        FullToContr = norm.cdf(self.FullToContrFunc(pLog))
+        StayFull = 1.0 - FullToContr
+        ESImrkvArray[:,1,2] = FullToContr*StayESI
+        ESImrkvArray[:,1,1] = StayFull*StayESI
+        
+        return ESImrkvArray
+        
 # Make a trivial array of transition probabilities among ESI states.
 # Order: No ESI, ESI with no emp contribution, ESI with emp contribution
 ESImrkvArray = np.array([[0.8,0.1,0.1],
                          [0.03,0.80,0.17],
                          [0.01,0.015,0.975]])
+       
+# Make multinomial probit transition functions among ESI states
+ESItoNone_0  = norm.ppf(0.012)
+ESItoNone_a1 = 0.0
+ESItoNone_a2 = 0.0
+ESItoNone_a3 = 0.0
+ESItoNone_ageFunc = PolynomialFunction([ESItoNone_0, ESItoNone_a1, ESItoNone_a2, ESItoNone_a3])
+ESItoNone_p1 = 0.0
+ESItoNone_p2 = 0.0
+ESItoNone_p3 = 0.0
+ESItoNone_ap = 0.0
+ESItoNone_d  = 0.0
+ESItoNone_h  = 0.0 # Omitted
+ESItoNone_c  = 0.0
+NoneToESI_0  = norm.ppf(0.2)
+NoneToESI_a1 = 0.0
+NoneToESI_a2 = 0.0
+NoneToESI_a3 = 0.0
+NoneToESI_ageFunc = PolynomialFunction([NoneToESI_0, NoneToESI_a1, NoneToESI_a2, NoneToESI_a3])
+NoneToESI_p1 = 0.0
+NoneToESI_p2 = 0.0
+NoneToESI_p3 = 0.0
+NoneToESI_ap = 0.0
+NoneToESI_d  = 0.0
+NoneToESI_h  = 0.0 # Omitted
+NoneToESI_c  = 0.0
+ContrToFull_0  = norm.ppf(0.015)
+ContrToFull_a1 = 0.0
+ContrToFull_a2 = 0.0
+ContrToFull_a3 = 0.0
+ContrToFull_ageFunc = PolynomialFunction([ContrToFull_0, ContrToFull_a1, ContrToFull_a2, ContrToFull_a3])
+ContrToFull_p1 = 0.0
+ContrToFull_p2 = 0.0
+ContrToFull_p3 = 0.0
+ContrToFull_ap = 0.0
+ContrToFull_d  = 0.0
+ContrToFull_h  = 0.0 # Omitted
+ContrToFull_c  = 0.0
+FullToContr_0  = norm.ppf(0.175)
+FullToContr_a1 = 0.0
+FullToContr_a2 = 0.0
+FullToContr_a3 = 0.0
+FullToContr_ageFunc = PolynomialFunction([FullToContr_0, FullToContr_a1, FullToContr_a2, FullToContr_a3])
+FullToContr_p1 = 0.0
+FullToContr_p2 = 0.0
+FullToContr_p3 = 0.0
+FullToContr_ap = 0.0
+FullToContr_d  = 0.0
+FullToContr_h  = 0.0 # Omitted
+FullToContr_c  = 0.0
+EmpContrShare_d = 0.5
+EmpContrShare_h = 0.5
+EmpContrShare_c = 0.5
+ESItoNoneFuncs_d = []
+NoneToESIfuncs_d = []
+ContrToFullFuncs_d = []
+FullToContrFuncs_d = []
+ESItoNoneFuncs_h = []
+NoneToESIfuncs_h = []
+ContrToFullFuncs_h = []
+FullToContrFuncs_h = []
+ESItoNoneFuncs_c = []
+NoneToESIfuncs_c = []
+ContrToFullFuncs_c = []
+FullToContrFuncs_c = []
+for a in range(18,64):
+    ESItoNone_base = ESItoNone_ageFunc(a)
+    ESItoNoneFuncs_d.append(PolynomialFunction([ESItoNone_base + ESItoNone_d, ESItoNone_p1 + a*ESItoNone_ap, ESItoNone_p2, ESItoNone_p3]))
+    ESItoNoneFuncs_h.append(PolynomialFunction([ESItoNone_base + ESItoNone_h, ESItoNone_p1 + a*ESItoNone_ap, ESItoNone_p2, ESItoNone_p3]))
+    ESItoNoneFuncs_c.append(PolynomialFunction([ESItoNone_base + ESItoNone_c, ESItoNone_p1 + a*ESItoNone_ap, ESItoNone_p2, ESItoNone_p3]))
+    NoneToESI_base = NoneToESI_ageFunc(a)
+    NoneToESIfuncs_d.append(PolynomialFunction([NoneToESI_base + NoneToESI_d, NoneToESI_p1 + a*NoneToESI_ap, NoneToESI_p2, NoneToESI_p3]))
+    NoneToESIfuncs_h.append(PolynomialFunction([NoneToESI_base + NoneToESI_h, NoneToESI_p1 + a*NoneToESI_ap, NoneToESI_p2, NoneToESI_p3]))
+    NoneToESIfuncs_c.append(PolynomialFunction([NoneToESI_base + NoneToESI_c, NoneToESI_p1 + a*NoneToESI_ap, NoneToESI_p2, NoneToESI_p3]))
+    ContrToFull_base = ContrToFull_ageFunc(a)
+    ContrToFullFuncs_d.append(PolynomialFunction([ContrToFull_base + ContrToFull_d, ContrToFull_p1 + a*ContrToFull_ap, ContrToFull_p2, ContrToFull_p3]))
+    ContrToFullFuncs_h.append(PolynomialFunction([ContrToFull_base + ContrToFull_h, ContrToFull_p1 + a*ContrToFull_ap, ContrToFull_p2, ContrToFull_p3]))
+    ContrToFullFuncs_c.append(PolynomialFunction([ContrToFull_base + ContrToFull_c, ContrToFull_p1 + a*ContrToFull_ap, ContrToFull_p2, ContrToFull_p3]))
+    FullToContr_base = FullToContr_ageFunc(a)
+    FullToContrFuncs_d.append(PolynomialFunction([FullToContr_base + FullToContr_d, FullToContr_p1 + a*FullToContr_ap, FullToContr_p2, FullToContr_p3]))
+    FullToContrFuncs_h.append(PolynomialFunction([FullToContr_base + FullToContr_h, FullToContr_p1 + a*FullToContr_ap, FullToContr_p2, FullToContr_p3]))
+    FullToContrFuncs_c.append(PolynomialFunction([FullToContr_base + FullToContr_c, FullToContr_p1 + a*FullToContr_ap, FullToContr_p2, FullToContr_p3]))
+ESImrkvFuncs_d = []
+ESImrkvFuncs_h = []
+ESImrkvFuncs_c = []    
+for a in range(18,64):
+    t = a-18
+    ESImrkvFuncs_d.append(ESImarkovFunction(ESItoNoneFuncs_d[t],NoneToESIfuncs_d[t],ContrToFullFuncs_d[t],FullToContrFuncs_d[t],EmpContrShare_d))
+    ESImrkvFuncs_h.append(ESImarkovFunction(ESItoNoneFuncs_h[t],NoneToESIfuncs_h[t],ContrToFullFuncs_h[t],FullToContrFuncs_h[t],EmpContrShare_h))
+    ESImrkvFuncs_c.append(ESImarkovFunction(ESItoNoneFuncs_c[t],NoneToESIfuncs_c[t],ContrToFullFuncs_c[t],FullToContrFuncs_c[t],EmpContrShare_c))
+    
+# Make ESI transition functions for retirement
+class RetirementESIfunction():
+    def __init__(self):
+        pass
+    
+    def __call__(self,pLvl):
+        try:
+            N = pLvl.size
+        except:
+            N = 1
+        ESImrkvArray = np.ones((N,3,1))
+        return ESImrkvArray
+    
+class RetiredESIfunction():
+    def __init__(self):
+        pass
+    
+    def __call__(self,pLvl):
+        try:
+            N = pLvl.size
+        except:
+            N = 1
+        ESImrkvArray = np.ones((N,1,1))
+        return ESImrkvArray
+    
+ESImrkvFuncs_retired = [RetirementESIfunction()] + retired_T*[RetiredESIfunction()]
+ESImrkvFuncs_d = ESImrkvFuncs_d[7:46] + ESImrkvFuncs_retired
+ESImrkvFuncs_h = ESImrkvFuncs_h[7:46] + ESImrkvFuncs_retired
+ESImrkvFuncs_c = ESImrkvFuncs_c[7:46] + ESImrkvFuncs_retired
     
 # Make survival probabilities by health state and age based on a probit on HRS data for ages 50-119
 AgeMortParams = [-2.757652,.044746,-.0010514,.0000312,-1.62e-07]  # MEN ONLY
@@ -93,8 +292,6 @@ EducWeight = [0.080,0.566,0.354]
 
 # Make the income shock standard deviations by age, from age 25-120
 # These might need revising
-retired_T = 55
-working_T = 40
 AgeCount = retired_T + working_T
 T_cycle = retired_T + working_T
 TranShkStd = (np.concatenate((np.linspace(0.1,0.12,4), 0.12*np.ones(4), np.linspace(0.12,0.075,15), np.linspace(0.074,0.007,16), np.zeros(retired_T+1))))**0.5
@@ -357,18 +554,21 @@ DropoutDictionary = copy(BasicDictionary)
 DropoutDictionary['PermGroFac'] = PermGroFac_dx
 DropoutDictionary['MrkvPrbsInit'] = MrkvPrbsInit_d
 DropoutDictionary['HealthMrkvArray'] = MrkvArray_d
+DropoutDictionary['ESImrkvFunc'] = ESImrkvFuncs_d
 DropoutDictionary['pLvlInitMean'] = pLvlInitMean_d
 DropoutDictionary['pLvlNextFuncRet'] = RetirementFunc_d
 HighschoolDictionary = copy(BasicDictionary)
 HighschoolDictionary['PermGroFac'] = PermGroFac_hx
 HighschoolDictionary['MrkvPrbsInit'] = MrkvPrbsInit_h
 HighschoolDictionary['HealthMrkvArray'] = MrkvArray_h
+HighschoolDictionary['ESImrkvFunc'] = ESImrkvFuncs_h
 HighschoolDictionary['pLvlInitMean'] = pLvlInitMean_h
 HighschoolDictionary['pLvlNextFuncRet'] = RetirementFunc_h
 CollegeDictionary = copy(BasicDictionary)
 CollegeDictionary['PermGroFac'] = PermGroFac_cx
 CollegeDictionary['MrkvPrbsInit'] = MrkvPrbsInit_c
 CollegeDictionary['HealthMrkvArray'] = MrkvArray_c
+CollegeDictionary['ESImrkvFunc'] = ESImrkvFuncs_c
 CollegeDictionary['pLvlInitMean'] = pLvlInitMean_c
 CollegeDictionary['pLvlNextFuncRet'] = RetirementFunc_c
 
