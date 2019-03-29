@@ -244,7 +244,8 @@ class DynInsSelMarket(Market):
         WealthMedianByAge = np.zeros(40) + np.nan
         LogTotalMedMeanByAge = np.zeros(60) + np.nan
         LogTotalMedStdByAge = np.zeros(60) + np.nan
-        InsuredRateByAge = np.zeros(40) + np.nan
+        InsuredRateByAge_ESI = np.zeros(40) + np.nan
+        InsuredRateByAge_IMI = np.zeros(40) + np.nan
         ZeroSubsidyRateByAge = np.zeros(40) + np.nan
         PremiumMeanByAge = np.zeros(40) + np.nan
         PremiumStdByAge = np.zeros(40) + np.nan
@@ -261,8 +262,10 @@ class DynInsSelMarket(Market):
             TotalMedSum = 0.0
             OOPmedSum = 0.0
             LiveCount = 0.0
-            InsuredCount = 0.0
+            ESIcount = 0.0
             OfferedCount = 0.0
+            IMIcount = 0.0
+            NotOfferedCount = 0.0
             ZeroCount = 0.0
             for ThisType in Agents:
                 these = ThisType.LiveBoolArray[t,:]
@@ -276,9 +279,12 @@ class DynInsSelMarket(Market):
                     LiveCount += np.sum(ThisType.LiveBoolArray[t,:])
                     TotalMedSum += np.sum(ThisType.TotalMedHist[t,ThisType.InsuredBoolArray[t,:]])
                     OOPmedSum += np.sum(ThisType.OOPmedHist[t,ThisType.InsuredBoolArray[t,:]])
-                    temp = np.sum(ThisType.InsuredBoolArray[t,:])
-                    InsuredCount += temp
-                    OfferedCount += np.sum(ThisType.MrkvHist[t,:] >= 5)
+                    Offered = ThisType.MrkvHist[t,:] >= 5
+                    NotOffered = np.logical_and(ThisType.MrkvHist[t,:] < 5, ThisType.MrkvHist[t,:] >= 0) 
+                    ESIcount += np.sum(np.logical_and(ThisType.InsuredBoolArray[t,:],Offered))
+                    OfferedCount += np.sum(Offered)
+                    IMIcount += np.sum(np.logical_and(ThisType.InsuredBoolArray[t,:],NotOffered))
+                    NotOfferedCount += NotOffered
                     ZeroCount += np.sum(np.logical_and(ThisType.InsuredBoolArray[t,:], ThisType.MrkvHist[t,:] <= 9))
                 else:
                     TotalMedSum += np.sum(ThisType.TotalMedHist[t,these])
@@ -289,9 +295,10 @@ class DynInsSelMarket(Market):
                 PremiumArray = np.hstack(PremiumList)
                 PremiumMeanByAge[t] = np.mean(PremiumArray)
                 PremiumStdByAge[t] = np.std(PremiumArray)
-                InsuredRateByAge[t] = InsuredCount/OfferedCount
-                if InsuredCount > 0.0:
-                    ZeroSubsidyRateByAge[t] = ZeroCount/InsuredCount
+                InsuredRateByAge_ESI[t] = ESIcount/OfferedCount
+                InsuredRateByAge_IMI[t] = IMIcount/NotOfferedCount
+                if ESIcount > 0.0:
+                    ZeroSubsidyRateByAge[t] = ZeroCount/ESIcount
                 else:
                     ZeroSubsidyRateByAge[t] = 0.0 # This only happens with no insurance choice
             LogTotalMedArray = np.hstack(LogTotalMedList)
@@ -363,7 +370,8 @@ class DynInsSelMarket(Market):
         self.WealthMedianByAge = WealthMedianByAge
         self.LogTotalMedMeanByAge = LogTotalMedMeanByAge + 9.21034
         self.LogTotalMedStdByAge = LogTotalMedStdByAge
-        self.InsuredRateByAge = InsuredRateByAge
+        self.InsuredRateByAge_ESI = InsuredRateByAge_ESI
+        self.InsuredRateByAge_IMI = InsuredRateByAge_IMI
         self.ZeroSubsidyRateByAge = ZeroSubsidyRateByAge
         self.PremiumMeanByAge = PremiumMeanByAge*10000.
         self.PremiumStdByAge = PremiumStdByAge*10000.
@@ -394,7 +402,8 @@ class DynInsSelMarket(Market):
         MomentList = [self.WealthMedianByAge,
                       self.LogTotalMedMeanByAge,
                       self.LogTotalMedStdByAge,
-                      self.InsuredRateByAge,
+                      self.InsuredRateByAge_ESI,
+                      self.InsuredRateByAge_IMI,
                       self.ZeroSubsidyRateByAge,
                       self.PremiumMeanByAge,
                       self.PremiumStdByAge,

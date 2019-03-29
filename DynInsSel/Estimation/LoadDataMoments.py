@@ -41,7 +41,8 @@ MeanLogOOPmedByAge = np.zeros(60) + np.nan
 MeanLogTotalMedByAge = np.zeros(60) + np.nan
 StdevLogOOPmedByAge = np.zeros(60) + np.nan
 StdevLogTotalMedByAge = np.zeros(60) + np.nan
-InsuredRateByAge = np.zeros(40) + np.nan
+InsuredRateByAge_ESI = np.zeros(40) + np.nan
+InsuredRateByAge_IMI = np.zeros(40) # TODO: Create this data series!
 MeanPremiumByAge = np.zeros(40) + np.nan
 StdevPremiumByAge = np.zeros(40) + np.nan
 NoPremShareRateByAge = np.zeros(40) + np.nan
@@ -59,7 +60,7 @@ for j in range(60):
     OOPmomentWeightsByAge[j] = float(raw_moments[j][10])
     totMomentWeightsByAge[j] = float(raw_moments[j][11])
     if j < 40:
-        InsuredRateByAge[j] = float(raw_moments[j][5])
+        InsuredRateByAge_ESI[j] = float(raw_moments[j][5])
         MeanPremiumByAge[j] = float(raw_moments[j][6])
         StdevPremiumByAge[j] = float(raw_moments[j][7])
         NoPremShareRateByAge[j] = float(raw_moments[j][8])
@@ -174,7 +175,8 @@ for j in range(40):
 MomentList = [WealthRatioByAge,
               MeanLogTotalMedByAge,
               StdevLogTotalMedByAge,
-              InsuredRateByAge,
+              InsuredRateByAge_ESI,
+              InsuredRateByAge_IMI,
               NoPremShareRateByAge,
               MeanPremiumByAge,
               StdevPremiumByAge,
@@ -287,7 +289,7 @@ if __name__ == '__main__':
     plt.savefig('StdevLogTotalMedByAgeIncome.pdf')
     plt.show()
     
-    plt.plot(OneYearAge,InsuredRateByAge,'.k')
+    plt.plot(OneYearAge,InsuredRateByAge_ESI,'.k')
     plt.plot(FiveYearAge,InsuredRateByAgeIncome)
     plt.xlabel('Age')
     plt.ylabel('ESI uptake rate')
@@ -367,7 +369,7 @@ if __name__ == '__main__':
     plt.savefig('StdevLogTotalMedByAgeHealth.pdf')
     plt.show()
     
-    plt.plot(OneYearAge,InsuredRateByAge,'.k')
+    plt.plot(OneYearAge,InsuredRateByAge_ESI,'.k')
     plt.plot(FiveYearAge,InsuredRateByAgeHealth)
     plt.xlabel('Age')
     plt.ylabel('ESI uptake rate')
