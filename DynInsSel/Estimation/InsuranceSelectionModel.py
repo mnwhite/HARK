@@ -750,7 +750,7 @@ def solveInsuranceSelectionStatic(solution_next,MedShkDstn,CRRA,MedPrice,xLvlGri
 
 def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMedShkPrb,MedShkCount,DevMin,DevMax,
                             LivPrb,DiscFac,CRRA,CRRAmed,BequestScale,BequestShift,Cfloor,Rfree,MedPrice,pLvlNextFunc,BoroCnstArt,aXtraGrid,
-                            pLvlGrid,ContractList,HealthMrkvArray,ESImrkvArray,ChoiceShkMag,EffPriceList,bFromxFunc,verbosity):
+                            pLvlGrid,ContractList,HealthMrkvArray,ESImrkvFunc,ChoiceShkMag,EffPriceList,bFromxFunc,verbosity):
     '''
     Solves one period of the insurance selection model.
     
@@ -812,10 +812,11 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
         An NxN array representing a Markov transition matrix among discrete health
         states conditional on survival.  The i,j-th element of HealthMrkvArray
         is the probability of moving from state i in period t to state j in period t+1.
-    ESImrkvArray : numpy.array
-        A KxL array representing a Markov transition matrix among discrete ESI states.
-        The i,j-th element of ESImrkvArray is the probability of moving from state i
-        in period t to state j in period t+1.
+    ESImrkvFunc : numpy.array
+        Function that returns a KxL array representing a Markov transition matrix
+        among discrete ESI states, conditional on pLvl.  The i,j-th element of
+        ESImrkvArray(pLvl) is the probability of moving from state i in period t
+        to state j in period t+1.  Can take vector inputs, returns 3D output.
     ChoiceShkMag : float
         Magnitude of T1EV preference shocks for each insurance contract when making selection.
         Shocks are applied to pseudo-inverse value of contracts.
@@ -843,8 +844,8 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
     aLvlCount = aXtraGrid.size
     
     # Construct the overall MrkvArray from HealthMrkvArray and ESImrkvArray
-    #MrkvArray = HealthMrkvArray
-    MrkvArray = combineIndepMrkvArrays(ESImrkvArray,HealthMrkvArray)
+    ESImrkvArray_temp = ESImrkvFunc(1.0)[0,:,:]
+    MrkvArray = combineIndepMrkvArrays(ESImrkvArray_temp,HealthMrkvArray)
     StateCountNow  = MrkvArray.shape[0] # number of discrete states this period
     StateCountNext = MrkvArray.shape[1] # number of discrete states next period
     
@@ -1371,7 +1372,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
     insurance contract, they learn their medical need shock and choose levels of consumption and
     medical care.
     '''
-    _time_vary = ['DiscFac','LivPrb','MedPrice','ContractList','HealthMrkvArray','ESImrkvArray','ChoiceShkMag','MedShkAvg','MedShkStd','ZeroMedShkPrb']
+    _time_vary = ['DiscFac','LivPrb','MedPrice','ContractList','HealthMrkvArray','ESImrkvFunc','ChoiceShkMag','MedShkAvg','MedShkStd','ZeroMedShkPrb']
     _time_inv = ['CRRA','CRRAmed','BequestScale','BequestShift','Cfloor','Rfree','BoroCnstArt','MedShkCount','DevMin','DevMax','verbosity']
     
     def __init__(self,cycles=1,time_flow=True,**kwds):
