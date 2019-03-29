@@ -843,11 +843,14 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
     pLvlCount = pLvlGrid.size
     aLvlCount = aXtraGrid.size
     
-    # Construct the overall MrkvArray from HealthMrkvArray and ESImrkvArray
-    ESImrkvArray_temp = ESImrkvFunc(1.0)[0,:,:]
-    MrkvArray = combineIndepMrkvArrays(ESImrkvArray_temp,HealthMrkvArray)
-    StateCountNow  = MrkvArray.shape[0] # number of discrete states this period
-    StateCountNext = MrkvArray.shape[1] # number of discrete states next period
+    # Construct MrkvArray by pLvl by combining HealthMrkvArray and ESImrkvArray
+    ESImrkvArray_all = ESImrkvFunc(pLvlGrid)
+    MrkvArray_temp = combineIndepMrkvArrays(ESImrkvArray_all[0,:,:],HealthMrkvArray) # Example MrkvArray to get state counts
+    StateCountNow  = MrkvArray_temp.shape[0] # number of discrete states this period
+    StateCountNext = MrkvArray_temp.shape[1] # number of discrete states next period
+    MrkvArray_all = np.zeros((pLvlCount,StateCountNow,StateCountNext)) + np.nan
+    for j in range(pLvlCount):
+        MrkvArray_all[j,:,:] = combineIndepMrkvArrays(ESImrkvArray_all[j,:,:],HealthMrkvArray)
     
     # Make regular and dense grids of Dev
     DevGrid = np.linspace(DevMin,DevMax,MedShkCount)
@@ -952,22 +955,22 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
         h_alt = np.mod(h,5) # Alternate state index, very hacky
         
         # Set up a temporary health transition array
-        HealthTran_temp = np.tile(np.reshape(MrkvArray[h,:],(1,1,StateCountNext)),(pLvlCount,aLvlCount+1,1))
+        MrkvArray_temp = np.tile(np.reshape(MrkvArray_all[:,h,:],(pLvlCount,1,StateCountNext)),(1,aLvlCount+1,1))
         DiscFacEff = DiscFac*LivPrb[h_alt] # "effective" discount factor
         DiePrb = (1.-LivPrb[h_alt])
         
         # Weight future health states according to the transition probabilities
-        EndOfPrdv[:,:,h]  = DiscFacEff*np.sum(EndOfPrdvCond*HealthTran_temp,axis=2) + DiePrb*BequestMotive(aLvlNow)
-        EndOfPrdvP[:,:,h] = DiscFacEff*np.sum(EndOfPrdvPcond*HealthTran_temp,axis=2) + DiePrb*BequestMotiveP(aLvlNow)
+        EndOfPrdv[:,:,h]  = DiscFacEff*np.sum(EndOfPrdvCond*MrkvArray_temp,axis=2) + DiePrb*BequestMotive(aLvlNow)
+        EndOfPrdvP[:,:,h] = DiscFacEff*np.sum(EndOfPrdvPcond*MrkvArray_temp,axis=2) + DiePrb*BequestMotiveP(aLvlNow)
             
     # Calculate human wealth conditional on each current health state 
-    hLvlGrid = (np.dot(MrkvArray,hLvlCond.transpose())).transpose()
+    hLvlGrid = np.sum(MrkvArray_all*np.tile(np.reshape(hLvlCond,(pLvlCount,1,StateCountNext)),(1,StateCountNow,1)),axis=2)
     if np.all(LivPrb == 0.):
         hLvlGrid[:,:] = 0.
-    hLvlGrid_adj = copy(hLvlGrid)
-    for h in range(StateCountNow):
-        hLvlGrid_adj[:,h] *= LivPrb[h_alt]
-        hLvlGrid_adj[:,h] += (1.-LivPrb[h_alt])*BequestShift
+#    hLvlGrid_adj = copy(hLvlGrid)
+#    for h in range(StateCountNow):
+#        hLvlGrid_adj[:,h] *= LivPrb[h_alt]
+#        hLvlGrid_adj[:,h] += (1.-LivPrb[h_alt])*BequestShift
     
 #    # Compute bounding MPC (and pseudo inverse MPC) in each state this period
 #    try:

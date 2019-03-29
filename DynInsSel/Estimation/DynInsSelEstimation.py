@@ -794,8 +794,8 @@ if __name__ == '__main__':
     import matplotlib.pyplot as plt
     mystr = lambda number : "{:.4f}".format(number)
     
-    test_obj_func = True
-    test_one_type = False
+    test_obj_func = False
+    test_one_type = True
     test_static_model = False
     
     if test_obj_func:
