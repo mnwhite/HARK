@@ -1720,6 +1720,11 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         # Loop through each period of life and update histories
         t_cycle=0
         for t in range(T_sim):
+            # Make sure pLvl doesn't go outside of grid boundaries
+            pLvl_min = self.pLvlGrid[t][0]
+            pLvl_max = self.pLvlGrid[t][-1]
+            pLvlNow[Live] = np.minimum(np.maximum(pLvlNow[Live],pLvl_min),pLvl_max)
+            
             # Add current states to histories
             pLvlHist[t,Live] = pLvlNow[Live]
             MrkvHist[t,Live] = MrkvNow[Live]
@@ -1791,10 +1796,11 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
                 
         # Make boolean arrays for health state for all agents
         HealthBoolArray = np.zeros((self.T_sim,self.AgentCount,5),dtype=bool)
+        LiveBoolArray = MrkvHist >= 0
         for h in range(5):
-            HealthBoolArray[:,:,h] = np.mod(MrkvHist,5) == h
+            HealthBoolArray[:,:,h] = np.logical_and(np.mod(MrkvHist,5) == h, LiveBoolArray)
         self.HealthBoolArray = HealthBoolArray
-        self.LiveBoolArray = np.any(HealthBoolArray,axis=2)
+        self.LiveBoolArray = LiveBoolArray
             
         # Store the history arrays as attributes of self
         self.pLvlHist = pLvlHist
@@ -1838,7 +1844,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         StateCountNow = MrkvArrayCombined.shape[0]
         
         # Get state and shock vectors for (living) agents
-        mLvlNow = self.aLvlNow + self.IncomeHist[t,:]
+        #mLvlNow = self.aLvlNow + self.IncomeHist[t,:]
         MrkvNow = self.MrkvHist[t,:]
         pLvlNow = self.pLvlHist[t,:]
         MedShkNow = self.MedShkHist[t,:]
@@ -1846,6 +1852,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         PrefShkNow = self.PrefShkHist[t,:]
 
         # Loop through each health state and get agents' controls
+        mLvlNow = np.zeros_like(self.aLvlNow) + np.nan
         cLvlNow = np.zeros_like(mLvlNow) + np.nan
         OOPnow = np.zeros_like(mLvlNow) + np.nan
         MedLvlNow = np.zeros_like(mLvlNow) + np.nan
@@ -1855,13 +1862,14 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         CritDevNow = np.zeros_like(mLvlNow) + np.nan
         ContractNow = -np.ones(self.AgentCount,dtype=int)
         for h in range(StateCountNow):
+            h_alt = h % 5
             these = MrkvNow == h
             N = np.sum(these)
             Z = len(self.solution[t].policyFunc[h])
             
             # Get the pseudo-inverse value of holding each contract
             vNvrs_temp = np.zeros((N,Z)) + np.nan
-            m_temp = mLvlNow[these]
+            m_temp = self.aLvlNow[these]*self.Rfree[h_alt] + self.IncomeHist[t,these]
             p_temp = pLvlNow[these]
             for z in range(Z):                
                 Premium = self.solution[t].policyFunc[h][z].Contract.Premium(m_temp,p_temp)
@@ -1905,6 +1913,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
                 OOP_temp[idx] = self.solution[t].policyFunc[h][z].Contract.OOPfunc(Med_temp[idx])            
             
             # Store the controls for this health
+            mLvlNow[these] = m_temp
             cLvlNow[these] = c_temp
             MedLvlNow[these] = Med_temp
             xLvlNow[these] = x_temp

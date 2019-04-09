@@ -176,7 +176,6 @@ MomentList = [WealthRatioByAge,
               MeanLogTotalMedByAge,
               StdevLogTotalMedByAge,
               InsuredRateByAge_ESI,
-              InsuredRateByAge_IMI,
               NoPremShareRateByAge,
               MeanPremiumByAge,
               StdevPremiumByAge,
@@ -189,7 +188,8 @@ MomentList = [WealthRatioByAge,
               MeanPremiumByAgeIncome.flatten(),
               MeanLogOOPmedByAge.flatten(),
               StdevLogOOPmedByAge.flatten(),
-              OOPshareByAge]
+              OOPshareByAge,
+              InsuredRateByAge_IMI]
 data_moments = np.hstack(MomentList)
 
 # Construct the vector of moment weights

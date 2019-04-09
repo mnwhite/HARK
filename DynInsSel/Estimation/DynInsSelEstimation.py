@@ -284,14 +284,14 @@ class DynInsSelMarket(Market):
                     ESIcount += np.sum(np.logical_and(ThisType.InsuredBoolArray[t,:],Offered))
                     OfferedCount += np.sum(Offered)
                     IMIcount += np.sum(np.logical_and(ThisType.InsuredBoolArray[t,:],NotOffered))
-                    NotOfferedCount += NotOffered
+                    NotOfferedCount += np.sum(NotOffered)
                     ZeroCount += np.sum(np.logical_and(ThisType.InsuredBoolArray[t,:], ThisType.MrkvHist[t,:] <= 9))
                 else:
                     TotalMedSum += np.sum(ThisType.TotalMedHist[t,these])
                     OOPmedSum += np.sum(ThisType.OOPmedHist[t,these])
             if t < 40:
                 WealthRatioArray = np.hstack(WealthRatioList)
-                WealthMedianByAge[t] = np.nanmedian(WealthRatioArray) # THERE SHOULD BE NO NANS
+                WealthMedianByAge[t] = np.median(WealthRatioArray)
                 PremiumArray = np.hstack(PremiumList)
                 PremiumMeanByAge[t] = np.mean(PremiumArray)
                 PremiumStdByAge[t] = np.std(PremiumArray)
@@ -403,7 +403,6 @@ class DynInsSelMarket(Market):
                       self.LogTotalMedMeanByAge,
                       self.LogTotalMedStdByAge,
                       self.InsuredRateByAge_ESI,
-                      self.InsuredRateByAge_IMI,
                       self.ZeroSubsidyRateByAge,
                       self.PremiumMeanByAge,
                       self.PremiumStdByAge,
@@ -416,7 +415,8 @@ class DynInsSelMarket(Market):
                       self.PremiumMeanByAgeIncome.flatten(),
                       self.LogOOPmedMeanByAge,
                       self.LogOOPmedStdByAge,
-                      self.OOPshareByAge]
+                      self.OOPshareByAge,
+                      self.InsuredRateByAge_IMI]
         self.simulated_moments = np.hstack(MomentList)
         
     def aggregateMomentConditions(self):
@@ -803,8 +803,8 @@ if __name__ == '__main__':
     import matplotlib.pyplot as plt
     mystr = lambda number : "{:.4f}".format(number)
     
-    test_obj_func = False
-    test_one_type = True
+    test_obj_func = True
+    test_one_type = False
     test_static_model = False
     
     if test_obj_func:
@@ -902,7 +902,7 @@ if __name__ == '__main__':
         #plt.savefig('../Figures/StdevTotalMedFitByAgeIncome.pdf')
         plt.show()
         
-        plt.plot(Age[0:40],MyMarket.InsuredRateByAge,'-b')
+        plt.plot(Age[0:40],MyMarket.InsuredRateByAge_ESI,'-b')
         plt.plot(Age[0:40],MyMarket.data_moments[160:200],'.k')
         plt.xlabel('Age')
         plt.ylabel('ESI uptake rate')

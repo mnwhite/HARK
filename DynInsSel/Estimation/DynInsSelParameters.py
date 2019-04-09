@@ -573,7 +573,7 @@ CollegeDictionary['pLvlInitMean'] = pLvlInitMean_c
 CollegeDictionary['pLvlNextFuncRet'] = RetirementFunc_c
 
 # Make a test parameter vector for estimation
-test_param_vec = np.array([0.925,# DiscFac
+test_param_vec = np.array([0.90, # DiscFac
                            2.8,  # CRRAcon
                            8.0,  # MedCurve 
                           -8.5,  # ChoiceShkMag in log
