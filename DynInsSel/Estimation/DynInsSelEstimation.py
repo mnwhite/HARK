@@ -274,18 +274,19 @@ class DynInsSelMarket(Market):
                 LogOOPmedList.append(np.log(ThisType.OOPmedHist[t,those]))
                 if t < 40:
                     WealthRatioList.append(ThisType.WealthRatioHist[t,these])
-                    these = ThisType.InsuredBoolArray[t,:]
-                    PremiumList.append(ThisType.PremNow_hist[t,these])
+                    Insured = ThisType.InsuredBoolArray[t,:]
                     LiveCount += np.sum(ThisType.LiveBoolArray[t,:])
-                    TotalMedSum += np.sum(ThisType.TotalMedHist[t,ThisType.InsuredBoolArray[t,:]])
-                    OOPmedSum += np.sum(ThisType.OOPmedHist[t,ThisType.InsuredBoolArray[t,:]])
                     Offered = ThisType.MrkvHist[t,:] >= 5
                     NotOffered = np.logical_and(ThisType.MrkvHist[t,:] < 5, ThisType.MrkvHist[t,:] >= 0) 
-                    ESIcount += np.sum(np.logical_and(ThisType.InsuredBoolArray[t,:],Offered))
+                    HaveESI = np.logical_and(Insured, Offered)
+                    ESIcount += np.sum(HaveESI)
                     OfferedCount += np.sum(Offered)
                     IMIcount += np.sum(np.logical_and(ThisType.InsuredBoolArray[t,:],NotOffered))
                     NotOfferedCount += np.sum(NotOffered)
-                    ZeroCount += np.sum(np.logical_and(ThisType.InsuredBoolArray[t,:], ThisType.MrkvHist[t,:] <= 9))
+                    ZeroCount += np.sum(np.logical_and(HaveESI, ThisType.MrkvHist[t,:] <= 9))
+                    PremiumList.append(ThisType.PremNow_hist[t,HaveESI])
+                    TotalMedSum += np.sum(ThisType.TotalMedHist[t,HaveESI])
+                    OOPmedSum += np.sum(ThisType.OOPmedHist[t,HaveESI])
                 else:
                     TotalMedSum += np.sum(ThisType.TotalMedHist[t,these])
                     OOPmedSum += np.sum(ThisType.OOPmedHist[t,these])
@@ -344,24 +345,24 @@ class DynInsSelMarket(Market):
                 LogTotalMedList = []
                 PremiumList = []
                 LiveCount = 0.0
-                InsuredCount = 0.0
+                ESIcount = 0.0
                 OfferedCount = 0.0
                 for ThisType in Agents:
                     these = ThisType.IncQuintBoolArray[bot:top,:,i]
-                    those = np.logical_and(these,ThisType.TotalMedHist[bot:top,:]>0.0)
+                    those = np.logical_and(these,ThisType.TotalMedHist[bot:top,:] > 0.0)
                     LiveCount += np.sum(ThisType.LiveBoolArray[bot:top,:][these])
-                    OfferedCount += np.sum(ThisType.MrkvHist[bot:top,:][these] >= 5)
+                    Offered = ThisType.MrkvHist[bot:top,:][these] >= 5
+                    OfferedCount += np.sum(Offered)
                     LogTotalMedList.append(np.log(ThisType.TotalMedHist[bot:top,:][those]))
                     WealthRatioList.append(ThisType.WealthRatioHist[bot:top,:][these])
-                    these = np.logical_and(ThisType.InsuredBoolArray[bot:top,:],these)
-                    PremiumList.append(ThisType.PremNow_hist[bot:top,:][these])                    
-                    temp = np.sum(ThisType.InsuredBoolArray[bot:top,:][these])
-                    InsuredCount += temp
+                    HaveESI = np.logical_and(ThisType.InsuredBoolArray[bot:top,:][these],Offered)
+                    ESIcount += np.sum(HaveESI)
+                    PremiumList.append(ThisType.PremNow_hist[bot:top,:][these][HaveESI])                    
                 WealthRatioArray = np.hstack(WealthRatioList)
                 WealthMedianByAgeIncome[a,i] = np.median(WealthRatioArray)
                 PremiumArray = np.hstack(PremiumList)
                 PremiumMeanByAgeIncome[a,i] = np.mean(PremiumArray)
-                InsuredRateByAgeIncome[a,i] = InsuredCount/OfferedCount
+                InsuredRateByAgeIncome[a,i] = ESIcount/OfferedCount
                 LogTotalMedArray = np.hstack(LogTotalMedList)
                 LogTotalMedMeanByAgeIncome[a,i] = np.mean(LogTotalMedArray)
                 LogTotalMedStdByAgeIncome[a,i] = np.std(LogTotalMedArray)
@@ -635,7 +636,8 @@ def makeDynInsSelType(CRRAcon,MedCurve,DiscFac,BequestShift,BequestScale,Cfloor,
     else:
         WorkingContractList.append(MedInsuranceContract(ConstantFunction(0.0),0.00,0.1,Params.MedPrice))
     
-    IndMarketContractList = [MedInsuranceContract(ConstantFunction(0.0),0.0,1.0,Params.MedPrice)]
+    IndMarketContractList = [MedInsuranceContract(ConstantFunction(0.0),0.0,1.0,Params.MedPrice),
+                             MedInsuranceContract(ConstantFunction(Premium),0.3,Copay,Params.MedPrice)]
     RetiredContractList = [MedInsuranceContract(ConstantFunction(0.0),0.0,0.12,Params.MedPrice)]
     
     ContractList = []

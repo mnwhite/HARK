@@ -16,7 +16,7 @@ AgentCountTotal = 100000
 StaticBool = False
 
 # Calibrated / other parameters (grid sizes, etc)
-Rfree = 5*[1.03]                    # Interest factor on assets
+Rfree = 5*[1.02]                    # Interest factor on assets
 aXtraMin = 0.001                    # Minimum end-of-period "assets above minimum" value
 aXtraMax = 16                       # Minimum end-of-period "assets above minimum" value               
 aXtraExtra = [0.005,0.01]           # Some other value of "assets above minimum" to add to the grid, not used
@@ -574,7 +574,7 @@ CollegeDictionary['pLvlNextFuncRet'] = RetirementFunc_c
 
 # Make a test parameter vector for estimation
 test_param_vec = np.array([0.90, # DiscFac
-                           2.8,  # CRRAcon
+                           3.1,  # CRRAcon
                            8.0,  # MedCurve 
                           -8.5,  # ChoiceShkMag in log
                            0.2,  # Cfloor

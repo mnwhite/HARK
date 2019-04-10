@@ -1721,8 +1721,8 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         t_cycle=0
         for t in range(T_sim):
             # Make sure pLvl doesn't go outside of grid boundaries
-            pLvl_min = self.pLvlGrid[t][0]
-            pLvl_max = self.pLvlGrid[t][-1]
+            pLvl_min = self.pLvlGrid[t_cycle][0]
+            pLvl_max = self.pLvlGrid[t_cycle][-1]
             pLvlNow[Live] = np.minimum(np.maximum(pLvlNow[Live],pLvl_min),pLvl_max)
             
             # Add current states to histories
@@ -1730,7 +1730,9 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
             MrkvHist[t,Live] = MrkvNow[Live]
             IncomeHist[t,:] = pLvlNow*TranShkNow
             
-            MrkvArrayCombined = combineIndepMrkvArrays(self.ESImrkvArray[t_cycle],self.HealthMrkvArray[t_cycle])
+            # Make sample MrkvArray to get now and next state counts
+            ESImrkvFunc = self.ESImrkvFunc[t_cycle]
+            MrkvArrayCombined = combineIndepMrkvArrays(ESImrkvFunc(1.0), self.HealthMrkvArray[t_cycle])
             StateCountNow = MrkvArrayCombined.shape[0]
             StateCountNext = MrkvArrayCombined.shape[1]
 
@@ -1779,6 +1781,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
             
             # Draw health states for survivors next period
             MrkvNext = copy(MrkvNow)
+            MrkvArrayBig
             for h in range(StateCountNow):
                 these = MrkvNow == h
                 events = np.arange(StateCountNext)
