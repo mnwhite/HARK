@@ -805,8 +805,8 @@ if __name__ == '__main__':
     import matplotlib.pyplot as plt
     mystr = lambda number : "{:.4f}".format(number)
     
-    test_obj_func = True
-    test_one_type = False
+    test_obj_func = False
+    test_one_type = True
     test_static_model = False
     
     if test_obj_func:
@@ -1004,7 +1004,7 @@ if __name__ == '__main__':
         print('Making the agents took ' + mystr(t_end-t_start) + ' seconds.')
         
         t_start = clock()
-        MyType = MyMarket.agents[2]
+        MyType = MyMarket.agents[1]
         MyType.del_soln = False
         MyType.do_sim = True
         MyType.verbosity = 10

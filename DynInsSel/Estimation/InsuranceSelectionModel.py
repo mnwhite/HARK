@@ -1732,13 +1732,14 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
             
             # Make sample MrkvArray to get now and next state counts
             ESImrkvFunc = self.ESImrkvFunc[t_cycle]
-            MrkvArrayCombined = combineIndepMrkvArrays(ESImrkvFunc(1.0), self.HealthMrkvArray[t_cycle])
+            ESImrkv_example = ESImrkvFunc(1.0)[0,:,:]
+            MrkvArrayCombined = combineIndepMrkvArrays(ESImrkv_example, self.HealthMrkvArray[t_cycle])
             StateCountNow = MrkvArrayCombined.shape[0]
             StateCountNext = MrkvArrayCombined.shape[1]
-
-            # Get income and medical shocks for next period in each health state
-            PermShkNow[:] = np.nan
-            TranShkNow[:] = np.nan
+            ESIcountNow = ESImrkv_example.shape[0]
+            ESIcountNext = ESImrkv_example.shape[1]
+            
+            # Get medical shocks for this period in each health state
             MedShkNow[:] = np.nan
             DevNow[:] = np.nan
             HealthNow = np.mod(MrkvNow,5)
@@ -1746,15 +1747,6 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
                 these = HealthNow == h
                 N = np.sum(these)
                 
-                # First income shocks for next period...
-                IncDstn_temp = self.IncomeDstn[t_cycle][h]
-                probs = IncDstn_temp[0]
-                events = np.arange(probs.size)
-                idx = drawDiscrete(N=N,P=probs,X=events,seed=self.RNG.randint(0,2**31-1)).astype(int)
-                PermShkNow[these] = IncDstn_temp[1][idx]
-                TranShkNow[these] = IncDstn_temp[2][idx]
-
-                # Then medical needs shocks for this period...
                 sigma = self.MedShkStd[t_cycle][h]
                 mu = self.MedShkAvg[t_cycle][h]
                 DevDraws = drawNormal(N=N,seed=self.RNG.randint(0,2**31-1))
@@ -1766,11 +1758,6 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
                 DevNow[these] = DevDraws
                 MedShkNow[these] = MedShkDraws
                 
-            # Store the medical shocks and update permanent income for next period
-            MedShkHist[t,:] = MedShkNow
-            DevHist[t,:] = DevNow
-            pLvlNow = self.pLvlNextFunc[t](pLvlNow)*PermShkNow
-            
             # Determine which agents die based on their mortality probability
             LivPrb_temp = self.LivPrb[t_cycle][HealthNow[Live]]
             LivPrbAll = np.zeros_like(pLvlNow)
@@ -1779,18 +1766,53 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
             Dead = MortShkNow > LivPrbAll
             Live = np.logical_not(Dead)
             
-            # Draw health states for survivors next period
-            MrkvNext = copy(MrkvNow)
-            MrkvArrayBig
-            for h in range(StateCountNow):
-                these = MrkvNow == h
-                events = np.arange(StateCountNext)
+            # Draw health states for next period
+            HealthNext = copy(MrkvNow)
+            for h in range(5):
+                these = HealthNow == h
+                events = np.arange(5)
                 N = np.sum(these)
-                probs = MrkvArrayCombined[h,:]
+                probs = self.HealthMrkvArray[t_cycle][h,:]
                 idx = drawDiscrete(N=N,P=probs,X=events,seed=self.RNG.randint(0,2**31-1)).astype(int)
-                MrkvNext[these] = idx
+                HealthNext[these] = idx
+            
+            # Draw ESI states for next period
+            ESInow = MrkvNow / 5
+            ESInext = copy(ESInow)
+            ESImrkvArray_all = self.ESImrkvFunc[t_cycle](pLvlNow)
+            for j in range(ESIcountNow):
+                these = ESInow == j
+                N = np.sum(these)
+                
+                ESIcumProbs = np.cumsum(ESImrkvArray_all[these,j,:],axis=1)
+                ESIshkNow = drawUniform(N=N,seed=self.RNG.randint(0,2**31-1))
+                ESIshkNow_tiled = np.tile(np.reshape(ESIshkNow,(N,1)),(1,ESIcountNext))
+                ESInext[these] = np.sum(ESIshkNow_tiled > ESIcumProbs, axis=1)
+            
+            # Combine health and ESI states to get overall next Markov state
+            MrkvNext = 5*ESInext + HealthNext
             MrkvNext[Dead] = -1 # Actually kill those who died
             MrkvNow = MrkvNext  # Next period will soon be this period
+
+            # Get income shocks for next period in each health state
+            PermShkNow[:] = np.nan
+            TranShkNow[:] = np.nan
+            for h in range(5):
+                these = HealthNext == h
+                N = np.sum(these)
+                
+                # First income shocks for next period...
+                IncDstn_temp = self.IncomeDstn[t_cycle][h]
+                probs = IncDstn_temp[0]
+                events = np.arange(probs.size)
+                idx = drawDiscrete(N=N,P=probs,X=events,seed=self.RNG.randint(0,2**31-1)).astype(int)
+                PermShkNow[these] = IncDstn_temp[1][idx]
+                TranShkNow[these] = IncDstn_temp[2][idx]
+            
+            # Store the medical shocks and update permanent income for next period
+            MedShkHist[t,:] = MedShkNow
+            DevHist[t,:] = DevNow
+            pLvlNow = self.pLvlNextFunc[t](pLvlNow)*PermShkNow
             
             # Advance t_cycle or reset it to zero
             t_cycle += 1
