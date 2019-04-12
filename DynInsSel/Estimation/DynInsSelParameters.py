@@ -578,7 +578,7 @@ test_param_vec = np.array([0.92, # DiscFac
                            8.0,  # MedCurve 
                           -8.5,  # ChoiceShkMag in log
                            0.2,  # Cfloor
-                         -1.51,  # SubsidyAvg
+                         -1.45,  # SubsidyAvg
                           -3.0,  # SubsidyWidth scaler
                           10.0,  # BequestShift shifter for bequest motive
                            3.0,  # BequestScale scale of bequest motive

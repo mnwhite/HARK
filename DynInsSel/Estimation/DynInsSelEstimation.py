@@ -11,7 +11,7 @@ from time import clock
 from copy import copy, deepcopy
 from InsuranceSelectionModel import MedInsuranceContract, InsSelConsumerType, InsSelStaticConsumerType
 from LoadDataMoments import data_moments, moment_weights
-from ActuarialRules import flatActuarialRule, InsuranceMarket
+from ActuarialRules import flatActuarialRule, ageHealthRatedActuarialRule, InsuranceMarket
 from HARKinterpolation import ConstantFunction
 from HARKutilities import getPercentiles
 from HARKparallel import multiThreadCommands, multiThreadCommandsFake
@@ -613,7 +613,7 @@ def makeDynInsSelType(CRRAcon,MedCurve,DiscFac,BequestShift,BequestScale,Cfloor,
         WorkingContractList.append(MedInsuranceContract(ConstantFunction(0.0),0.00,0.1,Params.MedPrice))
     
     IndMarketContractList = [MedInsuranceContract(ConstantFunction(0.0),0.0,1.0,Params.MedPrice),
-                             MedInsuranceContract(ConstantFunction(Premium),0.3,Copay,Params.MedPrice)]
+                             MedInsuranceContract(ConstantFunction(Premium),0.2,Copay,Params.MedPrice)]
     RetiredContractList = [MedInsuranceContract(ConstantFunction(0.0),0.0,0.12,Params.MedPrice)]
     
     ContractList = []
@@ -655,7 +655,7 @@ def makeMarketFromParams(ParamArray,ActuarialRule,PremiumArray,InsChoiceType):
         Function representing how insurance market outcomes are translated into
         premiums.  Will be installed as the millRule attribute of the market.
     PremiumArray : np.array
-        Array of premiums for insurance contracts for workers. Irrelevant if InsChoiceBool = False.
+        Array of premiums for insurance contracts for workers. Irrelevant if InsChoiceType = 0.
         Should be of size (60,ContractCount).
     InsChoiceType : int
         Indicator for the extent of consumer choice over contracts.  0 --> no choice,
@@ -669,7 +669,7 @@ def makeMarketFromParams(ParamArray,ActuarialRule,PremiumArray,InsChoiceType):
         
     Returns
     -------
-    InsuranceMarket : DynInsSelMarket
+    ThisMarket : DynInsSelMarket
         Market to be used in estimation or counterfactual, with agents filled in.
     '''
     # Unpack the parameters
@@ -726,7 +726,7 @@ def makeMarketFromParams(ParamArray,ActuarialRule,PremiumArray,InsChoiceType):
     ThisMarket.moment_weights = moment_weights
     ThisMarket.PremiumFuncs_init = PremiumFuncs_init
     ThisMarket.LoadFacESI = 1.2 # Make this an input later
-    ThisMarket.LoadFacIMI = 1.6
+    ThisMarket.LoadFacIMI = 1.8
     
     # Have each agent type in the market inherit the premium functions
     for this_agent in ThisMarket.agents:
@@ -741,12 +741,12 @@ def objectiveFunction(Parameters):
     The objective function for the estimation.  Makes and solves a market, then
     returns the weighted sum of moment differences between simulation and data.
     '''
-    EvalType = 1  # Number of times to do a static search for eqbm premiums
+    EvalType = 2  # Number of times to do a static search for eqbm premiums
     InsChoice = 1 # Extent of insurance choice
     TestPremiums = True # Whether to start with the test premium level
     
     if TestPremiums:
-        PremiumArray = np.array([0.3260, 0.0, 0.0, 0.0, 0.0])
+        PremiumArray = np.array([0.3500, 0.0, 0.0, 0.0, 0.0])
     else:
         PremiumArray = Params.PremiumsLast
     
@@ -755,7 +755,9 @@ def objectiveFunction(Parameters):
     Premiums_init = np.tile(np.reshape(Premiums_init_short,(1,Premiums_init_short.size)),(40,1))
     Premiums_init = np.vstack((Premiums_init,np.zeros((20,ContractCounts[InsChoice]+1))))
     
-    MyMarket = makeMarketFromParams(Parameters,flatActuarialRule,Premiums_init,InsChoice)
+    MyMarket = makeMarketFromParams(Parameters,ageHealthRatedActuarialRule,Premiums_init,InsChoice)
+    MyMarket.HealthGroups = [[0,1],[2,3,4]]
+    MyMarket.ExcludedGroups = [True,False]
     MyMarket.Premiums = Premiums_init_short
     multiThreadCommandsFake(MyMarket.agents,['update()','makeShockHistory()'])
     MyMarket.getIncomeQuintiles()
@@ -961,7 +963,7 @@ if __name__ == '__main__':
         TestPremiums = True # Whether to start with the test premium level
         
         if TestPremiums:
-            PremiumArray = np.array([0.3260, 0.0, 0.0, 0.0, 0.0])
+            PremiumArray = np.array([0.3500, 0.0, 0.0, 0.0, 0.0])
         else:
             PremiumArray = Params.PremiumsLast
         
@@ -970,7 +972,11 @@ if __name__ == '__main__':
         Premiums_init = np.tile(np.reshape(Premiums_init_short,(1,Premiums_init_short.size)),(40,1))
         Premiums_init = np.vstack((Premiums_init,np.zeros((20,ContractCounts[InsChoice]+1))))
         
-        MyMarket = makeMarketFromParams(Params.test_param_vec,flatActuarialRule,Premiums_init,InsChoice)
+        MyMarket = makeMarketFromParams(Parameters,ageHealthRatedActuarialRule,Premiums_init,InsChoice)
+        MyMarket.ExcludedHealth = [True,False,False,False,False]
+        MyMarket.HealthGroups = [[0],[1,2,3,4]]
+        MyMarket.ExcludedGroups = [True,False]
+        MyMarket.AgeBandLimit = 6.0
         MyMarket.Premiums = Premiums_init_short
         multiThreadCommandsFake(MyMarket.agents,['update()','makeShockHistory()'])
         MyMarket.getIncomeQuintiles()

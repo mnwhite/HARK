@@ -7,6 +7,7 @@ from HARKcore import HARKobject, Market
 from HARKinterpolation import ConstantFunction
 from copy import copy, deepcopy
 from scipy.optimize import brentq
+import matplotlib.pyplot as plt
 
 # This is a trivial "container" class
 class PremiumFuncsContainer(HARKobject):
@@ -149,10 +150,10 @@ def flatActuarialRule(self,ExpInsPay,ExpBuyers):
     IMIpremiumArray : np.array
         3D array with individual market insurance premiums, ordered (age,health,contract).
     '''
-    HealthCount = ExpInsPay[0].shape[1]
-    MaxContracts = ExpInsPay[0].shape[2]
     ExpInsPayX = np.stack(ExpInsPay,axis=3)[:40,:5,:,:] # This is collected in reap_vars
     ExpBuyersX = np.stack(ExpBuyers,axis=3)[:40,:5,:,:] # This is collected in reap_vars
+    HealthCount = ExpInsPayX.shape[1]
+    MaxContracts = ExpInsPayX.shape[2]
     # Order of indices: age, health, contract, type
     
     TotalInsPay = np.sum(ExpInsPayX,axis=(0,1,3))
@@ -164,6 +165,7 @@ def flatActuarialRule(self,ExpInsPay,ExpBuyers):
     except:
         IMIpremiums = self.LoadFacIMI*AvgInsPay
     IMIpremiums[0] = 0.0 # First contract is always free
+    self.IMIpremiums = IMIpremiums
     print('IMI premiums: ' + str(IMIpremiums[1]) + ', insured rate: ' + str(TotalBuyers[1]/np.sum(TotalBuyers)))
     
     IMIpremiumArray = np.tile(np.reshape(IMIpremiums,(1,1,MaxContracts)),(40,HealthCount,1))
@@ -185,43 +187,30 @@ def exclusionaryActuarialRule(self,ExpInsPay,ExpBuyers):
     -------
     None
     '''
-    ExcludedStates = [True, False, False, False, False] # Make this a market attribute later
-    InfPrice = 10000.0
+    ExcludedHealth = self.ExcludedHealth
+    InfPrem = 10000.0
     
-    StateCount = ExpInsPay[0].shape[1]
-    MaxContracts = ExpInsPay[0].shape[2]
-    ExpInsPayX = np.stack(ExpInsPay,axis=3) # This is collected in reap_vars
-    ExpBuyersX = np.stack(ExpBuyers,axis=3) # This is collected in reap_vars
+    ExpInsPayX = np.stack(ExpInsPay,axis=3)[:40,:5,:,:] # This is collected in reap_vars
+    ExpBuyersX = np.stack(ExpBuyers,axis=3)[:40,:5,:,:] # This is collected in reap_vars
+    HealthCount = ExpInsPayX.shape[1]
+    MaxContracts = ExpInsPayX.shape[2]
     # Order of indices: age, health, contract, type
     
-    TotalInsPay = np.sum(ExpInsPayX[0:40,:,:,:],axis=(0,1,3))
-    TotalBuyers = np.sum(ExpBuyersX[0:40,:,:,:],axis=(0,1,3))
+    TotalInsPay = np.sum(ExpInsPayX,axis=(0,1,3))
+    TotalBuyers = np.sum(ExpBuyersX,axis=(0,1,3))
     AvgInsPay   = TotalInsPay/TotalBuyers
     DampingFac = 0.2
     try:
-        NewPremiums = (1.0-DampingFac)*self.LoadFac*AvgInsPay + DampingFac*self.Premiums
+        IMIpremiums = (1.0-DampingFac)*self.LoadFacIMI*AvgInsPay + DampingFac*self.IMIpremiums
     except:
-        NewPremiums = self.LoadFac*AvgInsPay    
-    NewPremiums[0] = 0.0 # First contract is always free
-    print(NewPremiums)
-    print(TotalBuyers/np.sum(TotalBuyers))
-
-    PremiumFuncBase = []
-    for z in range(MaxContracts):
-        PremiumFuncBase.append(ConstantFunction(NewPremiums[z]))
-    ZeroPremiumFunc = ConstantFunction(0.0)
-    ExcludedPremiumFuncs = [ZeroPremiumFunc] + (MaxContracts-1)*[ConstantFunction(InfPrice)]
+        IMIpremiums = self.LoadFacIMI*AvgInsPay
+    IMIpremiums[0] = 0.0 # First contract is always free
+    self.IMIpremiums = IMIpremiums
+    print('IMI premiums: ' + str(IMIpremiums[1]) + ', insured rate: ' + str(TotalBuyers[1]/np.sum(TotalBuyers)))
     
-    WorkingAgePremiumFuncs = []
-    for j in range(StateCount):
-        if ExcludedStates[j]:
-            WorkingAgePremiumFuncs.append(ExcludedPremiumFuncs)
-        else:
-            WorkingAgePremiumFuncs.append(PremiumFuncBase)
-        
-    PremiumFuncs = 40*[WorkingAgePremiumFuncs] + 20*[StateCount*[MaxContracts*[ZeroPremiumFunc]]]
-    self.Premiums = NewPremiums    
-    return PremiumFuncsContainer(PremiumFuncs)
+    IMIpremiumArray = np.tile(np.reshape(IMIpremiums,(1,1,MaxContracts)),(40,HealthCount,1))
+    IMIpremiumArray[:,ExcludedHealth,1:] = InfPrem
+    return IMIpremiumArray
 
     
 def healthRatedActuarialRule(self,ExpInsPay,ExpBuyers):
@@ -238,46 +227,37 @@ def healthRatedActuarialRule(self,ExpInsPay,ExpBuyers):
     -------
     None
     '''
-    HealthStateGroups = self.HealthStateGroups
-    GroupCount = len(HealthStateGroups)
+    HealthGroups = self.HealthGroups
+    GroupCount = len(HealthGroups)
     
-    StateCount = ExpInsPay[0].shape[1]
-    MaxContracts = ExpInsPay[0].shape[2]
-    ExpInsPayX = np.stack(ExpInsPay,axis=3) # This is collected in reap_vars
-    ExpBuyersX = np.stack(ExpBuyers,axis=3) # This is collected in reap_vars
+    ExpInsPayX = np.stack(ExpInsPay,axis=3)[:40,:5,:,:] # This is collected in reap_vars
+    ExpBuyersX = np.stack(ExpBuyers,axis=3)[:40,:5,:,:] # This is collected in reap_vars
+    HealthCount = ExpInsPayX.shape[1]
+    MaxContracts = ExpInsPayX.shape[2]
     # Order of indices: age, health, contract, type
     
-    PremiumArray = np.zeros((MaxContracts,GroupCount)) + np.nan
+    PremiumArray = np.zeros((GroupCount,MaxContracts)) + np.nan
     for g in range(GroupCount):
-        these = HealthStateGroups[g]
-        TotalInsPay = np.sum(ExpInsPayX[0:40,these,:,:],axis=(0,1,3))
-        TotalBuyers = np.sum(ExpBuyersX[0:40,these,:,:],axis=(0,1,3))
+        these = HealthGroups[g]
+        TotalInsPay = np.sum(ExpInsPayX[:,these,:,:],axis=(0,1,3))
+        TotalBuyers = np.sum(ExpBuyersX[:,these,:,:],axis=(0,1,3))
         AvgInsPay   = TotalInsPay/TotalBuyers
         DampingFac = 0.2
         try:
-            NewPremiums = (1.0-DampingFac)*self.LoadFac*AvgInsPay + DampingFac*self.Premiums[:,HealthStateGroups[g][0]]
+            NewPremiums = (1.0-DampingFac)*self.LoadFacIMI*AvgInsPay + DampingFac*self.IMIpremiums[:,g]
         except:
-            NewPremiums = self.LoadFac*AvgInsPay
+            NewPremiums = self.LoadFacIMI*AvgInsPay
         NewPremiums[0] = 0.0 # First contract is always free
-        PremiumArray[:,g] = NewPremiums
-        print(NewPremiums)
-        
-    TotalInsPay = np.sum(ExpInsPayX[0:40,:,:,:],axis=(0,1,3))
-    TotalBuyers = np.sum(ExpBuyersX[0:40,:,:,:],axis=(0,1,3))
-    print(TotalBuyers/np.sum(TotalBuyers))
+        PremiumArray[g,:] = NewPremiums
+        print('IMI premiums group ' + str(g) + ': ' + str(NewPremiums[1]) + ', insured rate: ' + str(TotalBuyers[1]/np.sum(TotalBuyers)))
+    self.IMIpremiums = PremiumArray
 
-    WorkingAgePremiumFuncs = StateCount*[None]
+    IMIpremiums = np.zeros((40,HealthCount,MaxContracts))
     for g in range(GroupCount):
-        TempList = []
-        for z in range(MaxContracts):
-            TempList.append(ConstantFunction(PremiumArray[z,g]))
-        for j in HealthStateGroups[g]:
-            WorkingAgePremiumFuncs[j] = TempList
-    ZeroPremiumFunc = ConstantFunction(0.0)
-        
-    PremiumFuncs = 40*[WorkingAgePremiumFuncs] + 20*[StateCount*[MaxContracts*[ZeroPremiumFunc]]]
-    self.Premiums = PremiumArray    
-    return PremiumFuncsContainer(PremiumFuncs)
+        for h in HealthGroups[g]:
+            for t in range(40):
+                IMIpremiums[t,h,:] = PremiumArray[g,:]
+    return IMIpremiums
     
 
 def ageHealthRatedActuarialRule(self,ExpInsPay,ExpBuyers):
@@ -295,57 +275,46 @@ def ageHealthRatedActuarialRule(self,ExpInsPay,ExpBuyers):
     -------
     None
     '''
-    #HealthStateGroups = [[0],[1],[2],[3],[4]]
-    #HealthStateGroups = [[0,1],[2,3,4]]
-    #HealthStateGroups = [[0,1,2,3,4]]
-    HealthStateGroups = self.HealthStateGroups
-    GroupCount = len(HealthStateGroups)
+    HealthGroups = self.HealthGroups
+    ExcludedGroups = self.ExcludedGroups
+    GroupCount = len(HealthGroups)
     AgeCount = 40
+    InfPrem = 10000.
     
-    StateCount = ExpInsPay[0].shape[1]
-    MaxContracts = ExpInsPay[0].shape[2]
-    ExpInsPayX = np.stack(ExpInsPay,axis=3) # This is collected in reap_vars
-    ExpBuyersX = np.stack(ExpBuyers,axis=3) # This is collected in reap_vars
+    ExpInsPayX = np.stack(ExpInsPay,axis=3)[:40,:5,:,:] # This is collected in reap_vars
+    ExpBuyersX = np.stack(ExpBuyers,axis=3)[:40,:5,:,:] # This is collected in reap_vars
+    HealthCount = ExpInsPayX.shape[1]
+    MaxContracts = ExpInsPayX.shape[2]
     # Order of indices: age, health, contract, type
     
-    PremiumArray = np.zeros((MaxContracts,GroupCount,AgeCount)) + np.nan
-    temp = []
-    for z in range(MaxContracts):
-        temp.append(None)
-    temp2 = []
-    for j in range(StateCount):
-        temp2.append(copy(temp))
-    WorkingAgePremiumFuncs = []
-    for a in range(AgeCount):
-        WorkingAgePremiumFuncs.append(deepcopy(temp2))
-    
+    PremiumArray = np.zeros((AgeCount,GroupCount,MaxContracts)) + np.nan
     for g in range(GroupCount):
-        these = HealthStateGroups[g]
-        TotalInsPay = np.sum(ExpInsPayX[0:40,these,:,:],axis=(1,3)) # Don't sum across ages
-        TotalBuyers = np.sum(ExpBuyersX[0:40,these,:,:],axis=(1,3)) # Don't sum across ages
+        these = HealthGroups[g]
+        TotalInsPay = np.sum(ExpInsPayX[:,these,:,:],axis=(1,3)) # Don't sum across ages
+        TotalBuyers = np.sum(ExpBuyersX[:,these,:,:],axis=(1,3)) # Don't sum across ages
         AvgInsPay   = TotalInsPay/TotalBuyers
         DampingFac = 0.2
         try:
-            NewPremiums = (1.0-DampingFac)*self.LoadFac*AvgInsPay + DampingFac*self.Premiums[:,HealthStateGroups[g][0],:]
+            NewPremiums = (1.0-DampingFac)*self.LoadFacIMI*AvgInsPay + DampingFac*self.IMIpremiums[:,g,:]
         except:
-            NewPremiums = self.LoadFac*AvgInsPay
+            NewPremiums = self.LoadFacIMI*AvgInsPay
         NewPremiums[:,0] = 0.0 # First contract is always free
-        PremiumArray[:,g,:] = NewPremiums.transpose()
-
-        for z in range(MaxContracts):
-            for a in range(AgeCount):
-                ThisPremiumFunc = ConstantFunction(PremiumArray[z,g,a])
-                for j in HealthStateGroups[g]:
-                    WorkingAgePremiumFuncs[a][j][z] = ThisPremiumFunc
+        PremiumArray[:,g,:] = NewPremiums
+    self.IMIpremiums = PremiumArray
+    
+    TotalBuyers = np.sum(ExpBuyersX[:,these,:,:],axis=(0,1,3))
+    print('IMI insured rate: ' + str(TotalBuyers[1]/np.sum(TotalBuyers)))
+    #plt.plot(PremiumArray[:,:,1])
+    #plt.show()
         
-    TotalInsPay = np.sum(ExpInsPayX[0:40,:,:,:],axis=(0,1,3))
-    TotalBuyers = np.sum(ExpBuyersX[0:40,:,:,:],axis=(0,1,3))
-    print(TotalBuyers/np.sum(TotalBuyers))
-
-    ZeroPremiumFunc = ConstantFunction(0.0)        
-    PremiumFuncs = WorkingAgePremiumFuncs + 20*[StateCount*[MaxContracts*[ZeroPremiumFunc]]]
-    self.Premiums = PremiumArray    
-    return PremiumFuncsContainer(PremiumFuncs)
+    IMIpremiums = np.zeros((AgeCount,HealthCount,MaxContracts))
+    for g in range(GroupCount):
+        for h in HealthGroups[g]:
+            if ExcludedGroups[g]:
+                IMIpremiums[:,h,1:] = InfPrem
+            else:
+                IMIpremiums[:,h,:] = PremiumArray[:,g,:]
+    return IMIpremiums
     
 
 def ageRatedActuarialRule(self,ExpInsPay,ExpBuyers):
@@ -367,47 +336,33 @@ def ageRatedActuarialRule(self,ExpInsPay,ExpBuyers):
     AgeBandLimit = self.AgeBandLimit
     AgeCount = 40
     
-    StateCount = ExpInsPay[0].shape[1]
-    MaxContracts = ExpInsPay[0].shape[2]
-    ExpInsPayX = np.stack(ExpInsPay,axis=3) # This is collected in reap_vars
-    ExpBuyersX = np.stack(ExpBuyers,axis=3) # This is collected in reap_vars
+    ExpInsPayX = np.stack(ExpInsPay,axis=3)[:40,:5,:,:] # This is collected in reap_vars
+    ExpBuyersX = np.stack(ExpBuyers,axis=3)[:40,:5,:,:] # This is collected in reap_vars
+    HealthCount = ExpInsPayX.shape[1]
+    MaxContracts = ExpInsPayX.shape[2]
     # Order of indices: age, health, contract, type
     
-    PremiumArray = np.zeros((MaxContracts,AgeCount))
-    temp = []
-    for z in range(MaxContracts):
-        temp.append(None)
-    temp2 = []
-    for j in range(StateCount):
-        temp2.append(copy(temp))
-    WorkingAgePremiumFuncs = []
-    for a in range(AgeCount):
-        WorkingAgePremiumFuncs.append(deepcopy(temp2))
-    
-    TotalInsPay = np.sum(ExpInsPayX[0:40,:,:,:],axis=(0,1,3))
-    TotalBuyers = np.sum(ExpBuyersX[0:40,:,:,:],axis=(0,1,3))
+    PremiumArray = np.zeros((AgeCount,MaxContracts)) + np.nan
+    TotalInsPay = np.sum(ExpInsPayX,axis=(0,1,3))
+    TotalBuyers = np.sum(ExpBuyersX,axis=(0,1,3))
     TotalBuyersByAge = np.sum(ExpBuyersX[0:40,:,:,:],axis=(1,3)) # Don't sum across ages
     AvgInsPay = TotalInsPay/TotalBuyers
-    print(TotalBuyers/np.sum(TotalBuyers))
     
     AgeRatingScale = 1.0 + (AgeBandLimit-1.0)*AgeRatingFunc(np.arange(AgeCount,dtype=float))
     for z in range(1,MaxContracts):
         def tempFunc(BasePremium):
             PremiumVec = BasePremium*AgeRatingScale
             TotalRevenue = np.sum(PremiumVec*TotalBuyersByAge[:,z])
-            return TotalRevenue/TotalInsPay[z] - self.LoadFac
+            return TotalRevenue/TotalInsPay[z] - self.LoadFacIMI
         
-        NewPremium = brentq(tempFunc,0.0,AvgInsPay[z]*self.LoadFac)
-        PremiumArray[z,:] = NewPremium*AgeRatingScale
-        
-    for z in range(MaxContracts):
-        for a in range(AgeCount):
-            ThisPremiumFunc = ConstantFunction(PremiumArray[z,a])
-            for j in range(StateCount):
-                WorkingAgePremiumFuncs[a][j][z] = ThisPremiumFunc
-
-    ZeroPremiumFunc = ConstantFunction(0.0)        
-    PremiumFuncs = WorkingAgePremiumFuncs + 20*[StateCount*[MaxContracts*[ZeroPremiumFunc]]]
-    self.Premiums = PremiumArray    
-    return PremiumFuncsContainer(PremiumFuncs)
+        NewPremium = brentq(tempFunc,0.0,AvgInsPay[z]*self.LoadFacIMI)
+        PremiumArray[:,z] = NewPremium*AgeRatingScale
+    self.IMIpremiums = PremiumArray
+    
+    print('IMI insured rate: ' + str(TotalBuyers[1]/np.sum(TotalBuyers)))
+    #plt.plot(PremiumArray[:,1])
+    #plt.show()
+    
+    IMIpremiums = np.tile(np.reshape(PremiumArray,(AgeCount,1,MaxContracts)),(1,HealthCount,1))
+    return IMIpremiums
     
