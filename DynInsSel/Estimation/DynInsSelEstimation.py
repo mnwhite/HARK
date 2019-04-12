@@ -11,10 +11,9 @@ from time import clock
 from copy import copy, deepcopy
 from InsuranceSelectionModel import MedInsuranceContract, InsSelConsumerType, InsSelStaticConsumerType
 from LoadDataMoments import data_moments, moment_weights
-from ActuarialRules import flatActuarialRule
+from ActuarialRules import flatActuarialRule, InsuranceMarket
 from HARKinterpolation import ConstantFunction
-from HARKutilities import approxUniform, getPercentiles, approxMeanOneLognormal
-from HARKcore import Market, HARKobject
+from HARKutilities import getPercentiles
 from HARKparallel import multiThreadCommands, multiThreadCommandsFake
 
 if Params.StaticBool:
@@ -194,35 +193,12 @@ class DynInsSelType(BaseType):
         self.pCompHist = pCompHist
         self.pComp_invalid = out_of_bounds
         
-
-# This is a trivial "container" class
-class PremiumFuncsContainer(HARKobject):
-    distance_criteria = ['PremiumFuncs']
-    
-    def __init__(self,PremiumFuncs):
-        self.PremiumFuncs = PremiumFuncs
         
-        
-class DynInsSelMarket(Market):
+class DynInsSelMarket(InsuranceMarket):
     '''
-    A class for representing the "insurance economy" with many agent types.
+    A class for representing the "insurance economy" with many agent types, with
+    methods specific to the DynInsSel project: calculating simulated moments, etc.
     '''
-
-    def __init__(self,ActuarialRule):
-        Market.__init__(self,agents=[],sow_vars=['PremiumFuncs'],reap_vars=['ExpInsPay','ExpBuyers'],
-                        const_vars=[],track_vars=['Premiums'],dyn_vars=['PremiumFuncs'],
-                        millRule=None,calcDynamics=None,act_T=10,tolerance=0.0001)
-        self.ActuarialRule = ActuarialRule
-
-    def millRule(self,ExpInsPay,ExpBuyers):
-        temp = self.ActuarialRule(self,ExpInsPay,ExpBuyers)
-        return temp
-        
-    def calcDynamics(self,Premiums):
-        self.PremiumFuncs_init = self.PremiumFuncs # So that these are used on the next iteration
-        return PremiumFuncsContainer(self.PremiumFuncs)
-        
-    
     def calcSimulatedMoments(self):
         '''
         Calculates all simulated moments for this economy's AgentTypes.
@@ -702,9 +678,7 @@ def makeMarketFromParams(ParamArray,ActuarialRule,PremiumArray,InsChoiceType):
     MedCurve = ParamArray[2]
     ChoiceShkMag = np.exp(ParamArray[3])
     Cfloor = ParamArray[4]
-    #SubsidyZeroRate = 1.0/(1.0 + np.exp(ParamArray[4]))
     EmpContr = np.exp(ParamArray[5])
-    #SubsidyWidth = SubsidyAvg/(1.0 + np.exp(ParamArray[6]))
     BequestShift = ParamArray[7]
     BequestScale = ParamArray[8]
     MedShkMeanAgeParams = ParamArray[9:14]
@@ -746,19 +720,20 @@ def makeMarketFromParams(ParamArray,ActuarialRule,PremiumArray,InsChoiceType):
         PremiumFuncs_init.append(PremiumFuncs_t)
 
     # Make a market to hold the agents
-    InsuranceMarket = DynInsSelMarket(ActuarialRule)
-    InsuranceMarket.agents = AgentList
-    InsuranceMarket.data_moments = data_moments
-    InsuranceMarket.moment_weights = moment_weights
-    InsuranceMarket.PremiumFuncs_init = PremiumFuncs_init
-    InsuranceMarket.LoadFac = 1.2 # Make this an input later
+    ThisMarket = DynInsSelMarket(ActuarialRule)
+    ThisMarket.agents = AgentList
+    ThisMarket.data_moments = data_moments
+    ThisMarket.moment_weights = moment_weights
+    ThisMarket.PremiumFuncs_init = PremiumFuncs_init
+    ThisMarket.LoadFacESI = 1.2 # Make this an input later
+    ThisMarket.LoadFacIMI = 1.6
     
     # Have each agent type in the market inherit the premium functions
-    for this_agent in InsuranceMarket.agents:
+    for this_agent in ThisMarket.agents:
         setattr(this_agent,'PremiumFuncs',PremiumFuncs_init)
     
     #print('I made an insurance market with ' + str(len(InsuranceMarket.agents)) + ' agent types!')
-    return InsuranceMarket
+    return ThisMarket
 
 
 def objectiveFunction(Parameters):
@@ -766,7 +741,7 @@ def objectiveFunction(Parameters):
     The objective function for the estimation.  Makes and solves a market, then
     returns the weighted sum of moment differences between simulation and data.
     '''
-    EvalType = 0  # Number of times to do a static search for eqbm premiums
+    EvalType = 1  # Number of times to do a static search for eqbm premiums
     InsChoice = 1 # Extent of insurance choice
     TestPremiums = True # Whether to start with the test premium level
     

@@ -3,7 +3,7 @@ This module contains various "actuarial rules" for calculating premium functions
 from the medical costs of consumers.
 '''
 import numpy as np
-from HARKcore import HARKobject
+from HARKcore import HARKobject, Market
 from HARKinterpolation import ConstantFunction
 from copy import copy, deepcopy
 from scipy.optimize import brentq
@@ -14,47 +14,160 @@ class PremiumFuncsContainer(HARKobject):
     
     def __init__(self,PremiumFuncs):
         self.PremiumFuncs = PremiumFuncs
+        
+        
+class InsuranceMarket(Market):
+    '''
+    A class for representing the "insurance economy" with many agent types.
+    '''
+
+    def __init__(self,ActuarialRule):
+        Market.__init__(self,agents=[],sow_vars=['PremiumFuncs'],
+                        reap_vars=['ExpInsPay','ExpBuyers'],
+                        const_vars=[],
+                        track_vars=['Premiums'],
+                        dyn_vars=['PremiumFuncs'],
+                        millRule=None,calcDynamics=None,act_T=10,tolerance=0.0001)
+        self.IMIactuarialRule = ActuarialRule
+
+    def millRule(self,ExpInsPay,ExpBuyers):
+        IMIpremiums     = self.IMIactuarialRule(self,ExpInsPay,ExpBuyers)
+        ESIpremiums     = self.ESIactuarialRule(ExpInsPay,ExpBuyers)
+        return self.combineESIandIMIpremiums(IMIpremiums,ESIpremiums)
+        
+    def calcDynamics(self,Premiums):
+        self.PremiumFuncs_init = self.PremiumFuncs # So that these are used on the next iteration
+        return PremiumFuncsContainer(self.PremiumFuncs)
+        
+        
+    def combineESIandIMIpremiums(self,IMIpremiums,ESIpremiums):
+        '''
+        Combine a 1D array of ESI premiums with a 3D array of IMIpremiums
+        (age,health,contract) to generate a triple nested list of PremiumFuncs.
+        
+        Parameters
+        ----------
+        IMIpremiums : np.array
+            3D array of individual market insurance premiums, organized as (age,health,contract).
+        ESIpremiums : np.array
+            1D array of employer sponsored insurance premiums, assumed to be constant
+            across age and health status.  First element should always be zero.
+        
+        Returns
+        -------
+        CombinedPremiumFuncs : PremiumFuncsContainer
+            Single object with a triple nested list of PremiumFuncs.
+        '''
+        HealthCount = IMIpremiums.shape[1] # This should always be 5
+        ESIcontractCount = ESIpremiums.size
+        IMIcontractCount = IMIpremiums.shape[2]
+        PremiumFuncs_all = []
+        
+        # Construct PremiumsFuncs for ESI contracts
+        ESIpremiumFuncs = []
+        for z in range(ESIcontractCount):
+            ESIpremiumFuncs.append(ConstantFunction(ESIpremiums[z]))
+        ESIpremiumFuncs_all_health = 2*HealthCount*[ESIpremiumFuncs]
+        
+        # Construct PremiumFuncs for IMI contracts and combine with IMI contracts
+        for t in range(40):
+            PremiumFuncs_t = []
+            for h in range(HealthCount):
+                PremiumFuncsIMI = []
+                for z in range(IMIcontractCount):
+                    PremiumFuncsIMI.append(ConstantFunction(IMIpremiums[t,h,z]))
+                PremiumFuncs_t.append(PremiumFuncsIMI)
+            PremiumFuncs_t += ESIpremiumFuncs_all_health # Add on ESI premiums to end
+            PremiumFuncs_all.append(PremiumFuncs_t)
+            
+        # Add on retired premiums, which are trivial
+        RetPremiumFuncs = [ConstantFunction(0.0)]
+        RetPremiumFuncs_all_health = HealthCount*[RetPremiumFuncs]
+        for t in range(20):
+            PremiumFuncs_all.append(RetPremiumFuncs_all_health)
+            
+        # Package the PremiumFuncs into a single object and return it
+        CombinedPremiumFuncs = PremiumFuncsContainer(PremiumFuncs_all)
+        return CombinedPremiumFuncs
+        
+
+    def ESIactuarialRule(self, ExpInsPay, ExpBuyers):
+        '''
+        Constructs a nested list of premium functions that have a constant value,
+        based on the average medical needs of all contract buyers in the ESI market.
+        
+        Parameters
+        ----------
+        ExpInsPay : np.array
+            4D array of expected insurance benefits paid by age-mrkv-contract-type.
+        ExpBuyers : np.array
+            4D array of expected contract buyers by age-mrkv-contract-type.
+        
+        Returns
+        -------
+        ESIpremiums np.array
+            Vector with newly calculated ESI premiums; first element is always zero.
+        '''
+        ExpInsPayX = np.stack(ExpInsPay,axis=3)[:40,5:,:,:] # This is collected in reap_vars
+        ExpBuyersX = np.stack(ExpBuyers,axis=3)[:40,5:,:,:] # This is collected in reap_vars
+        # Order of indices: age, health, contract, type
+        
+        TotalInsPay = np.sum(ExpInsPayX,axis=(0,1,3))
+        TotalBuyers = np.sum(ExpBuyersX,axis=(0,1,3))
+        AvgInsPay   = TotalInsPay/TotalBuyers
+        
+        DampingFac = 0.2
+        try:
+            ESIpremiums = (1.0-DampingFac)*self.LoadFacESI*AvgInsPay + DampingFac*self.ESIpremiums
+        except:
+            ESIpremiums = self.LoadFacESI*AvgInsPay
+        ESIpremiums[0] = 0.0 # First contract is always free
+        
+        print('ESI premiums: ' + str(ESIpremiums[1]) + ', insured rate: ' + str(TotalBuyers[1]/np.sum(TotalBuyers)))
+        return ESIpremiums
+        
+
+###############################################################################
+## Define various individual market insurance actuarial rules #################      
+###############################################################################
 
 def flatActuarialRule(self,ExpInsPay,ExpBuyers):
     '''
     Constructs a nested list of premium functions that have a constant value,
-    based on the average medical needs of all contract buyers.  This is the
-    baseline for the ESI market.
+    based on the average medical needs of all contract buyers in the IMI market.
+    This emulates how the ESI market works.
     
     Parameters
     ----------
-    None
+    ExpInsPay : np.array
+        4D array of expected insurance benefits paid by age-health-contract-type.
+    ExpBuyers : np.array
+        4D array of expected contract buyers by age-health-contract-type.
     
     Returns
     -------
-    None
+    IMIpremiumArray : np.array
+        3D array with individual market insurance premiums, ordered (age,health,contract).
     '''
-    StateCount = ExpInsPay[0].shape[1]
+    HealthCount = ExpInsPay[0].shape[1]
     MaxContracts = ExpInsPay[0].shape[2]
-    ExpInsPayX = np.stack(ExpInsPay,axis=3) # This is collected in reap_vars
-    ExpBuyersX = np.stack(ExpBuyers,axis=3) # This is collected in reap_vars
+    ExpInsPayX = np.stack(ExpInsPay,axis=3)[:40,:5,:,:] # This is collected in reap_vars
+    ExpBuyersX = np.stack(ExpBuyers,axis=3)[:40,:5,:,:] # This is collected in reap_vars
     # Order of indices: age, health, contract, type
     
-    TotalInsPay = np.sum(ExpInsPayX[0:40,:,:,:],axis=(0,1,3))
-    TotalBuyers = np.sum(ExpBuyersX[0:40,:,:,:],axis=(0,1,3))
+    TotalInsPay = np.sum(ExpInsPayX,axis=(0,1,3))
+    TotalBuyers = np.sum(ExpBuyersX,axis=(0,1,3))
     AvgInsPay   = TotalInsPay/TotalBuyers
     DampingFac = 0.2
     try:
-        NewPremiums = (1.0-DampingFac)*self.LoadFac*AvgInsPay + DampingFac*self.Premiums
+        IMIpremiums = (1.0-DampingFac)*self.LoadFacIMI*AvgInsPay + DampingFac*self.IMIpremiums
     except:
-        NewPremiums = self.LoadFac*AvgInsPay
-    NewPremiums[0] = 0.0 # First contract is always free
-    print(NewPremiums)
-    print(TotalBuyers/np.sum(TotalBuyers))
-
-    PremiumFuncBase = []
-    for z in range(MaxContracts):
-        PremiumFuncBase.append(ConstantFunction(NewPremiums[z]))
-    ZeroPremiumFunc = ConstantFunction(0.0)
-        
-    PremiumFuncs = 40*[StateCount*[PremiumFuncBase]] + 20*[StateCount*[MaxContracts*[ZeroPremiumFunc]]]
-    self.Premiums = NewPremiums    
-    return PremiumFuncsContainer(PremiumFuncs)
+        IMIpremiums = self.LoadFacIMI*AvgInsPay
+    IMIpremiums[0] = 0.0 # First contract is always free
+    print('IMI premiums: ' + str(IMIpremiums[1]) + ', insured rate: ' + str(TotalBuyers[1]/np.sum(TotalBuyers)))
+    
+    IMIpremiumArray = np.tile(np.reshape(IMIpremiums,(1,1,MaxContracts)),(40,HealthCount,1))
+    return IMIpremiumArray
 
 
 def exclusionaryActuarialRule(self,ExpInsPay,ExpBuyers):
@@ -125,9 +238,6 @@ def healthRatedActuarialRule(self,ExpInsPay,ExpBuyers):
     -------
     None
     '''
-    #HealthStateGroups = [[0],[1],[2],[3],[4]]
-    #HealthStateGroups = [[0,1],[2,3,4]]
-    #HealthStateGroups = [[0,1,2,3,4]]
     HealthStateGroups = self.HealthStateGroups
     GroupCount = len(HealthStateGroups)
     

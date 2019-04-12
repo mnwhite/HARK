@@ -1478,6 +1478,56 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
             self.timeRev()
             
             
+    def updateFirstOrderConditionFuncs(self):
+        '''
+        Constructs the time-invariant attributes CRRAmed and bFromxFunc.
+        
+        Parameters
+        ----------
+        None
+        
+        Returns
+        -------
+        None
+        '''
+        rho = self.CRRA
+        nu  = self.MedCurve*rho
+        self.bFromxFunc = TransConShareFunc(rho,nu)
+        self.CRRAmed = nu
+        self.addToTimeInv('CRRAmed','bFromxFunc')
+        
+        
+    def updateEffPriceList(self):
+        '''
+        Constructs the time-varying attribute EffPriceList.
+        
+        Parameters
+        ----------
+        None
+        
+        Returns
+        -------
+        None
+        '''
+        orig_time = self.time_flow
+        self.timeFwd()
+        
+        EffPriceList = [] # Effective medical care price for each period in the cycle
+        for t in range(self.T_cycle):
+            MedPrice = self.MedPrice[t]
+            EffPriceList_temp = [MedPrice]
+            for h in range(len(self.ContractList[t])):
+                for Contract in self.ContractList[t][h]:
+                    EffPriceList_temp.append(Contract.Copay*MedPrice)
+            EffPriceList.append(np.unique(np.array(EffPriceList_temp)))
+            
+        self.EffPriceList = EffPriceList
+        self.addToTimeVary('EffPriceList')
+        
+        if not orig_time:
+            self.timeRev()
+            
+
     def installPremiumFuncs(self):
         '''
         Applies the premium data in the attribute PremiumFuncs to the contracts
@@ -1540,56 +1590,6 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
                         
         # Restore the original flow of time
         if not time_orig:
-            self.timeRev()
-            
-            
-    def updateFirstOrderConditionFuncs(self):
-        '''
-        Constructs the time-invariant attributes CRRAmed and bFromxFunc.
-        
-        Parameters
-        ----------
-        None
-        
-        Returns
-        -------
-        None
-        '''
-        rho = self.CRRA
-        nu  = self.MedCurve*rho
-        self.bFromxFunc = TransConShareFunc(rho,nu)
-        self.CRRAmed = nu
-        self.addToTimeInv('CRRAmed','bFromxFunc')
-        
-        
-    def updateEffPriceList(self):
-        '''
-        Constructs the time-varying attribute EffPriceList.
-        
-        Parameters
-        ----------
-        None
-        
-        Returns
-        -------
-        None
-        '''
-        orig_time = self.time_flow
-        self.timeFwd()
-        
-        EffPriceList = [] # Effective medical care price for each period in the cycle
-        for t in range(self.T_cycle):
-            MedPrice = self.MedPrice[t]
-            EffPriceList_temp = [MedPrice]
-            for h in range(len(self.ContractList[t])):
-                for Contract in self.ContractList[t][h]:
-                    EffPriceList_temp.append(Contract.Copay*MedPrice)
-            EffPriceList.append(np.unique(np.array(EffPriceList_temp)))
-            
-        self.EffPriceList = EffPriceList
-        self.addToTimeVary('EffPriceList')
-        
-        if not orig_time:
             self.timeRev()
         
         
@@ -1978,8 +1978,6 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         premium functions used to solve the dynamic problem.  This function is
         called as part of marketAction to find "statically stable" premiums.
         
-        THIS NEEDS TO BE REWRITTEN
-        
         Parameters
         ----------
         None
@@ -1988,12 +1986,18 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         -------
         None
         '''
-        StateCount = self.MrkvArray[0].shape[0]
-        MaxContracts = max([max([len(self.ContractList[t][h]) for h in range(StateCount)]) for t in range(self.T_sim)])
-        ExpInsPay = np.zeros((self.T_sim,StateCount,MaxContracts))
-        ExpBuyers = np.zeros((self.T_sim,StateCount,MaxContracts))
+        MaxContracts = 0
+        MaxStateCount = 0
+        for t in range(self.T_sim):
+            StateCount = len(self.ContractList[t])
+            MaxContracts = np.maximum(MaxContracts,max([len(self.ContractList[t][h]) for h in range(StateCount)]))
+            MaxStateCount = np.maximum(MaxStateCount,StateCount)
+        
+        ExpInsPay = np.zeros((self.T_sim,MaxStateCount,MaxContracts))
+        ExpBuyers = np.zeros((self.T_sim,MaxStateCount,MaxContracts))
         
         for t in range(self.T_sim):
+            StateCount = len(self.ContractList[t])
             random_choice = self.ChoiceShkMag[t] > 0.
             for j in range(StateCount):
                 these = self.MrkvHist[t,:] == j
@@ -2005,7 +2009,10 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
                 AV_array = np.zeros((N,Z))
                 for z in range(Z):
                     if z > 0:
-                        Premium = np.maximum(self.PremiumFuncs[t][j][z](mLvl,pLvl) - self.PremiumSubsidy, 0.0) # net premium
+                        if j > 10:
+                            Premium = np.maximum(self.PremiumFuncs[t][j][z](mLvl,pLvl) - self.PremiumSubsidy, 0.0) # premium net of employer contribution
+                        else:
+                            Premium = self.PremiumFuncs[t][j][z](mLvl,pLvl) # Full premium
                     else:
                         Premium = self.UninsuredPremiumFunc(mLvl,pLvl)
                     mLvl_temp = mLvl - Premium
