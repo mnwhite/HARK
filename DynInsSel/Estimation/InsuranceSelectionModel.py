@@ -1546,6 +1546,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         '''
         if not hasattr(self,'PremiumFuncs'):
             return # Don't do anything if PremiumFuncs hasn't been defined
+        
         time_orig = self.time_flow
         self.timeFwd()
         T_retire = 40 # For determining whether to apply subsidy
@@ -1733,9 +1734,6 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
             # Make sample MrkvArray to get now and next state counts
             ESImrkvFunc = self.ESImrkvFunc[t_cycle]
             ESImrkv_example = ESImrkvFunc(1.0)[0,:,:]
-            MrkvArrayCombined = combineIndepMrkvArrays(ESImrkv_example, self.HealthMrkvArray[t_cycle])
-            StateCountNow = MrkvArrayCombined.shape[0]
-            StateCountNext = MrkvArrayCombined.shape[1]
             ESIcountNow = ESImrkv_example.shape[0]
             ESIcountNext = ESImrkv_example.shape[1]
             

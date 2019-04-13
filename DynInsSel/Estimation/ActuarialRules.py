@@ -26,17 +26,19 @@ class InsuranceMarket(Market):
         Market.__init__(self,agents=[],sow_vars=['PremiumFuncs'],
                         reap_vars=['ExpInsPay','ExpBuyers'],
                         const_vars=[],
-                        track_vars=['Premiums'],
+                        track_vars=['ESIpremiums','IMIpremiums'],
                         dyn_vars=['PremiumFuncs'],
                         millRule=None,calcDynamics=None,act_T=10,tolerance=0.0001)
         self.IMIactuarialRule = ActuarialRule
 
     def millRule(self,ExpInsPay,ExpBuyers):
-        IMIpremiums     = self.IMIactuarialRule(self,ExpInsPay,ExpBuyers)
-        ESIpremiums     = self.ESIactuarialRule(ExpInsPay,ExpBuyers)
+        IMIpremiums      = self.IMIactuarialRule(self,ExpInsPay,ExpBuyers)
+        ESIpremiums      = self.ESIactuarialRule(ExpInsPay,ExpBuyers)
+        self.IMIpremiums = IMIpremiums
+        self.ESIpremiums = ESIpremiums
         return self.combineESIandIMIpremiums(IMIpremiums,ESIpremiums)
         
-    def calcDynamics(self,Premiums):
+    def calcDynamics(self):
         self.PremiumFuncs_init = self.PremiumFuncs # So that these are used on the next iteration
         return PremiumFuncsContainer(self.PremiumFuncs)
         
@@ -81,11 +83,11 @@ class InsuranceMarket(Market):
             PremiumFuncs_t += ESIpremiumFuncs_all_health # Add on ESI premiums to end
             PremiumFuncs_all.append(PremiumFuncs_t)
             
-        # Add on retired premiums, which are trivial
-        RetPremiumFuncs = [ConstantFunction(0.0)]
-        RetPremiumFuncs_all_health = HealthCount*[RetPremiumFuncs]
-        for t in range(20):
-            PremiumFuncs_all.append(RetPremiumFuncs_all_health)
+#        # Add on retired premiums, which are trivial
+#        RetPremiumFuncs = [ConstantFunction(0.0)]
+#        RetPremiumFuncs_all_health = HealthCount*[RetPremiumFuncs]
+#        for t in range(20):
+#            PremiumFuncs_all.append(RetPremiumFuncs_all_health)
             
         # Package the PremiumFuncs into a single object and return it
         CombinedPremiumFuncs = PremiumFuncsContainer(PremiumFuncs_all)
@@ -181,11 +183,15 @@ def exclusionaryActuarialRule(self,ExpInsPay,ExpBuyers):
     
     Parameters
     ----------
-    None
+    ExpInsPay : np.array
+        4D array of expected insurance benefits paid by age-health-contract-type.
+    ExpBuyers : np.array
+        4D array of expected contract buyers by age-health-contract-type.
     
     Returns
     -------
-    None
+    IMIpremiumArray : np.array
+        3D array with individual market insurance premiums, ordered (age,health,contract).
     '''
     ExcludedHealth = self.ExcludedHealth
     InfPrem = 10000.0
@@ -221,11 +227,15 @@ def healthRatedActuarialRule(self,ExpInsPay,ExpBuyers):
     
     Parameters
     ----------
-    None
+    ExpInsPay : np.array
+        4D array of expected insurance benefits paid by age-health-contract-type.
+    ExpBuyers : np.array
+        4D array of expected contract buyers by age-health-contract-type.
     
     Returns
     -------
-    None
+    IMIpremiumArray : np.array
+        3D array with individual market insurance premiums, ordered (age,health,contract).
     '''
     HealthGroups = self.HealthGroups
     GroupCount = len(HealthGroups)
@@ -269,11 +279,15 @@ def ageHealthRatedActuarialRule(self,ExpInsPay,ExpBuyers):
     
     Parameters
     ----------
-    None
+    ExpInsPay : np.array
+        4D array of expected insurance benefits paid by age-health-contract-type.
+    ExpBuyers : np.array
+        4D array of expected contract buyers by age-health-contract-type.
     
     Returns
     -------
-    None
+    IMIpremiumArray : np.array
+        3D array with individual market insurance premiums, ordered (age,health,contract).
     '''
     HealthGroups = self.HealthGroups
     ExcludedGroups = self.ExcludedGroups
@@ -326,11 +340,15 @@ def ageRatedActuarialRule(self,ExpInsPay,ExpBuyers):
     
     Parameters
     ----------
-    None
+    ExpInsPay : np.array
+        4D array of expected insurance benefits paid by age-health-contract-type.
+    ExpBuyers : np.array
+        4D array of expected contract buyers by age-health-contract-type.
     
     Returns
     -------
-    None
+    IMIpremiumArray : np.array
+        3D array with individual market insurance premiums, ordered (age,health,contract).
     '''
     AgeRatingFunc = lambda x : (np.exp(x/40.*3.0)-1.)/(np.exp(3.0)-1.)
     AgeBandLimit = self.AgeBandLimit

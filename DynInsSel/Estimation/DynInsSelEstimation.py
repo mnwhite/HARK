@@ -643,7 +643,7 @@ def makeDynInsSelType(CRRAcon,MedCurve,DiscFac,BequestShift,BequestScale,Cfloor,
     return ThisType
         
 
-def makeMarketFromParams(ParamArray,ActuarialRule,PremiumArray,InsChoiceType):
+def makeMarketFromParams(ParamArray,ActuarialRule,IMIpremiumArray,ESIpremiumArray,InsChoiceType):
     '''
     Makes a list of DynInsSelTypes, to be used for estimation.
     
@@ -654,9 +654,12 @@ def makeMarketFromParams(ParamArray,ActuarialRule,PremiumArray,InsChoiceType):
     ActuarialRule : function
         Function representing how insurance market outcomes are translated into
         premiums.  Will be installed as the millRule attribute of the market.
-    PremiumArray : np.array
-        Array of premiums for insurance contracts for workers. Irrelevant if InsChoiceType = 0.
-        Should be of size (60,ContractCount).
+    IMIpremiumArray : np.array
+        Array of premiums for IMI contracts for workers. Irrelevant if InsChoiceType = 0.
+        Should be of size (40,ContractCount).
+    ESIpremiumArray : np.array
+        Array of premiums for ESI contracts for workers. Irrelevant if InsChoiceType = 0.
+        Should be of size (40,ContractCount).
     InsChoiceType : int
         Indicator for the extent of consumer choice over contracts.  0 --> no choice,
         1 --> one non-null contract, 2 --> five non-null contracts.
@@ -694,7 +697,7 @@ def makeMarketFromParams(ParamArray,ActuarialRule,PremiumArray,InsChoiceType):
     
     # Make the list of types
     AgentList = []
-    ContractCount = PremiumArray.shape[1]
+    ContractCount = ESIpremiumArray.shape[1]
     i = 0
     for k in range(3):
         ThisAgent = makeDynInsSelType(CRRAcon,MedCurve,DiscFac,BequestShift,BequestScale,Cfloor,ChoiceShkMag,MedShkMeanAgeParams,
@@ -711,12 +714,27 @@ def makeMarketFromParams(ParamArray,ActuarialRule,PremiumArray,InsChoiceType):
             
     # Construct an initial nested list for premiums
     PremiumFuncs_init = []
-    StateCount = 15
-    for t in range(60):
-        PremiumFuncBase_t = []
-        for z in range(ContractCount):
-            PremiumFuncBase_t.append(ConstantFunction(PremiumArray[t,z]))
-        PremiumFuncs_t = StateCount*[PremiumFuncBase_t]
+    HealthCount = 5
+    for t in range(40):
+        PremiumFuncs_t = []
+        for h in range(HealthCount):
+            PremiumFuncs_this_health = []
+            for z in range(ContractCount):
+                if z > 0:
+                    if h == 0:
+                        Prem = 10000.
+                    else:
+                        Prem = IMIpremiumArray[t]
+                else:
+                    Prem = 0.
+                PremiumFuncs_this_health.append(ConstantFunction(Prem))
+            PremiumFuncs_t.append(PremiumFuncs_this_health)
+        for h in range(10):
+            PremiumFuncs_this_health = []
+            for z in range(ContractCount):
+                Prem = ESIpremiumArray[t,z]
+                PremiumFuncs_this_health.append(ConstantFunction(Prem))
+            PremiumFuncs_t.append(PremiumFuncs_this_health)
         PremiumFuncs_init.append(PremiumFuncs_t)
 
     # Make a market to hold the agents
@@ -741,24 +759,24 @@ def objectiveFunction(Parameters):
     The objective function for the estimation.  Makes and solves a market, then
     returns the weighted sum of moment differences between simulation and data.
     '''
-    EvalType = 2  # Number of times to do a static search for eqbm premiums
-    InsChoice = 1 # Extent of insurance choice
+    EvalType  = 0  # Number of times to do a static search for eqbm premiums
+    InsChoice = 1  # Extent of insurance choice
     TestPremiums = True # Whether to start with the test premium level
     
     if TestPremiums:
-        PremiumArray = np.array([0.3500, 0.0, 0.0, 0.0, 0.0])
+        ESIpremiums = np.array([0.3500, 0.0, 0.0, 0.0, 0.0])
     else:
-        PremiumArray = Params.PremiumsLast
+        ESIpremiums = Params.PremiumsLast
+    IMIpremiums_init = Params.IMIpremiums
     
     ContractCounts = [0,1,5] # plus one
-    Premiums_init_short = np.concatenate((np.array([0.]),PremiumArray[0:ContractCounts[InsChoice]]))
-    Premiums_init = np.tile(np.reshape(Premiums_init_short,(1,Premiums_init_short.size)),(40,1))
-    Premiums_init = np.vstack((Premiums_init,np.zeros((20,ContractCounts[InsChoice]+1))))
+    ESIpremiums_init_short = np.concatenate((np.array([0.]),ESIpremiums[0:ContractCounts[InsChoice]]))
+    ESIpremiums_init = np.tile(np.reshape(ESIpremiums_init_short,(1,ESIpremiums_init_short.size)),(40,1))
     
-    MyMarket = makeMarketFromParams(Parameters,ageHealthRatedActuarialRule,Premiums_init,InsChoice)
-    MyMarket.HealthGroups = [[0,1],[2,3,4]]
+    MyMarket = makeMarketFromParams(Parameters,ageHealthRatedActuarialRule,IMIpremiums_init,ESIpremiums_init,InsChoice)
+    MyMarket.HealthGroups = [[0],[1,2,3,4]]
     MyMarket.ExcludedGroups = [True,False]
-    MyMarket.Premiums = Premiums_init_short
+    MyMarket.ESIpremiums = ESIpremiums_init_short
     multiThreadCommandsFake(MyMarket.agents,['update()','makeShockHistory()'])
     MyMarket.getIncomeQuintiles()
     multiThreadCommandsFake(MyMarket.agents,['makeIncBoolArray()'])
@@ -768,7 +786,7 @@ def objectiveFunction(Parameters):
     else:
         MyMarket.max_loops = EvalType
         MyMarket.solve()
-        Params.PremiumsLast = MyMarket.Premiums
+        Params.PremiumsLast = MyMarket.ESIpremiums
 
     MyMarket.calcSimulatedMoments()
     MyMarket.combineSimulatedMoments()
@@ -957,27 +975,24 @@ if __name__ == '__main__':
 
     if test_one_type:
         # This block of code is for testing one type of agent
-        t_start = clock()
-        EvalType = 0 # Number of times to do a static search for eqbm premiums
-        InsChoice = 1 # Extent of insurance choice
+        EvalType  = 0  # Number of times to do a static search for eqbm premiums
+        InsChoice = 1  # Extent of insurance choice
         TestPremiums = True # Whether to start with the test premium level
         
         if TestPremiums:
-            PremiumArray = np.array([0.3500, 0.0, 0.0, 0.0, 0.0])
+            ESIpremiums = np.array([0.3500, 0.0, 0.0, 0.0, 0.0])
         else:
-            PremiumArray = Params.PremiumsLast
+            ESIpremiums = Params.PremiumsLast
+        IMIpremiums_init = Params.IMIpremiums
         
         ContractCounts = [0,1,5] # plus one
-        Premiums_init_short = np.concatenate((np.array([0.]),PremiumArray[0:ContractCounts[InsChoice]]))
-        Premiums_init = np.tile(np.reshape(Premiums_init_short,(1,Premiums_init_short.size)),(40,1))
-        Premiums_init = np.vstack((Premiums_init,np.zeros((20,ContractCounts[InsChoice]+1))))
+        ESIpremiums_init_short = np.concatenate((np.array([0.]),ESIpremiums[0:ContractCounts[InsChoice]]))
+        ESIpremiums_init = np.tile(np.reshape(ESIpremiums_init_short,(1,ESIpremiums_init_short.size)),(40,1))
         
-        MyMarket = makeMarketFromParams(Parameters,ageHealthRatedActuarialRule,Premiums_init,InsChoice)
-        MyMarket.ExcludedHealth = [True,False,False,False,False]
+        MyMarket = makeMarketFromParams(Params.test_param_vec,ageHealthRatedActuarialRule,IMIpremiums_init,ESIpremiums_init,InsChoice)
         MyMarket.HealthGroups = [[0],[1,2,3,4]]
         MyMarket.ExcludedGroups = [True,False]
-        MyMarket.AgeBandLimit = 6.0
-        MyMarket.Premiums = Premiums_init_short
+        MyMarket.ESIpremiums = ESIpremiums_init_short
         multiThreadCommandsFake(MyMarket.agents,['update()','makeShockHistory()'])
         MyMarket.getIncomeQuintiles()
         multiThreadCommandsFake(MyMarket.agents,['makeIncBoolArray()'])

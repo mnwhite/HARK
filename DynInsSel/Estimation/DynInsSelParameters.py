@@ -510,6 +510,16 @@ ZeroMedShkPrb_list = []
 for j in range(ZeroMedShkPrb.shape[0]):
     ZeroMedShkPrb_list.append(ZeroMedShkPrb[j,:])
     
+# Individual market premiums by age
+IMIpremiums = np.array([0.09804065,  0.10160312,  0.10679188,  0.11414141,  0.12179881,
+        0.12933721,  0.13692324,  0.14718682,  0.15610496,  0.16303906,
+        0.17176878,  0.18088154,  0.19275761,  0.20543707,  0.21784414,
+        0.22992838,  0.24912044,  0.26272242,  0.28036747,  0.29614799,
+        0.32057784,  0.34157316,  0.3663727 ,  0.39420383,  0.42431918,
+        0.45971936,  0.49516964,  0.52966942,  0.57428115,  0.62233242,
+        0.67305882,  0.71556969,  0.76530375,  0.8166973 ,  0.87805069,
+        0.9330498 ,  0.98741618,  1.07911588,  1.13456156,  1.19509528])
+    
 # Make a basic dictionary with parameters that never change
 BasicDictionary = { 'Rfree': Rfree,
                     'LivPrb': LivPrb,
@@ -578,7 +588,7 @@ test_param_vec = np.array([0.92, # DiscFac
                            8.0,  # MedCurve 
                           -8.5,  # ChoiceShkMag in log
                            0.2,  # Cfloor
-                         -1.45,  # SubsidyAvg
+                         -1.41,  # SubsidyAvg
                           -3.0,  # SubsidyWidth scaler
                           10.0,  # BequestShift shifter for bequest motive
                            3.0,  # BequestScale scale of bequest motive
