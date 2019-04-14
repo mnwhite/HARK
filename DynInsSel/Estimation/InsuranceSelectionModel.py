@@ -749,7 +749,7 @@ def solveInsuranceSelectionStatic(solution_next,MedShkDstn,CRRA,MedPrice,xLvlGri
     return solution_now
 
 
-def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMedShkPrb,MedShkCount,DevMin,DevMax,
+def solveInsuranceSelection(solution_next,IncomeDstn,TaxFunc,MedShkAvg,MedShkStd,ZeroMedShkPrb,MedShkCount,DevMin,DevMax,
                             LivPrb,DiscFac,CRRA,CRRAmed,BequestScale,BequestShift,Cfloor,Rfree,MedPrice,pLvlNextFunc,BoroCnstArt,aXtraGrid,
                             pLvlGrid,ContractList,HealthMrkvArray,ESImrkvFunc,ChoiceShkMag,EffPriceList,bFromxFunc,verbosity):
     '''
@@ -765,6 +765,8 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
         and the one immediately following (in solution_next). Order: event
         probabilities, permanent shocks, transitory shocks.  Distribution
         depends on discrete health state.
+    TaxFunc : function
+        Function that yields income taxes as a function of labor income.
     MedShkAvg : [float]
         Mean value of log medical need shocks by health state.
     MedShkStd : [float]
@@ -888,7 +890,8 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
         TranShkVals_tiled = np.tile(np.reshape(TranShkValsNext,(1,IncShkCount)),(pLvlCount,1))
         pLvlGrid_tiled = np.tile(np.reshape(pLvlGrid,(pLvlCount,1)),(1,IncShkCount))
         pLvlNext = np.maximum(pLvlNextFunc(pLvlGrid_tiled)*PermShkVals_tiled,pLvlGrid[0])
-        aLvlMin_cand = (solution_next.mLvlMin(pLvlNext) - pLvlNext*TranShkVals_tiled)/Rfree[h_alt]
+        yLvlNext = pLvlNext*TranShkVals_tiled
+        aLvlMin_cand = (solution_next.mLvlMin(pLvlNext) - (yLvlNext - TaxFunc(yLvlNext)))/Rfree[h_alt]
         aLvlMinCond[:,h] = np.min(aLvlMin_cand,axis=1)
     aLvlMin = np.max(aLvlMinCond,axis=1) # Actual minimum acceptable assets is largest among health-conditional values
     
@@ -942,7 +945,8 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
         
         # Make grids of future states conditional on achieving this future health state
         pLvlNext = pLvlNextFunc(pLvlNow_tiled)*PermShkVals_tiled
-        mLvlNext = Rfree[h_alt]*aLvlNow_tiled + pLvlNext*TranShkVals_tiled
+        yLvlNext = pLvlNext*TranShkVals_tiled
+        mLvlNext = Rfree[h_alt]*aLvlNow_tiled + yLvlNext - TaxFunc(yLvlNext)
         
         # Calculate future-health-conditional end of period value and marginal value
         tempv = vFuncNext(mLvlNext,pLvlNext)
@@ -1369,7 +1373,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
     medical care.
     '''
     _time_vary = ['DiscFac','LivPrb','MedPrice','ContractList','HealthMrkvArray','ESImrkvFunc','ChoiceShkMag','MedShkAvg','MedShkStd','ZeroMedShkPrb']
-    _time_inv = ['CRRA','CRRAmed','BequestScale','BequestShift','Cfloor','Rfree','BoroCnstArt','MedShkCount','DevMin','DevMax','verbosity']
+    _time_inv = ['CRRA','CRRAmed','BequestScale','BequestShift','Cfloor','Rfree','BoroCnstArt','MedShkCount','DevMin','DevMax','TaxFunc','verbosity']
     
     def __init__(self,cycles=1,time_flow=True,**kwds):
         '''
@@ -1711,6 +1715,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         MedShkHist = np.zeros((T_sim,N_agents)) + np.nan
         DevHist = np.zeros((T_sim,N_agents)) + np.nan
         IncomeHist = np.zeros((T_sim,N_agents)) + np.nan
+        IncAboveThreshHist = np.zeros((T_sim,N_agents))
 
         # Loop through each period of life and update histories
         t_cycle=0
@@ -1724,6 +1729,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
             pLvlHist[t,Live] = pLvlNow[Live]
             MrkvHist[t,Live] = MrkvNow[Live]
             IncomeHist[t,:] = pLvlNow*TranShkNow
+            IncAboveThreshHist[t,Live] = np.maximum(IncomeHist[t,Live] - self.TaxFunc.threshold, 0.0)
             
             # Make sample MrkvArray to get now and next state counts
             ESImrkvFunc = self.ESImrkvFunc[t_cycle]
@@ -1826,6 +1832,8 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         self.MedShkHist = MedShkHist
         self.DevHist = DevHist
         self.PrefShkHist = PrefShkHist
+        self.IncAboveThreshHist = IncAboveThreshHist
+        self.IncAboveThreshByAge = np.sum(IncAboveThreshHist,axis=1)
 
     def simBirth(self,which_agents):
         '''
@@ -1861,23 +1869,27 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         StateCountNow = MrkvArrayCombined.shape[0]
         
         # Get state and shock vectors for (living) agents
-        #mLvlNow = self.aLvlNow + self.IncomeHist[t,:]
         MrkvNow = self.MrkvHist[t,:]
         pLvlNow = self.pLvlHist[t,:]
         MedShkNow = self.MedShkHist[t,:]
         DevNow = self.DevHist[t,:]
         PrefShkNow = self.PrefShkHist[t,:]
-
-        # Loop through each health state and get agents' controls
+        
+        # Initialize simulation output arrays
         mLvlNow = np.zeros_like(self.aLvlNow) + np.nan
+        aLvlNow = np.zeros_like(mLvlNow) + np.nan
+        TaxNow = np.zeros_like(mLvlNow)
         cLvlNow = np.zeros_like(mLvlNow) + np.nan
         OOPnow = np.zeros_like(mLvlNow) + np.nan
         MedLvlNow = np.zeros_like(mLvlNow) + np.nan
         xLvlNow = np.zeros_like(mLvlNow) + np.nan
         PremNow = np.zeros_like(mLvlNow) + np.nan
-        EffPriceNow = np.zeros_like(mLvlNow) + np.nan
-        CritDevNow = np.zeros_like(mLvlNow) + np.nan
+        WelfareNow = np.zeros_like(mLvlNow)
+        SubsidyNow = np.zeros_like(mLvlNow)
+        MedicareNow = np.zeros_like(mLvlNow)
         ContractNow = -np.ones(self.AgentCount,dtype=int)
+
+        # Loop through each health state and get agents' controls
         for h in range(StateCountNow):
             h_alt = h % 5
             these = MrkvNow == h
@@ -1886,7 +1898,11 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
             
             # Get the pseudo-inverse value of holding each contract
             vNvrs_temp = np.zeros((N,Z)) + np.nan
-            m_temp = self.aLvlNow[these]*self.Rfree[h_alt] + self.IncomeHist[t,these]
+            y_temp = self.IncomeHist[t,these]
+            Dev_temp = DevNow[these]
+            Shk_temp = MedShkNow[these]
+            tax_temp = self.TaxFunc(y_temp)
+            m_temp = self.aLvlNow[these]*self.Rfree[h_alt] + y_temp - tax_temp
             p_temp = pLvlNow[these]
             for z in range(Z):                
                 Premium = self.solution[t].policyFunc[h][z].Contract.Premium(m_temp,p_temp)
@@ -1910,56 +1926,85 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
             
             # For each contract, get controls for agents who buy it
             c_temp = np.zeros(N) + np.nan
+            a_temp = np.zeros(N) + np.nan
             Med_temp = np.zeros(N) + np.nan
             x_temp = np.zeros(N) + np.nan
             OOP_temp = np.zeros(N) + np.nan
             Prem_temp = np.zeros(N) + np.nan
-            CritDev_temp = np.zeros(N) + np.nan
-            EffPrice_temp = np.zeros(N) + np.nan
-            Dev_temp = DevNow[these]
+            Welfare_temp = np.zeros(N) + np.nan
+            Medicare_temp = np.zeros(N) + np.nan
             
             for z in range(Z):
-                ThisContract = self.solution[t].policyFunc[h][z].Contract
+                ThisPolicy = self.solution[t].policyFunc[h][z]
+                ThisContract = ThisPolicy.Contract
                 idx = z_choice == z
-                Prem_temp[idx] = ThisContract.Premium(m_temp[idx],p_temp[idx])
-                m_minus_prem = m_temp[idx]-Prem_temp[idx]
-                c_temp[idx],Med_temp[idx],x_temp[idx] = self.solution[t].policyFunc[h][z](m_minus_prem,p_temp[idx],Dev_temp[idx])
-                CritDev_temp[idx] = self.solution[t].CritDevFunc[h][z](m_minus_prem,p_temp[idx])
-                EffPrice_temp[idx] = ThisContract.Copay*MedPriceNow
-                Med_temp[idx] = np.maximum(Med_temp[idx],0.0) # Prevents numeric glitching
-                OOP_temp[idx] = self.solution[t].policyFunc[h][z].Contract.OOPfunc(Med_temp[idx])            
+                Prem_here = ThisContract.Premium(m_temp[idx],p_temp[idx])
+                m_minus_prem = m_temp[idx] - Prem_here
+                c_here,Med_here,x_here = ThisPolicy(m_minus_prem,p_temp[idx],Dev_temp[idx])
+                CritDev_here = self.solution[t].CritDevFunc[h][z](m_minus_prem,p_temp[idx])
+                EffPrice = ThisContract.Copay*MedPriceNow
+                OOP_here = ThisContract.OOPfunc(Med_here)
+                a_here = m_minus_prem - x_here
+                Welfare_here = np.zeros_like(a_here)
+                
+                # Handle the consumption floor
+                NeedHelp = Dev_temp[idx] > CritDev_here
+                a_here[NeedHelp]   = 0.
+                c_here[NeedHelp]   = self.Cfloor
+                Med_here[NeedHelp] = self.Cfloor**(self.CRRA/self.CRRAmed)*EffPrice**(-1./self.CRRAmed)*Shk_temp[idx][NeedHelp]**(1.-1/self.CRRAmed)
+                OOP_here[NeedHelp] = np.maximum(m_minus_prem[NeedHelp] - self.Cfloor, 0.0)
+                paid_by_insurance = MedPriceNow*Med_here - ThisContract.OOPfunc(Med_here)
+                if z == 0:
+                    Medicare_here = paid_by_insurance # If contract 0 paid out benefits, it's Medicare
+                else:
+                    Medicare_here = np.zeros_like(a_here)
+                
+                total_bundle_cost = self.Cfloor + MedPriceNow*Med_here[NeedHelp]
+                Welfare_here[NeedHelp] = total_bundle_cost - m_minus_prem[NeedHelp] - paid_by_insurance[NeedHelp]
+                
+                # Store the values for this insurance contract in the temporary arrays for this Markov state
+                c_temp[idx] = c_here
+                a_temp[idx] = a_here
+                Med_temp[idx] = np.maximum(Med_here,0.0) # Prevents numeric glitching
+                x_temp[idx] = x_here
+                OOP_temp[idx] = OOP_here
+                Prem_temp[idx] = Prem_here
+                Welfare_temp[idx] = Welfare_here
+                Medicare_temp[idx] = Medicare_here
             
             # Store the controls for this health
             mLvlNow[these] = m_temp
+            aLvlNow[these] = a_temp
+            TaxNow[these] = tax_temp
             cLvlNow[these] = c_temp
             MedLvlNow[these] = Med_temp
             xLvlNow[these] = x_temp
             OOPnow[these] = OOP_temp
             PremNow[these] = Prem_temp
+            WelfareNow[these] = Welfare_temp
+            MedicareNow[these] = Medicare_temp
             ContractNow[these] = z_choice
-            EffPriceNow[these] = EffPrice_temp
-            CritDevNow[these] = CritDev_temp
-        aLvlNow = mLvlNow - PremNow - xLvlNow
-            
-        # Handle the consumption floor
-        NeedHelp = DevNow > CritDevNow
-        aLvlNow[NeedHelp] = 0.
-        cLvlNow[NeedHelp] = self.Cfloor
-        MedLvlNow[NeedHelp] = self.Cfloor**(self.CRRA/self.CRRAmed)*EffPriceNow[NeedHelp]**(-1./self.CRRAmed)*MedShkNow[NeedHelp]**(1.-1/self.CRRAmed)
-        OOPnow[NeedHelp] = np.maximum(mLvlNow[NeedHelp] - PremNow[NeedHelp] - self.Cfloor, 0.0)
-        WelfareNow = np.zeros_like(mLvlNow)
-#        WelfareNow[NeedHelp] = Welfare
-#       NEED TO CALCULATE WELFARE!
+        
+        # Calculate revenues from individual mandate:
+        # Premiums paid by uninsured people who aren't offered ESI are actually mandate taxes
+        NotOffered = np.logical_and(MrkvNow >=0, MrkvNow < 5)
+        Uninsured = ContractNow == 0
+        SubjectToIM = np.logical_and(NotOffered,Uninsured)
+        IMpenaltyNow = np.zeros_like(mLvlNow)
+        IMpenaltyNow[SubjectToIM] = PremNow[SubjectToIM] # 
+        
+        # Calculate total spending
+        SpendNow = WelfareNow + SubsidyNow + MedicareNow
 
         # Calculate end of period assets and store results as attributes of self
         self.mLvlNow = mLvlNow
+        self.BudgetNow = SpendNow - IMpenaltyNow
         self.aLvlNow = aLvlNow
         self.cLvlNow = cLvlNow
         self.MedLvlNow = MedLvlNow
         self.OOPnow = OOPnow
         self.PremNow = PremNow
         self.ContractNow = ContractNow
-        self.WelfareNow = WelfareNow
         
         
     def calcExpInsPayByContract(self):

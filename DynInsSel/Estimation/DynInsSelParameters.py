@@ -46,6 +46,19 @@ retired_T = 55
 working_T = 40
 
 
+class SpecialTaxFunction():
+    '''
+    A simple class for representing income taxes to fund health care.  It simply
+    taxes all income above a given threshold at a particular rate.
+    '''
+    def __init__(self,threshold,rate):
+        self.threshold = threshold
+        self.rate = rate
+        
+    def __call__(self,yLvl):
+        return np.maximum((yLvl-self.threshold)*self.rate, 0.0)
+
+
 class PolynomialFunction():
     '''
     A simple class for representing polynomial functions.
@@ -520,6 +533,8 @@ IMIpremiums = np.array([ 0.16363497,  0.17183336,  0.18005645,  0.18905068,  0.1
         0.85116974,  0.90239688,  0.95626292,  1.00267945,  1.07296216,
         1.10652547,  1.18089194,  1.24183102,  1.30463107,  1.37481914])
     
+HealthTaxFunc = SpecialTaxFunction(0.0,0.06)
+    
 # Make a basic dictionary with parameters that never change
 BasicDictionary = { 'Rfree': Rfree,
                     'LivPrb': LivPrb,
@@ -544,6 +559,7 @@ BasicDictionary = { 'Rfree': Rfree,
                     'pLvlInitStd': pLvlInitStd,
                     'pLvlInitMean': pLvlInitMean,
                     'PermIncCorr': PermIncCorr,
+                    'TaxFunc': HealthTaxFunc,
                     'MedShkCount': MedShkCount,
                     'DevMin' : DevMin,
                     'DevMax' : DevMax,

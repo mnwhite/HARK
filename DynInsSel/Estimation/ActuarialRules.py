@@ -307,9 +307,9 @@ def ageHealthRatedActuarialRule(self,ExpInsPay,ExpBuyers):
         TotalInsPay = np.sum(ExpInsPayX[:,these,:,:],axis=(1,3)) # Don't sum across ages
         TotalBuyers = np.sum(ExpBuyersX[:,these,:,:],axis=(1,3)) # Don't sum across ages
         AvgInsPay   = TotalInsPay/TotalBuyers
-        if g==1:
-            plt.plot(TotalBuyers[:,1]/np.sum(TotalBuyers,axis=1))
-            plt.show()
+        #if g==1:
+        #    plt.plot(TotalBuyers[:,1]/np.sum(TotalBuyers,axis=1))
+        #    plt.show()
         DampingFac = 0.2
         try:
             NewPremiums = (1.0-DampingFac)*(self.LoadFacIMI*AvgInsPay + 0.06) + DampingFac*self.IMIpremiums[:,g,:]

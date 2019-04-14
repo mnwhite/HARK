@@ -634,7 +634,7 @@ def makeDynInsSelType(CRRAcon,MedCurve,DiscFac,BequestShift,BequestScale,Cfloor,
     
     # Make and return a DynInsSelType
     ThisType = DynInsSelType(**TypeDict)
-    ThisType.track_vars = ['aLvlNow','mLvlNow','cLvlNow','MedLvlNow','PremNow','ContractNow','OOPnow','WelfareNow']
+    ThisType.track_vars = ['aLvlNow','mLvlNow','BudgetNow','cLvlNow','MedLvlNow','PremNow','ContractNow','OOPnow']
     ThisType.PremiumSubsidy = PremiumSubsidy
     if PremiumSubsidy == 0.0:
         ThisType.ZeroSubsidyBool = True
@@ -759,7 +759,7 @@ def objectiveFunction(Parameters):
     The objective function for the estimation.  Makes and solves a market, then
     returns the weighted sum of moment differences between simulation and data.
     '''
-    EvalType  = 2  # Number of times to do a static search for eqbm premiums
+    EvalType  = 0  # Number of times to do a static search for eqbm premiums
     InsChoice = 1  # Extent of insurance choice
     TestPremiums = True # Whether to start with the test premium level
     
@@ -1001,9 +1001,9 @@ if __name__ == '__main__':
         print('Making the agents took ' + mystr(t_end-t_start) + ' seconds.')
         
         t_start = clock()
-        MyType = MyMarket.agents[0]
+        MyType = MyMarket.agents[2]
         MyType.del_soln = False
-        MyType.do_sim = False
+        MyType.do_sim = True
         MyType.verbosity = 10
         MyType.solve()
         t_end = clock()
