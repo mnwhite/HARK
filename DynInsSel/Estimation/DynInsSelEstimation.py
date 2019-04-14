@@ -257,7 +257,7 @@ class DynInsSelMarket(InsuranceMarket):
                     HaveESI = np.logical_and(Insured, Offered)
                     ESIcount += np.sum(HaveESI)
                     OfferedCount += np.sum(Offered)
-                    IMIcount += np.sum(np.logical_and(ThisType.InsuredBoolArray[t,:],NotOffered))
+                    IMIcount += np.sum(np.logical_and(Insured,NotOffered))
                     NotOfferedCount += np.sum(NotOffered)
                     ZeroCount += np.sum(np.logical_and(HaveESI, ThisType.MrkvHist[t,:] <= 9))
                     PremiumList.append(ThisType.PremNow_hist[t,HaveESI])
@@ -729,7 +729,7 @@ def makeMarketFromParams(ParamArray,ActuarialRule,IMIpremiumArray,ESIpremiumArra
                     Prem = 0.
                 PremiumFuncs_this_health.append(ConstantFunction(Prem))
             PremiumFuncs_t.append(PremiumFuncs_this_health)
-        for h in range(10):
+        for h in range(2*HealthCount):
             PremiumFuncs_this_health = []
             for z in range(ContractCount):
                 Prem = ESIpremiumArray[t,z]
@@ -759,7 +759,7 @@ def objectiveFunction(Parameters):
     The objective function for the estimation.  Makes and solves a market, then
     returns the weighted sum of moment differences between simulation and data.
     '''
-    EvalType  = 0  # Number of times to do a static search for eqbm premiums
+    EvalType  = 2  # Number of times to do a static search for eqbm premiums
     InsChoice = 1  # Extent of insurance choice
     TestPremiums = True # Whether to start with the test premium level
     
@@ -974,6 +974,7 @@ if __name__ == '__main__':
 
 
     if test_one_type:
+        t_start = clock()
         # This block of code is for testing one type of agent
         EvalType  = 0  # Number of times to do a static search for eqbm premiums
         InsChoice = 1  # Extent of insurance choice
@@ -1000,9 +1001,9 @@ if __name__ == '__main__':
         print('Making the agents took ' + mystr(t_end-t_start) + ' seconds.')
         
         t_start = clock()
-        MyType = MyMarket.agents[2]
+        MyType = MyMarket.agents[0]
         MyType.del_soln = False
-        MyType.do_sim = True
+        MyType.do_sim = False
         MyType.verbosity = 10
         MyType.solve()
         t_end = clock()
@@ -1012,7 +1013,7 @@ if __name__ == '__main__':
         p = 3.0    
         h = 9        
         Dev = 0.0
-        z = 0
+        z = 1
         mTop = 10.
         
         print('Individual market:')
@@ -1026,9 +1027,9 @@ if __name__ == '__main__':
             MyType.plotvFunc(t,p,H=[10,11,12,13,14],decurve=False,mMax=mTop)
             MyType.plotvPfunc(t,p,H=[10,11,12,13,14],decurve=False,mMax=mTop)
         
-        #MyType.plotvFuncByContract(t,h,p,mMax=mTop)
-        #MyType.plotcFuncByContract(t,h,p,Dev,mMax=mTop)
-        #MyType.plotcFuncByDev(t,h,z,p,mMax=mTop)
-        #MyType.plotMedFuncByDev(t,h,z,p,mMax=mTop)
-        #MyType.plotxFuncByDev(t,h,z,p,mMax=mTop)
-        #MyType.plotAVfuncByContract(t,h,p,mMax=mTop)
+        MyType.plotvFuncByContract(t,h,p,mMax=mTop)
+        MyType.plotcFuncByContract(t,h,p,Dev,mMax=mTop)
+        MyType.plotcFuncByDev(t,h,z,p,mMax=mTop)
+        MyType.plotMedFuncByDev(t,h,z,p,mMax=mTop)
+        MyType.plotxFuncByDev(t,h,z,p,mMax=mTop)
+        MyType.plotAVfuncByContract(t,h,p,mMax=mTop)

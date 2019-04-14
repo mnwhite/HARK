@@ -34,7 +34,7 @@ DecurveBool = True                  # "Decurve" value through the inverse utilit
 pLvlPctiles = np.concatenate(([0.001, 0.005, 0.01, 0.03], np.linspace(0.05, 0.95, num=12),[0.97, 0.99, 0.995, 0.999]))
 pLvlInitStd = 0.4                   # Initial standard deviation of (log) permanent income
 pLvlInitMean = 0.0                  # Initial average of log permanent income
-PermIncCorr = 1.0                   # Serial correlation coefficient for permanent income
+PermIncCorr = 0.990                 # Serial correlation coefficient for permanent income
 MedShkCount = 20                    # Number of medical shock points
 DevMin = -3.0                       # Minimum standard deviations below MedShk mean
 DevMax = 5.0                        # Maximum standard deviations above MedShk mean
@@ -294,7 +294,7 @@ EducWeight = [0.080,0.566,0.354]
 # These might need revising
 AgeCount = retired_T + working_T
 T_cycle = retired_T + working_T
-TranShkStd = (np.concatenate((np.linspace(0.1,0.12,4), 0.12*np.ones(4), np.linspace(0.12,0.075,15), np.linspace(0.074,0.007,16), np.zeros(retired_T+1))))**0.5
+TranShkStd = (np.concatenate((np.linspace(0.1,0.12,4), 0.12*np.ones(4), np.linspace(0.12,0.075,15), np.linspace(0.074,0.047,16), np.zeros(retired_T+1))))**0.5
 TranShkStd = np.ndarray.tolist(TranShkStd)
 PermShkStd = np.concatenate((((0.00011342*(np.linspace(24,64.75,working_T-1)-47)**2 + 0.01))**0.5,np.zeros(retired_T+1)))
 PermShkStd[31:39] = PermShkStd[30] # Don't extrapolate permanent shock stdev
@@ -511,14 +511,14 @@ for j in range(ZeroMedShkPrb.shape[0]):
     ZeroMedShkPrb_list.append(ZeroMedShkPrb[j,:])
     
 # Individual market premiums by age
-IMIpremiums = np.array([0.09804065,  0.10160312,  0.10679188,  0.11414141,  0.12179881,
-        0.12933721,  0.13692324,  0.14718682,  0.15610496,  0.16303906,
-        0.17176878,  0.18088154,  0.19275761,  0.20543707,  0.21784414,
-        0.22992838,  0.24912044,  0.26272242,  0.28036747,  0.29614799,
-        0.32057784,  0.34157316,  0.3663727 ,  0.39420383,  0.42431918,
-        0.45971936,  0.49516964,  0.52966942,  0.57428115,  0.62233242,
-        0.67305882,  0.71556969,  0.76530375,  0.8166973 ,  0.87805069,
-        0.9330498 ,  0.98741618,  1.07911588,  1.13456156,  1.19509528])
+IMIpremiums = np.array([ 0.16363497,  0.17183336,  0.18005645,  0.18905068,  0.19964681,
+        0.20874009,  0.21918774,  0.22960999,  0.24181809,  0.25332993,
+        0.26372049,  0.27436421,  0.29030793,  0.30199884,  0.31674258,
+        0.33427603,  0.3552005 ,  0.37433521,  0.40097248,  0.42217594,
+        0.45275216,  0.4808875 ,  0.5117512 ,  0.5432674 ,  0.57791239,
+        0.62584424,  0.66777908,  0.70110909,  0.76139207,  0.80657978,
+        0.85116974,  0.90239688,  0.95626292,  1.00267945,  1.07296216,
+        1.10652547,  1.18089194,  1.24183102,  1.30463107,  1.37481914])
     
 # Make a basic dictionary with parameters that never change
 BasicDictionary = { 'Rfree': Rfree,
@@ -583,11 +583,11 @@ CollegeDictionary['pLvlInitMean'] = pLvlInitMean_c
 CollegeDictionary['pLvlNextFuncRet'] = RetirementFunc_c
 
 # Make a test parameter vector for estimation
-test_param_vec = np.array([0.92, # DiscFac
+test_param_vec = np.array([0.890,# DiscFac
                            3.0,  # CRRAcon
                            8.0,  # MedCurve 
                           -8.5,  # ChoiceShkMag in log
-                           0.2,  # Cfloor
+                          0.22,  # Cfloor
                          -1.41,  # SubsidyAvg
                           -3.0,  # SubsidyWidth scaler
                           10.0,  # BequestShift shifter for bequest motive

@@ -602,6 +602,7 @@ class cAndMedFunc(HARKobject):
         '''
         MedShk = np.exp(self.MedShkAvg + self.MedShkStd*Dev)
         xLvl = self.xFunc(mLvl,pLvl,Dev)
+        
         cShareTrans = self.bFromxFunc(xLvl,MedShk*self.EffPrice)
         q = np.exp(-cShareTrans)
         cLvl = xLvl/(1.+q)
@@ -886,7 +887,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
         PermShkVals_tiled = np.tile(np.reshape(PermShkValsNext,(1,IncShkCount)),(pLvlCount,1))
         TranShkVals_tiled = np.tile(np.reshape(TranShkValsNext,(1,IncShkCount)),(pLvlCount,1))
         pLvlGrid_tiled = np.tile(np.reshape(pLvlGrid,(pLvlCount,1)),(1,IncShkCount))
-        pLvlNext = pLvlNextFunc(pLvlGrid_tiled)*PermShkVals_tiled
+        pLvlNext = np.maximum(pLvlNextFunc(pLvlGrid_tiled)*PermShkVals_tiled,pLvlGrid[0])
         aLvlMin_cand = (solution_next.mLvlMin(pLvlNext) - pLvlNext*TranShkVals_tiled)/Rfree[h_alt]
         aLvlMinCond[:,h] = np.min(aLvlMin_cand,axis=1)
     aLvlMin = np.max(aLvlMinCond,axis=1) # Actual minimum acceptable assets is largest among health-conditional values
@@ -921,6 +922,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
         
         # Calculate human wealth conditional on achieving this future health state
         PermIncNext   = np.tile(pLvlNextFunc(pLvlGrid),(ShkCount,1))*np.tile(PermShkValsNext,(pLvlCount,1)).transpose()
+        PermIncNext   = np.maximum(PermIncNext,pLvlGrid[0]) 
         hLvlCond[:,h] = 1.0/Rfree[h_alt]*np.sum((np.tile(TranShkValsNext,(pLvlCount,1)).transpose()*PermIncNext + solution_next.hLvl[h](PermIncNext))*np.tile(ShkPrbsNext,(pLvlCount,1)).transpose(),axis=0)
         
         # Make arrays of current end of period states
@@ -967,19 +969,6 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
     hLvlGrid = np.sum(MrkvArray_all*np.tile(np.reshape(hLvlCond,(pLvlCount,1,StateCountNext)),(1,StateCountNow,1)),axis=2)
     if np.all(LivPrb == 0.):
         hLvlGrid[:,:] = 0.
-#    hLvlGrid_adj = copy(hLvlGrid)
-#    for h in range(StateCountNow):
-#        hLvlGrid_adj[:,h] *= LivPrb[h_alt]
-#        hLvlGrid_adj[:,h] += (1.-LivPrb[h_alt])*BequestShift
-    
-#    # Compute bounding MPC (and pseudo inverse MPC) in each state this period
-#    try:
-#        MPCminNvrsNext = solution_next.MPCminNvrs
-#    except:
-#        MPCminNvrsNext = np.ones(StateCountNow)
-#    temp = ((1.-LivPrb)*BequestScale + DiscFac*LivPrb*np.dot(MrkvArray,(MPCminNvrsNext*Rfree)**(1.-CRRA)))**(1./CRRA)
-#    MPCminNow = 1./(1. + temp)
-#    MPCminNvrsNow = MPCminNow**(-CRRA/(1.-CRRA))
     
     t1 = clock()
     FutureExpectations_time = t1 - t0
@@ -1000,6 +989,10 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
         PolicyFuncsThisHealthCopay = []
         vFuncsThisHealthCopay = []
         
+        #temp = np.isnan(EndOfPrdv[:,:,h])
+        #if np.sum(temp) > 0:
+        #    print(h,np.where(temp))
+         
         # Make the end of period value function for this health state
         EndOfPrdvNvrsFunc_by_pLvl = []
         EndOfPrdvNvrs = uinv(EndOfPrdv[:,:,h])
@@ -1039,7 +1032,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,MedShkAvg,MedShkStd,ZeroMed
             mLvlNow = xLvlNow + aLvlNow_tiled
                 
             # Determine which pLvls will need the G2EGM convexity fix
-            NonMonotonic = np.any((xLvlNow[:,:,1:]-xLvlNow[:,:,:-1]) < 0.,axis=(0,2)) # whether each pLvl has non-monotonic pattern in mLvl gridpoints
+            NonMonotonic = np.any((mLvlNow[:,:,1:]-mLvlNow[:,:,:-1]) < 0.,axis=(0,2)) # whether each pLvl has non-monotonic pattern in mLvl gridpoints
             HasNaNs = np.any(np.isnan(xLvlNow),axis=(0,2)) # whether each pLvl contains any NaNs due to future vP=0.0
             NeedsJDfix = np.logical_or(NonMonotonic,HasNaNs)
             JDfixCount += np.sum(NeedsJDfix)
@@ -1565,6 +1558,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
                             PremiumFunc = ConstantFunction(0.0)
                     else:
                         PremiumFunc = self.PremiumFuncs[t][h][z]
+                    self.ContractList[t][h][z].Premium = PremiumFunc    
             
             if t < T_retire:
                 for h in range(5,10): # Do ESI market with no employer contribution
@@ -1986,15 +1980,16 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         '''
         MaxContracts = 0
         MaxStateCount = 0
-        for t in range(self.T_sim):
+        T_working = 40
+        for t in range(T_working):
             StateCount = len(self.ContractList[t])
             MaxContracts = np.maximum(MaxContracts,max([len(self.ContractList[t][h]) for h in range(StateCount)]))
             MaxStateCount = np.maximum(MaxStateCount,StateCount)
         
-        ExpInsPay = np.zeros((self.T_sim,MaxStateCount,MaxContracts))
-        ExpBuyers = np.zeros((self.T_sim,MaxStateCount,MaxContracts))
+        ExpInsPay = np.zeros((T_working,MaxStateCount,MaxContracts))
+        ExpBuyers = np.zeros((T_working,MaxStateCount,MaxContracts))
         
-        for t in range(self.T_sim):
+        for t in range(T_working):
             StateCount = len(self.ContractList[t])
             random_choice = self.ChoiceShkMag[t] > 0.
             for j in range(StateCount):
