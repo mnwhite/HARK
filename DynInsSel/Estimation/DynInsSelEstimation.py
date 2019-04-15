@@ -9,19 +9,16 @@ import numpy as np
 import DynInsSelParameters as Params
 from time import clock
 from copy import copy, deepcopy
-from InsuranceSelectionModel import MedInsuranceContract, InsSelConsumerType, InsSelStaticConsumerType
+from InsuranceSelectionModel import MedInsuranceContract, InsSelConsumerType
 from LoadDataMoments import data_moments, moment_weights
-from ActuarialRules import flatActuarialRule, ageHealthRatedActuarialRule, InsuranceMarket
+from ActuarialRules import ageHealthRatedActuarialRule, InsuranceMarket
+from SubsidyFuncs import NullSubsidyFuncs
 from HARKinterpolation import ConstantFunction
 from HARKutilities import getPercentiles
 from HARKparallel import multiThreadCommands, multiThreadCommandsFake
 
-if Params.StaticBool:
-    BaseType = InsSelStaticConsumerType
-else:
-    BaseType = InsSelConsumerType
 
-class DynInsSelType(BaseType):
+class DynInsSelType(InsSelConsumerType):
     '''
     An extension of InsSelConsumerType that adds and adjusts methods for estimation.
     '''    
@@ -450,7 +447,7 @@ class DynInsSelMarket(InsuranceMarket):
 def makeDynInsSelType(CRRAcon,MedCurve,DiscFac,BequestShift,BequestScale,Cfloor,ChoiceShkMag,
                       MedShkMeanAgeParams,MedShkMeanVGparams,MedShkMeanGDparams,MedShkMeanFRparams,MedShkMeanPRparams,
                       MedShkStdAgeParams,MedShkStdVGparams,MedShkStdGDparams,MedShkStdFRparams,MedShkStdPRparams,
-                      PremiumSubsidy,EducType,InsChoiceType,ContractCount):
+                      EmpContr,EducType,InsChoiceType,ContractCount):
     '''
     Makes an InsSelConsumerType using (human-organized) structural parameters for the estimation.
     
@@ -490,8 +487,8 @@ def makeDynInsSelType(CRRAcon,MedCurve,DiscFac,BequestShift,BequestScale,Cfloor,
         Linear parameters for the stdev of log medical need shocks by age: adjuster for fair health.
     MedShkStdGDparams: [float]
         Linear parameters for the stdev of log medical need shocks by age: adjuster for poor health.
-    PremiumSubsidy : float
-        Employer contribution to any (non-null) insurance contract.
+    EmpContr : float
+        Employer contribution to any (non-null) ESI contract (when in Mrkv>=10).
     EducType : int
         Discrete education type.  0 --> dropout, 1 --> high school, 2 --> college graduate.
     InsChoiceType : int
@@ -635,15 +632,15 @@ def makeDynInsSelType(CRRAcon,MedCurve,DiscFac,BequestShift,BequestScale,Cfloor,
     # Make and return a DynInsSelType
     ThisType = DynInsSelType(**TypeDict)
     ThisType.track_vars = ['aLvlNow','mLvlNow','BudgetNow','cLvlNow','MedLvlNow','PremNow','ContractNow','OOPnow']
-    ThisType.PremiumSubsidy = PremiumSubsidy
-    if PremiumSubsidy == 0.0:
+    ThisType.EmpContr = EmpContr
+    if EmpContr == 0.0:
         ThisType.ZeroSubsidyBool = True
     else:
         ThisType.ZeroSubsidyBool = False
     return ThisType
         
 
-def makeMarketFromParams(ParamArray,ActuarialRule,IMIpremiumArray,ESIpremiumArray,InsChoiceType):
+def makeMarketFromParams(ParamArray,ActuarialRule,SubsidyFuncs,IMIpremiumArray,ESIpremiumArray,InsChoiceType):
     '''
     Makes a list of DynInsSelTypes, to be used for estimation.
     
@@ -654,6 +651,9 @@ def makeMarketFromParams(ParamArray,ActuarialRule,IMIpremiumArray,ESIpremiumArra
     ActuarialRule : function
         Function representing how insurance market outcomes are translated into
         premiums.  Will be installed as the millRule attribute of the market.
+    SubsidyFuncs : [[function]]
+        Nested list of functions representing subsidies for IMI by age-health.
+        Each one takes arguments (mLvl,yLvl,Prem), where yLvl is just pLvl when solving.
     IMIpremiumArray : np.array
         Array of premiums for IMI contracts for workers. Irrelevant if InsChoiceType = 0.
         Should be of size (40,ContractCount).
@@ -700,8 +700,8 @@ def makeMarketFromParams(ParamArray,ActuarialRule,IMIpremiumArray,ESIpremiumArra
     ContractCount = ESIpremiumArray.shape[1]
     i = 0
     for k in range(3):
-        ThisAgent = makeDynInsSelType(CRRAcon,MedCurve,DiscFac,BequestShift,BequestScale,Cfloor,ChoiceShkMag,MedShkMeanAgeParams,
-                  MedShkMeanVGparams,MedShkMeanGDparams,MedShkMeanFRparams,MedShkMeanPRparams,
+        ThisAgent = makeDynInsSelType(CRRAcon,MedCurve,DiscFac,BequestShift,BequestScale,Cfloor,ChoiceShkMag,
+                  MedShkMeanAgeParams,MedShkMeanVGparams,MedShkMeanGDparams,MedShkMeanFRparams,MedShkMeanPRparams,
                   MedShkStdAgeParams,MedShkStdVGparams,MedShkStdGDparams,MedShkStdFRparams,
                   MedShkStdPRparams,EmpContr,k,InsChoiceType,ContractCount)
         ThisAgent.Weight = Params.EducWeight[k]
@@ -749,6 +749,7 @@ def makeMarketFromParams(ParamArray,ActuarialRule,IMIpremiumArray,ESIpremiumArra
     # Have each agent type in the market inherit the premium functions
     for this_agent in ThisMarket.agents:
         setattr(this_agent,'PremiumFuncs',PremiumFuncs_init)
+        setattr(this_agent,'SubsidyFunc',SubsidyFuncs)
     
     #print('I made an insurance market with ' + str(len(InsuranceMarket.agents)) + ' agent types!')
     return ThisMarket
@@ -773,7 +774,8 @@ def objectiveFunction(Parameters):
     ESIpremiums_init_short = np.concatenate((np.array([0.]),ESIpremiums[0:ContractCounts[InsChoice]]))
     ESIpremiums_init = np.tile(np.reshape(ESIpremiums_init_short,(1,ESIpremiums_init_short.size)),(40,1))
     
-    MyMarket = makeMarketFromParams(Parameters,ageHealthRatedActuarialRule,IMIpremiums_init,ESIpremiums_init,InsChoice)
+    MyMarket = makeMarketFromParams(Parameters,ageHealthRatedActuarialRule,NullSubsidyFuncs,
+                                    IMIpremiums_init,ESIpremiums_init,InsChoice)
     MyMarket.HealthGroups = [[0],[1,2,3,4]]
     MyMarket.ExcludedGroups = [True,False]
     MyMarket.ESIpremiums = ESIpremiums_init_short
@@ -802,7 +804,6 @@ if __name__ == '__main__':
     
     test_obj_func = True
     test_one_type = False
-    test_static_model = False
     
     if test_obj_func:
     # This block is for actually testing the objective function
@@ -952,30 +953,10 @@ if __name__ == '__main__':
         plt.show()
     
      
-    if test_static_model:
-        #This block of code is for testing the static model
-        t_start = clock()
-        InsChoice = False
-        MyMarket = makeMarketFromParams(Params.test_param_vec,np.array([1,2,3,4,5]),InsChoice)
-        StaticType = MyMarket.agents[1]
-        StaticType.update()
-        StaticType.makeShockHistory()
-        t_end = clock()
-        print('Making a static agent type took ' + mystr(t_end-t_start) + ' seconds.')
-        t_start = clock()
-        StaticType.solve()
-        t_end = clock()
-        print('Solving a static agent type took ' + mystr(t_end-t_start) + ' seconds.')
-        t_start = clock()
-        StaticType.initializeSim()
-        StaticType.simulate()
-        t_end = clock()
-        print('Simulating a static agent type took ' + mystr(t_end-t_start) + ' seconds.')
-
-
     if test_one_type:
-        t_start = clock()
         # This block of code is for testing one type of agent
+        
+        t_start = clock()
         EvalType  = 0  # Number of times to do a static search for eqbm premiums
         InsChoice = 1  # Extent of insurance choice
         TestPremiums = True # Whether to start with the test premium level
@@ -990,7 +971,8 @@ if __name__ == '__main__':
         ESIpremiums_init_short = np.concatenate((np.array([0.]),ESIpremiums[0:ContractCounts[InsChoice]]))
         ESIpremiums_init = np.tile(np.reshape(ESIpremiums_init_short,(1,ESIpremiums_init_short.size)),(40,1))
         
-        MyMarket = makeMarketFromParams(Params.test_param_vec,ageHealthRatedActuarialRule,IMIpremiums_init,ESIpremiums_init,InsChoice)
+        MyMarket = makeMarketFromParams(Params.test_param_vec,ageHealthRatedActuarialRule,NullSubsidyFuncs,
+                                        IMIpremiums_init,ESIpremiums_init,InsChoice)
         MyMarket.HealthGroups = [[0],[1,2,3,4]]
         MyMarket.ExcludedGroups = [True,False]
         MyMarket.ESIpremiums = ESIpremiums_init_short
