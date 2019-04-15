@@ -532,8 +532,13 @@ IMIpremiums = np.array([ 0.16363497,  0.17183336,  0.18005645,  0.18905068,  0.1
         0.62584424,  0.66777908,  0.70110909,  0.76139207,  0.80657978,
         0.85116974,  0.90239688,  0.95626292,  1.00267945,  1.07296216,
         1.10652547,  1.18089194,  1.24183102,  1.30463107,  1.37481914])
-    
-HealthTaxFunc = SpecialTaxFunction(0.0,0.06)
+
+# Define basic parameters of the economy
+HealthTaxFunc = SpecialTaxFunction(0.0,0.00) # Tax rate will be overwritten by installPremiumFuncs
+HealthTaxRate_init = 0.05937
+LoadFacESI   = 1.2 # Loading factor for employer sponsored insurance
+LoadFacIMI   = 1.8 # Loading factor for individual market insurance
+CohortGroFac = 1.0 # Year-on-year growth rate of population; each cohort is this factor larger than previous
     
 # Make a basic dictionary with parameters that never change
 BasicDictionary = { 'Rfree': Rfree,
@@ -567,6 +572,7 @@ BasicDictionary = { 'Rfree': Rfree,
                     'MedPrice': T_cycle*[MedPrice],
                     'ESImrkvArray': ESImrkvArray_list,
                     'MrkvPrbsInit': HealthPrbsInit,
+                    'HealthTaxRate': HealthTaxRate_init,
                     'T_cycle': T_cycle,
                     'T_sim': T_sim,
                     'AgentCount': AgentCount,

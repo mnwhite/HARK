@@ -13,8 +13,10 @@ import matplotlib.pyplot as plt
 class PremiumFuncsContainer(HARKobject):
     distance_criteria = ['PremiumFuncs']
     
-    def __init__(self,PremiumFuncs):
+    def __init__(self,PremiumFuncs,HealthTaxRate=None):
         self.PremiumFuncs = PremiumFuncs
+        if HealthTaxRate is not None:
+            self.HealthTaxRate = HealthTaxRate
         
         
 class InsuranceMarket(Market):
@@ -24,23 +26,26 @@ class InsuranceMarket(Market):
 
     def __init__(self,ActuarialRule):
         Market.__init__(self,agents=[],sow_vars=['PremiumFuncs'],
-                        reap_vars=['ExpInsPay','ExpBuyers'],
+                        reap_vars=['ExpInsPay','ExpBuyers','IncAboveThreshByAge','HealthBudgetByAge'],
                         const_vars=[],
                         track_vars=['ESIpremiums','IMIpremiums'],
-                        dyn_vars=['PremiumFuncs'],
+                        dyn_vars=['PremiumFuncs','HealthTaxRate'],
                         millRule=None,calcDynamics=None,act_T=10,tolerance=0.0001)
         self.IMIactuarialRule = ActuarialRule
 
-    def millRule(self,ExpInsPay,ExpBuyers):
+    def millRule(self,ExpInsPay,ExpBuyers,IncAboveThreshByAge,HealthBudgetByAge):
         IMIpremiums      = self.IMIactuarialRule(self,ExpInsPay,ExpBuyers)
         ESIpremiums      = self.ESIactuarialRule(ExpInsPay,ExpBuyers)
         self.IMIpremiums = IMIpremiums
         self.ESIpremiums = ESIpremiums
+        self.IncAboveThreshByAge = IncAboveThreshByAge
+        self.HealthBudgetByAge = HealthBudgetByAge
         return self.combineESIandIMIpremiums(IMIpremiums,ESIpremiums)
         
     def calcDynamics(self):
         self.PremiumFuncs_init = self.PremiumFuncs # So that these are used on the next iteration
-        return PremiumFuncsContainer(self.PremiumFuncs)
+        HealthTaxRate = self.calcHealthTaxRate()
+        return PremiumFuncsContainer(self.PremiumFuncs,HealthTaxRate)
         
         
     def combineESIandIMIpremiums(self,IMIpremiums,ESIpremiums):
@@ -83,12 +88,6 @@ class InsuranceMarket(Market):
             PremiumFuncs_t += ESIpremiumFuncs_all_health # Add on ESI premiums to end
             PremiumFuncs_all.append(PremiumFuncs_t)
             
-#        # Add on retired premiums, which are trivial
-#        RetPremiumFuncs = [ConstantFunction(0.0)]
-#        RetPremiumFuncs_all_health = HealthCount*[RetPremiumFuncs]
-#        for t in range(20):
-#            PremiumFuncs_all.append(RetPremiumFuncs_all_health)
-            
         # Package the PremiumFuncs into a single object and return it
         CombinedPremiumFuncs = PremiumFuncsContainer(PremiumFuncs_all)
         return CombinedPremiumFuncs
@@ -128,6 +127,34 @@ class InsuranceMarket(Market):
         
         print('ESI premiums: ' + str(ESIpremiums[1]) + ', insured rate: ' + str(TotalBuyers[1]/np.sum(TotalBuyers)))
         return ESIpremiums
+    
+    
+    def calcHealthTaxRate(self):
+        '''
+        Calculate the tax rate that would pay for the health spending activities
+        in the economy: Cfloor welfare, Medicare, insurance subsidies, (minus) IM penalties.
+        
+        Parameters
+        ----------
+        None
+        
+        Returns
+        -------
+        HealthTaxRate : float
+            New tax rate that would pay for current levels of health spending.
+        '''
+        IncAboveThreshByAge = np.sum(np.stack(self.IncAboveThreshByAge,axis=1),axis=1)
+        HealthBudgetByAge = np.sum(np.stack(self.HealthBudgetByAge,axis=1),axis=1)
+        AgeCount = IncAboveThreshByAge.size
+        
+        WeightVec = self.CohortGroFac**(-np.arange(AgeCount))
+        IncAboveThresh = np.dot(WeightVec,IncAboveThreshByAge)
+        HealthBudget = np.dot(WeightVec,HealthBudgetByAge)
+        
+        HealthTaxRate = HealthBudget/IncAboveThresh
+        print('New health tax rate is '+ str(HealthTaxRate))
+        return HealthTaxRate
+        
         
 
 ###############################################################################

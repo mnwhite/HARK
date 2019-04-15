@@ -1544,7 +1544,8 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         in the attribute ContractList, accounting for the employer contribution
         in EmpContr.  The premiums in PremiumFuncs are used in the static
         solver to find quasi-equilibrium premiums; this method feeds these back
-        into ContractList to use on the next dynamic solution pass.
+        into ContractList to use on the next dynamic solution pass.  Also updates
+        the attribute TaxFunc to have the newly updated tax rate.
         
         Parameters
         ----------
@@ -1554,6 +1555,9 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         -------
         None
         '''
+        # First, update the health tax rate
+        self.TaxFunc.rate = self.HealthTaxRate
+        
         if not hasattr(self,'PremiumFuncs'):
             return # Don't do anything if PremiumFuncs hasn't been defined
         

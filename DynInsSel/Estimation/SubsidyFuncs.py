@@ -17,3 +17,7 @@ NullSubsidyFuncs = AgeCount*[NoSubsidyFunc_t]
 FlatSubsidyFunc = ConstantFunction(0.1)
 FlatSubsidyFunc_t = HealthCount*[FlatSubsidyFunc]
 FlatSubsidyFuncs = AgeCount*[FlatSubsidyFunc_t]
+
+# TODO: Make ACA-style subsidy policy
+
+# TODO: Make BCA-style subsidy policy

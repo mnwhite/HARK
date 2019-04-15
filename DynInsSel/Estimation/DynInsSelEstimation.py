@@ -91,6 +91,7 @@ class DynInsSelType(InsSelConsumerType):
         '''
         Makes small fixes to OOP medical spending (can't be below $1 but above $0),
         and calculates total medical spending, wealth-to-income ratio, and insured status.
+        Also computes net health spending by age.
         '''
         self.OOPmedHist = self.OOPnow_hist
         self.OOPmedHist[np.logical_and(self.OOPmedHist < 0.0001,self.OOPmedHist > 0.0,)] = 0.0001
@@ -99,6 +100,7 @@ class DynInsSelType(InsSelConsumerType):
         self.TotalMedHist[np.logical_and(self.TotalMedHist < 0.0001,self.TotalMedHist > 0.0,)] = 0.0001
         self.WealthRatioHist = self.aLvlNow_hist/self.pLvlHist
         self.InsuredBoolArray = self.ContractNow_hist > 0
+        self.HealthBudgetByAge = np.sum(self.BudgetNow_hist,axis=1)
         
     def deleteSolution(self):
         '''
@@ -743,8 +745,9 @@ def makeMarketFromParams(ParamArray,ActuarialRule,SubsidyFuncs,IMIpremiumArray,E
     ThisMarket.data_moments = data_moments
     ThisMarket.moment_weights = moment_weights
     ThisMarket.PremiumFuncs_init = PremiumFuncs_init
-    ThisMarket.LoadFacESI = 1.2 # Make this an input later
-    ThisMarket.LoadFacIMI = 1.8
+    ThisMarket.LoadFacESI   = Params.LoadFacESI
+    ThisMarket.LoadFacIMI   = Params.LoadFacIMI
+    ThisMarket.CohortGroFac = Params.CohortGroFac
     
     # Have each agent type in the market inherit the premium functions
     for this_agent in ThisMarket.agents:
