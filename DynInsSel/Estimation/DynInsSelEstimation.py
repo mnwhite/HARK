@@ -11,7 +11,7 @@ from time import clock
 from copy import copy, deepcopy
 from InsuranceSelectionModel import MedInsuranceContract, InsSelConsumerType
 from LoadDataMoments import data_moments, moment_weights
-from ActuarialRules import ageHealthRatedActuarialRule, InsuranceMarket
+from ActuarialRules import BaselinePolicySpec, InsuranceMarket
 from SubsidyFuncs import NullSubsidyFuncs
 from HARKinterpolation import ConstantFunction
 from HARKutilities import getPercentiles
@@ -136,9 +136,9 @@ class DynInsSelType(InsSelConsumerType):
         N = self.AgentCount
         T = 60
         vNow_hist = np.zeros((T,N)) + np.nan
+        HealthCount = 5
         for t in range(T):
-            StateCount = len(self.vFunc[t])
-            for h in range(StateCount):
+            for h in range(HealthCount):
                 these = self.HealthBoolArray[t,:,h]
                 m_temp = self.mLvlNow_hist[t,these]
                 p_temp = self.pLvlHist[t,these]
@@ -161,11 +161,11 @@ class DynInsSelType(InsSelConsumerType):
             StateCount = len(self.vFunc[t])
             for h in range(StateCount):
                 # Extract data for this age-health
-                these = self.HealthBoolArray[t,:,h]
+                these = self.MrkvHist[t,:] == h
                 m = self.mLvlNow_hist[t,these]
                 vTarg = self.vTarg_hist[t,these]
                 vFunc = self.vFunc[t][h]
-                pMin = vFunc.func.func.y_list[0] # Lowest pLvl, should always be 0.0
+                pMin = vFunc.func.func.y_list[0] # Lowest pLvl
                 pMax = vFunc.func.func.y_list[-1] # Highest pLvl in grid
                  
                 # Evaluate the value function at the minimum and maximum pLvl
@@ -642,7 +642,7 @@ def makeDynInsSelType(CRRAcon,MedCurve,DiscFac,BequestShift,BequestScale,Cfloor,
     return ThisType
         
 
-def makeMarketFromParams(ParamArray,ActuarialRule,SubsidyFuncs,IMIpremiumArray,ESIpremiumArray,InsChoiceType):
+def makeMarketFromParams(ParamArray,PolicySpec,IMIpremiumArray,ESIpremiumArray,InsChoiceType):
     '''
     Makes a list of DynInsSelTypes, to be used for estimation.
     
@@ -650,12 +650,8 @@ def makeMarketFromParams(ParamArray,ActuarialRule,SubsidyFuncs,IMIpremiumArray,E
     ----------
     ParamArray : np.array
         Array of size 35, representing all of the structural parameters.
-    ActuarialRule : function
-        Function representing how insurance market outcomes are translated into
-        premiums.  Will be installed as the millRule attribute of the market.
-    SubsidyFuncs : [[function]]
-        Nested list of functions representing subsidies for IMI by age-health.
-        Each one takes arguments (mLvl,yLvl,Prem), where yLvl is just pLvl when solving.
+    PolicySpec : PolicySpecification
+        Object describing the policy structure of the insurance market.
     IMIpremiumArray : np.array
         Array of premiums for IMI contracts for workers. Irrelevant if InsChoiceType = 0.
         Should be of size (40,ContractCount).
@@ -713,6 +709,12 @@ def makeMarketFromParams(ParamArray,ActuarialRule,SubsidyFuncs,IMIpremiumArray,E
     
     for i in range(len(AgentList)):
         AgentList[i].seed = i # Assign different seeds to each type
+        
+    # Make a list of which health states are excluded from IMI
+    ExcludedHealth = []
+    for g in range(len(PolicySpec.HealthGroups)):
+        if PolicySpec.ExcludedGroups[g]:
+            ExcludedHealth += PolicySpec.HealthGroups[g]
             
     # Construct an initial nested list for premiums
     PremiumFuncs_init = []
@@ -723,7 +725,7 @@ def makeMarketFromParams(ParamArray,ActuarialRule,SubsidyFuncs,IMIpremiumArray,E
             PremiumFuncs_this_health = []
             for z in range(ContractCount):
                 if z > 0:
-                    if h == 0:
+                    if h in ExcludedHealth:
                         Prem = 10000.
                     else:
                         Prem = IMIpremiumArray[t]
@@ -740,8 +742,8 @@ def makeMarketFromParams(ParamArray,ActuarialRule,SubsidyFuncs,IMIpremiumArray,E
         PremiumFuncs_init.append(PremiumFuncs_t)
 
     # Make a market to hold the agents
-    ThisMarket = DynInsSelMarket(ActuarialRule)
-    ThisMarket.agents = AgentList
+    ThisMarket = DynInsSelMarket(PolicySpec,AgentList)
+    
     ThisMarket.data_moments = data_moments
     ThisMarket.moment_weights = moment_weights
     ThisMarket.PremiumFuncs_init = PremiumFuncs_init
@@ -752,7 +754,6 @@ def makeMarketFromParams(ParamArray,ActuarialRule,SubsidyFuncs,IMIpremiumArray,E
     # Have each agent type in the market inherit the premium functions
     for this_agent in ThisMarket.agents:
         setattr(this_agent,'PremiumFuncs',PremiumFuncs_init)
-        setattr(this_agent,'SubsidyFunc',SubsidyFuncs)
     
     #print('I made an insurance market with ' + str(len(InsuranceMarket.agents)) + ' agent types!')
     return ThisMarket
@@ -777,10 +778,7 @@ def objectiveFunction(Parameters):
     ESIpremiums_init_short = np.concatenate((np.array([0.]),ESIpremiums[0:ContractCounts[InsChoice]]))
     ESIpremiums_init = np.tile(np.reshape(ESIpremiums_init_short,(1,ESIpremiums_init_short.size)),(40,1))
     
-    MyMarket = makeMarketFromParams(Parameters,ageHealthRatedActuarialRule,NullSubsidyFuncs,
-                                    IMIpremiums_init,ESIpremiums_init,InsChoice)
-    MyMarket.HealthGroups = [[0],[1,2,3,4]]
-    MyMarket.ExcludedGroups = [True,False]
+    MyMarket = makeMarketFromParams(Parameters,BaselinePolicySpec,IMIpremiums_init,ESIpremiums_init,InsChoice)
     MyMarket.ESIpremiums = ESIpremiums_init_short
     multiThreadCommandsFake(MyMarket.agents,['update()','makeShockHistory()'])
     MyMarket.getIncomeQuintiles()
@@ -818,6 +816,7 @@ if __name__ == '__main__':
         # This block of code is for displaying moment fits after running objectiveFunc  
         Age = np.arange(25,85)
         Age5year = 27.5 + 5*np.arange(12)
+        color_list = ['b','g','r','c','m']
         
         if not Params.StaticBool:
             plt.plot(Age[0:40],MyMarket.WealthMedianByAge)
@@ -847,13 +846,11 @@ if __name__ == '__main__':
         f = lambda x : 5.14607229 + 0.04242741*x
         LogMedMeanAdj = np.mean(np.reshape(f(Age),(12,5)),axis=1)
             
-        plt.plot(Age5year,MyMarket.LogTotalMedMeanByAgeHealth - np.tile(np.reshape(LogMedMeanAdj,(12,1)),(1,5)))
-        temp = np.reshape(MyMarket.data_moments[320:380],(12,5))
-        plt.plot(Age5year,temp[:,0] - LogMedMeanAdj,'.b')
-        plt.plot(Age5year,temp[:,1] - LogMedMeanAdj,'.g')
-        plt.plot(Age5year,temp[:,2] - LogMedMeanAdj,'.r')
-        plt.plot(Age5year,temp[:,3] - LogMedMeanAdj,'.c')
-        plt.plot(Age5year,temp[:,4] - LogMedMeanAdj,'.m')
+        sim_temp = MyMarket.LogTotalMedMeanByAgeHealth - np.tile(np.reshape(LogMedMeanAdj,(12,1)),(1,5))
+        data_temp = np.reshape(MyMarket.data_moments[320:380],(12,5)) - np.tile(np.reshape(LogMedMeanAdj,(12,1)),(1,5))
+        for h in range(5):
+            plt.plot(Age5year,sim_temp[:,h],'-'+color_list[h])
+            plt.plot(Age5year,data_temp[:,h],'.'+color_list[h])
         plt.xlabel('Age')
         plt.ylabel('Detrended mean log total (nonzero) medical expenses')
         plt.title('Medical expenses by age group and health status')
@@ -861,13 +858,11 @@ if __name__ == '__main__':
         #plt.savefig('../Figures/MeanTotalMedFitByAgeHealth.pdf')
         plt.show()
         
-        plt.plot(Age5year,MyMarket.LogTotalMedStdByAgeHealth)
-        temp = np.reshape(MyMarket.data_moments[380:440],(12,5))
-        plt.plot(Age5year,temp[:,0],'.b')
-        plt.plot(Age5year,temp[:,1],'.g')
-        plt.plot(Age5year,temp[:,2],'.r')
-        plt.plot(Age5year,temp[:,3],'.c')
-        plt.plot(Age5year,temp[:,4],'.m')
+        sim_temp = MyMarket.LogTotalMedStdByAgeHealth
+        data_temp = np.reshape(MyMarket.data_moments[380:440],(12,5))
+        for h in range(5):
+            plt.plot(Age5year,sim_temp[:,h],'-'+color_list[h])
+            plt.plot(Age5year,data_temp[:,h],'.'+color_list[h])
         plt.xlabel('Age')
         plt.ylabel('Stdev log total (nonzero) medical expenses')
         plt.title('Medical expenses by age group and health status')
@@ -875,13 +870,11 @@ if __name__ == '__main__':
         #plt.savefig('../Figures/StdevTotalMedFitByAgeHealth.pdf')
         plt.show()
             
-        plt.plot(Age5year[:8],MyMarket.LogTotalMedMeanByAgeIncome - np.tile(np.reshape(LogMedMeanAdj[:8],(8,1)),(1,5)))
-        temp = np.reshape(MyMarket.data_moments[480:520],(8,5))
-        plt.plot(Age5year[:8],temp[:,0] - LogMedMeanAdj[:8],'.b')
-        plt.plot(Age5year[:8],temp[:,1] - LogMedMeanAdj[:8],'.g')
-        plt.plot(Age5year[:8],temp[:,2] - LogMedMeanAdj[:8],'.r')
-        plt.plot(Age5year[:8],temp[:,3] - LogMedMeanAdj[:8],'.c')
-        plt.plot(Age5year[:8],temp[:,4] - LogMedMeanAdj[:8],'.m')
+        sim_temp = MyMarket.LogTotalMedMeanByAgeIncome - np.tile(np.reshape(LogMedMeanAdj[:8],(8,1)),(1,5))
+        data_temp = np.reshape(MyMarket.data_moments[480:520],(8,5)) - np.tile(np.reshape(LogMedMeanAdj[:8],(8,1)),(1,5))
+        for h in range(5):
+            plt.plot(Age5year[:8],sim_temp[:,h],'-'+color_list[h])
+            plt.plot(Age5year[:8],data_temp[:,h],'.'+color_list[h])
         plt.xlabel('Age')
         plt.ylabel('Detrended mean log total (nonzero) medical expenses')
         plt.title('Medical expenses by age group and income quintile')
@@ -889,13 +882,11 @@ if __name__ == '__main__':
         #plt.savefig('../Figures/MeanTotalMedFitByAgeIncome.pdf')
         plt.show()
         
-        plt.plot(Age5year[:8],MyMarket.LogTotalMedStdByAgeIncome)
-        temp = np.reshape(MyMarket.data_moments[520:560],(8,5))
-        plt.plot(Age5year[:8],temp[:,0],'.b')
-        plt.plot(Age5year[:8],temp[:,1],'.g')
-        plt.plot(Age5year[:8],temp[:,2],'.r')
-        plt.plot(Age5year[:8],temp[:,3],'.c')
-        plt.plot(Age5year[:8],temp[:,4],'.m')
+        sim_temp = MyMarket.LogTotalMedStdByAgeIncome
+        data_temp = np.reshape(MyMarket.data_moments[520:560],(8,5))
+        for h in range(5):
+            plt.plot(Age5year[:8],sim_temp[:,h],'-'+color_list[h])
+            plt.plot(Age5year[:8],data_temp[:,h],'.'+color_list[h])
         plt.xlabel('Age')
         plt.ylabel('Stdev log total (nonzero) medical expenses')
         plt.title('Medical expenses by age group and income quintile')
@@ -911,13 +902,11 @@ if __name__ == '__main__':
         #plt.savefig('../Figures/ESIuptakeFitByAge.pdf')
         plt.show()
         
-        plt.plot(Age5year[:8],MyMarket.InsuredRateByAgeIncome)
-        temp = np.reshape(MyMarket.data_moments[560:600],(8,5))
-        plt.plot(Age5year[:8],temp[:,0],'.b')
-        plt.plot(Age5year[:8],temp[:,1],'.g')
-        plt.plot(Age5year[:8],temp[:,2],'.r')
-        plt.plot(Age5year[:8],temp[:,3],'.c')
-        plt.plot(Age5year[:8],temp[:,4],'.m')
+        sim_temp = MyMarket.InsuredRateByAgeIncome
+        data_temp = np.reshape(MyMarket.data_moments[560:600],(8,5))
+        for h in range(5):
+            plt.plot(Age5year[:8],sim_temp[:,h],'-'+color_list[h])
+            plt.plot(Age5year[:8],data_temp[:,h],'.'+color_list[h])
         plt.xlabel('Age')
         plt.ylabel('ESI uptake rate')
         plt.xlim((25,65))
@@ -974,10 +963,7 @@ if __name__ == '__main__':
         ESIpremiums_init_short = np.concatenate((np.array([0.]),ESIpremiums[0:ContractCounts[InsChoice]]))
         ESIpremiums_init = np.tile(np.reshape(ESIpremiums_init_short,(1,ESIpremiums_init_short.size)),(40,1))
         
-        MyMarket = makeMarketFromParams(Params.test_param_vec,ageHealthRatedActuarialRule,NullSubsidyFuncs,
-                                        IMIpremiums_init,ESIpremiums_init,InsChoice)
-        MyMarket.HealthGroups = [[0],[1,2,3,4]]
-        MyMarket.ExcludedGroups = [True,False]
+        MyMarket = makeMarketFromParams(Params.test_param_vec,BaselinePolicySpec,IMIpremiums_init,ESIpremiums_init,InsChoice)
         MyMarket.ESIpremiums = ESIpremiums_init_short
         multiThreadCommandsFake(MyMarket.agents,['update()','makeShockHistory()'])
         MyMarket.getIncomeQuintiles()

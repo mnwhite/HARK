@@ -12,9 +12,9 @@ from HARKcore import HARKobject, AgentType
 from HARKutilities import CRRAutility, CRRAutilityP, CRRAutilityPP, CRRAutilityP_inv, combineIndepMrkvArrays,\
                           CRRAutility_invP, CRRAutility_inv, CRRAutilityP_invP, NullFunc, makeGridExpMult
 from HARKinterpolation import LinearInterp, CubicInterp, LinearInterpOnInterp1D, LinearInterpOnInterp2D,\
-                              UpperEnvelope, TrilinearInterp, ConstantFunction, CompositeFunc2D, \
+                              UpperEnvelope, ConstantFunction, CompositeFunc2D, \
                               VariableLowerBoundFunc2D, VariableLowerBoundFunc3D, VariableLowerBoundFunc3Dalt, \
-                              BilinearInterp, CompositeFunc3D, IdentityFunction, LowerEnvelope2D
+                              BilinearInterp, CompositeFunc3D, IdentityFunction, LowerEnvelope2D, UpperEnvelope2D
 from HARKsimulation import drawUniform, drawNormal, drawMeanOneLognormal, drawDiscrete, drawBernoulli
 from ConsMedModel import MedShockConsumerType
 from ConsIndShockModel import ValueFunc
@@ -1609,7 +1609,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
             self.timeRev()
         
         
-    def updateUninsuredPremium(self,MandateTaxRate=0.):
+    def updateUninsuredPremium(self,MandateTaxRate=0.,MandateFloor=0.):
         '''
         Create the attribute UninsuredPremiumFunc, a function that will be used
         as the "premium" for being uninsured.  It is installed automatically by
@@ -1620,19 +1620,34 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         ----------
         MandateTaxRate : float
             Percentage of permanent income that must be paid in order to be uninsured.
-            Defaults to zero.  Actual "premium" never exceeds 20% of market resources.
+            Defaults to zero.  Actual "premium" never exceeds 50% of market resources.
+        MandateFloor : float
+            Minimum value of the individual mandate penalty.
             
         Returns
         -------
         None
         '''
+        if np.logical_and(MandateTaxRate == 0., MandateFloor == 0.):
+            self.UninsuredPremiumFunc = ConstantFunction(0.)
+            return # Handle null IM policy
+        
+        # Handle non-null IM policy
         X = MandateTaxRate # For easier typing
         mLvlGrid = np.array([0.,100.])
         pLvlGrid = np.array([0.,100.])
+        # First make the penalty based on (permanent) income
         pLvlBasedPenalty = BilinearInterp(np.array([[0.,X*100.],[0.,X*100.]]),mLvlGrid,pLvlGrid)
-        mLvlBasedPenalty = BilinearInterp(np.array([[0.,0.],[20.,20.]]),mLvlGrid,pLvlGrid)
-        #ConstantPenalty = ConstantFunction(0.07) # Could use this later
-        self.UninsuredPremiumFunc = LowerEnvelope2D(pLvlBasedPenalty,mLvlBasedPenalty)
+        if MandateFloor > 0.:
+            ConstantPenalty  = ConstantFunction(MandateFloor)
+            MainPenalty = UpperEnvelope2D(pLvlBasedPenalty,ConstantPenalty)
+        else:
+            MainPenalty = pLvlBasedPenalty
+        # Then add an "escape clause" to prevent IM from exceeding mLvl
+        MaximumPenalty = BilinearInterp(np.array([[0.,0.],[50.,50.]]),mLvlGrid,pLvlGrid)
+        UninsuredPremiumFunc = LowerEnvelope2D(MainPenalty,MaximumPenalty)
+        
+        self.UninsuredPremiumFunc = UninsuredPremiumFunc
         
                
     def updateSolutionTerminal(self):

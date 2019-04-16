@@ -5,9 +5,9 @@ from the medical costs of consumers.
 import numpy as np
 from HARKcore import HARKobject, Market
 from HARKinterpolation import ConstantFunction
-from copy import copy, deepcopy
 from scipy.optimize import brentq
 import matplotlib.pyplot as plt
+from SubsidyFuncs import NullSubsidyFuncs
 
 # This is a trivial "container" class
 class PremiumFuncsContainer(HARKobject):
@@ -17,6 +17,26 @@ class PremiumFuncsContainer(HARKobject):
         self.PremiumFuncs = PremiumFuncs
         if HealthTaxRate is not None:
             self.HealthTaxRate = HealthTaxRate
+            
+
+# This is also a trivial "container" class
+class PolicySpecification(object):
+    '''
+    A very simple class for representing specifications for counterfactuals.
+    Attributes include the IMI subsidy function, an IMI ActuarialRule function,
+    HealthGroups, AgeBandLimit, an individual MandateTaxRate and Floor, and a name.
+    Each of these attributes is added as attributes of the InsuranceMarket.
+    '''
+    def __init__(self,SubsidyFunc,ActuarialRule,HealthGroups,ExcludedGroups,AgeBandLimit,MandateTaxRate,MandateFloor,name,text):
+        self.SubsidyFunc   = SubsidyFunc
+        self.ActuarialRule = ActuarialRule
+        self.HealthGroups  = HealthGroups
+        self.ExcludedGroups= ExcludedGroups
+        self.AgeBandLimit  = AgeBandLimit
+        self.MandateTaxRate= MandateTaxRate
+        self.MandateFloor  = MandateFloor
+        self.name          = name
+        self.text          = text
         
         
 class InsuranceMarket(Market):
@@ -24,24 +44,44 @@ class InsuranceMarket(Market):
     A class for representing the "insurance economy" with many agent types.
     '''
 
-    def __init__(self,ActuarialRule):
+    def __init__(self,PolicySpec,Agents):
         Market.__init__(self,agents=[],sow_vars=['PremiumFuncs'],
                         reap_vars=['ExpInsPay','ExpBuyers','IncAboveThreshByAge','HealthBudgetByAge'],
                         const_vars=[],
                         track_vars=['ESIpremiums','IMIpremiums'],
                         dyn_vars=['PremiumFuncs','HealthTaxRate'],
                         millRule=None,calcDynamics=None,act_T=10,tolerance=0.0001)
-        self.IMIactuarialRule = ActuarialRule
-
+        self.agents = Agents
+        self.updatePolicy(PolicySpec)
+        
+        
+    def updatePolicy(self,PolicySpec):
+        self.IMIactuarialRule = PolicySpec.ActuarialRule
+        self.SubsidyFunc      = PolicySpec.SubsidyFunc
+        self.HealthGroups     = PolicySpec.HealthGroups
+        self.ExcludedGroups   = PolicySpec.ExcludedGroups
+        self.AgeBandLimit     = PolicySpec.AgeBandLimit
+        self.MandateTaxRate   = PolicySpec.MandateTaxRate
+        self.MandateFloor     = PolicySpec.MandateFloor
+        self.applySubsidyAndIM()
+        
+    
+    def applySubsidyAndIM(self):
+        # Have each agent type in the market inherit the IMI subsidies and individual mandate
+        for this_type in self.agents:
+            setattr(this_type,'SubsidyFunc', self.SubsidyFunc)
+            this_type.updateUninsuredPremium(self.MandateTaxRate, self.MandateFloor)
+            
+    
     def millRule(self,ExpInsPay,ExpBuyers,IncAboveThreshByAge,HealthBudgetByAge):
         IMIpremiums      = self.IMIactuarialRule(self,ExpInsPay,ExpBuyers)
         ESIpremiums      = self.ESIactuarialRule(ExpInsPay,ExpBuyers)
-        self.IMIpremiums = IMIpremiums
-        self.ESIpremiums = ESIpremiums
         self.IncAboveThreshByAge = IncAboveThreshByAge
         self.HealthBudgetByAge = HealthBudgetByAge
-        return self.combineESIandIMIpremiums(IMIpremiums,ESIpremiums)
+        PremiumFuncs = self.combineESIandIMIpremiums(IMIpremiums,ESIpremiums)
+        return PremiumFuncs
         
+    
     def calcDynamics(self):
         self.PremiumFuncs_init = self.PremiumFuncs # So that these are used on the next iteration
         HealthTaxRate = self.calcHealthTaxRate()
@@ -118,12 +158,13 @@ class InsuranceMarket(Market):
         TotalBuyers = np.sum(ExpBuyersX,axis=(0,1,3))
         AvgInsPay   = TotalInsPay/TotalBuyers
         
-        DampingFac = 0.2
+        DampingFac = 0.0
         try:
             ESIpremiums = (1.0-DampingFac)*self.LoadFacESI*AvgInsPay + DampingFac*self.ESIpremiums
         except:
             ESIpremiums = self.LoadFacESI*AvgInsPay
         ESIpremiums[0] = 0.0 # First contract is always free
+        self.ESIpremiums = ESIpremiums
         
         print('ESI premiums: ' + str(ESIpremiums[1]) + ', insured rate: ' + str(TotalBuyers[1]/np.sum(TotalBuyers)))
         return ESIpremiums
@@ -334,19 +375,23 @@ def ageHealthRatedActuarialRule(self,ExpInsPay,ExpBuyers):
         TotalInsPay = np.sum(ExpInsPayX[:,these,:,:],axis=(1,3)) # Don't sum across ages
         TotalBuyers = np.sum(ExpBuyersX[:,these,:,:],axis=(1,3)) # Don't sum across ages
         AvgInsPay   = TotalInsPay/TotalBuyers
+        fix_me = np.logical_or(np.isinf(AvgInsPay),np.isnan(AvgInsPay))
+        AvgInsPay[fix_me] = 0.0
         #if g==1:
         #    plt.plot(TotalBuyers[:,1]/np.sum(TotalBuyers,axis=1))
         #    plt.show()
-        DampingFac = 0.2
+        DampingFac = 0.0
         try:
             NewPremiums = (1.0-DampingFac)*(self.LoadFacIMI*AvgInsPay + 0.06) + DampingFac*self.IMIpremiums[:,g,:]
         except:
             NewPremiums = self.LoadFacIMI*AvgInsPay + 0.06
         NewPremiums[:,0] = 0.0 # First contract is always free
         PremiumArray[:,g,:] = NewPremiums
+        if ExcludedGroups[g]:
+            PremiumArray[:,g,1:] = InfPrem
     self.IMIpremiums = PremiumArray
     
-    TotalBuyers = np.sum(ExpBuyersX[:,these,:,:],axis=(0,1,3))
+    TotalBuyers = np.sum(ExpBuyersX,axis=(0,1,3))
     print('IMI insured rate: ' + str(TotalBuyers[1]/np.sum(TotalBuyers)))
     #plt.plot(PremiumArray[:,:,1])
     #plt.show()
@@ -354,10 +399,7 @@ def ageHealthRatedActuarialRule(self,ExpInsPay,ExpBuyers):
     IMIpremiums = np.zeros((AgeCount,HealthCount,MaxContracts))
     for g in range(GroupCount):
         for h in HealthGroups[g]:
-            if ExcludedGroups[g]:
-                IMIpremiums[:,h,1:] = InfPrem
-            else:
-                IMIpremiums[:,h,:] = PremiumArray[:,g,:]
+            IMIpremiums[:,h,:] = PremiumArray[:,g,:]
     return IMIpremiums
     
 
@@ -414,3 +456,16 @@ def ageRatedActuarialRule(self,ExpInsPay,ExpBuyers):
     IMIpremiums = np.tile(np.reshape(PremiumArray,(AgeCount,1,MaxContracts)),(1,HealthCount,1))
     return IMIpremiums
     
+
+# Specify the baseline structure of the insurance market
+BaselinePolicySpec = PolicySpecification(SubsidyFunc=NullSubsidyFuncs,
+                                         ActuarialRule = ageHealthRatedActuarialRule,
+                                         HealthGroups = [[0],[1,2,3,4]],
+                                         ExcludedGroups = [True,False],
+                                         AgeBandLimit = None,
+                                         MandateTaxRate = 0.0,
+                                         MandateFloor = 0.0,
+                                         name = 'Baseline',
+                                         text = 'baseline specification')
+        
+        
