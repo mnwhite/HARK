@@ -237,39 +237,83 @@ def makeCounterfactualFigures(specification,AgeHealthLim,AgeIncomeLim,IncomeHeal
     plt.show()
     
     # Make a plot of insured rate by age (and health) in the before scenario
-    InsuredRateByAge = np.zeros(T)
-    InsuredRateByAgeHealth = np.zeros((T,5))
+    IMIinsuredRateByAge = np.zeros(T)
+    IMIinsuredRateByAgeHealth = np.zeros((T,5))
     for t in range(T):
-        these = age == t
-        InsuredRateByAge[t] = float(np.sum(iBefore[these]))/float(np.sum(these))
+        these = np.logical_and(age == t, np.logical_not(offer))
+        IMIinsuredRateByAge[t] = float(np.sum(iBefore[these]))/float(np.sum(these))
         for h in range(5):
             those = np.logical_and(these, health == h)
-            InsuredRateByAgeHealth[t,h] = float(np.sum(iBefore[those]))/float(np.sum(those))
-    plt.plot(AgeVec,InsuredRateByAge,'--k')
-    plt.plot(AgeVec,InsuredRateByAgeHealth,'-')
+            IMIinsuredRateByAgeHealth[t,h] = float(np.sum(iBefore[those]))/float(np.sum(those))
+    plt.plot(AgeVec,IMIinsuredRateByAge,'--k')
+    plt.plot(AgeVec,IMIinsuredRateByAgeHealth,'-')
     plt.xlabel('Age')
     plt.ylabel('Insured rate by health status')
-    plt.title('Insured rate, baseline scenario')
+    plt.title('Individual market insured rate, baseline scenario')
     plt.ylim(0.,1.)
-    plt.savefig(FigsDir + 'InsuredRateBaseline.pdf')
+    plt.savefig(FigsDir + 'InsuredRateHealthBaseline.pdf')
+    plt.show()
+    
+    # Make a plot of insured rate by age (and income) in the before scenario
+    IMIinsuredRateByAgeIncome = np.zeros((T,5))
+    for t in range(T):
+        these = np.logical_and(age == t, np.logical_not(offer))
+        p_temp = pLvl[these]
+        i_temp = iBefore[these]
+        quintile_cuts = getPercentiles(p_temp,percentiles=[0.2,0.4,0.6,0.8])
+        quintiles = np.zeros(np.sum(these),dtype=int)
+        for i in range(4):
+            quintiles[p_temp > quintile_cuts[i]] += 1
+        for i in range(5):
+            those = quintiles==i
+            IMIinsuredRateByAgeIncome[t,i] = float(np.sum(i_temp[those]))/float(np.sum(those))
+    plt.plot(AgeVec,IMIinsuredRateByAge,'--k')
+    plt.plot(AgeVec,IMIinsuredRateByAgeIncome,'-')
+    plt.xlabel('Age')
+    plt.ylabel('Insured rate by income quintile')
+    plt.title('Individual market insured rate, baseline scenario')
+    plt.ylim(0.,1.)
+    plt.savefig(FigsDir + 'InsuredRateIncomeBaseline.pdf')
     plt.show()
     
     # Make a plot of insured rate by age (and health) in the after scenario
-    InsuredRateByAge = np.zeros(T)
-    InsuredRateByAgeHealth = np.zeros((T,5))
+    IMIinsuredRateByAge = np.zeros(T)
+    IMIinsuredRateByAgeHealth = np.zeros((T,5))
     for t in range(T):
-        these = age == t
-        InsuredRateByAge[t] = float(np.sum(iAfter[these]))/float(np.sum(these))
+        these = np.logical_and(age == t, np.logical_not(offer))
+        IMIinsuredRateByAge[t] = float(np.sum(iAfter[these]))/float(np.sum(these))
         for h in range(5):
             those = np.logical_and(these, health == h)
-            InsuredRateByAgeHealth[t,h] = float(np.sum(iAfter[those]))/float(np.sum(those))
-    plt.plot(AgeVec,InsuredRateByAge,'--k')
-    plt.plot(AgeVec,InsuredRateByAgeHealth,'-')
+            IMIinsuredRateByAgeHealth[t,h] = float(np.sum(iAfter[those]))/float(np.sum(those))
+    plt.plot(AgeVec,IMIinsuredRateByAge,'--k')
+    plt.plot(AgeVec,IMIinsuredRateByAgeHealth,'-')
     plt.xlabel('Age')
     plt.ylabel('Insured rate by health status')
-    plt.title('Insured rate, ' + specification.text)
+    plt.title('Individual market insured rate, ' + specification.text)
     plt.ylim(0.,1.)
-    plt.savefig(FigsDir + 'InsuredRate' + specification.name + '.pdf')
+    plt.savefig(FigsDir + 'InsuredRateHealth' + specification.name + '.pdf')
+    plt.show()
+    
+    # Make a plot of insured rate by age (and income) in the after scenario
+    IMIinsuredRateByAgeIncome = np.zeros((T,5))
+    for t in range(T):
+        these = np.logical_and(age == t, np.logical_not(offer))
+        p_temp = pLvl[these]
+        i_temp = iAfter[these]
+        quintile_cuts = getPercentiles(p_temp,percentiles=[0.2,0.4,0.6,0.8])
+        quintiles = np.zeros(np.sum(these),dtype=int)
+        for i in range(4):
+            quintiles[p_temp > quintile_cuts[i]] += 1
+        for i in range(5):
+            those = quintiles==i
+            IMIinsuredRateByAgeIncome[t,i] = float(np.sum(i_temp[those]))/float(np.sum(those))
+    plt.plot(AgeVec,IMIinsuredRateByAge,'--k')
+    plt.plot(AgeVec,IMIinsuredRateByAgeIncome,'-')
+    plt.xlabel('Age')
+    plt.ylabel('Insured rate by income quintile')
+    plt.title('Individual market insured rate, ' + specification.text)
+    plt.ylim(0.,1.)
+    plt.savefig(FigsDir + 'InsuredRateIncome' + specification.name + '.pdf')
     plt.show()
         
     # Make a quantile plot of willingness to pay by age
@@ -322,6 +366,26 @@ def makeCounterfactualFigures(specification,AgeHealthLim,AgeIncomeLim,IncomeHeal
     plt.savefig(FigsDir + 'WTPbyAgeIncome' + specification.name + '.pdf')
     plt.show()
     
+    # Make a plot of kernel regression of willingness to pay by age and income quintile
+    WTPmeanByAgeOffer = np.zeros((T,3)) + np.nan
+    for t in range(T):
+        these = np.logical_and(age == t, valid)
+        WTP_temp = WTP[these]
+        for o in range(2):
+            those = offer[these] == o
+            WTPmeanByAgeOffer[t,o] = np.mean(WTP_temp[those])
+        WTPmeanByAgeOffer[t,2] = np.mean(WTP_temp)
+    plt.plot(AgeVec,WTPmeanByAgeOffer[:,0]*100,'-b')
+    plt.plot(AgeVec,WTPmeanByAgeOffer[:,1]*100,'-r')
+    plt.plot(AgeVec,WTPmeanByAgeOffer[:,2]*100,'-k')
+    plt.xlabel('Age')
+    plt.ylabel('Willingness-to-pay (% of permanent income)')
+    plt.title('Mean willingness-to-pay by age and ESI status, ' + specification.text)
+    plt.legend(labels=['Not offered ESI','Offered ESI','Overall'],loc=2)
+    plt.ylim(AgeIncomeLim)
+    plt.savefig(FigsDir + 'WTPbyAgeOffer' + specification.name + '.pdf')
+    plt.show()
+    
 #    for a in range(4):
 #        age_min = a*10
 #        age_max = age_min+10
@@ -354,6 +418,7 @@ def makeCounterfactualFigures(specification,AgeHealthLim,AgeIncomeLim,IncomeHeal
     plt.ylim(IncomeHealthLim)
     plt.savefig(FigsDir + 'WTPbyIncomeHealth' + specification.name + '.pdf')
     plt.show()
+
         
 
 ###############################################################################
@@ -364,10 +429,10 @@ def makeCounterfactualFigures(specification,AgeHealthLim,AgeIncomeLim,IncomeHeal
 BaselineSpec = BaselinePolicySpec
 
 # Define alternate specifications for varying the health rating groups
-GuaranteedIssueSpec = copy(BaselineSpec)
-GuaranteedIssueSpec.ExcludedGroups = [False,False]
-GuaranteedIssueSpec.name = 'GuaranteedIssue'
-GuaranteedIssueSpec.text = 'guaranteed issue for poor health'
+OnlyPoorHealthSpec = copy(BaselineSpec)
+OnlyPoorHealthSpec.HealthGroups = [[0],[1,2,3,4]]
+OnlyPoorHealthSpec.name = 'PoorHealthExcluded'
+OnlyPoorHealthSpec.text = 'only poor health separated'
 
 FiveGroupSpec = copy(BaselineSpec)
 FiveGroupSpec.HealthGroups = [[0],[1],[2],[3],[4]]
@@ -381,7 +446,7 @@ AgeRatedSpec.ExcludedGroups = [False]
 AgeRatedSpec.name = 'OnlyAgeRated'
 AgeRatedSpec.text = 'only age rating'
 
-HealthGroupSpecs = [GuaranteedIssueSpec,FiveGroupSpec,AgeRatedSpec]
+HealthGroupSpecs = [OnlyPoorHealthSpec]
 
 # Define alternate specifications for varying the age band limit
 AgeBandSpecBase = PolicySpecification(
@@ -444,7 +509,7 @@ if __name__ == '__main__':
     do_mandate_tax = False
     
     # Choose what kind of work to do
-    run_experiments = False
+    run_experiments = True
     make_figures = True
     
     if do_health_groups:
@@ -458,7 +523,7 @@ if __name__ == '__main__':
         if make_figures:
             # Make figures for the health groups experiments
             for specification in HealthGroupSpecs:
-                makeCounterfactualFigures(specification,[-5,20],[-5,10],[-5,20])
+                makeCounterfactualFigures(specification,[-5,25],[-5,25],[-5,25])
                 
     
     if do_age_bands:

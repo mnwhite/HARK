@@ -229,7 +229,10 @@ def flatActuarialRule(self,ExpInsPay,ExpBuyers):
     TotalInsPay = np.sum(ExpInsPayX,axis=(0,1,3))
     TotalBuyers = np.sum(ExpBuyersX,axis=(0,1,3))
     AvgInsPay   = TotalInsPay/TotalBuyers
-    DampingFac = 0.2
+    fix_me = np.logical_or(np.isinf(AvgInsPay),np.isnan(AvgInsPay))
+    AvgInsPay[fix_me] = 0.0
+    
+    DampingFac = 0.0
     try:
         IMIpremiums = (1.0-DampingFac)*self.LoadFacIMI*AvgInsPay + DampingFac*self.IMIpremiums
     except:
@@ -273,7 +276,10 @@ def exclusionaryActuarialRule(self,ExpInsPay,ExpBuyers):
     TotalInsPay = np.sum(ExpInsPayX,axis=(0,1,3))
     TotalBuyers = np.sum(ExpBuyersX,axis=(0,1,3))
     AvgInsPay   = TotalInsPay/TotalBuyers
-    DampingFac = 0.2
+    fix_me = np.logical_or(np.isinf(AvgInsPay),np.isnan(AvgInsPay))
+    AvgInsPay[fix_me] = 0.0
+    
+    DampingFac = 0.0
     try:
         IMIpremiums = (1.0-DampingFac)*self.LoadFacIMI*AvgInsPay + DampingFac*self.IMIpremiums
     except:
@@ -320,7 +326,10 @@ def healthRatedActuarialRule(self,ExpInsPay,ExpBuyers):
         TotalInsPay = np.sum(ExpInsPayX[:,these,:,:],axis=(0,1,3))
         TotalBuyers = np.sum(ExpBuyersX[:,these,:,:],axis=(0,1,3))
         AvgInsPay   = TotalInsPay/TotalBuyers
-        DampingFac = 0.2
+        fix_me = np.logical_or(np.isinf(AvgInsPay),np.isnan(AvgInsPay))
+        AvgInsPay[fix_me] = 0.0
+        
+        DampingFac = 0.0
         try:
             NewPremiums = (1.0-DampingFac)*(self.LoadFacIMI*AvgInsPay + 0.06) + DampingFac*self.IMIpremiums[:,g]
         except:
@@ -377,9 +386,6 @@ def ageHealthRatedActuarialRule(self,ExpInsPay,ExpBuyers):
         AvgInsPay   = TotalInsPay/TotalBuyers
         fix_me = np.logical_or(np.isinf(AvgInsPay),np.isnan(AvgInsPay))
         AvgInsPay[fix_me] = 0.0
-        #if g==1:
-        #    plt.plot(TotalBuyers[:,1]/np.sum(TotalBuyers,axis=1))
-        #    plt.show()
         DampingFac = 0.0
         try:
             NewPremiums = (1.0-DampingFac)*(self.LoadFacIMI*AvgInsPay + 0.06) + DampingFac*self.IMIpremiums[:,g,:]
@@ -437,6 +443,8 @@ def ageRatedActuarialRule(self,ExpInsPay,ExpBuyers):
     TotalBuyers = np.sum(ExpBuyersX,axis=(0,1,3))
     TotalBuyersByAge = np.sum(ExpBuyersX[0:40,:,:,:],axis=(1,3)) # Don't sum across ages
     AvgInsPay = TotalInsPay/TotalBuyers
+    fix_me = np.logical_or(np.isinf(AvgInsPay),np.isnan(AvgInsPay))
+    AvgInsPay[fix_me] = 0.0
     
     AgeRatingScale = 1.0 + (AgeBandLimit-1.0)*AgeRatingFunc(np.arange(AgeCount,dtype=float))
     for z in range(1,MaxContracts):
@@ -460,8 +468,8 @@ def ageRatedActuarialRule(self,ExpInsPay,ExpBuyers):
 # Specify the baseline structure of the insurance market
 BaselinePolicySpec = PolicySpecification(SubsidyFunc=NullSubsidyFuncs,
                                          ActuarialRule = ageHealthRatedActuarialRule,
-                                         HealthGroups = [[0],[1,2,3,4]],
-                                         ExcludedGroups = [True,False],
+                                         HealthGroups = [[0,1],[2,3,4]],
+                                         ExcludedGroups = [False,False],
                                          AgeBandLimit = None,
                                          MandateTaxRate = 0.0,
                                          MandateFloor = 0.0,

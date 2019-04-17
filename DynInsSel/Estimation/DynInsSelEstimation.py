@@ -710,11 +710,15 @@ def makeMarketFromParams(ParamArray,PolicySpec,IMIpremiumArray,ESIpremiumArray,I
     for i in range(len(AgentList)):
         AgentList[i].seed = i # Assign different seeds to each type
         
-    # Make a list of which health states are excluded from IMI
-    ExcludedHealth = []
-    for g in range(len(PolicySpec.HealthGroups)):
-        if PolicySpec.ExcludedGroups[g]:
-            ExcludedHealth += PolicySpec.HealthGroups[g]
+    # Make an expanded array of IMI premiums
+    GroupCount = len(PolicySpec.HealthGroups)
+    IMIpremiumArray_big = np.zeros((5,40))
+    for g in range(GroupCount):
+        for h in PolicySpec.HealthGroups[g]:
+            if PolicySpec.ExcludedGroups[g]:
+                IMIpremiumArray_big[h,:] = 10000.
+            else:
+                IMIpremiumArray_big[h,:] = IMIpremiumArray[g,:]
             
     # Construct an initial nested list for premiums
     PremiumFuncs_init = []
@@ -725,10 +729,7 @@ def makeMarketFromParams(ParamArray,PolicySpec,IMIpremiumArray,ESIpremiumArray,I
             PremiumFuncs_this_health = []
             for z in range(ContractCount):
                 if z > 0:
-                    if h in ExcludedHealth:
-                        Prem = 10000.
-                    else:
-                        Prem = IMIpremiumArray[t]
+                    Prem = IMIpremiumArray_big[h,t]
                 else:
                     Prem = 0.
                 PremiumFuncs_this_health.append(ConstantFunction(Prem))
