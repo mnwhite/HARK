@@ -44,7 +44,7 @@ MeanLogTotalMedByAge = np.zeros(60) + np.nan
 StdevLogOOPmedByAge = np.zeros(60) + np.nan
 StdevLogTotalMedByAge = np.zeros(60) + np.nan
 InsuredRateByAge_ESI = np.zeros(40) + np.nan
-InsuredRateByAge_IMI = np.zeros(40) # TODO: Create this data series!
+InsuredRateByAge_IMI = np.zeros(40)
 MeanPremiumByAge = np.zeros(40) + np.nan
 StdevPremiumByAge = np.zeros(40) + np.nan
 NoPremShareRateByAge = np.zeros(40) + np.nan
@@ -67,7 +67,8 @@ for j in range(60):
         StdevPremiumByAge[j] = float(raw_moments[j][7])
         NoPremShareRateByAge[j] = float(raw_moments[j][8])
         premMomentWeightsByAge[j] = float(raw_moments[j][12])
-        otherMomentWeightsByAge[j] = float(raw_moments[j][13])    
+        otherMomentWeightsByAge[j] = float(raw_moments[j][13])  
+        InsuredRateByAge_IMI[j] = float(raw_moments[j][14])
 
 # Load the moments by five-year age groups and income quintile into a CSV reader object
 data_location = os.path.dirname(os.path.abspath(__file__))
@@ -107,6 +108,7 @@ for j in range(40):
     totMomentWeightsByAgeIncome[i,k] = float(raw_moments[j][11])
     premMomentWeightsByAgeIncome[i,k] = float(raw_moments[j][12])
     otherMomentWeightsByAgeIncome[i,k] = float(raw_moments[j][13])
+    InsuredRateByAgeIncome_IMI[i,k] = float(raw_moments[j][14])
     
     
 # Load the moments by five-year age groups and health into a CSV reader object
@@ -298,11 +300,19 @@ if __name__ == '__main__':
     plt.show()
     
     plt.plot(OneYearAge,InsuredRateByAge_ESI,'.k')
-    plt.plot(FiveYearAge,InsuredRateByAgeIncome)
+    plt.plot(FiveYearAge,InsuredRateByAgeIncome_ESI)
     plt.xlabel('Age')
     plt.ylabel('ESI uptake rate')
     plt.legend(['Overall average','Bottom income quintile','Second income quintile','Third income quintile','Fourth income quintile','Top income quintile'],loc=0,fontsize=8)
-    plt.savefig('InsuredRateByAgeIncome.pdf')
+    plt.savefig('InsuredRateESIByAgeIncome.pdf')
+    plt.show()
+    
+    plt.plot(OneYearAge,InsuredRateByAge_IMI,'.k')
+    plt.plot(FiveYearAge,InsuredRateByAgeIncome_IMI)
+    plt.xlabel('Age')
+    plt.ylabel('IMI insured rate')
+    plt.legend(['Overall average','Bottom income quintile','Second income quintile','Third income quintile','Fourth income quintile','Top income quintile'],loc=0,fontsize=8)
+    plt.savefig('InsuredRateIMIByAgeIncome.pdf')
     plt.show()
     
     plt.plot(OneYearAge,MeanPremiumByAge,'.k')
