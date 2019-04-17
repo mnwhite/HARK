@@ -11,7 +11,7 @@ MomentBools = np.array([
                False, #WealthRatioByAge
                True,  #MeanLogTotalMedByAge
                False, #StdevLogTotalMedByAge
-               False, #InsuredRateByAge
+               False, #InsuredRateByAge_ESI
                False, #NoPremShareRateByAge
                False, #MeanPremiumByAge
                False, #StdevPremiumByAge
@@ -20,11 +20,13 @@ MomentBools = np.array([
                False, #WealthRatioByAgeIncome
                False, #MeanLogTotalMedByAgeIncome
                False, #StdevLogTotalMedByAgeIncome
-               False, #InsuredRateByAgeIncome
+               False, #InsuredRateByAgeIncome_ESI
                False, #MeanPremiumByAgeIncome
                False, #MeanLogOOPmedByAge
                False, #StdevLogOOPmedByAge
                False, #OOPshareByAge
+               False, #InsuredRateByAge_IMI
+               False, #InsuredRateByAgeIncome_IMI
               ])
 
 # Load the moments by one-year age groups into a CSV reader object
@@ -81,7 +83,7 @@ MeanLogOOPmedByAgeIncome = np.zeros((8,5)) + np.nan
 MeanLogTotalMedByAgeIncome = np.zeros((8,5)) + np.nan
 StdevLogOOPmedByAgeIncome = np.zeros((8,5)) + np.nan
 StdevLogTotalMedByAgeIncome = np.zeros((8,5)) + np.nan
-InsuredRateByAgeIncome = np.zeros((8,5)) + np.nan
+InsuredRateByAgeIncome_ESI = np.zeros((8,5)) + np.nan
 MeanPremiumByAgeIncome = np.zeros((8,5)) + np.nan
 StdevPremiumByAgeIncome = np.zeros((8,5)) + np.nan
 NoPremShareRateByAgeIncome = np.zeros((8,5)) + np.nan
@@ -89,6 +91,7 @@ OOPmomentWeightsByAgeIncome = np.zeros((8,5)) + np.nan
 totMomentWeightsByAgeIncome = np.zeros((8,5)) + np.nan
 premMomentWeightsByAgeIncome = np.zeros((8,5)) + np.nan
 otherMomentWeightsByAgeIncome = np.zeros((8,5)) + np.nan
+InsuredRateByAgeIncome_IMI = np.zeros((8,5)) + np.nan
 for j in range(40):
     i = int(raw_moments[j][1])-1
     k = int(raw_moments[j][0])-1
@@ -96,7 +99,7 @@ for j in range(40):
     MeanLogTotalMedByAgeIncome[i,k] = float(raw_moments[j][3])
     StdevLogOOPmedByAgeIncome[i,k] = float(raw_moments[j][4])
     StdevLogTotalMedByAgeIncome[i,k] = float(raw_moments[j][5])
-    InsuredRateByAgeIncome[i,k] = float(raw_moments[j][6])
+    InsuredRateByAgeIncome_ESI[i,k] = float(raw_moments[j][6])
     MeanPremiumByAgeIncome[i,k] = float(raw_moments[j][7])
     StdevPremiumByAgeIncome[i,k] = float(raw_moments[j][8])
     NoPremShareRateByAgeIncome[i,k] = float(raw_moments[j][9])
@@ -184,12 +187,13 @@ MomentList = [WealthRatioByAge,
               WealthRatioByAgeIncome.flatten(),
               MeanLogTotalMedByAgeIncome.flatten(),
               StdevLogTotalMedByAgeIncome.flatten(),
-              InsuredRateByAgeIncome.flatten(),
+              InsuredRateByAgeIncome_ESI.flatten(),
               MeanPremiumByAgeIncome.flatten(),
               MeanLogOOPmedByAge.flatten(),
               StdevLogOOPmedByAge.flatten(),
               OOPshareByAge,
-              InsuredRateByAge_IMI]
+              InsuredRateByAge_IMI,
+              InsuredRateByAgeIncome_IMI.flatten()]
 data_moments = np.hstack(MomentList)
 
 # Construct the vector of moment weights
@@ -212,6 +216,8 @@ if use_data_weights:
     moment_weights[640:700] = OOPmomentWeightsByAge
     moment_weights[700:760] = OOPmomentWeightsByAge
     moment_weights[760:820] = otherMomentWeightsByAge
+    moment_weights[820:860] = otherMomentWeightsByAge
+    moment_weights[860:900] = otherMomentWeightsByAgeIncome
     
 else:
     moment_weights = np.ones_like(data_moments)
@@ -251,6 +257,8 @@ if not MomentBools[15]:
     moment_weights[700:760] = 0.0
 if not MomentBools[16]:
     moment_weights[760:820] = 0.0
+if not MomentBools[17]:
+    moment_weights[820:860] = 0.0
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt

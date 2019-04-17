@@ -27,7 +27,8 @@ class PolicySpecification(object):
     HealthGroups, AgeBandLimit, an individual MandateTaxRate and Floor, and a name.
     Each of these attributes is added as attributes of the InsuranceMarket.
     '''
-    def __init__(self,SubsidyFunc,ActuarialRule,HealthGroups,ExcludedGroups,AgeBandLimit,MandateTaxRate,MandateFloor,name,text):
+    def __init__(self,SubsidyFunc,ActuarialRule,HealthGroups,ExcludedGroups,AgeBandLimit,
+                 MandateTaxRate,MandateFloor,MandateForESI,name,text):
         self.SubsidyFunc   = SubsidyFunc
         self.ActuarialRule = ActuarialRule
         self.HealthGroups  = HealthGroups
@@ -35,6 +36,7 @@ class PolicySpecification(object):
         self.AgeBandLimit  = AgeBandLimit
         self.MandateTaxRate= MandateTaxRate
         self.MandateFloor  = MandateFloor
+        self.MandateForESI = MandateForESI
         self.name          = name
         self.text          = text
         
@@ -63,6 +65,7 @@ class InsuranceMarket(Market):
         self.AgeBandLimit     = PolicySpec.AgeBandLimit
         self.MandateTaxRate   = PolicySpec.MandateTaxRate
         self.MandateFloor     = PolicySpec.MandateFloor
+        self.MandateForESI    = PolicySpec.MandateForESI
         self.applySubsidyAndIM()
         
     
@@ -70,7 +73,7 @@ class InsuranceMarket(Market):
         # Have each agent type in the market inherit the IMI subsidies and individual mandate
         for this_type in self.agents:
             setattr(this_type,'SubsidyFunc', self.SubsidyFunc)
-            this_type.updateUninsuredPremium(self.MandateTaxRate, self.MandateFloor)
+            this_type.updateUninsuredPremium(self.MandateTaxRate, self.MandateFloor, self.MandateForESI)
             
     
     def millRule(self,ExpInsPay,ExpBuyers,IncAboveThreshByAge,HealthBudgetByAge):
@@ -473,6 +476,7 @@ BaselinePolicySpec = PolicySpecification(SubsidyFunc=NullSubsidyFuncs,
                                          AgeBandLimit = None,
                                          MandateTaxRate = 0.0,
                                          MandateFloor = 0.0,
+                                         MandateForESI = False,
                                          name = 'Baseline',
                                          text = 'baseline specification')
         

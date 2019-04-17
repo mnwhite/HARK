@@ -1586,7 +1586,10 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
                     ContractCount = len(self.ContractList[t][h])
                     for z in range(ContractCount):
                         if z == 0:
-                            PremiumFunc = self.UninsuredPremiumFunc
+                            if self.MandateForESI:
+                                PremiumFunc = self.UninsuredPremiumFunc
+                            else: # MandateForESI indicates whether IM applies to ESI
+                                PremiumFunc = ConstantFunction(0.0)
                         else:
                             PremiumFunc = self.PremiumFuncs[t][h][z]
                         self.ContractList[t][h][z].Premium = PremiumFunc
@@ -1595,7 +1598,10 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
                     ContractCount = len(self.ContractList[t][h])
                     for z in range(ContractCount):
                         if z == 0:
-                            PremiumFunc = self.UninsuredPremiumFunc
+                            if self.MandateForESI:
+                                PremiumFunc = self.UninsuredPremiumFunc
+                            else: # MandateForESI indicates whether IM applies to ESI
+                                PremiumFunc = ConstantFunction(0.0)
                         else:
                             PremiumFunc = self.PremiumFuncs[t][h][z]
                         if PremiumFunc.__class__.__name__ == 'ConstantFunction':
@@ -1609,7 +1615,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
             self.timeRev()
         
         
-    def updateUninsuredPremium(self,MandateTaxRate=0.,MandateFloor=0.):
+    def updateUninsuredPremium(self,MandateTaxRate=0.,MandateFloor=0.,MandateForESI=False):
         '''
         Create the attribute UninsuredPremiumFunc, a function that will be used
         as the "premium" for being uninsured.  It is installed automatically by
@@ -1623,11 +1629,14 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
             Defaults to zero.  Actual "premium" never exceeds 50% of market resources.
         MandateFloor : float
             Minimum value of the individual mandate penalty.
+        MandateForESI : bool
+            Indicator for whether the individual mandate applies to those who are offered ESI.
             
         Returns
         -------
         None
         '''
+        self.MandateForESI = MandateForESI
         if np.logical_and(MandateTaxRate == 0., MandateFloor == 0.):
             self.UninsuredPremiumFunc = ConstantFunction(0.)
             return # Handle null IM policy
