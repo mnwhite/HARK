@@ -155,11 +155,16 @@ class InsuranceMarket(Market):
         '''
         ExpInsPayX = np.stack(ExpInsPay,axis=3)[:40,5:,:,:] # This is collected in reap_vars
         ExpBuyersX = np.stack(ExpBuyers,axis=3)[:40,5:,:,:] # This is collected in reap_vars
+        MaxContracts = ExpInsPayX.shape[2]
         # Order of indices: age, health, contract, type
         
-        TotalInsPay = np.sum(ExpInsPayX,axis=(0,1,3))
-        TotalBuyers = np.sum(ExpBuyersX,axis=(0,1,3))
-        AvgInsPay   = TotalInsPay/TotalBuyers
+        TotalInsPay_ByAge = np.sum(ExpInsPayX,axis=(1,3))
+        TotalBuyers_ByAge = np.sum(ExpBuyersX,axis=(1,3))
+        CohortWeight = self.CohortGroFac**(-np.arange(40))
+        CohortWeightX = np.tile(np.reshape(CohortWeight,(40,1)),(1,MaxContracts))
+        TotalInsPay = np.sum(CohortWeightX*TotalInsPay_ByAge,axis=0)
+        TotalBuyers = np.sum(CohortWeightX*TotalBuyers_ByAge,axis=0)
+        AvgInsPay = TotalInsPay/TotalBuyers
         
         DampingFac = 0.0
         try:
@@ -229,8 +234,12 @@ def flatActuarialRule(self,ExpInsPay,ExpBuyers):
     MaxContracts = ExpInsPayX.shape[2]
     # Order of indices: age, health, contract, type
     
-    TotalInsPay = np.sum(ExpInsPayX,axis=(0,1,3))
-    TotalBuyers = np.sum(ExpBuyersX,axis=(0,1,3))
+    TotalInsPay_ByAge = np.sum(ExpInsPayX,axis=(1,3))
+    TotalBuyers_ByAge = np.sum(ExpBuyersX,axis=(1,3))
+    CohortWeight = self.CohortGroFac**(-np.arange(40))
+    CohortWeightX = np.tile(np.reshape(CohortWeight,(40,1)),(1,MaxContracts))
+    TotalInsPay = np.sum(CohortWeightX*TotalInsPay_ByAge,axis=0)
+    TotalBuyers = np.sum(CohortWeightX*TotalBuyers_ByAge,axis=0)
     AvgInsPay   = TotalInsPay/TotalBuyers
     fix_me = np.logical_or(np.isinf(AvgInsPay),np.isnan(AvgInsPay))
     AvgInsPay[fix_me] = 0.0
@@ -276,9 +285,13 @@ def exclusionaryActuarialRule(self,ExpInsPay,ExpBuyers):
     MaxContracts = ExpInsPayX.shape[2]
     # Order of indices: age, health, contract, type
     
-    TotalInsPay = np.sum(ExpInsPayX,axis=(0,1,3))
-    TotalBuyers = np.sum(ExpBuyersX,axis=(0,1,3))
-    AvgInsPay   = TotalInsPay/TotalBuyers
+    TotalInsPay_ByAge = np.sum(ExpInsPayX,axis=(1,3))
+    TotalBuyers_ByAge = np.sum(ExpBuyersX,axis=(1,3))
+    CohortWeight = self.CohortGroFac**(-np.arange(40))
+    CohortWeightX = np.tile(np.reshape(CohortWeight,(40,1)),(1,MaxContracts))
+    TotalInsPay = np.sum(CohortWeightX*TotalInsPay_ByAge,axis=0)
+    TotalBuyers = np.sum(CohortWeightX*TotalBuyers_ByAge,axis=0)
+    AvgInsPay = TotalInsPay/TotalBuyers
     fix_me = np.logical_or(np.isinf(AvgInsPay),np.isnan(AvgInsPay))
     AvgInsPay[fix_me] = 0.0
     
@@ -326,9 +339,13 @@ def healthRatedActuarialRule(self,ExpInsPay,ExpBuyers):
     PremiumArray = np.zeros((GroupCount,MaxContracts)) + np.nan
     for g in range(GroupCount):
         these = HealthGroups[g]
-        TotalInsPay = np.sum(ExpInsPayX[:,these,:,:],axis=(0,1,3))
-        TotalBuyers = np.sum(ExpBuyersX[:,these,:,:],axis=(0,1,3))
-        AvgInsPay   = TotalInsPay/TotalBuyers
+        TotalInsPay_ByAge = np.sum(ExpInsPayX[:,these,:,:],axis=(1,3))
+        TotalBuyers_ByAge = np.sum(ExpBuyersX[:,these,:,:],axis=(1,3))
+        CohortWeight = self.CohortGroFac**(-np.arange(40))
+        CohortWeightX = np.tile(np.reshape(CohortWeight,(40,1)),(1,MaxContracts))
+        TotalInsPay = np.sum(CohortWeightX*TotalInsPay_ByAge,axis=0)
+        TotalBuyers = np.sum(CohortWeightX*TotalBuyers_ByAge,axis=0)
+        AvgInsPay = TotalInsPay/TotalBuyers
         fix_me = np.logical_or(np.isinf(AvgInsPay),np.isnan(AvgInsPay))
         AvgInsPay[fix_me] = 0.0
         

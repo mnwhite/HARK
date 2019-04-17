@@ -524,29 +524,29 @@ for j in range(ZeroMedShkPrb.shape[0]):
     ZeroMedShkPrb_list.append(ZeroMedShkPrb[j,:])
     
 # Individual market premiums by age
-IMIpremiums = np.array([[ 0.63319739,  0.71572744,  0.73519805,  0.77373017,  0.7513896 ,
-         0.85611616,  0.85002339,  0.81771946,  0.84250644,  0.8917333 ,
-         0.9008966 ,  0.92296982,  0.94755159,  0.99093747,  1.07010101,
-         1.08561163,  1.10399601,  1.17679353,  1.17083097,  1.22582878,
-         1.29088365,  1.35572832,  1.42919101,  1.47916746,  1.54100156,
-         1.63027938,  1.69911899,  1.78655045,  1.80874114,  1.95990622,
-         2.07320522,  2.15075071,  2.28276043,  2.37082678,  2.44074048,
-         2.64834225,  2.69353809,  2.80832712,  2.89631979,  2.95318622],
-       [ 0.14882087,  0.15849825,  0.16558519,  0.17268725,  0.1793293 ,
-         0.18521743,  0.19170323,  0.1986376 ,  0.20471942,  0.21271428,
-         0.21882364,  0.22627521,  0.23617858,  0.24469603,  0.25535215,
-         0.2648705 ,  0.27687954,  0.290413  ,  0.30543665,  0.32101206,
-         0.33730903,  0.35759655,  0.37705543,  0.40182086,  0.42558938,
-         0.45432569,  0.48609797,  0.51416031,  0.54742705,  0.58346445,
-         0.62151802,  0.6575364 ,  0.69687584,  0.74336614,  0.7823034 ,
-         0.8240356 ,  0.86563218,  0.90540582,  0.92942321,  0.95749878]])
+IMIpremiums = np.array([[ 0.62992793,  0.71546036,  0.72240208,  0.76597628,  0.74792859,
+         0.8492166 ,  0.83899768,  0.81171508,  0.83902314,  0.88888501,
+         0.89942671,  0.92013034,  0.948078  ,  0.98833812,  1.06572988,
+         1.08584578,  1.09976601,  1.18234372,  1.16901396,  1.22546419,
+         1.28571304,  1.34995475,  1.42319706,  1.47791329,  1.5347986 ,
+         1.62918738,  1.6907126 ,  1.77403392,  1.8079194 ,  1.94117418,
+         2.05191287,  2.12946114,  2.26076666,  2.34930475,  2.41732431,
+         2.63272304,  2.67170418,  2.76596415,  2.87035301,  2.9407965 ],
+       [ 0.1504917 ,  0.16127998,  0.16936028,  0.17750505,  0.1850844 ,
+         0.19175081,  0.19890191,  0.20649836,  0.21312996,  0.2217463 ,
+         0.22814049,  0.2358188 ,  0.24621411,  0.25549084,  0.26646825,
+         0.27633249,  0.28943402,  0.3038345 ,  0.32006873,  0.33623736,
+         0.35349371,  0.37573125,  0.39601126,  0.4223072 ,  0.44807054,
+         0.47907912,  0.51199739,  0.54158902,  0.57735344,  0.61474319,
+         0.65541883,  0.69494999,  0.73694975,  0.78650469,  0.82844661,
+         0.87286358,  0.91800882,  0.96313071,  0.99408626,  1.01314208]])
 
 # Define basic parameters of the economy
 HealthTaxFunc = SpecialTaxFunction(0.0,0.00) # Tax rate will be overwritten by installPremiumFuncs
-HealthTaxRate_init = 0.05937
+HealthTaxRate_init = 0.0455
 LoadFacESI   = 1.2 # Loading factor for employer sponsored insurance
 LoadFacIMI   = 1.8 # Loading factor for individual market insurance
-CohortGroFac = 1.0 # Year-on-year growth rate of population; each cohort is this factor larger than previous
+CohortGroFac = 1.01 # Year-on-year growth rate of population; each cohort is this factor larger than previous
     
 # Make a basic dictionary with parameters that never change
 BasicDictionary = { 'Rfree': Rfree,
@@ -614,11 +614,11 @@ CollegeDictionary['pLvlNextFuncRet'] = RetirementFunc_c
 
 # Make a test parameter vector for estimation
 test_param_vec = np.array([0.93, # DiscFac
-                           2.7,  # CRRAcon
+                           2.6,  # CRRAcon
                            8.0,  # MedCurve 
                           -8.5,  # ChoiceShkMag in log
-                          0.15,  # Cfloor
-                         -1.41,  # SubsidyAvg
+                           0.15, # Cfloor
+                         -1.48,  # SubsidyAvg
                           -3.0,  # SubsidyWidth scaler
                           10.0,  # BequestShift shifter for bequest motive
                            3.0,  # BequestScale scale of bequest motive
@@ -627,9 +627,9 @@ test_param_vec = np.array([0.93, # DiscFac
                        0.00101,  # MedShkMean quadratic age coefficient
                     -0.0000018,  # MedShkMean cubic age coefficient
                    -0.00000013,  # MedShkMean quartic age coefficient
-                          0.25,  # MedShkMean "very good" constant coefficient
+                          0.22,  # MedShkMean "very good" constant coefficient
                         0.0025,  # MedShkMean "very good" linear coefficient
-                          0.28,  # MedShkMean "good" constant coefficient
+                          0.31,  # MedShkMean "good" constant coefficient
                         0.0000,  # MedShkMean "good" linear coefficient
                           0.50,  # MedShkMean "fair" constant coefficient
                        -0.0011,  # MedShkMean "fair" linear coefficient
