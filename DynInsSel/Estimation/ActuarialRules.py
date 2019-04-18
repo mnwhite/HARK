@@ -408,14 +408,16 @@ def ageHealthRatedActuarialRule(self,ExpInsPay,ExpBuyers):
         AvgInsPay[fix_me] = 0.0
         DampingFac = 0.0
         try:
-            NewPremiums = (1.0-DampingFac)*(self.LoadFacIMI*AvgInsPay + 0.06) + DampingFac*self.IMIpremiums[:,g,:]
+            NewPremiums = (1.0-DampingFac)*(self.LoadFacIMI*AvgInsPay + 0.2) + DampingFac*self.IMIpremiums[:,g,:]
         except:
-            NewPremiums = self.LoadFacIMI*AvgInsPay + 0.06
+            NewPremiums = self.LoadFacIMI*AvgInsPay + 0.2
         NewPremiums[:,0] = 0.0 # First contract is always free
         PremiumArray[:,g,:] = NewPremiums
         if ExcludedGroups[g]:
             PremiumArray[:,g,1:] = InfPrem
     self.IMIpremiums = PremiumArray
+    plt.plot(PremiumArray[:,:,1])
+    plt.show()
     
     TotalBuyers = np.sum(ExpBuyersX,axis=(0,1,3))
     print('IMI insured rate: ' + str(TotalBuyers[1]/np.sum(TotalBuyers)))

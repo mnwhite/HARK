@@ -781,7 +781,7 @@ def objectiveFunction(Parameters):
     TestPremiums = True # Whether to start with the test premium level
     
     if TestPremiums:
-        ESIpremiums = np.array([0.3300, 0.0, 0.0, 0.0, 0.0])
+        ESIpremiums = np.array([0.3000, 0.0, 0.0, 0.0, 0.0])
     else:
         ESIpremiums = Params.PremiumsLast
     IMIpremiums_init = Params.IMIpremiums
