@@ -446,7 +446,7 @@ AgeRatedSpec.ExcludedGroups = [False]
 AgeRatedSpec.name = 'OnlyAgeRated'
 AgeRatedSpec.text = 'only age rating'
 
-HealthGroupSpecs = [AgeRatedSpec]
+HealthGroupSpecs = [OnlyPoorHealthSpec,FiveGroupSpec,AgeRatedSpec]
 
 # Define alternate specifications for varying the age band limit
 AgeBandSpecBase = PolicySpecification(
@@ -461,7 +461,7 @@ AgeBandSpecBase = PolicySpecification(
                         name = 'AgeBand10x',
                         text = 'age band limit 10x')
 AgeBandSpecs = []
-AgeBandLimits = [10.,9.5,9.0,8.5,8.0,7.5,7.0,6.5,6.0,5.5,5.0,4.5,4.0,3.5,3.0,2.5,2.0,1.5]
+AgeBandLimits = [5.0,4.5,4.0,3.5,3.0,2.5,2.0,1.5]
 for AgeBandLimit in AgeBandLimits:
     NewSpec = copy(AgeBandSpecBase)
     NewSpec.AgeBandLimit= AgeBandLimit
@@ -518,7 +518,7 @@ if __name__ == '__main__':
         if run_experiments:
             # Run the health groups experiments
             t_start = clock()
-            MyMarket = runCounterfactual(Params.test_param_vec,BaselineSpec,HealthGroupSpecs,[0.,60.])
+            MyMarket = runCounterfactual(Params.test_param_vec,BaselineSpec,HealthGroupSpecs,[0.,20.])
             t_end = clock()
             print('Health groups counterfactual experiment took ' + mystr(t_end-t_start) + ' seconds.')
         
@@ -532,7 +532,7 @@ if __name__ == '__main__':
         if run_experiments:
             # Run the age band limits experiments
             t_start = clock()
-            MyMarket = runCounterfactual(Params.test_param_vec,BaselineSpec,AgeBandSpecs,[0.,17.])
+            MyMarket = runCounterfactual(Params.test_param_vec,BaselineSpec,AgeBandSpecs,[0.,20.])
             t_end = clock()
             print('Age band limit counterfactual experiment took ' + mystr(t_end-t_start) + ' seconds.')
             
@@ -546,7 +546,7 @@ if __name__ == '__main__':
         if run_experiments:
             # Run the individual mandate experiments
             t_start = clock()
-            MyMarket = runCounterfactual(Params.test_param_vec,BaselineSpec,MandateSpecs,[0.,11.])
+            MyMarket = runCounterfactual(Params.test_param_vec,BaselineSpec,MandateSpecs,[0.,20.])
             t_end = clock()
             print('Individual mandate counterfactual experiment took ' + mystr(t_end-t_start) + ' seconds.')
             
