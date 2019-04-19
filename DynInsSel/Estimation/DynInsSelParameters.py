@@ -34,7 +34,7 @@ DecurveBool = True                  # "Decurve" value through the inverse utilit
 pLvlPctiles = np.concatenate(([0.001, 0.005, 0.01, 0.03], np.linspace(0.05, 0.95, num=12),[0.97, 0.99, 0.995, 0.999]))
 pLvlInitStd = 0.4                   # Initial standard deviation of (log) permanent income
 pLvlInitMean = 0.0                  # Initial average of log permanent income
-PermIncCorr = 1.0                   # Serial correlation coefficient for permanent income
+PermIncCorr = 0.99                  # Serial correlation coefficient for permanent income
 MedShkCount = 20                    # Number of medical shock points
 DevMin = -3.0                       # Minimum standard deviations below MedShk mean
 DevMax = 5.0                        # Maximum standard deviations above MedShk mean
@@ -544,8 +544,8 @@ IMIpremiums = np.array([[ 0.52443952,  0.56815677,  0.57218412,  0.59311664,  0.
 # Define basic parameters of the economy
 HealthTaxFunc = SpecialTaxFunction(0.0,0.00) # Tax rate will be overwritten by installPremiumFuncs
 HealthTaxRate_init = 0.04515
-LoadFacESI   = 1.2 # Loading factor for employer sponsored insurance
-LoadFacIMI   = 1.2 # Loading factor for individual market insurance
+LoadFacESI   = 1.20 # Loading factor for employer sponsored insurance
+LoadFacIMI   = 1.20 # Loading factor for individual market insurance
 CohortGroFac = 1.01 # Year-on-year growth rate of population; each cohort is this factor larger than previous
     
 # Make a basic dictionary with parameters that never change

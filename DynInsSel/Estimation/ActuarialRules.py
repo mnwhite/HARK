@@ -246,9 +246,9 @@ def flatActuarialRule(self,ExpInsPay,ExpBuyers):
     
     DampingFac = 0.0
     try:
-        IMIpremiums = (1.0-DampingFac)*self.LoadFacIMI*AvgInsPay + DampingFac*self.IMIpremiums
+        IMIpremiums = (1.0-DampingFac)*(self.LoadFacIMI*AvgInsPay + 0.2) + DampingFac*self.IMIpremiums
     except:
-        IMIpremiums = self.LoadFacIMI*AvgInsPay
+        IMIpremiums = self.LoadFacIMI*AvgInsPay + 0.2
     IMIpremiums[0] = 0.0 # First contract is always free
     self.IMIpremiums = IMIpremiums
     print('IMI premiums: ' + str(IMIpremiums[1]) + ', insured rate: ' + str(TotalBuyers[1]/np.sum(TotalBuyers)))
@@ -297,9 +297,9 @@ def exclusionaryActuarialRule(self,ExpInsPay,ExpBuyers):
     
     DampingFac = 0.0
     try:
-        IMIpremiums = (1.0-DampingFac)*self.LoadFacIMI*AvgInsPay + DampingFac*self.IMIpremiums
+        IMIpremiums = (1.0-DampingFac)*(self.LoadFacIMI*AvgInsPay + 0.2) + DampingFac*self.IMIpremiums
     except:
-        IMIpremiums = self.LoadFacIMI*AvgInsPay
+        IMIpremiums = self.LoadFacIMI*AvgInsPay + 0.2
     IMIpremiums[0] = 0.0 # First contract is always free
     self.IMIpremiums = IMIpremiums
     print('IMI premiums: ' + str(IMIpremiums[1]) + ', insured rate: ' + str(TotalBuyers[1]/np.sum(TotalBuyers)))
@@ -351,9 +351,9 @@ def healthRatedActuarialRule(self,ExpInsPay,ExpBuyers):
         
         DampingFac = 0.0
         try:
-            NewPremiums = (1.0-DampingFac)*(self.LoadFacIMI*AvgInsPay + 0.06) + DampingFac*self.IMIpremiums[:,g]
+            NewPremiums = (1.0-DampingFac)*(self.LoadFacIMI*AvgInsPay + 0.2) + DampingFac*self.IMIpremiums[:,g]
         except:
-            NewPremiums = self.LoadFacIMI*AvgInsPay + 0.06
+            NewPremiums = self.LoadFacIMI*AvgInsPay + 0.2
         NewPremiums[0] = 0.0 # First contract is always free
         PremiumArray[g,:] = NewPremiums
         print('IMI premiums group ' + str(g) + ': ' + str(NewPremiums[1]) + ', insured rate: ' + str(TotalBuyers[1]/np.sum(TotalBuyers)))
@@ -463,25 +463,31 @@ def ageRatedActuarialRule(self,ExpInsPay,ExpBuyers):
     PremiumArray = np.zeros((AgeCount,MaxContracts)) + np.nan
     TotalInsPay = np.sum(ExpInsPayX,axis=(0,1,3))
     TotalBuyers = np.sum(ExpBuyersX,axis=(0,1,3))
-    TotalBuyersByAge = np.sum(ExpBuyersX[0:40,:,:,:],axis=(1,3)) # Don't sum across ages
+    TotalInsPayByAge = np.sum(ExpInsPayX,axis=(1,3)) # Don't sum across ages
+    TotalBuyersByAge = np.sum(ExpBuyersX,axis=(1,3)) # Don't sum across ages
+    CohortWeight = self.CohortGroFac**(-np.arange(40))
+    CohortWeightX = np.tile(np.reshape(CohortWeight,(40,1)),(1,MaxContracts))
+    TotalInsPayByAge *= CohortWeightX # Cohort-size adjusted
+    TotalBuyersByAge *= CohortWeightX # Cohort-size adjusted
     AvgInsPay = TotalInsPay/TotalBuyers
     fix_me = np.logical_or(np.isinf(AvgInsPay),np.isnan(AvgInsPay))
     AvgInsPay[fix_me] = 0.0
     
     AgeRatingScale = 1.0 + (AgeBandLimit-1.0)*AgeRatingFunc(np.arange(AgeCount,dtype=float))
     for z in range(1,MaxContracts):
-        def tempFunc(BasePremium):
+        TotalCost = np.sum(TotalBuyersByAge[:,z]*0.2 + TotalInsPayByAge[:,z]*self.LoadFacIMI)
+        def tempFunc(BasePremium): # Profit function to be zero'ed
             PremiumVec = BasePremium*AgeRatingScale
             TotalRevenue = np.sum(PremiumVec*TotalBuyersByAge[:,z])
-            return TotalRevenue/TotalInsPay[z] - self.LoadFacIMI
+            return TotalRevenue - TotalCost
         
-        NewPremium = brentq(tempFunc,0.0,AvgInsPay[z]*self.LoadFacIMI)
+        NewPremium = brentq(tempFunc,0.0,AvgInsPay[z]*self.LoadFacIMI + 0.2)
         PremiumArray[:,z] = NewPremium*AgeRatingScale
     self.IMIpremiums = PremiumArray
     
     print('IMI insured rate: ' + str(TotalBuyers[1]/np.sum(TotalBuyers)))
-    #plt.plot(PremiumArray[:,1])
-    #plt.show()
+    plt.plot(PremiumArray[:,1])
+    plt.show()
     
     IMIpremiums = np.tile(np.reshape(PremiumArray,(AgeCount,1,MaxContracts)),(1,HealthCount,1))
     return IMIpremiums

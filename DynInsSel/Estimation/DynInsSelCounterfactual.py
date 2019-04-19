@@ -461,7 +461,7 @@ AgeBandSpecBase = PolicySpecification(
                         name = 'AgeBand10x',
                         text = 'age band limit 10x')
 AgeBandSpecs = []
-AgeBandLimits = [5.0,4.5,4.0,3.5,3.0,2.5,2.0,1.5]
+AgeBandLimits = [5.0,4.8,4.6,4.4,4.2,4.0,3.8,3.6,3.4,3.2,3.0,2.8,2.6,2.4,2.2,2.0,1.8,1.6,1.4,1.2]
 for AgeBandLimit in AgeBandLimits:
     NewSpec = copy(AgeBandSpecBase)
     NewSpec.AgeBandLimit= AgeBandLimit
@@ -506,8 +506,8 @@ if __name__ == '__main__':
     mystr = lambda number : "{:.4f}".format(number)
     
     # Choose which experiments to work on
-    do_health_groups = True
-    do_age_bands = False
+    do_health_groups = False
+    do_age_bands = True
     do_mandate_tax = False
     
     # Choose what kind of work to do
