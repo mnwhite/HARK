@@ -175,8 +175,9 @@ __kernel void doJorgensenDruedahlSimpleFix(
     ,__global double *pLvlData           /* data on exogenous pLvl */
     ,__global double *ValueData          /* data on value at (m,Dev) */
     ,__global double *cLvlData           /* data on optimal cLvl    */
-    ,__global double *mGridDense         /* exogenous grid of mLvl  */
-    ,__global double *pGridDense         /* exogenus grid of pLvl */
+    ,__global double *mGridDense         /* exogenous grid of mNrm  */
+    ,__global double *pGridDense         /* exogenous grid of pLvl */
+    ,__global double *pGridDenseAlt      /* alternate grid of pLvl (only for determining mLvlGrid) */
     ,__global double *cLvlOut            /* J-D fixed cLvl to return */
     ,__global double *ValueOut           /* J-D fixed value to return */
     ,__global int *IntegerInputs         /* integers that characterize problem */
@@ -221,12 +222,13 @@ __kernel void doJorgensenDruedahlSimpleFix(
     int mGridIdx = Gid/pGridDenseSize;
     int pGridIdx = Gid - mGridIdx*pGridDenseSize;
     double pLvl = pGridDense[pGridIdx];
+    double pLvlAlt = pGridDense[pGridIdx];
     double mLvl; /* mGridDense has mNrm values */
     if (pLvl > 0.0) {
-        mLvl = mGridDense[mGridIdx]*pLvl;
+        mLvl = mGridDense[mGridIdx]*pLvlAlt;
     }
     else {
-        mLvl = mGridDense[mGridIdx]*pGridDense[1];
+        mLvl = mGridDense[mGridIdx]*pGridDenseAlt[1];
     }
 
     /* Initialize xLvl and value for output */

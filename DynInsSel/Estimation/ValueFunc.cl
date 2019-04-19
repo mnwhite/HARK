@@ -41,6 +41,7 @@ inline int findIndex(
 __kernel void evalValueFunc(
      __global double *mNrmGrid           /* exogenous mNrm grid */
     ,__global double *pLvlGrid           /* exogenous pLvl grid */
+    ,__global double *pLvlGridAlt        /* alternate pLvl grid, used only for interpreting mLvlGrid by pLvl */
     ,__global double *vNvrsZeroShkData   /* data on pseudo-inverse value at (mLvl,pLvl) */
     ,__global double *vNvrsRescaledData  /* data on rescaled value at (mLvl,pLvl,Dev) */
     ,__global double *mLvlQuery          /* market resources query points */
@@ -83,6 +84,8 @@ __kernel void evalValueFunc(
     double mHi;  /* market resources at upper gridpoint */
     double pLo;  /* permanent income at lower gridpoint */
     double pHi;  /* permanent income at upper gridpoint */
+    double pLoAlt;  /* "alternate" permanent income at lower gridpoint */
+    double pHiAlt;  /* "alternate" permanent income at upper gridpoint */
     double DevExtra;
     double alpha;/* proportion weight for mNrm on vNvrsRescaled */
     double alpha_alt; /* proportion weight for mNrm on vNvrsZeroShk */
@@ -102,6 +105,8 @@ __kernel void evalValueFunc(
     jj = max(min(jj,pLvlGridSize-1),1);
     pLo = pLvlGrid[jj-1];
     pHi = pLvlGrid[jj];
+    pLoAlt = pLvlGridAlt[jj-1];
+    pHiAlt = pLvlGridAlt[jj];
     beta = (pLvl - pLo)/(pHi - pLo);
 
     /* Find query point's Dev index and relative weight */
@@ -111,7 +116,7 @@ __kernel void evalValueFunc(
     gamma = (DevExtra - convert_float(kk-1)*DevStep)/DevStep;
 
     /* Find query point's mNrm index for lower pLvl index */
-    mNrm = mLvl/pLo;
+    mNrm = mLvl/pLoAlt;
     ii = findIndex(mNrmGrid,0,mNrmGridSize-1,mNrm);
     ii = max(min(ii,mNrmGridSize-1),1);
 
@@ -148,7 +153,7 @@ __kernel void evalValueFunc(
     vNvrsLo = vNvrsZeroShk / (1.0 + exp(vNvrsRescaled));
 
     /* Find query point's upper index */
-    mNrm = mLvl/pHi;
+    mNrm = mLvl/pHiAlt;
     ii = findIndex(mNrmGrid,0,mNrmGridSize-1,mNrm);
     ii = max(min(ii,mNrmGridSize-1),1);
 

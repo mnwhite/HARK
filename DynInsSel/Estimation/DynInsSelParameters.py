@@ -34,7 +34,7 @@ DecurveBool = True                  # "Decurve" value through the inverse utilit
 pLvlPctiles = np.concatenate(([0.001, 0.005, 0.01, 0.03], np.linspace(0.05, 0.95, num=12),[0.97, 0.99, 0.995, 0.999]))
 pLvlInitStd = 0.4                   # Initial standard deviation of (log) permanent income
 pLvlInitMean = 0.0                  # Initial average of log permanent income
-PermIncCorr = 0.990                 # Serial correlation coefficient for permanent income
+PermIncCorr = 1.0                   # Serial correlation coefficient for permanent income
 MedShkCount = 20                    # Number of medical shock points
 DevMin = -3.0                       # Minimum standard deviations below MedShk mean
 DevMax = 5.0                        # Maximum standard deviations above MedShk mean
@@ -617,7 +617,7 @@ test_param_vec = np.array([0.93, # DiscFac
                            2.7,  # CRRAcon
                            8.0,  # MedCurve 
                           -8.5,  # ChoiceShkMag in log
-                           0.16, # Cfloor
+                           0.14, # Cfloor
                          -1.62,  # SubsidyAvg
                           -3.0,  # SubsidyWidth scaler
                           10.0,  # BequestShift shifter for bequest motive
@@ -625,8 +625,8 @@ test_param_vec = np.array([0.93, # DiscFac
                          -3.50,  # MedShkMean constant coefficient
                         0.0045,  # MedShkMean linear age coefficient
                        0.00075,  # MedShkMean quadratic age coefficient
-                     0.0000080,  # MedShkMean cubic age coefficient ADJUST UP
-                   -0.00000021,  # MedShkMean quartic age coefficient ADJUST DOWN
+                     0.0000080,  # MedShkMean cubic age coefficient
+                   -0.00000021,  # MedShkMean quartic age coefficient
                           0.25,  # MedShkMean "very good" constant coefficient
                         0.0025,  # MedShkMean "very good" linear coefficient
                           0.28,  # MedShkMean "good" constant coefficient

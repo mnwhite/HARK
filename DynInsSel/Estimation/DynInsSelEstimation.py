@@ -622,8 +622,11 @@ def makeDynInsSelType(CRRAcon,MedCurve,DiscFac,BequestShift,BequestScale,Cfloor,
     else:
         WorkingContractList.append(MedInsuranceContract(ConstantFunction(0.0),0.00,0.1,Params.MedPrice))
     
-    IndMarketContractList = [MedInsuranceContract(ConstantFunction(0.0),0.0,1.0,Params.MedPrice),
-                             MedInsuranceContract(ConstantFunction(Premium),0.2,Copay,Params.MedPrice)]
+    if InsChoiceType > 0:
+        IndMarketContractList = [MedInsuranceContract(ConstantFunction(0.0),0.0,1.0,Params.MedPrice),
+                                 MedInsuranceContract(ConstantFunction(0.0),0.2,Copay,Params.MedPrice)]
+    else:
+         IndMarketContractList = [MedInsuranceContract(ConstantFunction(0.0),0.2,0.08,Params.MedPrice)]   
     RetiredContractList = [MedInsuranceContract(ConstantFunction(0.0),0.0,0.12,Params.MedPrice)]
     
     ContractList = []
@@ -990,12 +993,12 @@ if __name__ == '__main__':
         # This block of code is for testing one type of agent
         
         t_start = clock()
-        EvalType  = 2  # Number of times to do a static search for eqbm premiums
-        InsChoice = 1  # Extent of insurance choice
+        EvalType  = 0  # Number of times to do a static search for eqbm premiums
+        InsChoice = 0  # Extent of insurance choice
         TestPremiums = True # Whether to start with the test premium level
         
         if TestPremiums:
-            ESIpremiums = np.array([0.3500, 0.0, 0.0, 0.0, 0.0])
+            ESIpremiums = np.array([0.3000, 0.0, 0.0, 0.0, 0.0])
         else:
             ESIpremiums = Params.PremiumsLast
         IMIpremiums_init = Params.IMIpremiums
@@ -1025,7 +1028,7 @@ if __name__ == '__main__':
         p = 3.0    
         h = 9        
         Dev = 0.0
-        z = 1
+        z = 0
         mTop = 10.
         
         print('Individual market:')

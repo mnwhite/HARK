@@ -446,7 +446,7 @@ AgeRatedSpec.ExcludedGroups = [False]
 AgeRatedSpec.name = 'OnlyAgeRated'
 AgeRatedSpec.text = 'only age rating'
 
-HealthGroupSpecs = [OnlyPoorHealthSpec]
+HealthGroupSpecs = [AgeRatedSpec]
 
 # Define alternate specifications for varying the age band limit
 AgeBandSpecBase = PolicySpecification(
@@ -457,6 +457,7 @@ AgeBandSpecBase = PolicySpecification(
                         AgeBandLimit = 10.0,
                         MandateTaxRate = 0.0,
                         MandateFloor = 0.0,
+                        MandateForESI = False,
                         name = 'AgeBand10x',
                         text = 'age band limit 10x')
 AgeBandSpecs = []
@@ -483,6 +484,7 @@ MandateSpecBase = PolicySpecification(
                         AgeBandLimit = 3.0,
                         MandateTaxRate = 0.0,
                         MandateFloor = 0.0,
+                        MandateForESI = False,
                         name = 'MandateBaseline',
                         text = 'individual mandate 0%')
 MandateTaxRates = [0.000,0.005,0.010,0.015,0.020,0.025,0.030,0.035,0.04,0.045,0.050,0.055,0.060,0.065,0.070,0.075,0.080,0.085,0.090,0.095,0.100]

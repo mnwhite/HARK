@@ -660,93 +660,6 @@ class MedInsuranceContract(HARKobject):
         
 ####################################################################################################
 
-def solveInsuranceSelectionStatic(solution_next,MedShkDstn,CRRA,MedPrice,xLvlGrid,PolicyFuncList):
-    '''
-    Solves one period of the "static" version of the insurance selection model.
-    In this model, total spending equals income, so there is no dependency on t+1.
-    
-    Parameters
-    ----------
-    solution_next : InsuranceSelectionSolution
-        The solution to next period's one period problem.
-    MedShkDstn : [[np.array]]
-        Discrete distribution of the multiplicative utility shifter for med-
-        ical care. Order: probabilities, preference shocks.  Distribution
-        depends on discrete health state.
-    CRRA : float
-        Coefficient of relative risk aversion for composite consumption.
-    MedPrice : float
-        Price of unit of medical care relative to unit of consumption.
-    xLvlGrid : np.array
-        Grid of spending levels (after paying premiums).
-    PolicyFuncList : [[InsSelPolicyFunc]]
-        List of policy functions for each contract that could be purchased this
-        period for each health state.
-        
-    Returns
-    -------
-    solution_now : InsuranceSelectionSolution
-        Solution to this period's static problem.
-    '''
-    StateCount = len(MedShkDstn)
-    x_N = xLvlGrid.size
-    AVfuncs = []
-    vFuncs = []
-    
-    # Loop through each discrete state
-    for j in range(StateCount):
-        # Unpack the shock distribution and initialize objects
-        MedShkDstnNow = MedShkDstn[j]
-        MedShkVals = MedShkDstnNow[1]
-        MedShkPrbs = MedShkDstnNow[0]
-        Shk_N = MedShkVals.size
-        xLvlGrid_tiled = np.tile(np.reshape(xLvlGrid,(x_N,1)),(1,Shk_N))
-        MedShkVals_tiled = np.tile(np.reshape(MedShkVals,(1,Shk_N)),(x_N,1))
-        ones_tiled = np.ones_like(xLvlGrid_tiled)
-        
-        # Initialize the list of solutions
-        AVfuncs_this_state = []
-        vFuncs_this_state = []
-
-        # Loop through the various contracts
-        for policyFunc in PolicyFuncList[j]:
-            # Get medical expenses, (marginal) value, and insurance payout
-            cLvl, MedLvl = policyFunc(xLvlGrid_tiled,ones_tiled,MedShkVals_tiled)
-            cLvl[0,:] = 0.0
-            MedLvl[0,:] = 0.0
-            vGrid, vPgrid, trash = policyFunc.evalvAndvPandvPP(xLvlGrid_tiled,ones_tiled,MedShkVals_tiled)
-            InsPayGrid = MedPrice*MedLvl - policyFunc.Contract.OOPfunc(MedLvl)
-            
-            # Calculate expectations across medical need shocks
-            ActuarialValue = np.sum(InsPayGrid*MedShkPrbs,axis=1)
-            vNow = np.sum(vGrid*MedShkPrbs,axis=1)
-            vPnow = np.sum(vPgrid*MedShkPrbs,axis=1)
-            
-            # Construct solution functions for this contract-state
-            AVfunc = LinearInterp(xLvlGrid,ActuarialValue)
-            vNvrs = utility_inv(vNow,CRRA)
-            vNvrs[0] = 0.0
-            vNvrsP = vPnow*utility_invP(vNow,CRRA)
-            vNvrsP[0] = 0.0
-            #vNvrsFunc = CubicInterp(xLvlGrid,vNvrs,vNvrsP)
-            vNvrsFunc = LinearInterp(xLvlGrid,vNvrs)
-            vFunc = ValueFunc(vNvrsFunc,CRRA)
-            
-            # Add the functions to the list of solutions
-            AVfuncs_this_state.append(AVfunc)
-            vFuncs_this_state.append(vFunc)
-        
-        # Add this health state to the overall solution
-        AVfuncs.append(AVfuncs_this_state)
-        vFuncs.append(vFuncs_this_state)
-    
-    # Construct an object to return as the solution
-    solution_now = InsuranceSelectionSolution()
-    solution_now.policyFunc = PolicyFuncList
-    solution_now.vFuncByContract = vFuncs
-    solution_now.AVfunc = AVfuncs
-    #print('Solved a period of the static model!')
-    return solution_now
 
 
 def solveInsuranceSelection(solution_next,IncomeDstn,TaxFunc,SubsidyFunc,MedShkAvg,MedShkStd,ZeroMedShkPrb,MedShkCount,DevMin,DevMax,
@@ -864,6 +777,18 @@ def solveInsuranceSelection(solution_next,IncomeDstn,TaxFunc,SubsidyFunc,MedShkA
     # Make dense grid for pLvl (only used when MedShk=0)
     pGridDense = makeGridDenser(pLvlGrid,pLvl_aug_factor)
     
+    # Make alternate versions of pLvlGrid and pGridDense
+    aXtraMax = np.max(aXtraGrid)
+    aLvlMax_min_acceptable = 5.
+    pLvlAlt = aLvlMax_min_acceptable/aXtraMax
+    aLvlMax_by_pLvl = aXtraMax*pLvlGrid
+    pLvlGrid_alt = copy(pLvlGrid)
+    pLvlGrid_alt[aLvlMax_by_pLvl < aLvlMax_min_acceptable] = pLvlAlt
+    aLvlMax_by_pLvl = aXtraMax*pGridDense
+    pGridDense_alt = copy(pGridDense)
+    pGridDense_alt[aLvlMax_by_pLvl < aLvlMax_min_acceptable] = pLvlAlt
+    #print(np.sum(pLvlGrid_alt != pLvlGrid))
+    
     # Make a JDfixer instance to use when necessary
     mGridDenseBase = makeGridDenser(aXtraGrid,mLvl_aug_factor)
     MyJDfixer = JDfixer(aLvlCount+1,MedShkCount,mGridDenseBase.size,DevGridDense.size)
@@ -933,7 +858,8 @@ def solveInsuranceSelection(solution_next,IncomeDstn,TaxFunc,SubsidyFunc,MedShkA
         # Make arrays of current end of period states
         aNrmGrid    = np.insert(aXtraGrid,0,0.0)
         pLvlNow     = np.tile(pLvlGrid,(aLvlCount+1,1)).transpose()
-        aLvlNow     = np.tile(aNrmGrid,(pLvlCount,1))*pLvlNow #+ np.tile(aLvlMin,(aLvlCount,1)).transpose()
+        pLvlNow_alt = np.tile(pLvlGrid,(aLvlCount+1,1)).transpose()
+        aLvlNow     = np.tile(aNrmGrid,(pLvlCount,1))*pLvlNow_alt
         pLvlNow_tiled = np.tile(pLvlNow,(ShkCount,1,1))
         aLvlNow_tiled = np.tile(aLvlNow,(ShkCount,1,1)) # shape = (ShkCount,pLvlCount,aLvlCount)
         if pLvlGrid[0] == 0.0:  # aLvl turns out badly if pLvl is 0 at bottom
@@ -994,10 +920,6 @@ def solveInsuranceSelection(solution_next,IncomeDstn,TaxFunc,SubsidyFunc,MedShkA
         MedShkVals       = np.exp(MedShkAvg[h_alt] + MedShkStd[h_alt]*DevGrid)
         PolicyFuncsThisHealthCopay = []
         vFuncsThisHealthCopay = []
-        
-        #temp = np.isnan(EndOfPrdv[:,:,h])
-        #if np.sum(temp) > 0:
-        #    print(h,np.where(temp))
          
         # Make the end of period value function for this health state
         EndOfPrdvNvrsFunc_by_pLvl = []
@@ -1024,7 +946,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,TaxFunc,SubsidyFunc,MedShkA
         pLvl_data = pLvlNow.transpose()
         v_data = u(cLvl_data) + EndOfPrdv[:,:,h].transpose()
         vNvrs_data = uinv(v_data)
-        cFuncZeroShk, vFuncZeroShk = MyJDfixerZeroShk(mLvl_data,pLvl_data,vNvrs_data,cLvl_data,mGridDenseBase,pGridDense,EndOfPrdvFunc_Cnst)
+        cFuncZeroShk, vFuncZeroShk = MyJDfixerZeroShk(mLvl_data,pLvl_data,vNvrs_data,cLvl_data,mGridDenseBase,pGridDense,pGridDense_alt,EndOfPrdvFunc_Cnst)
             
         # For each coinsurance rate, make policy and value functions (for this health state)
         for k in range(len(EffPriceList)):
@@ -1049,9 +971,9 @@ def solveInsuranceSelection(solution_next,IncomeDstn,TaxFunc,SubsidyFunc,MedShkA
             mCountAlt = mNrmGrid.size
             xLvlArray = np.zeros(((MedShkCount,pCount,mCountAlt)))
             for i in range(pCount):
-                pLvl_i = pLvlGrid[i]
+                pLvl_i = pLvlGrid_alt[i]
                 if pLvl_i == 0.0:
-                    pLvl_i = pLvlGrid[i+1]
+                    pLvl_i = pLvlGrid_alt[i+1]
                 mGridDense = mGridDenseBase*pLvl_i
                 if NeedsJDfix[i]:
                     aLvl_temp = aLvlNow_tiled[:,i,:]
@@ -1086,8 +1008,9 @@ def solveInsuranceSelection(solution_next,IncomeDstn,TaxFunc,SubsidyFunc,MedShkA
             
             # Calculate pseudo inverse value on a grid of states for this coinsurance rate
             pLvlArray = np.tile(np.reshape(pLvlGrid,(1,pCount,1)),(MedShkCount,1,mCountAlt))
+            pLvlArray_alt = np.tile(np.reshape(pLvlGrid_alt,(1,pCount,1)),(MedShkCount,1,mCountAlt))
             mMinArray = np.tile(np.reshape(mLvlMinNow(pLvlGrid),(1,pCount,1)),(MedShkCount,1,mCountAlt))
-            mLvlArray = mMinArray + np.tile(np.reshape(mNrmGrid,(1,1,mCountAlt)),(MedShkCount,pCount,1))*pLvlArray
+            mLvlArray = mMinArray + np.tile(np.reshape(mNrmGrid,(1,1,mCountAlt)),(MedShkCount,pCount,1))*pLvlArray_alt
             if pLvlGrid[0] == 0.0:  # mLvl turns out badly if pLvl is 0 at bottom
                 mLvlArray[:,0,:] = mLvlArray[:,1,:]
             MedShkArray = np.tile(np.reshape(MedShkVals,(MedShkCount,1,1)),(1,pCount,mCountAlt))
@@ -1113,7 +1036,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,TaxFunc,SubsidyFunc,MedShkA
             vNvrs_ZeroShk_plus = np.concatenate((np.zeros((pCount,1)),vNvrs_ZeroShk),axis=1)
             
             # Add the value function to the list for this health
-            vFunc_this_health_copay = ValueFuncCL(mNrmGrid,pLvlGrid,vNvrs_ZeroShk_plus,vNvrsScaled,CRRA,DevMin,DevMax,MedShkCount)
+            vFunc_this_health_copay = ValueFuncCL(mNrmGrid,pLvlGrid,pLvlGrid_alt,vNvrs_ZeroShk_plus,vNvrsScaled,CRRA,DevMin,DevMax,MedShkCount)
             vFuncsThisHealthCopay.append(vFunc_this_health_copay)
             
         t1 = clock() # End of solution construction step, beginning of MedShk integration step
@@ -1122,6 +1045,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,TaxFunc,SubsidyFunc,MedShkA
         tempArray    = np.tile(np.reshape(aXtraGrid,(aLvlCount,1,1)),(1,pLvlCount,MedShkCount))
         mMinArray    = np.tile(np.reshape(mLvlMinNow(pLvlGrid),(1,pLvlCount,1)),(aLvlCount,1,MedShkCount))
         pLvlArray    = np.tile(np.reshape(pLvlGrid,(1,pLvlCount,1)),(aLvlCount,1,MedShkCount))
+        pLvlArray_alt= np.tile(np.reshape(pLvlGrid_alt,(1,pLvlCount,1)),(aLvlCount,1,MedShkCount))
         mLvlArray    = mMinArray + tempArray*pLvlArray + Cfloor
         if pLvlGrid[0] == 0.0: # Fix the problem of all mLvls = 0 when pLvl = 0
             mLvlArray[:,0,:] = mLvlArray[:,1,:]
@@ -1994,7 +1918,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
                 CritDev_here = self.solution[t].CritDevFunc[h][z](m_minus_prem,p_temp[idx])
                 EffPrice = ThisContract.Copay*MedPriceNow
                 OOP_here = ThisContract.OOPfunc(Med_here)
-                a_here = m_minus_prem - x_here
+                a_here = np.maximum(m_minus_prem - x_here, 0.0) # This shouldn't be necessary
                 Welfare_here = np.zeros_like(a_here)
                 
                 # Handle the consumption floor
