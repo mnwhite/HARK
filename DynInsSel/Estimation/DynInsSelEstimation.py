@@ -10,9 +10,9 @@ import DynInsSelParameters as Params
 from time import clock
 from copy import copy, deepcopy
 from InsuranceSelectionModel import MedInsuranceContract, InsSelConsumerType
+import LoadDataMoments as Data
 from LoadDataMoments import data_moments, moment_weights
 from ActuarialRules import BaselinePolicySpec, InsuranceMarket
-from SubsidyFuncs import NullSubsidyFuncs
 from HARKinterpolation import ConstantFunction
 from HARKutilities import getPercentiles
 from HARKparallel import multiThreadCommands, multiThreadCommandsFake
@@ -215,18 +215,18 @@ class DynInsSelMarket(InsuranceMarket):
         '''
         Agents = self.agents
         
-        # Initialize moments by age
-        WealthMedianByAge = np.zeros(40) + np.nan
-        LogTotalMedMeanByAge = np.zeros(60) + np.nan
-        LogTotalMedStdByAge = np.zeros(60) + np.nan
-        InsuredRateByAge_ESI = np.zeros(40) + np.nan
-        InsuredRateByAge_IMI = np.zeros(40) + np.nan
-        ZeroSubsidyRateByAge = np.zeros(40) + np.nan
-        PremiumMeanByAge = np.zeros(40) + np.nan
-        PremiumStdByAge = np.zeros(40) + np.nan
-        LogOOPmedMeanByAge = np.zeros(60) + np.nan
-        LogOOPmedStdByAge = np.zeros(60) + np.nan
-        OOPshareByAge = np.zeros(60) + np.nan
+        # Initialize simulated moments by age
+        MeanLogOOPmedByAge = np.zeros(60)   # 0:60
+        MeanLogTotalMedByAge = np.zeros(60) # 60:120
+        StdevLogOOPmedByAge = np.zeros(60)  # 120:180
+        StdevLogTotalMedByAge = np.zeros(60)# 180:240
+        OOPshareByAge = np.zeros(60)        # 240:300
+        ESIinsuredRateByAge = np.zeros(40)  # 300:340
+        IMIinsuredRateByAge = np.zeros(40)  # 340:380
+        MeanESIpremiumByAge = np.zeros(40)  # 380:420
+        StdevESIpremiumByAge = np.zeros(40) # 420:460
+        NoPremShareRateByAge = np.zeros(40) # 460:500
+        MedianWealthRatioByAge = np.zeros(40)# 1400:1440
 
         # Calculate all simulated moments by age
         for t in range(60):
@@ -246,6 +246,7 @@ class DynInsSelMarket(InsuranceMarket):
                 these = ThisType.LiveBoolArray[t,:]
                 those = np.logical_and(these,ThisType.TotalMedHist[t,:]>0.0)
                 LogTotalMedList.append(np.log(ThisType.TotalMedHist[t,those]))
+                those = np.logical_and(these,ThisType.OOPmedHist[t,:]>0.0)
                 LogOOPmedList.append(np.log(ThisType.OOPmedHist[t,those]))
                 if t < 40:
                     WealthRatioList.append(ThisType.WealthRatioHist[t,these])
@@ -267,27 +268,36 @@ class DynInsSelMarket(InsuranceMarket):
                     OOPmedSum += np.sum(ThisType.OOPmedHist[t,these])
             if t < 40:
                 WealthRatioArray = np.hstack(WealthRatioList)
-                WealthMedianByAge[t] = np.median(WealthRatioArray)
+                MedianWealthRatioByAge[t] = np.median(WealthRatioArray)
                 PremiumArray = np.hstack(PremiumList)
-                PremiumMeanByAge[t] = np.mean(PremiumArray)
-                PremiumStdByAge[t] = np.std(PremiumArray)
-                InsuredRateByAge_ESI[t] = ESIcount/OfferedCount
-                InsuredRateByAge_IMI[t] = IMIcount/NotOfferedCount
+                MeanESIpremiumByAge[t] = np.mean(PremiumArray)
+                StdevESIpremiumByAge[t] = np.std(PremiumArray)
+                ESIinsuredRateByAge[t] = ESIcount/OfferedCount
+                IMIinsuredRateByAge[t] = IMIcount/NotOfferedCount
                 if ESIcount > 0.0:
-                    ZeroSubsidyRateByAge[t] = ZeroCount/ESIcount
+                    NoPremShareRateByAge[t] = ZeroCount/ESIcount
                 else:
-                    ZeroSubsidyRateByAge[t] = 0.0 # This only happens with no insurance choice
+                    NoPremShareRateByAge[t] = 0.0 # This only happens with no insurance choice
             LogTotalMedArray = np.hstack(LogTotalMedList)
-            LogTotalMedMeanByAge[t] = np.mean(LogTotalMedArray)
-            LogTotalMedStdByAge[t] = np.std(LogTotalMedArray)
+            MeanLogTotalMedByAge[t] = np.mean(LogTotalMedArray)
+            StdevLogTotalMedByAge[t] = np.std(LogTotalMedArray)
             LogOOPmedArray = np.hstack(LogOOPmedList)
-            LogOOPmedMeanByAge[t] = np.mean(LogOOPmedArray)
-            LogOOPmedStdByAge[t] = np.std(LogOOPmedArray)
+            MeanLogOOPmedByAge[t] = np.mean(LogOOPmedArray)
+            StdevLogOOPmedByAge[t] = np.std(LogOOPmedArray)
             OOPshareByAge[t] = OOPmedSum/TotalMedSum
             
         # Initialize moments by age-health and define age band bounds
-        LogTotalMedMeanByAgeHealth = np.zeros((12,5)) + np.nan
-        LogTotalMedStdByAgeHealth = np.zeros((12,5)) + np.nan
+        MeanLogOOPmedByAgeHealth = np.zeros((12,5))   # 500:560
+        MeanLogTotalMedByAgeHealth = np.zeros((12,5)) # 560:620
+        StdevLogOOPmedByAgeHealth = np.zeros((12,5))  # 620:680
+        StdevLogTotalMedByAgeHealth = np.zeros((12,5))# 680:740
+        OOPshareByAgeHealth = np.zeros((12,5))        # 740:800
+        ESIinsuredRateByAgeHealth = np.zeros((8,5))   # 800:840
+        IMIinsuredRateByAgeHealth = np.zeros((8,5))   # 840:880
+        MeanESIpremiumByAgeHealth = np.zeros((8,5))   # 880:920
+        StdevESIpremiumByAgeHealth = np.zeros((8,5))  # 920:960
+        NoPremShareRateByAgeHealth = np.zeros((8,5))  # 960:1000
+        MedianWealthRatioByAgeHealth = np.zeros((8,5))# NO DATA
         AgeBounds = [[0,5],[5,10],[10,15],[15,20],[20,25],[25,30],[30,35],[35,40],[40,45],[45,50],[50,55],[55,60]]
 
         # Calculate all simulated moments by age-health
@@ -296,21 +306,77 @@ class DynInsSelMarket(InsuranceMarket):
             top = AgeBounds[a][1]
             for h in range(5):
                 LogTotalMedList = []
+                LogOOPmedList = []
+                PremiumList = []
+                TotalMedSum = 0.0
+                OOPmedSum = 0.0
+                LiveCount = 0.0
+                ESIcount = 0.0
+                OfferedCount = 0.0
+                IMIcount = 0.0
+                NotOfferedCount = 0.0
+                ZeroCount = 0.0
+                
                 for ThisType in Agents:
                     these = ThisType.HealthBoolArray[bot:top,:,h]
                     those = np.logical_and(these,ThisType.TotalMedHist[bot:top,:]>0.0)
                     LogTotalMedList.append(np.log(ThisType.TotalMedHist[bot:top,:][those]))
+                    those = np.logical_and(these,ThisType.OOPmedHist[bot:top,:]>0.0)
+                    LogOOPmedList.append(np.log(ThisType.OOPmedHist[bot:top,:][those]))
+                    
+                    if a < 8:
+                        WealthRatioList.append(ThisType.WealthRatioHist[bot:top,:][these])
+                        Insured = ThisType.InsuredBoolArray[bot:top,:][these]
+                        LiveCount += np.sum(ThisType.LiveBoolArray[bot:top,:][these])
+                        MrkvTemp = ThisType.MrkvHist[bot:top,:][these]
+                        Offered = MrkvTemp >= 5
+                        NotOffered = np.logical_and(MrkvTemp < 5, MrkvTemp >= 0) 
+                        HaveESI = np.logical_and(Insured, Offered)
+                        ESIcount += np.sum(HaveESI)
+                        OfferedCount += np.sum(Offered)
+                        IMIcount += np.sum(np.logical_and(Insured,NotOffered))
+                        NotOfferedCount += np.sum(NotOffered)
+                        ZeroCount += np.sum(np.logical_and(HaveESI, MrkvTemp <= 9))
+                        PremiumList.append(ThisType.PremNow_hist[bot:top,:][these][HaveESI])
+                        TotalMedSum += np.sum(ThisType.TotalMedHist[bot:top,:][these][HaveESI])
+                        OOPmedSum += np.sum(ThisType.OOPmedHist[bot:top,:][these][HaveESI])
+                    else:
+                        TotalMedSum += np.sum(ThisType.TotalMedHist[bot:top,:][these])
+                        OOPmedSum += np.sum(ThisType.OOPmedHist[bot:top,:][these])
+                        
+                if a < 8:
+                    WealthRatioArray = np.hstack(WealthRatioList)
+                    MedianWealthRatioByAgeHealth[a,h] = np.median(WealthRatioArray)
+                    PremiumArray = np.hstack(PremiumList)
+                    MeanESIpremiumByAgeHealth[a,h] = np.mean(PremiumArray)
+                    StdevESIpremiumByAgeHealth[a,h] = np.std(PremiumArray)
+                    ESIinsuredRateByAgeHealth[a,h] = ESIcount/OfferedCount
+                    IMIinsuredRateByAgeHealth[a,h] = IMIcount/NotOfferedCount
+                    if ESIcount > 0.0:
+                        NoPremShareRateByAgeHealth[a,h] = ZeroCount/ESIcount
+                    else:
+                        NoPremShareRateByAgeHealth[a,h] = 0.0 # This only happens with no insurance choice
+                    
                 LogTotalMedArray = np.hstack(LogTotalMedList)
-                LogTotalMedMeanByAgeHealth[a,h] = np.mean(LogTotalMedArray)
-                LogTotalMedStdByAgeHealth[a,h] = np.std(LogTotalMedArray)
+                MeanLogTotalMedByAgeHealth[a,h] = np.mean(LogTotalMedArray)
+                StdevLogTotalMedByAgeHealth[a,h] = np.std(LogTotalMedArray)
+                LogOOPmedArray = np.hstack(LogOOPmedList)
+                MeanLogOOPmedByAgeHealth[a,h] = np.mean(LogOOPmedArray)
+                StdevLogOOPmedByAgeHealth[a,h] = np.std(LogOOPmedArray)
+                OOPshareByAgeHealth[a,h] = OOPmedSum/TotalMedSum
                 
         # Initialize moments by age-income
-        WealthMedianByAgeIncome = np.zeros((8,5)) + np.nan
-        LogTotalMedMeanByAgeIncome = np.zeros((8,5)) + np.nan
-        LogTotalMedStdByAgeIncome = np.zeros((8,5)) + np.nan
-        InsuredRateByAgeIncome_ESI = np.zeros((8,5)) + np.nan
-        InsuredRateByAgeIncome_IMI = np.zeros((8,5)) + np.nan
-        PremiumMeanByAgeIncome = np.zeros((8,5)) + np.nan
+        MeanLogOOPmedByAgeIncome = np.zeros((8,5))    # 1000:1040
+        MeanLogTotalMedByAgeIncome = np.zeros((8,5))  # 1040:1080
+        StdevLogOOPmedByAgeIncome = np.zeros((8,5))   # 1080:1120
+        StdevLogTotalMedByAgeIncome = np.zeros((8,5)) # 1120:1160
+        OOPshareByAgeIncome = np.zeros((8,5))         # 1160:1200
+        ESIinsuredRateByAgeIncome = np.zeros((8,5))   # 1200:1240
+        IMIinsuredRateByAgeIncome = np.zeros((8,5))   # 1240:1280
+        MeanESIpremiumByAgeIncome = np.zeros((8,5))   # 1280:1320
+        StdevESIpremiumByAgeIncome = np.zeros((8,5))  # 1320:1360
+        NoPremShareRateByAgeIncome = np.zeros((8,5))  # 1360:1400
+        MedianWealthRatioByAgeIncome = np.zeros((8,5))# 1440:1480
 
         # Calculated all simulated moments by age-income
         for a in range(8):
@@ -319,58 +385,95 @@ class DynInsSelMarket(InsuranceMarket):
             for i in range(5):
                 WealthRatioList = []
                 LogTotalMedList = []
+                LogOOPmedList = []
                 PremiumList = []
+                TotalMedSum = 0.0
+                OOPmedSum = 0.0
                 LiveCount = 0.0
                 ESIcount = 0.0
                 IMIcount = 0.0
                 OfferedCount = 0.0
                 NotOfferedCount = 0.0
+                ZeroCount = 0.0
+                
                 for ThisType in Agents:
                     these = ThisType.IncQuintBoolArray[bot:top,:,i]
                     those = np.logical_and(these,ThisType.TotalMedHist[bot:top,:] > 0.0)
+                    LogTotalMedList.append(np.log(ThisType.TotalMedHist[bot:top,:][those]))
+                    those = np.logical_and(these,ThisType.OOPmedHist[bot:top,:] > 0.0)
+                    LogOOPmedList.append(np.log(ThisType.OOPmedHist[bot:top,:][those]))
+                    
                     LiveCount += np.sum(ThisType.LiveBoolArray[bot:top,:][these])
                     Insured = ThisType.InsuredBoolArray[bot:top,:][these]
-                    Offered = ThisType.MrkvHist[bot:top,:][these] >= 5
+                    MrkvTemp = ThisType.MrkvHist[bot:top,:][these]
+                    Offered = MrkvTemp >= 5
                     OfferedCount += np.sum(Offered)
-                    NotOffered = np.logical_and(ThisType.MrkvHist[bot:top,:][these] < 5, ThisType.MrkvHist[bot:top,:][these] >= 0) 
+                    NotOffered = np.logical_and(MrkvTemp < 5, MrkvTemp >= 0) 
                     NotOfferedCount += np.sum(NotOffered)
-                    LogTotalMedList.append(np.log(ThisType.TotalMedHist[bot:top,:][those]))
                     WealthRatioList.append(ThisType.WealthRatioHist[bot:top,:][these])
                     HaveESI = np.logical_and(Insured,Offered)
                     ESIcount += np.sum(HaveESI)
                     HaveIMI = np.logical_and(Insured,NotOffered)
                     IMIcount += np.sum(HaveIMI)
-                    PremiumList.append(ThisType.PremNow_hist[bot:top,:][these][HaveESI])                    
+                    ZeroCount += np.sum(np.logical_and(HaveESI, MrkvTemp <= 9))
+                    PremiumList.append(ThisType.PremNow_hist[bot:top,][these][HaveESI])
+                    TotalMedSum += np.sum(ThisType.TotalMedHist[bot:top,:][these][HaveESI])
+                    OOPmedSum += np.sum(ThisType.OOPmedHist[bot:top,:][these][HaveESI])
                 WealthRatioArray = np.hstack(WealthRatioList)
-                WealthMedianByAgeIncome[a,i] = np.median(WealthRatioArray)
+                MedianWealthRatioByAgeIncome[a,i] = np.median(WealthRatioArray)
                 PremiumArray = np.hstack(PremiumList)
-                PremiumMeanByAgeIncome[a,i] = np.mean(PremiumArray)
-                InsuredRateByAgeIncome_ESI[a,i] = ESIcount/OfferedCount
-                InsuredRateByAgeIncome_IMI[a,i] = IMIcount/NotOfferedCount
+                MeanESIpremiumByAgeIncome[a,i] = np.mean(PremiumArray)
+                StdevESIpremiumByAgeIncome[a,i] = np.std(PremiumArray)
+                ESIinsuredRateByAgeIncome[a,i] = ESIcount/OfferedCount
+                IMIinsuredRateByAgeIncome[a,i] = IMIcount/NotOfferedCount
                 LogTotalMedArray = np.hstack(LogTotalMedList)
-                LogTotalMedMeanByAgeIncome[a,i] = np.mean(LogTotalMedArray)
-                LogTotalMedStdByAgeIncome[a,i] = np.std(LogTotalMedArray)
+                MeanLogTotalMedByAgeIncome[a,i] = np.mean(LogTotalMedArray)
+                StdevLogTotalMedByAgeIncome[a,i] = np.std(LogTotalMedArray)
+                LogOOPmedArray = np.hstack(LogOOPmedList)
+                MeanLogOOPmedByAgeIncome[a,i] = np.mean(LogOOPmedArray)
+                StdevLogOOPmedByAgeIncome[a,i] = np.std(LogOOPmedArray)
+                OOPshareByAgeIncome[a,i] = OOPmedSum/TotalMedSum
+                if ESIcount > 0.0:
+                    NoPremShareRateByAgeIncome[a,i] = ZeroCount/ESIcount
+                else:
+                    NoPremShareRateByAgeIncome[a,i] = 0.0 # This only happens with no insurance choice
+                    
         
         # Store all of the simulated moments as attributes of self
-        self.WealthMedianByAge = WealthMedianByAge
-        self.LogTotalMedMeanByAge = LogTotalMedMeanByAge + 9.21034
-        self.LogTotalMedStdByAge = LogTotalMedStdByAge
-        self.InsuredRateByAge_ESI = InsuredRateByAge_ESI
-        self.InsuredRateByAge_IMI = InsuredRateByAge_IMI
-        self.ZeroSubsidyRateByAge = ZeroSubsidyRateByAge
-        self.PremiumMeanByAge = PremiumMeanByAge*10000.
-        self.PremiumStdByAge = PremiumStdByAge*10000.
-        self.LogTotalMedMeanByAgeHealth = LogTotalMedMeanByAgeHealth + 9.21034
-        self.LogTotalMedStdByAgeHealth = LogTotalMedStdByAgeHealth
-        self.WealthMedianByAgeIncome = WealthMedianByAgeIncome
-        self.LogTotalMedMeanByAgeIncome = LogTotalMedMeanByAgeIncome + 9.21034
-        self.LogTotalMedStdByAgeIncome = LogTotalMedStdByAgeIncome
-        self.InsuredRateByAgeIncome_ESI = InsuredRateByAgeIncome_ESI
-        self.InsuredRateByAgeIncome_IMI = InsuredRateByAgeIncome_IMI
-        self.PremiumMeanByAgeIncome = PremiumMeanByAgeIncome*10000.
-        self.LogOOPmedMeanByAge = LogOOPmedMeanByAge + 9.21034
-        self.LogOOPmedStdByAge = LogOOPmedStdByAge
+        self.MeanLogOOPmedByAge = MeanLogOOPmedByAge + np.log(10000)
+        self.MeanLogTotalMedByAge = MeanLogTotalMedByAge + np.log(10000)
+        self.StdevLogOOPmedByAge = StdevLogOOPmedByAge
+        self.StdevLogTotalMedByAge = StdevLogTotalMedByAge
         self.OOPshareByAge = OOPshareByAge
+        self.ESIinsuredRateByAge = ESIinsuredRateByAge
+        self.IMIinsuredRateByAge = IMIinsuredRateByAge
+        self.MeanESIpremiumByAge = MeanESIpremiumByAge*10000
+        self.StdevESIpremiumByAge = StdevESIpremiumByAge*10000
+        self.NoPremShareRateByAge = NoPremShareRateByAge
+        self.MedianWealthRatioByAge = MedianWealthRatioByAge
+        self.MeanLogOOPmedByAgeHealth = MeanLogOOPmedByAgeHealth + np.log(10000)
+        self.MeanLogTotalMedByAgeHealth = MeanLogTotalMedByAgeHealth + np.log(10000)
+        self.StdevLogOOPmedByAgeHealth = StdevLogOOPmedByAgeHealth
+        self.StdevLogTotalMedByAgeHealth = StdevLogTotalMedByAgeHealth
+        self.OOPshareByAgeHealth = OOPshareByAgeHealth
+        self.ESIinsuredRateByAgeHealth = ESIinsuredRateByAgeHealth
+        self.IMIinsuredRateByAgeHealth = IMIinsuredRateByAgeHealth
+        self.MeanESIpremiumByAgeHealth = MeanESIpremiumByAgeHealth*10000
+        self.StdevESIpremiumByAgeHealth = StdevESIpremiumByAgeHealth*10000
+        self.NoPremShareRateByAgeHealth = NoPremShareRateByAgeHealth
+        self.MedianWealthRatioByAgeHealth = MedianWealthRatioByAgeHealth
+        self.MeanLogOOPmedByAgeIncome = MeanLogOOPmedByAgeIncome + np.log(10000)
+        self.MeanLogTotalMedByAgeIncome = MeanLogTotalMedByAgeIncome + np.log(10000)
+        self.StdevLogOOPmedByAgeIncome = StdevLogOOPmedByAgeIncome
+        self.StdevLogTotalMedByAgeIncome = StdevLogTotalMedByAgeIncome
+        self.OOPshareByAgeIncome = OOPshareByAgeIncome
+        self.ESIinsuredRateByAgeIncome = ESIinsuredRateByAgeIncome
+        self.IMIinsuredRateByAgeIncome = IMIinsuredRateByAgeIncome
+        self.MeanESIpremiumByAgeIncome = MeanESIpremiumByAgeIncome*10000
+        self.StdevESIpremiumByAgeIncome = StdevESIpremiumByAgeIncome*10000
+        self.NoPremShareRateByAgeIncome = NoPremShareRateByAgeIncome
+        self.MedianWealthRatioByAgeIncome = MedianWealthRatioByAgeIncome
+        
         
     def combineSimulatedMoments(self):
         '''
@@ -385,26 +488,42 @@ class DynInsSelMarket(InsuranceMarket):
         -------
         None
         '''
-        MomentList = [self.WealthMedianByAge,
-                      self.LogTotalMedMeanByAge,
-                      self.LogTotalMedStdByAge,
-                      self.InsuredRateByAge_ESI,
-                      self.ZeroSubsidyRateByAge,
-                      self.PremiumMeanByAge,
-                      self.PremiumStdByAge,
-                      self.LogTotalMedMeanByAgeHealth.flatten(),
-                      self.LogTotalMedStdByAgeHealth.flatten(),
-                      self.WealthMedianByAgeIncome.flatten(),
-                      self.LogTotalMedMeanByAgeIncome.flatten(),
-                      self.LogTotalMedStdByAgeIncome.flatten(),
-                      self.InsuredRateByAgeIncome_ESI.flatten(),
-                      self.PremiumMeanByAgeIncome.flatten(),
-                      self.LogOOPmedMeanByAge,
-                      self.LogOOPmedStdByAge,
-                      self.OOPshareByAge,
-                      self.InsuredRateByAge_IMI,
-                      self.InsuredRateByAgeIncome_IMI.flatten()]
-        self.simulated_moments = np.hstack(MomentList)
+        MomentList = [
+            self.MeanLogOOPmedByAge,
+            self.MeanLogTotalMedByAge,
+            self.StdevLogOOPmedByAge,
+            self.StdevLogTotalMedByAge,
+            self.OOPshareByAge,
+            self.ESIinsuredRateByAge,
+            self.IMIinsuredRateByAge,
+            self.MeanESIpremiumByAge,
+            self.StdevESIpremiumByAge,
+            self.NoPremShareRateByAge,
+            self.MeanLogOOPmedByAgeHealth.flatten(),
+            self.MeanLogTotalMedByAgeHealth.flatten(),
+            self.StdevLogOOPmedByAgeHealth.flatten(),
+            self.StdevLogTotalMedByAgeHealth.flatten(),
+            self.OOPshareByAgeHealth.flatten(),
+            self.ESIinsuredRateByAgeHealth.flatten(),
+            self.IMIinsuredRateByAgeHealth.flatten(),
+            self.MeanESIpremiumByAgeHealth.flatten(),
+            self.StdevESIpremiumByAgeHealth.flatten(),
+            self.NoPremShareRateByAgeHealth.flatten(),
+            self.MeanLogOOPmedByAgeIncome.flatten(),
+            self.MeanLogTotalMedByAgeIncome.flatten(),
+            self.StdevLogOOPmedByAgeIncome.flatten(),
+            self.StdevLogTotalMedByAgeIncome.flatten(),
+            self.OOPshareByAgeIncome.flatten(),
+            self.ESIinsuredRateByAgeIncome.flatten(),
+            self.IMIinsuredRateByAgeIncome.flatten(),
+            self.MeanESIpremiumByAgeIncome.flatten(),
+            self.StdevESIpremiumByAgeIncome.flatten(),
+            self.NoPremShareRateByAgeIncome.flatten(),
+            self.MedianWealthRatioByAge,
+            self.MedianWealthRatioByAgeIncome.flatten()
+            ]    
+        self.sim_moments = np.concatenate(MomentList)
+
         
     def aggregateMomentConditions(self):
         '''
@@ -422,11 +541,12 @@ class DynInsSelMarket(InsuranceMarket):
         moment_sum : float
              Weighted sum of moment conditions.
         '''
-        moment_conditions = np.log(self.simulated_moments/self.data_moments)
-        moment_conditions[self.moment_weights == 0.0] = 0.0
-        moment_sum = np.dot(moment_conditions**2,self.moment_weights)
+        moment_diff = self.sim_moments - self.data_moments
+        moment_diff[self.moment_weights == 0.0] = 0.0 # Just in case
+        moment_sum = np.dot(moment_diff**2,self.moment_weights)
         self.moment_sum = moment_sum
         return moment_sum
+
         
     def getIncomeQuintiles(self):
         '''
@@ -779,7 +899,7 @@ def objectiveFunction(Parameters):
     The objective function for the estimation.  Makes and solves a market, then
     returns the weighted sum of moment differences between simulation and data.
     '''
-    EvalType  = 2  # Number of times to do a static search for eqbm premiums
+    EvalType  = 0  # Number of times to do a static search for eqbm premiums
     InsChoice = 1  # Extent of insurance choice
     TestPremiums = True # Whether to start with the test premium level
     
@@ -808,7 +928,8 @@ def objectiveFunction(Parameters):
 
     MyMarket.calcSimulatedMoments()
     MyMarket.combineSimulatedMoments()
-    moment_sum = MyMarket.aggregateMomentConditions()    
+    moment_sum = MyMarket.aggregateMomentConditions()
+    print(moment_sum)    
     return MyMarket
 
 
@@ -834,33 +955,34 @@ if __name__ == '__main__':
         color_list = ['b','g','r','c','m']
         
         if not Params.StaticBool:
-            plt.plot(Age[0:40],MyMarket.WealthMedianByAge)
-            plt.plot(Age[0:40],MyMarket.data_moments[0:40],'.k')
+            plt.plot(Age[0:40],MyMarket.MedianWealthRatioByAge)
+            plt.plot(Age[0:40],Data.MedianWealthRatioByAge,'.k')
             plt.xlabel('Age')
             plt.ylabel('Median wealth/income ratio')
             #plt.savefig('../Figures/WealthFitByAge.pdf')
             plt.show()
             
-            sim_temp = MyMarket.WealthMedianByAgeIncome
-            data_temp = np.reshape(MyMarket.data_moments[440:480],(8,5))
+            sim_temp = MyMarket.MedianWealthRatioByAgeIncome
+            data_temp = Data.MedianWealthRatioByAgeIncome
             for i in range(5):
                 plt.plot(Age5year[:8],sim_temp[:,i],'-'+color_list[i])
+            for i in range(5):
                 plt.plot(Age5year[:8],data_temp[:,i],'.'+color_list[i])
-                plt.xlabel('Age')
-                plt.ylabel('Median wealth/income ratio by income quintile')
-                #plt.savefig('../Figures/WealthFitByAgeIncome.pdf')
+            plt.xlabel('Age')
+            plt.ylabel('Median wealth/income ratio by income quintile')
+            #plt.savefig('../Figures/WealthFitByAgeIncome.pdf')
             plt.show()
         
-        plt.plot(Age,MyMarket.LogTotalMedMeanByAge)
-        plt.plot(Age,MyMarket.data_moments[40:100],'.k')
+        plt.plot(Age,MyMarket.MeanLogTotalMedByAge)
+        plt.plot(Age,Data.MeanLogTotalMedByAge,'.k')
         plt.xlabel('Age')
         plt.ylabel('Mean log total (nonzero) medical expenses')
         plt.xlim((25,85))
         #plt.savefig('../Figures/MeanTotalMedFitByAge.pdf')
         plt.show()
     
-        plt.plot(Age,MyMarket.LogTotalMedStdByAge)
-        plt.plot(Age,MyMarket.data_moments[100:160],'.k')
+        plt.plot(Age,MyMarket.StdevLogTotalMedByAge)
+        plt.plot(Age,Data.StdevLogTotalMedByAge,'.k')
         plt.xlabel('Age')
         plt.ylabel('Stdev log total (nonzero) medical expenses')
         plt.xlim((25,85))
@@ -871,8 +993,8 @@ if __name__ == '__main__':
         f = lambda x : 5.14607229 + 0.04242741*x
         LogMedMeanAdj = np.mean(np.reshape(f(Age),(12,5)),axis=1)
             
-        sim_temp = MyMarket.LogTotalMedMeanByAgeHealth - np.tile(np.reshape(LogMedMeanAdj,(12,1)),(1,5))
-        data_temp = np.reshape(MyMarket.data_moments[320:380],(12,5)) - np.tile(np.reshape(LogMedMeanAdj,(12,1)),(1,5))
+        sim_temp = MyMarket.MeanLogTotalMedByAgeHealth - np.tile(np.reshape(LogMedMeanAdj,(12,1)),(1,5))
+        data_temp = Data.MeanLogTotalMedByAgeHealth - np.tile(np.reshape(LogMedMeanAdj,(12,1)),(1,5))
         for h in range(5):
             plt.plot(Age5year,sim_temp[:,h],'-'+color_list[h])
             plt.plot(Age5year,data_temp[:,h],'.'+color_list[h])
@@ -883,8 +1005,8 @@ if __name__ == '__main__':
         #plt.savefig('../Figures/MeanTotalMedFitByAgeHealth.pdf')
         plt.show()
         
-        sim_temp = MyMarket.LogTotalMedStdByAgeHealth
-        data_temp = np.reshape(MyMarket.data_moments[380:440],(12,5))
+        sim_temp = MyMarket.StdevLogTotalMedByAgeHealth
+        data_temp = Data.StdevLogTotalMedByAgeHealth
         for h in range(5):
             plt.plot(Age5year,sim_temp[:,h],'-'+color_list[h])
             plt.plot(Age5year,data_temp[:,h],'.'+color_list[h])
@@ -895,8 +1017,8 @@ if __name__ == '__main__':
         #plt.savefig('../Figures/StdevTotalMedFitByAgeHealth.pdf')
         plt.show()
             
-        sim_temp = MyMarket.LogTotalMedMeanByAgeIncome - np.tile(np.reshape(LogMedMeanAdj[:8],(8,1)),(1,5))
-        data_temp = np.reshape(MyMarket.data_moments[480:520],(8,5)) - np.tile(np.reshape(LogMedMeanAdj[:8],(8,1)),(1,5))
+        sim_temp = MyMarket.MeanLogTotalMedByAgeIncome - np.tile(np.reshape(LogMedMeanAdj[:8],(8,1)),(1,5))
+        data_temp = Data.MeanLogTotalMedByAgeIncome - np.tile(np.reshape(LogMedMeanAdj[:8],(8,1)),(1,5))
         for h in range(5):
             plt.plot(Age5year[:8],sim_temp[:,h],'-'+color_list[h])
             plt.plot(Age5year[:8],data_temp[:,h],'.'+color_list[h])
@@ -907,8 +1029,8 @@ if __name__ == '__main__':
         #plt.savefig('../Figures/MeanTotalMedFitByAgeIncome.pdf')
         plt.show()
         
-        sim_temp = MyMarket.LogTotalMedStdByAgeIncome
-        data_temp = np.reshape(MyMarket.data_moments[520:560],(8,5))
+        sim_temp = MyMarket.StdevLogTotalMedByAgeIncome
+        data_temp = Data.StdevLogTotalMedByAgeIncome
         for h in range(5):
             plt.plot(Age5year[:8],sim_temp[:,h],'-'+color_list[h])
             plt.plot(Age5year[:8],data_temp[:,h],'.'+color_list[h])
@@ -919,16 +1041,16 @@ if __name__ == '__main__':
         #plt.savefig('../Figures/StdevTotalMedFitByAgeIncome.pdf')
         plt.show()
         
-        plt.plot(Age[0:40],MyMarket.InsuredRateByAge_ESI,'-b')
-        plt.plot(Age[0:40],MyMarket.data_moments[160:200],'.k')
+        plt.plot(Age[0:40],MyMarket.ESIinsuredRateByAge,'-b')
+        plt.plot(Age[0:40],Data.ESIinsuredRateByAge,'.k')
         plt.xlabel('Age')
         plt.ylabel('Employer sponsored insurance uptake rate')
         plt.xlim((25,65))
         #plt.savefig('../Figures/ESIuptakeFitByAge.pdf')
         plt.show()
         
-        sim_temp = MyMarket.InsuredRateByAgeIncome_ESI
-        data_temp = np.reshape(MyMarket.data_moments[560:600],(8,5))
+        sim_temp = MyMarket.ESIinsuredRateByAgeIncome
+        data_temp = Data.ESIinsuredRateByAgeIncome
         for h in range(5):
             plt.plot(Age5year[:8],sim_temp[:,h],'-'+color_list[h])
             plt.plot(Age5year[:8],data_temp[:,h],'.'+color_list[h])
@@ -938,16 +1060,16 @@ if __name__ == '__main__':
         #plt.savefig('../Figures/ESIuptakeFitByAgeIncome.pdf')
         plt.show()
         
-        plt.plot(Age[0:40],MyMarket.InsuredRateByAge_IMI,'-b')
-        plt.plot(Age[0:40],MyMarket.data_moments[820:860],'.k')
+        plt.plot(Age[0:40],MyMarket.IMIinsuredRateByAge,'-b')
+        plt.plot(Age[0:40],Data.IMIinsuredRateByAge,'.k')
         plt.xlabel('Age')
         plt.ylabel('Individual market insured rate')
         plt.xlim((25,65))
         #plt.savefig('../Figures/IMIuptakeFitByAge.pdf')
         plt.show()
         
-        sim_temp = MyMarket.InsuredRateByAgeIncome_IMI
-        data_temp = np.reshape(MyMarket.data_moments[860:900],(8,5))
+        sim_temp = MyMarket.IMIinsuredRateByAgeIncome
+        data_temp = Data.IMIinsuredRateByAgeIncome
         for h in range(5):
             plt.plot(Age5year[:8],sim_temp[:,h],'-'+color_list[h])
             plt.plot(Age5year[:8],data_temp[:,h],'.'+color_list[h])
@@ -957,23 +1079,16 @@ if __name__ == '__main__':
         #plt.savefig('../Figures/IMIuptakeFitByAgeIncome.pdf')
         plt.show()
         
-        plt.plot(Age[0:40],MyMarket.PremiumMeanByAge,'-b')
-        plt.plot(Age[0:40],MyMarket.data_moments[240:280],'.k')
+        plt.plot(Age[0:40],MyMarket.MeanESIpremiumByAge,'-b')
+        plt.plot(Age[0:40],Data.MeanESIpremiumByAge,'.k')
         plt.xlabel('Age')
         plt.ylabel('Mean out-of-pocket premiums paid')
         plt.xlim((25,65))
         #plt.savefig('../Figures/OOPpremiumFitByAge.pdf')
         plt.show()
-    #    
-    #    plt.plot(Age[0:40],MyMarket.PremiumStdByAge,'-b')
-    #    plt.plot(Age[0:40],MyMarket.data_moments[280:320],'.k')
-    #    plt.xlabel('Age')
-    #    plt.ylabel('Stdev out-of-pocket premiums paid')
-    #    plt.xlim((25,65))
-    #    plt.show()
-    #    
-        plt.plot(Age[0:40],MyMarket.ZeroSubsidyRateByAge,'-b')
-        plt.plot(Age[0:40],MyMarket.data_moments[200:240],'.k')
+
+        plt.plot(Age[0:40],MyMarket.NoPremShareRateByAge,'-b')
+        plt.plot(Age[0:40],Data.NoPremShareRateByAge,'.k')
         plt.xlabel('Age')
         plt.ylabel('Pct insured with zero employer contribution')
         plt.xlim((25,65))
@@ -981,7 +1096,7 @@ if __name__ == '__main__':
         plt.show()
         
         plt.plot(Age,MyMarket.OOPshareByAge,'-b')
-        plt.plot(Age,MyMarket.data_moments[760:820],'.k')
+        plt.plot(Age,Data.OOPshareByAge,'.k')
         plt.xlabel('Age')
         plt.ylabel('Share of medical expenses paid out-of-pocket')
         plt.xlim((25,85))
@@ -994,7 +1109,7 @@ if __name__ == '__main__':
         
         t_start = clock()
         EvalType  = 0  # Number of times to do a static search for eqbm premiums
-        InsChoice = 0  # Extent of insurance choice
+        InsChoice = 1  # Extent of insurance choice
         TestPremiums = True # Whether to start with the test premium level
         
         if TestPremiums:

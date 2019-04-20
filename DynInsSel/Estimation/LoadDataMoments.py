@@ -485,13 +485,13 @@ while b <= bootstrap_count:
 # and save it to the moment file.
 if bootstrap_count > 0:
     EmpiricalMomentVariances = np.var(BootstrappedMomentArray,axis=1)
-    MomentWeights = EmpiricalMomentVariances**(-1)
-    MomentWeights[np.isinf(MomentWeights)] = 0. # NoPremShareByAgeHealth has no variation for some poor health, young ages
-    MomentWeights[800] = 0. # This moment has *almost* no observations and no variation, and thus ends up with a weight of 10**32, yikes
-    MomentWeights = np.minimum(MomentWeights,1e6) # Two other moments have *very little* variation and would get *insane* weights
+    moment_weights = EmpiricalMomentVariances**(-1)
+    moment_weights[np.isinf(moment_weights)] = 0. # NoPremShareByAgeHealth has no variation for some poor health, young ages
+    moment_weights[800] = 0. # This moment has *almost* no observations and no variation, and thus ends up with a weight of 10**32, yikes
+    moment_weights = np.minimum(moment_weights,1e6) # Two other moments have *very little* variation and would get *insane* weights
     f = open(data_location + '/' + moment_weight_filename,'w')
     my_writer = csv.writer(f, delimiter = '\t')
-    my_writer.writerow(MomentWeights)
+    my_writer.writerow(moment_weights)
     f.close()
     print('Saved moment weighting file to disk.')
         
@@ -500,9 +500,9 @@ else: # If the data was not bootstrapped, try to read the moment weights from fi
         f = open(data_location + '/' + moment_weight_filename,'r')
         my_reader = csv.reader(f, delimiter='\t')
         raw_weights = list(my_reader)[0]
-        MomentWeights = np.zeros(moment_count)
+        moment_weights = np.zeros(moment_count)
         for i in range(moment_count):
-            MomentWeights[i] = float(raw_weights[i])
+            moment_weights[i] = float(raw_weights[i])
         f.close()
         print('Loaded moment weights from file.')
     except:
