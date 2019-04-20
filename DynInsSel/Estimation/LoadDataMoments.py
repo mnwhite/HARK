@@ -19,6 +19,41 @@ MEPS_data_filename = 'MEPSdataForDynInsSel.txt'
 SCF_data_filename = 'SCFdataForDynInsSel.txt'
 moment_weight_filename = 'MomentWeights.txt'
 
+# Select which types of moments should be used in the SMM estimator
+MomentTypeBool = np.array([False, # MeanLogOOPmedByAge
+                           True,  # MeanLogTotalMedByAge
+                           False, # StdevLogOOPmedByAge
+                           False, # StdevLogTotalMedByAge
+                           False, # OOPshareByAge
+                           False, # ESIinsuredRateByAge
+                           False, # IMIinsuredRateByAge
+                           False, # MeanESIpremiumByAge
+                           False, # StdevESIpremiumByAge
+                           False, # NoPremShareRateByAge
+                           False, # MeanLogOOPmedByAgeHealth
+                           True,  # MeanLogTotalMedByAgeHealth
+                           False, # StdevLogOOPmedByAgeHealth
+                           False, # StdevLogTotalMedByAgeHealth
+                           False, # OOPshareByAgeHealth
+                           False, # ESIinsuredRateByAgeHealth
+                           False, # IMIinsuredRateByAgeHealth
+                           False, # MeanESIpremiumByAgeHealth
+                           False, # StdevESIpremiumByAgeHealth
+                           False, # NoPremShareRateByAgeHealth
+                           False, # MeanLogOOPmedByAgeIncome
+                           False, # MeanLogTotalMedByAgeIncome
+                           False, # StdevLogOOPmedByAgeIncome
+                           False, # StdevLogTotalMedByAgeIncome
+                           False, # OOPshareByAgeIncome
+                           False, # ESIinsuredRateByAgeIncome
+                           False, # IMIinsuredRateByAgeIncome
+                           False, # MeanESIpremiumByAgeIncome
+                           False, # StdevESIpremiumByAgeIncome
+                           False, # NoPremShareRateByAgeIncome
+                           True,  # MedianWealthRatioByAge
+                           False  # MedianWealthRatioByAgeIncome
+                           ])
+
 # Load the MEPS data into a CSV reader object
 data_location = os.path.dirname(os.path.abspath(__file__))
 f = open(data_location + '/' + MEPS_data_filename,'r')
@@ -120,6 +155,40 @@ NoPremShareRateByAgeIncome = np.zeros((8,5))  # 1360:1400
 MedianWealthRatioByAge = np.zeros(40)         # 1400:1440
 MedianWealthRatioByAgeIncome = np.zeros((8,5))# 1440:1480
 
+# Make a list of the bounds of each moment type
+MomentTypeBounds =        [[0,60],      # MeanLogOOPmedByAge
+                           [60,120],    # MeanLogTotalMedByAge
+                           [120,180],   # StdevLogOOPmedByAge
+                           [180,240],   # StdevLogTotalMedByAge
+                           [240,300],   # OOPshareByAge
+                           [300,340],   # ESIinsuredRateByAge
+                           [340,380],   # IMIinsuredRateByAge
+                           [380,420],   # MeanESIpremiumByAge
+                           [420,460],   # StdevESIpremiumByAge
+                           [460,500],   # NoPremShareRateByAge
+                           [500,560],   # MeanLogOOPmedByAgeHealth
+                           [560,620],   # MeanLogTotalMedByAgeHealth
+                           [620,680],   # StdevLogOOPmedByAgeHealth
+                           [680,740],   # StdevLogTotalMedByAgeHealth
+                           [740,800],   # OOPshareByAgeHealth
+                           [800,840],   # ESIinsuredRateByAgeHealth
+                           [840,880],   # IMIinsuredRateByAgeHealth
+                           [880,920],   # MeanESIpremiumByAgeHealth
+                           [920,960],   # StdevESIpremiumByAgeHealth
+                           [960,1000],  # NoPremShareRateByAgeHealth
+                           [1000,1040], # MeanLogOOPmedByAgeIncome
+                           [1040,1080], # MeanLogTotalMedByAgeIncome
+                           [1080,1120], # StdevLogOOPmedByAgeIncome
+                           [1120,1160], # StdevLogTotalMedByAgeIncome
+                           [1160,1200], # OOPshareByAgeIncome
+                           [1200,1240], # ESIinsuredRateByAgeIncome
+                           [1240,1280], # IMIinsuredRateByAgeIncome
+                           [1280,1320], # MeanESIpremiumByAgeIncome
+                           [1320,1360], # StdevESIpremiumByAgeIncome
+                           [1360,1400], # NoPremShareRateByAgeIncome
+                           [1400,1440], # MedianWealthRatioByAge
+                           [1440,1480]  # MedianWealthRatioByAgeIncome
+                           ]
 moment_count = 1480
 age_group_limits = [[25,29],[30,34],[35,39],[40,44],[45,49],[50,54],[55,59],[60,64],[65,69],[70,74],[75,79],[80,84]]
 
@@ -508,7 +577,18 @@ else: # If the data was not bootstrapped, try to read the moment weights from fi
     except:
         print('Unable to open moment weighting file!')
         
-        
+      
+# Apply a "moment mask" to select which moments are actually used by the SMM estimator
+moment_mask = np.zeros(moment_count)
+for n in range(MomentTypeBool.size):
+    bot = MomentTypeBounds[n][0]
+    top = MomentTypeBounds[n][1]
+    if MomentTypeBool[n]:
+        moment_mask[bot:top] = 1.
+moment_weights *= moment_mask
+print('Estimator will use ' + str(int(np.sum(moment_mask))) + ' moments.')
+     
+   
 if __name__ == '__main__':
     os.chdir('..')
     os.chdir('Figures')
