@@ -10,6 +10,7 @@ import DynInsSelParameters as Params
 from time import clock
 from copy import copy, deepcopy
 from InsuranceSelectionModel import MedInsuranceContract, InsSelConsumerType
+from SaveParameters import writeParametersToFile
 import LoadDataMoments as Data
 from LoadDataMoments import data_moments, moment_weights
 from ActuarialRules import BaselinePolicySpec, InsuranceMarket
@@ -938,7 +939,8 @@ def objectiveFunction(Parameters):
     MyMarket.calcSimulatedMoments()
     MyMarket.combineSimulatedMoments()
     moment_sum = MyMarket.aggregateMomentConditions()
-    print(moment_sum)    
+    print(moment_sum)
+    writeParametersToFile(Parameters,'LatestParameters.txt')    
     return MyMarket
 
 

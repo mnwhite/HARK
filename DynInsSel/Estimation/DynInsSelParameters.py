@@ -614,12 +614,12 @@ CollegeDictionary['pLvlNextFuncRet'] = RetirementFunc_c
 
 # Make a test parameter vector for estimation
 test_param_vec = np.array([0.92, # DiscFac
-                           2.7,  # CRRAcon
+                           2.7,  # CRRA
                            8.0,  # MedCurve 
                           -8.5,  # ChoiceShkMag in log
                            0.16, # Cfloor
-                         -1.62,  # SubsidyAvg
-                          -3.0,  # SubsidyWidth scaler
+                         -1.62,  # EmpContr
+                          -3.0,  # UNUSED
                           10.0,  # BequestShift shifter for bequest motive
                            3.0,  # BequestScale scale of bequest motive
                          -3.50,  # MedShkMean constant coefficient
