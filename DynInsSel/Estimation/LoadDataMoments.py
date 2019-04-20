@@ -15,6 +15,7 @@ from HARKutilities import getPercentiles
 
 # Set file locations and number of times to bootstrap data for empirical moment variances
 bootstrap_count = 0
+plot_data_moment_figs = False
 MEPS_data_filename = 'MEPSdataForDynInsSel.txt'
 SCF_data_filename = 'SCFdataForDynInsSel.txt'
 moment_weight_filename = 'MomentWeights.txt'
@@ -155,6 +156,10 @@ NoPremShareRateByAgeIncome = np.zeros((8,5))  # 1360:1400
 MedianWealthRatioByAge = np.zeros(40)         # 1400:1440
 MedianWealthRatioByAgeIncome = np.zeros((8,5))# 1440:1480
 
+ESIofferRateByAge = np.zeros(40) # Can't be estimated, exogenous process
+ESIofferRateByAgeHealth = np.zeros((8,5)) # Can't be estimated, exogenous process
+ESIofferRateByAgeIncome = np.zeros((8,5)) # Can't be estimated, exogenous process
+
 # Make a list of the bounds of each moment type
 MomentTypeBounds =        [[0,60],      # MeanLogOOPmedByAge
                            [60,120],    # MeanLogTotalMedByAge
@@ -289,6 +294,11 @@ while b <= bootstrap_count:
         # Get insured rate for the ESI and IMI populations, mean/stdev of ESI
         # out-of-pocket premiums, and rate of paying full price for ESI.
         if j < 40:
+            those = these
+            WeightTemp = Weight[those]
+            WeightTemp = WeightTemp/np.sum(WeightTemp)
+            ESIofferRateByAge[j] = np.dot(Offered[those],WeightTemp)
+            
             those = np.logical_and(these, Offered)
             WeightTemp = Weight[those]
             WeightTemp = WeightTemp/np.sum(WeightTemp)
@@ -362,6 +372,11 @@ while b <= bootstrap_count:
             # Get insured rate for the ESI and IMI populations, mean/stdev of ESI
             # out-of-pocket premiums, and rate of paying full price for ESI.
             if g < 8:
+                those = these
+                WeightTemp = Weight[those]
+                WeightTemp = WeightTemp/np.sum(WeightTemp)
+                ESIofferRateByAgeHealth[g,h] = np.dot(Offered[those],WeightTemp)
+                
                 those = np.logical_and(these, Offered)
                 WeightTemp = Weight[those]
                 WeightTemp = WeightTemp/np.sum(WeightTemp)
@@ -423,6 +438,12 @@ while b <= bootstrap_count:
             OOPmedSum = np.dot(OOPmed[those], WeightTemp)
             TotalMedSum = np.dot(TotalMed[those], WeightTemp)
             OOPshareByAgeIncome[g,i] = OOPmedSum/TotalMedSum
+            
+            # Calculate ESI offer rate
+            those = these
+            WeightTemp = Weight[those]
+            WeightTemp = WeightTemp/np.sum(WeightTemp)
+            ESIofferRateByAgeIncome[g,i] = np.dot(Offered[those],WeightTemp)
             
             # Get insured rate for the ESI and IMI populations, mean/stdev of ESI
             # out-of-pocket premiums, and rate of paying full price for ESI.
@@ -598,163 +619,171 @@ if __name__ == '__main__':
     OneYearAge = np.arange(25,65)
     FiveYearAge = np.arange(25,65,5) + 2.5
     
-    plt.plot(OneYearAge,MeanLogOOPmedByAge[0:40],'.k')
-    plt.plot(FiveYearAge,MeanLogOOPmedByAgeIncome)
-    plt.xlabel('Age')
-    plt.ylabel('Mean log OOP medical expenses')
-    plt.legend(['Overall average','Bottom income quintile','Second income quintile','Third income quintile','Fourth income quintile','Top income quintile'],loc=0,fontsize=8)
-    plt.savefig('MeanLogOOPmedByAgeIncome.pdf')
-    plt.show()
-    
-    plt.plot(OneYearAge,MeanLogTotalMedByAge[0:40],'.k')
-    plt.plot(FiveYearAge,MeanLogTotalMedByAgeIncome)
-    plt.xlabel('Age')
-    plt.ylabel('Mean log total medical expenses')
-    plt.legend(['Overall average','Bottom income quintile','Second income quintile','Third income quintile','Fourth income quintile','Top income quintile'],loc=0,fontsize=8)
-    plt.savefig('MeanLogTotalMedByAgeIncome.pdf')
-    plt.show()
-    
-    plt.plot(OneYearAge,StdevLogOOPmedByAge[0:40],'.k')
-    plt.plot(FiveYearAge,StdevLogOOPmedByAgeIncome)
-    plt.xlabel('Age')
-    plt.ylabel('Stdev log OOP medical expenses')
-    plt.legend(['Overall average','Bottom income quintile','Second income quintile','Third income quintile','Fourth income quintile','Top income quintile'],loc=0,fontsize=8)
-    plt.savefig('StdevLogOOPmedByAgeIncome.pdf')
-    plt.show()
-    
-    plt.plot(OneYearAge,StdevLogTotalMedByAge[0:40],'.k')
-    plt.plot(FiveYearAge,StdevLogTotalMedByAgeIncome)
-    plt.xlabel('Age')
-    plt.ylabel('Stdev log total medical expenses')
-    plt.legend(['Overall average','Bottom income quintile','Second income quintile','Third income quintile','Fourth income quintile','Top income quintile'],loc=0,fontsize=8)
-    plt.savefig('StdevLogTotalMedByAgeIncome.pdf')
-    plt.show()
-    
-    plt.plot(OneYearAge,ESIinsuredRateByAge,'.k')
-    plt.plot(FiveYearAge,ESIinsuredRateByAgeIncome)
-    plt.xlabel('Age')
-    plt.ylabel('ESI uptake rate')
-    plt.legend(['Overall average','Bottom income quintile','Second income quintile','Third income quintile','Fourth income quintile','Top income quintile'],loc=0,fontsize=8)
-    plt.savefig('InsuredRateESIByAgeIncome.pdf')
-    plt.show()
-    
-    plt.plot(OneYearAge,IMIinsuredRateByAge,'.k')
-    plt.plot(FiveYearAge,IMIinsuredRateByAgeIncome)
-    plt.xlabel('Age')
-    plt.ylabel('IMI insured rate')
-    plt.legend(['Overall average','Bottom income quintile','Second income quintile','Third income quintile','Fourth income quintile','Top income quintile'],loc=0,fontsize=8)
-    plt.savefig('InsuredRateIMIByAgeIncome.pdf')
-    plt.show()
-    
-    plt.plot(OneYearAge,MeanESIpremiumByAge,'.k')
-    plt.plot(FiveYearAge,MeanESIpremiumByAgeIncome)
-    plt.xlabel('Age')
-    plt.ylabel('Mean ESI out-of-pocket premium')
-    plt.ylim([500,3500])
-    plt.legend(['Overall average','Bottom income quintile','Second income quintile','Third income quintile','Fourth income quintile','Top income quintile'],loc=0,fontsize=8)
-    plt.savefig('MeanPremiumByAgeIncome.pdf')
-    plt.show()
-    
-    plt.plot(OneYearAge,StdevESIpremiumByAge,'.k')
-    plt.plot(FiveYearAge,StdevESIpremiumByAgeIncome)
-    plt.xlabel('Age')
-    plt.ylabel('Stdev ESI out-of-pocket premium')
-    plt.legend(['Overall average','Bottom income quintile','Second income quintile','Third income quintile','Fourth income quintile','Top income quintile'],loc=0,fontsize=8)
-    plt.savefig('StdevPremiumByAgeIncome.pdf')
-    plt.show()
-    
-    plt.plot(OneYearAge,NoPremShareRateByAge,'.k')
-    plt.plot(FiveYearAge,NoPremShareRateByAgeIncome)
-    plt.xlabel('Age')
-    plt.ylabel('Pct ESI buyers with no employer contribution')
-    plt.legend(['Overall average','Bottom income quintile','Second income quintile','Third income quintile','Fourth income quintile','Top income quintile'],loc=0,fontsize=8)
-    plt.savefig('NoPremShareByAgeIncome.pdf')
-    plt.show()
-    
-    plt.plot(OneYearAge,MedianWealthRatioByAge,'.k')
-    plt.plot(FiveYearAge,MedianWealthRatioByAgeIncome)
-    plt.xlabel('Age')
-    plt.ylabel('Median wealth-to-income ratio')
-    plt.legend(['Overall average','Bottom income quintile','Second income quintile','Third income quintile','Fourth income quintile','Top income quintile'],loc=0,fontsize=8)
-    plt.savefig('WealthRatioByAgeIncome.pdf')
-    plt.show()
-    
-    plt.plot(OneYearAgeLong,MeanLogOOPmedByAge,'.k')
-    plt.plot(FiveYearAgeLong,MeanLogOOPmedByAgeHealth)
-    plt.xlabel('Age')
-    plt.ylabel('Mean log OOP medical expenses')
-    plt.legend(['Overall average','Poor health','Fair health','Good health','Very good health','Excellent health'],loc=0,fontsize=8)
-    plt.savefig('MeanLogOOPmedByAgeHealth.pdf')
-    plt.show()
-    
-    plt.plot(OneYearAgeLong,MeanLogTotalMedByAge,'.k')
-    plt.plot(FiveYearAgeLong,MeanLogTotalMedByAgeHealth)
-    plt.xlabel('Age')
-    plt.ylabel('Mean log total medical expenses')
-    plt.legend(['Overall average','Poor health','Fair health','Good health','Very good health','Excellent health'],loc=0,fontsize=8)
-    plt.savefig('MeanLogTotalMedByAgeHealth.pdf')
-    plt.show()
-    
-    plt.plot(OneYearAgeLong,OOPshareByAge,'.k')
-    plt.xlabel('Age')
-    plt.ylabel('Out-of-pocket medical spending share')
-    plt.ylim([0.0,0.25])
-    plt.savefig('OOPshareByAge.pdf')
-    plt.show()
-    
-    plt.plot(OneYearAgeLong,StdevLogOOPmedByAge,'.k')
-    plt.plot(FiveYearAgeLong,StdevLogOOPmedByAgeHealth)
-    plt.xlabel('Age')
-    plt.ylabel('Stdev log OOP medical expenses')
-    plt.legend(['Overall average','Poor health','Fair health','Good health','Very good health','Excellent health'],loc=0,fontsize=8)
-    plt.savefig('StdevLogOOPmedByAgeHealth.pdf')
-    plt.show()
-    
-    plt.plot(OneYearAgeLong,StdevLogTotalMedByAge,'.k')
-    plt.plot(FiveYearAgeLong,StdevLogTotalMedByAgeHealth)
-    plt.xlabel('Age')
-    plt.ylabel('Stdev log total medical expenses')
-    plt.legend(['Overall average','Poor health','Fair health','Good health','Very good health','Excellent health'],loc=0,fontsize=8)
-    plt.savefig('StdevLogTotalMedByAgeHealth.pdf')
-    plt.show()
-    
-    plt.plot(OneYearAge,ESIinsuredRateByAge,'.k')
-    plt.plot(FiveYearAge,ESIinsuredRateByAgeHealth)
-    plt.xlabel('Age')
-    plt.ylabel('ESI uptake rate')
-    plt.legend(['Overall average','Poor health','Fair health','Good health','Very good health','Excellent health'],loc=0,fontsize=8)
-    plt.savefig('InsuredRateByAgeHealth.pdf')
-    plt.show()
-    
-    plt.plot(OneYearAge,MeanESIpremiumByAge,'.k')
-    plt.plot(FiveYearAge,MeanESIpremiumByAgeHealth)
-    plt.xlabel('Age')
-    plt.ylabel('Mean OOP premium')
-    plt.ylim([500,3500])
-    plt.legend(['Overall average','Poor health','Fair health','Good health','Very good health','Excellent health'],loc=0,fontsize=8)
-    plt.savefig('MeanPremiumByAgeHealth.pdf')
-    plt.show()
-    
-    plt.plot(OneYearAge,StdevESIpremiumByAge,'.k')
-    plt.plot(FiveYearAge,StdevESIpremiumByAgeHealth)
-    plt.xlabel('Age')
-    plt.ylabel('Stdev OOP premium')
-    plt.legend(['Overall average','Poor health','Fair health','Good health','Very good health','Excellent health'],loc=0,fontsize=8)
-    plt.savefig('StdevPremiumByAgeHealth.pdf')
-    plt.show()
-    
-    plt.plot(OneYearAge,NoPremShareRateByAge,'.k')
-    plt.plot(FiveYearAge,NoPremShareRateByAgeHealth)
-    plt.xlabel('Age')
-    plt.ylabel('Pct ESI buyers with no employer contribution')
-    plt.legend(['Overall average','Poor health','Fair health','Good health','Very good health','Excellent health'],loc=0,fontsize=8)
-    plt.savefig('NoPremShareByAgeHealth.pdf')
-    plt.show()
-    
-    plt.plot(OneYearAge,NoPremShareRateByAge,'.k')
-    plt.xlabel('Age')
-    plt.ylabel('Pct ESI buyers with no employer contribution')
-    plt.savefig('NoPremShareByAge.pdf')
-    plt.show()
-
-
+    if plot_data_moment_figs:
+        plt.plot(OneYearAge,MeanLogOOPmedByAge[0:40],'.k')
+        plt.plot(FiveYearAge,MeanLogOOPmedByAgeIncome)
+        plt.xlabel('Age')
+        plt.ylabel('Mean log OOP medical expenses')
+        plt.legend(['Overall average','Bottom income quintile','Second income quintile','Third income quintile','Fourth income quintile','Top income quintile'],loc=0,fontsize=8)
+        plt.savefig('MeanLogOOPmedByAgeIncome.pdf')
+        plt.show()
+        
+        plt.plot(OneYearAge,MeanLogTotalMedByAge[0:40],'.k')
+        plt.plot(FiveYearAge,MeanLogTotalMedByAgeIncome)
+        plt.xlabel('Age')
+        plt.ylabel('Mean log total medical expenses')
+        plt.legend(['Overall average','Bottom income quintile','Second income quintile','Third income quintile','Fourth income quintile','Top income quintile'],loc=0,fontsize=8)
+        plt.savefig('MeanLogTotalMedByAgeIncome.pdf')
+        plt.show()
+        
+        plt.plot(OneYearAge,StdevLogOOPmedByAge[0:40],'.k')
+        plt.plot(FiveYearAge,StdevLogOOPmedByAgeIncome)
+        plt.xlabel('Age')
+        plt.ylabel('Stdev log OOP medical expenses')
+        plt.legend(['Overall average','Bottom income quintile','Second income quintile','Third income quintile','Fourth income quintile','Top income quintile'],loc=0,fontsize=8)
+        plt.savefig('StdevLogOOPmedByAgeIncome.pdf')
+        plt.show()
+        
+        plt.plot(OneYearAge,StdevLogTotalMedByAge[0:40],'.k')
+        plt.plot(FiveYearAge,StdevLogTotalMedByAgeIncome)
+        plt.xlabel('Age')
+        plt.ylabel('Stdev log total medical expenses')
+        plt.legend(['Overall average','Bottom income quintile','Second income quintile','Third income quintile','Fourth income quintile','Top income quintile'],loc=0,fontsize=8)
+        plt.savefig('StdevLogTotalMedByAgeIncome.pdf')
+        plt.show()
+        
+        plt.plot(OneYearAge,ESIinsuredRateByAge,'.k')
+        plt.plot(FiveYearAge,ESIinsuredRateByAgeIncome)
+        plt.xlabel('Age')
+        plt.ylabel('ESI uptake rate')
+        plt.legend(['Overall average','Bottom income quintile','Second income quintile','Third income quintile','Fourth income quintile','Top income quintile'],loc=0,fontsize=8)
+        plt.savefig('InsuredRateESIByAgeIncome.pdf')
+        plt.show()
+        
+        plt.plot(OneYearAge,IMIinsuredRateByAge,'.k')
+        plt.plot(FiveYearAge,IMIinsuredRateByAgeIncome)
+        plt.xlabel('Age')
+        plt.ylabel('IMI insured rate')
+        plt.legend(['Overall average','Bottom income quintile','Second income quintile','Third income quintile','Fourth income quintile','Top income quintile'],loc=0,fontsize=8)
+        plt.savefig('InsuredRateIMIByAgeIncome.pdf')
+        plt.show()
+        
+        plt.plot(OneYearAge,MeanESIpremiumByAge,'.k')
+        plt.plot(FiveYearAge,MeanESIpremiumByAgeIncome)
+        plt.xlabel('Age')
+        plt.ylabel('Mean ESI out-of-pocket premium')
+        plt.ylim([500,3500])
+        plt.legend(['Overall average','Bottom income quintile','Second income quintile','Third income quintile','Fourth income quintile','Top income quintile'],loc=0,fontsize=8)
+        plt.savefig('MeanPremiumByAgeIncome.pdf')
+        plt.show()
+        
+        plt.plot(OneYearAge,StdevESIpremiumByAge,'.k')
+        plt.plot(FiveYearAge,StdevESIpremiumByAgeIncome)
+        plt.xlabel('Age')
+        plt.ylabel('Stdev ESI out-of-pocket premium')
+        plt.legend(['Overall average','Bottom income quintile','Second income quintile','Third income quintile','Fourth income quintile','Top income quintile'],loc=0,fontsize=8)
+        plt.savefig('StdevPremiumByAgeIncome.pdf')
+        plt.show()
+        
+        plt.plot(OneYearAge,NoPremShareRateByAge,'.k')
+        plt.plot(FiveYearAge,NoPremShareRateByAgeIncome)
+        plt.xlabel('Age')
+        plt.ylabel('Pct ESI buyers with no employer contribution')
+        plt.legend(['Overall average','Bottom income quintile','Second income quintile','Third income quintile','Fourth income quintile','Top income quintile'],loc=0,fontsize=8)
+        plt.savefig('NoPremShareByAgeIncome.pdf')
+        plt.show()
+        
+        plt.plot(OneYearAge,MedianWealthRatioByAge,'.k')
+        plt.plot(FiveYearAge,MedianWealthRatioByAgeIncome)
+        plt.xlabel('Age')
+        plt.ylabel('Median wealth-to-income ratio')
+        plt.legend(['Overall average','Bottom income quintile','Second income quintile','Third income quintile','Fourth income quintile','Top income quintile'],loc=0,fontsize=8)
+        plt.savefig('WealthRatioByAgeIncome.pdf')
+        plt.show()
+        
+        plt.plot(OneYearAgeLong,MeanLogOOPmedByAge,'.k')
+        plt.plot(FiveYearAgeLong,MeanLogOOPmedByAgeHealth)
+        plt.xlabel('Age')
+        plt.ylabel('Mean log OOP medical expenses')
+        plt.legend(['Overall average','Poor health','Fair health','Good health','Very good health','Excellent health'],loc=0,fontsize=8)
+        plt.savefig('MeanLogOOPmedByAgeHealth.pdf')
+        plt.show()
+        
+        plt.plot(OneYearAgeLong,MeanLogTotalMedByAge,'.k')
+        plt.plot(FiveYearAgeLong,MeanLogTotalMedByAgeHealth)
+        plt.xlabel('Age')
+        plt.ylabel('Mean log total medical expenses')
+        plt.legend(['Overall average','Poor health','Fair health','Good health','Very good health','Excellent health'],loc=0,fontsize=8)
+        plt.savefig('MeanLogTotalMedByAgeHealth.pdf')
+        plt.show()
+        
+        plt.plot(OneYearAgeLong,OOPshareByAge,'.k')
+        plt.xlabel('Age')
+        plt.ylabel('Out-of-pocket medical spending share')
+        plt.ylim([0.0,0.25])
+        plt.savefig('OOPshareByAge.pdf')
+        plt.show()
+        
+        plt.plot(OneYearAgeLong,StdevLogOOPmedByAge,'.k')
+        plt.plot(FiveYearAgeLong,StdevLogOOPmedByAgeHealth)
+        plt.xlabel('Age')
+        plt.ylabel('Stdev log OOP medical expenses')
+        plt.legend(['Overall average','Poor health','Fair health','Good health','Very good health','Excellent health'],loc=0,fontsize=8)
+        plt.savefig('StdevLogOOPmedByAgeHealth.pdf')
+        plt.show()
+        
+        plt.plot(OneYearAgeLong,StdevLogTotalMedByAge,'.k')
+        plt.plot(FiveYearAgeLong,StdevLogTotalMedByAgeHealth)
+        plt.xlabel('Age')
+        plt.ylabel('Stdev log total medical expenses')
+        plt.legend(['Overall average','Poor health','Fair health','Good health','Very good health','Excellent health'],loc=0,fontsize=8)
+        plt.savefig('StdevLogTotalMedByAgeHealth.pdf')
+        plt.show()
+        
+        plt.plot(OneYearAge,ESIinsuredRateByAge,'.k')
+        plt.plot(FiveYearAge,ESIinsuredRateByAgeHealth)
+        plt.xlabel('Age')
+        plt.ylabel('ESI uptake rate')
+        plt.legend(['Overall average','Poor health','Fair health','Good health','Very good health','Excellent health'],loc=0,fontsize=8)
+        plt.savefig('InsuredRateByAgeHealth.pdf')
+        plt.show()
+        
+        plt.plot(OneYearAge,MeanESIpremiumByAge,'.k')
+        plt.plot(FiveYearAge,MeanESIpremiumByAgeHealth)
+        plt.xlabel('Age')
+        plt.ylabel('Mean OOP premium')
+        plt.ylim([500,3500])
+        plt.legend(['Overall average','Poor health','Fair health','Good health','Very good health','Excellent health'],loc=0,fontsize=8)
+        plt.savefig('MeanPremiumByAgeHealth.pdf')
+        plt.show()
+        
+        plt.plot(OneYearAge,StdevESIpremiumByAge,'.k')
+        plt.plot(FiveYearAge,StdevESIpremiumByAgeHealth)
+        plt.xlabel('Age')
+        plt.ylabel('Stdev OOP premium')
+        plt.legend(['Overall average','Poor health','Fair health','Good health','Very good health','Excellent health'],loc=0,fontsize=8)
+        plt.savefig('StdevPremiumByAgeHealth.pdf')
+        plt.show()
+        
+        plt.plot(OneYearAge,NoPremShareRateByAge,'.k')
+        plt.plot(FiveYearAge,NoPremShareRateByAgeHealth)
+        plt.xlabel('Age')
+        plt.ylabel('Pct ESI buyers with no employer contribution')
+        plt.legend(['Overall average','Poor health','Fair health','Good health','Very good health','Excellent health'],loc=0,fontsize=8)
+        plt.savefig('NoPremShareByAgeHealth.pdf')
+        plt.show()
+        
+        plt.plot(OneYearAge,NoPremShareRateByAge,'.k')
+        plt.xlabel('Age')
+        plt.ylabel('Pct ESI buyers with no employer contribution')
+        plt.savefig('NoPremShareByAge.pdf')
+        plt.show()
+        
+        plt.plot(OneYearAge,ESIofferRateByAge,'.k')
+        plt.plot(FiveYearAge,ESIofferRateByAgeIncome,'.')
+        plt.xlabel('Age')
+        plt.ylabel('ESI offer rate by income quintile')
+        plt.legend(['Overall average','Bottom income quintile','Second income quintile','Third income quintile','Fourth income quintile','Top income quintile'],loc=0,fontsize=8)
+        plt.savefig('ESIofferRateByAgeIncome.pdf')
+        plt.show()
+        

@@ -227,6 +227,7 @@ class DynInsSelMarket(InsuranceMarket):
         StdevESIpremiumByAge = np.zeros(40) # 420:460
         NoPremShareRateByAge = np.zeros(40) # 460:500
         MedianWealthRatioByAge = np.zeros(40)# 1400:1440
+        ESIofferRateByAge = np.zeros(40) # Can't be estimated, exogenous process
 
         # Calculate all simulated moments by age
         for t in range(60):
@@ -274,6 +275,7 @@ class DynInsSelMarket(InsuranceMarket):
                 StdevESIpremiumByAge[t] = np.std(PremiumArray)
                 ESIinsuredRateByAge[t] = ESIcount/OfferedCount
                 IMIinsuredRateByAge[t] = IMIcount/NotOfferedCount
+                ESIofferRateByAge[t] = OfferedCount/LiveCount
                 if ESIcount > 0.0:
                     NoPremShareRateByAge[t] = ZeroCount/ESIcount
                 else:
@@ -298,6 +300,7 @@ class DynInsSelMarket(InsuranceMarket):
         StdevESIpremiumByAgeHealth = np.zeros((8,5))  # 920:960
         NoPremShareRateByAgeHealth = np.zeros((8,5))  # 960:1000
         MedianWealthRatioByAgeHealth = np.zeros((8,5))# NO DATA
+        ESIofferRateByAgeHealth = np.zeros((8,5)) # Can't be estimated, exogenous process
         AgeBounds = [[0,5],[5,10],[10,15],[15,20],[20,25],[25,30],[30,35],[35,40],[40,45],[45,50],[50,55],[55,60]]
 
         # Calculate all simulated moments by age-health
@@ -352,6 +355,7 @@ class DynInsSelMarket(InsuranceMarket):
                     StdevESIpremiumByAgeHealth[a,h] = np.std(PremiumArray)
                     ESIinsuredRateByAgeHealth[a,h] = ESIcount/OfferedCount
                     IMIinsuredRateByAgeHealth[a,h] = IMIcount/NotOfferedCount
+                    ESIofferRateByAgeHealth[a,h] = OfferedCount/LiveCount
                     if ESIcount > 0.0:
                         NoPremShareRateByAgeHealth[a,h] = ZeroCount/ESIcount
                     else:
@@ -377,6 +381,7 @@ class DynInsSelMarket(InsuranceMarket):
         StdevESIpremiumByAgeIncome = np.zeros((8,5))  # 1320:1360
         NoPremShareRateByAgeIncome = np.zeros((8,5))  # 1360:1400
         MedianWealthRatioByAgeIncome = np.zeros((8,5))# 1440:1480
+        ESIofferRateByAgeIncome = np.zeros((8,5)) # Can't be estimated, exogenous process
 
         # Calculated all simulated moments by age-income
         for a in range(8):
@@ -426,6 +431,7 @@ class DynInsSelMarket(InsuranceMarket):
                 StdevESIpremiumByAgeIncome[a,i] = np.std(PremiumArray)
                 ESIinsuredRateByAgeIncome[a,i] = ESIcount/OfferedCount
                 IMIinsuredRateByAgeIncome[a,i] = IMIcount/NotOfferedCount
+                ESIofferRateByAgeIncome[a,i] = OfferedCount/LiveCount
                 LogTotalMedArray = np.hstack(LogTotalMedList)
                 MeanLogTotalMedByAgeIncome[a,i] = np.mean(LogTotalMedArray)
                 StdevLogTotalMedByAgeIncome[a,i] = np.std(LogTotalMedArray)
@@ -473,6 +479,9 @@ class DynInsSelMarket(InsuranceMarket):
         self.StdevESIpremiumByAgeIncome = StdevESIpremiumByAgeIncome*10000
         self.NoPremShareRateByAgeIncome = NoPremShareRateByAgeIncome
         self.MedianWealthRatioByAgeIncome = MedianWealthRatioByAgeIncome
+        self.ESIofferRateByAge = ESIofferRateByAge
+        self.ESIofferRateByAgeHealth = ESIofferRateByAgeHealth
+        self.ESIofferRateByAgeIncome = ESIofferRateByAgeIncome
         
         
     def combineSimulatedMoments(self):
