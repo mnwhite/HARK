@@ -18,6 +18,8 @@ from ActuarialRules import BaselinePolicySpec, InsuranceMarket
 from HARKinterpolation import ConstantFunction
 from HARKutilities import getPercentiles
 from HARKparallel import multiThreadCommands, multiThreadCommandsFake
+from joblib import Parallel, delayed
+import dill as pickle
 
 
 class DynInsSelType(InsSelConsumerType):
@@ -931,7 +933,7 @@ def objectiveFunction(Parameters, return_market=False):
     multiThreadCommandsFake(MyMarket.agents,['makeIncBoolArray()'])
     
     if EvalType == 0:
-        multiThreadCommands(MyMarket.agents,['solve()'])
+        multiThreadCommandsFake(MyMarket.agents,['solve()'])
     else:
         MyMarket.max_loops = EvalType
         MyMarket.solve()
@@ -942,7 +944,7 @@ def objectiveFunction(Parameters, return_market=False):
     moment_sum = MyMarket.aggregateMomentConditions()
     writeParametersToFile(Parameters,'LatestParameters.txt')    
     
-    print(moment_sum)
+    #print(moment_sum)
     if return_market:
         return moment_sum, MyMarket
     else:
@@ -1184,16 +1186,25 @@ if __name__ == '__main__':
         
     if perturb_one_param:
         # Test model identification by perturbing one parameter at a time
-        param_i = 0
-        param_min = 0.91
-        param_max = 0.94
-        N = 21
+        param_i = 1
+        param_min = 2.5
+        param_max = 3.1
+        N = 35
         perturb_vec = np.linspace(param_min,param_max,num=N)
-        fit_vec = np.zeros(N) + np.nan
+        
+        t_start = clock()
+        parameter_set_list = []
         for j in range(N):
             params = copy(Params.test_param_vec)
             params[param_i] = perturb_vec[j]
-            fit_vec[j] = objectiveFunction(params)
+            parameter_set_list.append(params)
+#            fit_vec[j] = objectiveFunction(params)
+        
+        fit_list = Parallel(n_jobs=7)(delayed(objectiveFunction)(params) for params in parameter_set_list)
+        fit_vec = np.array(fit_list)
+        
+        t_end = clock()
+        print('Evaluating the objective function ' + str(N) + ' times took ' + str(t_end-t_start) + ' seconds.')
             
         plt.plot(perturb_vec,fit_vec)
         plt.xlabel(SaveParameters.param_names[param_i])

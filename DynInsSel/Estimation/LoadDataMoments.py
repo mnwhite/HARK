@@ -26,8 +26,8 @@ MomentTypeBool = np.array([False, # MeanLogOOPmedByAge
                            False, # StdevLogOOPmedByAge
                            False, # StdevLogTotalMedByAge
                            False, # OOPshareByAge
-                           False, # ESIinsuredRateByAge
-                           False, # IMIinsuredRateByAge
+                           True,  # ESIinsuredRateByAge
+                           True,  # IMIinsuredRateByAge
                            False, # MeanESIpremiumByAge
                            False, # StdevESIpremiumByAge
                            False, # NoPremShareRateByAge
@@ -46,7 +46,7 @@ MomentTypeBool = np.array([False, # MeanLogOOPmedByAge
                            False, # StdevLogOOPmedByAgeIncome
                            False, # StdevLogTotalMedByAgeIncome
                            False, # OOPshareByAgeIncome
-                           False, # ESIinsuredRateByAgeIncome
+                           True,  # ESIinsuredRateByAgeIncome
                            False, # IMIinsuredRateByAgeIncome
                            False, # MeanESIpremiumByAgeIncome
                            False, # StdevESIpremiumByAgeIncome

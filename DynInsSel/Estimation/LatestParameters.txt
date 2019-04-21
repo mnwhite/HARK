@@ -1,6 +1,6 @@
 test_param_vec = np.array([
-          0.94,                #  0 DiscFac           : Intertemporal discount factor
-          2.7,                 #  1 CRRA              : Coefficient of relative risk aversion for consumption
+          0.92,                #  0 DiscFac           : Intertemporal discount factor
+          3.04705882353,       #  1 CRRA              : Coefficient of relative risk aversion for consumption
           8.0,                 #  2 MedCurve          : Ratio of CRRA for medical care to CRRA for consumption
           -8.5,                #  3 log(ChoiceShkMag) : Log stdev of taste shocks over insurance contracts
           0.16,                #  4 Cfloor            : Consumption floor ($10,000)

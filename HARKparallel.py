@@ -444,7 +444,7 @@ def parallelNelderMeadWorker(objFunc,simplex,f_vals,j,P,opt_params):
         else:
             temp_point = my_point
             temp_val = my_val
-        c_point = beta*(centroid + temp_point)
+        c_point = temp_point + beta*(centroid - temp_point)
         c_val = objFunc(c_point) # Calculate contraction point
         evals += 1
         if c_val < temp_val:
