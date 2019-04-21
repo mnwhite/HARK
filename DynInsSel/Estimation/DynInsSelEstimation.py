@@ -10,6 +10,7 @@ import DynInsSelParameters as Params
 from time import clock
 from copy import copy, deepcopy
 from InsuranceSelectionModel import MedInsuranceContract, InsSelConsumerType
+import SaveParameters
 from SaveParameters import writeParametersToFile
 import LoadDataMoments as Data
 from LoadDataMoments import data_moments, moment_weights
@@ -904,7 +905,7 @@ def makeMarketFromParams(ParamArray,PolicySpec,IMIpremiumArray,ESIpremiumArray,I
     return ThisMarket
 
 
-def objectiveFunction(Parameters):
+def objectiveFunction(Parameters, return_market=False):
     '''
     The objective function for the estimation.  Makes and solves a market, then
     returns the weighted sum of moment differences between simulation and data.
@@ -939,9 +940,13 @@ def objectiveFunction(Parameters):
     MyMarket.calcSimulatedMoments()
     MyMarket.combineSimulatedMoments()
     moment_sum = MyMarket.aggregateMomentConditions()
-    print(moment_sum)
     writeParametersToFile(Parameters,'LatestParameters.txt')    
-    return MyMarket
+    
+    print(moment_sum)
+    if return_market:
+        return moment_sum, MyMarket
+    else:
+        return moment_sum
 
 
 ###############################################################################
@@ -950,15 +955,16 @@ if __name__ == '__main__':
     import matplotlib.pyplot as plt
     mystr = lambda number : "{:.4f}".format(number)
     
-    test_obj_func = True
+    test_obj_func = False
     test_one_type = False
+    perturb_one_param = True
     
     if test_obj_func:
     # This block is for actually testing the objective function
         t_start = clock()
-        MyMarket = objectiveFunction(Params.test_param_vec)
+        moment_sum, MyMarket = objectiveFunction(Params.test_param_vec, return_market=True)
         t_end = clock()
-        print('Objective function evaluation took ' + mystr(t_end-t_start) + ' seconds.')
+        print('Objective function evaluation took ' + mystr(t_end-t_start) + ' seconds, value is ' + str(moment_sum) + '.')
         
         # This block of code is for displaying moment fits after running objectiveFunc  
         Age = np.arange(25,85)
@@ -1174,3 +1180,23 @@ if __name__ == '__main__':
         MyType.plotMedFuncByDev(t,h,z,p,mMax=mTop)
         MyType.plotxFuncByDev(t,h,z,p,mMax=mTop)
         MyType.plotAVfuncByContract(t,h,p,mMax=mTop)
+        
+        
+    if perturb_one_param:
+        # Test model identification by perturbing one parameter at a time
+        param_i = 0
+        param_min = 0.91
+        param_max = 0.94
+        N = 21
+        perturb_vec = np.linspace(param_min,param_max,num=N)
+        fit_vec = np.zeros(N) + np.nan
+        for j in range(N):
+            params = copy(Params.test_param_vec)
+            params[param_i] = perturb_vec[j]
+            fit_vec[j] = objectiveFunction(params)
+            
+        plt.plot(perturb_vec,fit_vec)
+        plt.xlabel(SaveParameters.param_names[param_i])
+        plt.ylabel('Sum of squared moment differences')
+        plt.savefig('../Figures/Perturb' + SaveParameters.param_names[param_i] + '.pdf')
+        plt.show()
