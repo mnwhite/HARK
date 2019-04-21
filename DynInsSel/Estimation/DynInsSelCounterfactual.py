@@ -46,12 +46,12 @@ def runCounterfactual(Parameters,Baseline,Counterfactuals,PremiumLim):
     '''
     FigsDir = '../CounterfactualFigs/'
     
-    EvalType  = 2  # Number of times to do a static search for eqbm premiums
+    EvalType  = 3  # Number of times to do a static search for eqbm premiums
     InsChoice = 1  # Extent of insurance choice
     TestPremiums = True # Whether to start with the test premium level
     
     if TestPremiums:
-        ESIpremiums = np.array([0.3500, 0.0, 0.0, 0.0, 0.0])
+        ESIpremiums = np.array([0.3000, 0.0, 0.0, 0.0, 0.0])
     else:
         ESIpremiums = Params.PremiumsLast
     IMIpremiums_init = Params.IMIpremiums
@@ -460,20 +460,15 @@ AgeBandSpecBase = PolicySpecification(
                         MandateForESI = False,
                         name = 'AgeBand10x',
                         text = 'age band limit 10x')
-AgeBandSpecs = []
-AgeBandLimits = [5.0,4.8,4.6,4.4,4.2,4.0,3.8,3.6,3.4,3.2,3.0,2.8,2.6,2.4,2.2,2.0,1.8,1.6,1.4,1.2]
+AgeBandSpecs = [AgeRatedSpec]
+AgeBandLimits = [5.0,4.8,4.6,4.4,4.2,4.0,3.8,3.6,3.4,3.2,3.0,2.8,2.6,2.4,2.2,2.0,1.8,1.6,1.4,1.2,1.0]
 for AgeBandLimit in AgeBandLimits:
     NewSpec = copy(AgeBandSpecBase)
     NewSpec.AgeBandLimit= AgeBandLimit
     NewSpec.name = 'AgeBand' + str(int(AgeBandLimit*10)) + 'x'
     NewSpec.text = 'age band limit ' + '%.1f' % AgeBandLimit + 'x'
     AgeBandSpecs.append(NewSpec)
-FlatSpec = copy(AgeBandSpecBase)
-FlatSpec.ActuarialRule = flatActuarialRule
-FlatSpec.AgeBandLimit = 1.0 # irrelevant
-FlatSpec.name = 'FlatRule'
-FlatSpec.text = 'flat pricing'
-AgeBandSpecs.append(FlatSpec)
+
 
 # Define alternate specifications for varying the individual mandate tax
 MandateSpecBase = PolicySpecification(
@@ -511,7 +506,7 @@ if __name__ == '__main__':
     do_mandate_tax = False
     
     # Choose what kind of work to do
-    run_experiments = True
+    run_experiments = False
     make_figures = True
     
     if do_health_groups:
@@ -538,7 +533,7 @@ if __name__ == '__main__':
             
         if make_figures:
             # Make figures for the age bands experiments
-            for specification in AgeBandSpecs:
+            for specification in AgeBandSpecs[1:]:
                 makeCounterfactualFigures(specification,[-20,35],[-11,25],[-5,35])
 
     

@@ -1186,9 +1186,9 @@ if __name__ == '__main__':
         
     if perturb_one_param:
         # Test model identification by perturbing one parameter at a time
-        param_i = 1
-        param_min = 2.5
-        param_max = 3.1
+        param_i = 4
+        param_min = 0.12
+        param_max = 0.24
         N = 35
         perturb_vec = np.linspace(param_min,param_max,num=N)
         
