@@ -9,8 +9,8 @@ import numpy as np
 import csv
 from copy import copy
 from DynInsSelEstimation import makeMarketFromParams
-from ActuarialRules import PolicySpecification, BaselinePolicySpec, flatActuarialRule, ageHealthRatedActuarialRule, ageRatedActuarialRule
-from SubsidyFuncs import NullSubsidyFuncs
+from ActuarialRules import PolicySpecification, BaselinePolicySpec, ageHealthRatedActuarialRule, ageRatedActuarialRule
+from SubsidyFuncs import NullSubsidyFuncs, makeACAstyleSubsidyPolicy
 from HARKutilities import getPercentiles, kernelRegression
 from HARKparallel import multiThreadCommands, multiThreadCommandsFake
 import matplotlib.pyplot as plt
@@ -483,13 +483,46 @@ MandateSpecBase = PolicySpecification(
                         name = 'MandateBaseline',
                         text = 'individual mandate 0%')
 MandateTaxRates = [0.000,0.005,0.010,0.015,0.020,0.025,0.030,0.035,0.04,0.045,0.050,0.055,0.060,0.065,0.070,0.075,0.080,0.085,0.090,0.095,0.100]
-MandateSpecs = []
+MandateSpecs = [AgeRatedSpec]
 for MandateTaxRate in MandateTaxRates:
     NewSpec = copy(MandateSpecBase)
-    NewSpec.MandateTax = MandateTaxRate
+    NewSpec.MandateTaxRate = MandateTaxRate
     NewSpec.name = 'Mandate' + str(int(MandateTaxRate*1000))
     NewSpec.text = 'individual mandate ' +  '%.1f' % (MandateTaxRate*100) + '%'
     MandateSpecs.append(NewSpec)
+    
+    
+# Define alternate specifications for ACA-style subsidies
+ACAspecBase = PolicySpecification(
+                        ActuarialRule = ageRatedActuarialRule,
+                        SubsidyFunc=None, # will be replaced below
+                        HealthGroups = [[0,1,2,3,4]], # irrelevant
+                        ExcludedGroups = [False], # irrelevant
+                        AgeBandLimit = 3.0,
+                        MandateTaxRate = 0.025,
+                        MandateFloor = 0.07,
+                        MandateForESI = False,
+                        name = 'ACAbaseline',
+                        text = '400% FPL eligibility cap')
+FPLcutoffs = [3.00,3.25,3.50,3.75,4.00,4.25,4.50,4.75,5.0,5.25,5.50,5.75,6.00]
+ACAaltFPLcutoffSpecs = [AgeRatedSpec]
+for FPLcutoff in FPLcutoffs:
+    NewSpec = copy(ACAspecBase)
+    NewSubsidyFunc = makeACAstyleSubsidyPolicy(0.095,FPLcutoff)
+    NewSpec.SubsidyFunc = NewSubsidyFunc
+    NewSpec.name = 'ACAcutoff' + str(int(FPLcutoff*100))
+    NewSpec.text = str(int(FPLcutoff*100)) + '% FPL eligibility cap'
+    ACAaltFPLcutoffSpecs.append(NewSpec)
+    
+MaxOOPpcts = [0.080,0.085,0.090,0.095,0.100,0.105,0.110,0.115,0.120]
+ACAaltMaxOOPpctSpecs = [AgeRatedSpec]
+for MaxOOPpct in MaxOOPpcts:
+    NewSpec = copy(ACAspecBase)
+    NewSubsidyFunc = makeACAstyleSubsidyPolicy(MaxOOPpct,4.0)
+    NewSpec.SubsidyFunc = NewSubsidyFunc
+    NewSpec.name = 'ACAmaxOOP' + str(int(MaxOOPpct*1000))
+    NewSpec.text = 'max OOP premium: ' + str(int(MaxOOPpct*100)) + '% income' 
+    ACAaltMaxOOPpctSpecs.append(NewSpec)
         
     
 
@@ -502,11 +535,13 @@ if __name__ == '__main__':
     
     # Choose which experiments to work on
     do_health_groups = False
-    do_age_bands = True
+    do_age_bands = False
     do_mandate_tax = False
+    do_eligibility_cutoff = False
+    do_max_OOP_prem = True
     
     # Choose what kind of work to do
-    run_experiments = False
+    run_experiments = True
     make_figures = True
     
     if do_health_groups:
@@ -549,6 +584,33 @@ if __name__ == '__main__':
             # Make figures for the individual mandate experiments
             for specification in MandateSpecs:
                 makeCounterfactualFigures(specification,[-10,30],[-15,20],[-5,35])
- 
+
+                
+    if do_eligibility_cutoff:
+        if run_experiments:
+            # Run the subsidy eligibility (FPL pct) experiments
+            t_start = clock()
+            MyMarket = runCounterfactual(Params.test_param_vec,BaselineSpec,ACAaltFPLcutoffSpecs,[0.,20.])
+            t_end = clock()
+            print('Eligibility cutoff counterfactual experiment took ' + mystr(t_end-t_start) + ' seconds.')
+            
+        if make_figures:
+            # Make figures for the subsidy eligibility (FPL pct) experiments
+            for specification in ACAaltFPLcutoffSpecs:
+                makeCounterfactualFigures(specification,[-10,30],[-15,20],[-5,35])
+                
+                
+    if do_max_OOP_prem:
+        if run_experiments:
+            # Run the maximum OOP premium experiments
+            t_start = clock()
+            MyMarket = runCounterfactual(Params.test_param_vec,BaselineSpec,ACAaltMaxOOPpctSpecs,[0.,20.])
+            t_end = clock()
+            print('Eligibility cutoff counterfactual experiment took ' + mystr(t_end-t_start) + ' seconds.')
+            
+        if make_figures:
+            # Make figures for the maximum OOP premium (FPL pct) experiments
+            for specification in ACAaltMaxOOPpctSpecs:
+                makeCounterfactualFigures(specification,[-10,30],[-15,20],[-5,35])             
     
     

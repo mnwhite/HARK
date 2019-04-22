@@ -865,7 +865,7 @@ def makeMarketFromParams(ParamArray,PolicySpec,IMIpremiumArray,ESIpremiumArray,I
             if PolicySpec.ExcludedGroups[g]:
                 IMIpremiumArray_big[h,:] = 10000.
             else:
-                IMIpremiumArray_big[h,:] = IMIpremiumArray[g,:]
+                IMIpremiumArray_big[h,:] = IMIpremiumArray[1,:]
             
     # Construct an initial nested list for premiums
     PremiumFuncs_init = []
@@ -912,7 +912,7 @@ def objectiveFunction(Parameters, return_market=False):
     The objective function for the estimation.  Makes and solves a market, then
     returns the weighted sum of moment differences between simulation and data.
     '''
-    EvalType  = 0  # Number of times to do a static search for eqbm premiums
+    EvalType  = 2  # Number of times to do a static search for eqbm premiums
     InsChoice = 1  # Extent of insurance choice
     TestPremiums = True # Whether to start with the test premium level
     
@@ -957,9 +957,9 @@ if __name__ == '__main__':
     import matplotlib.pyplot as plt
     mystr = lambda number : "{:.4f}".format(number)
     
-    test_obj_func = False
+    test_obj_func = True
     test_one_type = False
-    perturb_one_param = True
+    perturb_one_param = False
     
     if test_obj_func:
     # This block is for actually testing the objective function

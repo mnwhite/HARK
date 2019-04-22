@@ -3,7 +3,7 @@ test_param_vec = np.array([
           2.7,                 #  1 CRRA              : Coefficient of relative risk aversion for consumption
           8.0,                 #  2 MedCurve          : Ratio of CRRA for medical care to CRRA for consumption
           -8.5,                #  3 log(ChoiceShkMag) : Log stdev of taste shocks over insurance contracts
-          0.24,                #  4 Cfloor            : Consumption floor ($10,000)
+          0.16,                #  4 Cfloor            : Consumption floor ($10,000)
           -1.62,               #  5 log(EmpContr)     : Log of employer contribution to ESI ($10,000)
           -3.0,                #  6 UNUSED            : UNUSED
           10.0,                #  7 BequestShift      : Constant term in bequest motive

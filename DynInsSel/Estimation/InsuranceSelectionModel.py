@@ -1209,7 +1209,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,TaxFunc,SubsidyFunc,MedShkA
                     excess_subsidy = SubsidyArray > PremiumArray
                     SubsidyArray[excess_subsidy] = PremiumArray[excess_subsidy]
                     dPremdm = Contract.Premium.derivativeX(mLvlArray,pLvlArray)
-                    Adjuster = 1.0 - dPremdm*(1.0 - SubsidyFunc[h].derivativeX(mLvlArray,pLvlArray,PremiumArray))
+                    Adjuster = 1.0 - dPremdm + SubsidyFunc[h].derivativeX(mLvlArray,pLvlArray,PremiumArray) + dPremdm*SubsidyFunc[h].derivativeZ(mLvlArray,pLvlArray,PremiumArray)
                     Adjuster[excess_subsidy] = 1.0
                     AdjusterArray[:,:,z] = Adjuster
                 else: # If not IMI, then subsidy and adjuster are easy
@@ -2032,7 +2032,10 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
                         else:
                             Premium = self.PremiumFuncs[t][j][z](mLvl,pLvl) # Full premium
                     else:
-                        Premium = self.UninsuredPremiumFunc(mLvl,pLvl)
+                        if (j < 5) or self.MandateForESI:
+                            Premium = self.UninsuredPremiumFunc(mLvl,pLvl) # Uninsured, IMI (or ESI with mandate applicable)
+                        else:
+                            Premium = np.zeros_like(mLvl)
                     mLvl_temp = mLvl - Premium
                     Unaffordable = mLvl_temp < 0.
                     AV_array[:,z] = self.AVfunc[t][j][z](mLvl_temp,pLvl)

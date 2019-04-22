@@ -7,7 +7,7 @@ from HARKcore import HARKobject, Market
 from HARKinterpolation import ConstantFunction
 from scipy.optimize import brentq
 import matplotlib.pyplot as plt
-from SubsidyFuncs import NullSubsidyFuncs
+from SubsidyFuncs import NullSubsidyFuncs, makeACAstyleSubsidyPolicy
 
 # This is a trivial "container" class
 class PremiumFuncsContainer(HARKobject):
@@ -491,6 +491,9 @@ def ageRatedActuarialRule(self,ExpInsPay,ExpBuyers):
     
     IMIpremiums = np.tile(np.reshape(PremiumArray,(AgeCount,1,MaxContracts)),(1,HealthCount,1))
     return IMIpremiums
+
+
+#ACApolicy = makeACAstyleSubsidyPolicy(0.095, 4.0)
     
 
 # Specify the baseline structure of the insurance market
