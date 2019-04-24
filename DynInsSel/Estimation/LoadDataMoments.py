@@ -22,17 +22,17 @@ moment_weight_filename = 'MomentWeights.txt'
 
 # Select which types of moments should be used in the SMM estimator
 MomentTypeBool = np.array([False, # MeanLogOOPmedByAge
-                           True,  # MeanLogTotalMedByAge
+                           False, # MeanLogTotalMedByAge
                            False, # StdevLogOOPmedByAge
                            False, # StdevLogTotalMedByAge
                            False, # OOPshareByAge
-                           True,  # ESIinsuredRateByAge
-                           True,  # IMIinsuredRateByAge
+                           False, # ESIinsuredRateByAge
+                           False, # IMIinsuredRateByAge
                            False, # MeanESIpremiumByAge
                            False, # StdevESIpremiumByAge
                            False, # NoPremShareRateByAge
                            False, # MeanLogOOPmedByAgeHealth
-                           True,  # MeanLogTotalMedByAgeHealth
+                           False, # MeanLogTotalMedByAgeHealth
                            False, # StdevLogOOPmedByAgeHealth
                            False, # StdevLogTotalMedByAgeHealth
                            False, # OOPshareByAgeHealth
@@ -46,7 +46,7 @@ MomentTypeBool = np.array([False, # MeanLogOOPmedByAge
                            False, # StdevLogOOPmedByAgeIncome
                            False, # StdevLogTotalMedByAgeIncome
                            False, # OOPshareByAgeIncome
-                           True,  # ESIinsuredRateByAgeIncome
+                           False, # ESIinsuredRateByAgeIncome
                            False, # IMIinsuredRateByAgeIncome
                            False, # MeanESIpremiumByAgeIncome
                            False, # StdevESIpremiumByAgeIncome
@@ -155,6 +155,8 @@ NoPremShareRateByAgeIncome = np.zeros((8,5))  # 1360:1400
 
 MedianWealthRatioByAge = np.zeros(40)         # 1400:1440
 MedianWealthRatioByAgeIncome = np.zeros((8,5))# 1440:1480
+MeanWealthRatioByAge = np.zeros(40) # Not a moment to match
+MeanWealthRatioByAgeIncome = np.zeros((8,5))
 
 ESIofferRateByAge = np.zeros(40) # Can't be estimated, exogenous process
 ESIofferRateByAgeHealth = np.zeros((8,5)) # Can't be estimated, exogenous process
@@ -489,6 +491,7 @@ while b <= bootstrap_count:
     
     # Initialize the income quintile boolean array for the SCF
     IncQuintBoolArray = np.zeros((SCF_obs,5),dtype=bool)
+    Valid = np.logical_and(Income > 0., WealthRatio < 150.)
     
     # Loop through each age and calculate median wealth ratio
     for j in range(40):
@@ -497,6 +500,11 @@ while b <= bootstrap_count:
         WeightTemp = Weight[these]
         WeightTemp = WeightTemp/np.sum(WeightTemp)
         MedianWealthRatioByAge[j] = getPercentiles(WealthRatio[these],weights=WeightTemp)
+        
+        those = np.logical_and(these, Valid)
+        WeightTemp = Weight[those]
+        WeightTemp = WeightTemp/np.sum(WeightTemp)
+        MeanWealthRatioByAge[j] = np.dot(WealthRatio[those],WeightTemp)
         
         # Fill in income quintile data for this age
         IncomeTemp = Income[these]
@@ -522,6 +530,11 @@ while b <= bootstrap_count:
             WeightTemp = Weight[these]
             WeightTemp = WeightTemp/np.sum(WeightTemp)
             MedianWealthRatioByAgeIncome[g,i] = getPercentiles(WealthRatio[these],weights=WeightTemp)
+            
+            those = np.logical_and(these, Valid)
+            WeightTemp = Weight[those]
+            WeightTemp = WeightTemp/np.sum(WeightTemp)
+            MeanWealthRatioByAgeIncome[g,i] = np.dot(WealthRatio[those],WeightTemp)
             
     # Gather the SCF and MEPS moments into a list
     MomentList = [

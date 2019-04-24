@@ -108,6 +108,8 @@ def runCounterfactual(Parameters,Baseline,Counterfactuals,PremiumLim):
     plt.show()
     
     for Counterfactual in Counterfactuals:
+        print('Now solving a counterfactual policy named ' + str(Counterfactual.text) + '.')
+        
         # Now give the market the "after" rule, and have it update premiums using the old distribution, then solve it properly
         ThisMarket.updatePolicy(Counterfactual)
         ThisMarket.makeHistory()
@@ -167,11 +169,12 @@ def runCounterfactual(Parameters,Baseline,Counterfactuals,PremiumLim):
                 this_row = ['%.0f' % X[0], '%.0f' % X[1], '%.0f' % X[2], '%.4f' % X[3], '%.4f' % X[4], '%.4f' % X[5], '%.0f' % X[6], '%.0f' % X[7], '%.0f' % X[8]]
                 my_writer.writerow(this_row)
             f.close()
+            print('Wrote counterfactual results to ' + Counterfactual.name + 'Data.txt.')
             
     return ThisMarket
 
 
-def makeCounterfactualFigures(specification,AgeHealthLim,AgeIncomeLim,IncomeHealthLim):
+def makeCounterfactualFigures(specification,AgeHealthLim,AgeIncomeLim,OfferAgeLim,IncomeHealthLim):
     '''
     Produces many figures to graphically represent the results of a counterfactual
     experiment and saves them to the folder ../CounterfactualFigures.
@@ -182,8 +185,10 @@ def makeCounterfactualFigures(specification,AgeHealthLim,AgeIncomeLim,IncomeHeal
         Counterfactual specification whose figures are to be produced.
     AgeHealthLim : [float,float]
         Vertical axis limits for the age-health WTP plot.
-    IncomeAgeLim : [float,float]
+    AgeIncomeLim : [float,float]
         Vertical axis limits for the income-age WTP plot.
+    OfferAgeLim : [float,float]
+        Vertical axis limits for the offer-age WTP plot
     IncomeHealthLim : [float,float]
         Vertical axis limits for the income-health WTP plot.
         
@@ -344,7 +349,7 @@ def makeCounterfactualFigures(specification,AgeHealthLim,AgeIncomeLim,IncomeHeal
     plt.savefig(FigsDir + 'WTPbyAgeHealth' + specification.name + '.pdf')
     plt.show()
     
-    # Make a plot of kernel regression of willingness to pay by age and income quintile
+    # Make a plot of mean willingness to pay by age and income quintile
     WTPmeanByAgeIncome = np.zeros((T,5)) + np.nan
     for t in range(T):
         these = np.logical_and(age == t, valid)
@@ -366,7 +371,7 @@ def makeCounterfactualFigures(specification,AgeHealthLim,AgeIncomeLim,IncomeHeal
     plt.savefig(FigsDir + 'WTPbyAgeIncome' + specification.name + '.pdf')
     plt.show()
     
-    # Make a plot of kernel regression of willingness to pay by age and income quintile
+    # Make a plot of mean willingness to pay by age and ESI offer status
     WTPmeanByAgeOffer = np.zeros((T,3)) + np.nan
     for t in range(T):
         these = np.logical_and(age == t, valid)
@@ -382,7 +387,7 @@ def makeCounterfactualFigures(specification,AgeHealthLim,AgeIncomeLim,IncomeHeal
     plt.ylabel('Willingness-to-pay (% of permanent income)')
     plt.title('Mean willingness-to-pay by age and ESI status, ' + specification.text)
     plt.legend(labels=['Not offered ESI','Offered ESI','Overall'],loc=2)
-    plt.ylim(AgeIncomeLim)
+    plt.ylim(OfferAgeLim)
     plt.savefig(FigsDir + 'WTPbyAgeOffer' + specification.name + '.pdf')
     plt.show()
     
@@ -534,15 +539,29 @@ if __name__ == '__main__':
     mystr = lambda number : "{:.4f}".format(number)
     
     # Choose which experiments to work on
-    do_health_groups = False
+    do_trivial = False
+    do_health_groups = True
     do_age_bands = False
     do_mandate_tax = False
     do_eligibility_cutoff = False
-    do_max_OOP_prem = True
+    do_max_OOP_prem = False
     
     # Choose what kind of work to do
-    run_experiments = True
+    run_experiments = False
     make_figures = True
+    
+    if do_trivial:
+        if run_experiments:
+            # Run the health groups experiments
+            t_start = clock()
+            MyMarket = runCounterfactual(Params.test_param_vec,BaselineSpec,[BaselineSpec],[0.,20.])
+            t_end = clock()
+            print('Trivial experiment took ' + mystr(t_end-t_start) + ' seconds.')
+        
+        if make_figures:
+            # Make figures for the health groups experiments
+            for specification in [BaselineSpec]:
+                makeCounterfactualFigures(specification,[-1,1],[-1,1],[-1,1],[-1,1])
     
     if do_health_groups:
         if run_experiments:
@@ -555,7 +574,7 @@ if __name__ == '__main__':
         if make_figures:
             # Make figures for the health groups experiments
             for specification in HealthGroupSpecs:
-                makeCounterfactualFigures(specification,[-5,25],[-5,25],[-5,25])
+                makeCounterfactualFigures(specification,[-2,6],[-2,6],[-2,6],[-2,6])
                 
     
     if do_age_bands:
@@ -569,7 +588,7 @@ if __name__ == '__main__':
         if make_figures:
             # Make figures for the age bands experiments
             for specification in AgeBandSpecs[1:]:
-                makeCounterfactualFigures(specification,[-20,35],[-11,25],[-5,35])
+                makeCounterfactualFigures(specification,[-2,6],[-2,6],[-2,6],[-2,6])
 
     
     if do_mandate_tax:
@@ -583,7 +602,7 @@ if __name__ == '__main__':
         if make_figures:
             # Make figures for the individual mandate experiments
             for specification in MandateSpecs:
-                makeCounterfactualFigures(specification,[-10,30],[-15,20],[-5,35])
+                makeCounterfactualFigures(specification,[-2,6],[-2,6],[-2,6],[-2,6])
 
                 
     if do_eligibility_cutoff:
@@ -597,7 +616,7 @@ if __name__ == '__main__':
         if make_figures:
             # Make figures for the subsidy eligibility (FPL pct) experiments
             for specification in ACAaltFPLcutoffSpecs:
-                makeCounterfactualFigures(specification,[-10,30],[-15,20],[-5,35])
+                makeCounterfactualFigures(specification,[-2,10],[-2,10],[-2,10],[-2,10])
                 
                 
     if do_max_OOP_prem:
@@ -611,6 +630,6 @@ if __name__ == '__main__':
         if make_figures:
             # Make figures for the maximum OOP premium (FPL pct) experiments
             for specification in ACAaltMaxOOPpctSpecs:
-                makeCounterfactualFigures(specification,[-10,30],[-15,20],[-5,35])             
+                makeCounterfactualFigures(specification,[-2,10],[-2,10],[-2,10],[-2,10])             
     
     

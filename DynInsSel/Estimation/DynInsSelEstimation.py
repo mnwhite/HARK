@@ -140,10 +140,10 @@ class DynInsSelType(InsSelConsumerType):
         N = self.AgentCount
         T = 60
         vNow_hist = np.zeros((T,N)) + np.nan
-        HealthCount = 5
         for t in range(T):
-            for h in range(HealthCount):
-                these = self.HealthBoolArray[t,:,h]
+            StateCount = len(self.vFunc[t])
+            for h in range(StateCount):
+                these = self.MrkvBoolArray[t,:,h]
                 m_temp = self.mLvlNow_hist[t,these]
                 p_temp = self.pLvlHist[t,these]
                 vNow_hist[t,these] = self.vFunc[t][h](m_temp,p_temp)
@@ -232,6 +232,7 @@ class DynInsSelMarket(InsuranceMarket):
         NoPremShareRateByAge = np.zeros(40) # 460:500
         MedianWealthRatioByAge = np.zeros(40)# 1400:1440
         ESIofferRateByAge = np.zeros(40) # Can't be estimated, exogenous process
+        MeanWealthRatioByAge = np.zeros(40) # Not moments
 
         # Calculate all simulated moments by age
         for t in range(60):
@@ -274,6 +275,7 @@ class DynInsSelMarket(InsuranceMarket):
             if t < 40:
                 WealthRatioArray = np.hstack(WealthRatioList)
                 MedianWealthRatioByAge[t] = np.median(WealthRatioArray)
+                MeanWealthRatioByAge[t] = np.mean(WealthRatioArray)
                 PremiumArray = np.hstack(PremiumList)
                 MeanESIpremiumByAge[t] = np.mean(PremiumArray)
                 StdevESIpremiumByAge[t] = np.std(PremiumArray)
@@ -386,6 +388,7 @@ class DynInsSelMarket(InsuranceMarket):
         NoPremShareRateByAgeIncome = np.zeros((8,5))  # 1360:1400
         MedianWealthRatioByAgeIncome = np.zeros((8,5))# 1440:1480
         ESIofferRateByAgeIncome = np.zeros((8,5)) # Can't be estimated, exogenous process
+        MeanWealthRatioByAgeIncome = np.zeros((8,5))  # Not moments
 
         # Calculated all simulated moments by age-income
         for a in range(8):
@@ -430,6 +433,7 @@ class DynInsSelMarket(InsuranceMarket):
                     OOPmedSum += np.sum(ThisType.OOPmedHist[bot:top,:][these][HaveESI])
                 WealthRatioArray = np.hstack(WealthRatioList)
                 MedianWealthRatioByAgeIncome[a,i] = np.median(WealthRatioArray)
+                MeanWealthRatioByAgeIncome[a,i] = np.mean(WealthRatioArray)
                 PremiumArray = np.hstack(PremiumList)
                 MeanESIpremiumByAgeIncome[a,i] = np.mean(PremiumArray)
                 StdevESIpremiumByAgeIncome[a,i] = np.std(PremiumArray)
@@ -460,7 +464,7 @@ class DynInsSelMarket(InsuranceMarket):
         self.MeanESIpremiumByAge = MeanESIpremiumByAge*10000
         self.StdevESIpremiumByAge = StdevESIpremiumByAge*10000
         self.NoPremShareRateByAge = NoPremShareRateByAge
-        self.MedianWealthRatioByAge = MedianWealthRatioByAge
+        self.MedianWealthRatioByAge = MeanWealthRatioByAge # CHANGE THIS BACK
         self.MeanLogOOPmedByAgeHealth = MeanLogOOPmedByAgeHealth + np.log(10000)
         self.MeanLogTotalMedByAgeHealth = MeanLogTotalMedByAgeHealth + np.log(10000)
         self.StdevLogOOPmedByAgeHealth = StdevLogOOPmedByAgeHealth
@@ -486,6 +490,9 @@ class DynInsSelMarket(InsuranceMarket):
         self.ESIofferRateByAge = ESIofferRateByAge
         self.ESIofferRateByAgeHealth = ESIofferRateByAgeHealth
         self.ESIofferRateByAgeIncome = ESIofferRateByAgeIncome
+        
+        self.MeanWealthRatioByAge = MeanWealthRatioByAge
+        self.MeanWealthRatioByAgeIncome = MeanWealthRatioByAgeIncome
         
         
     def combineSimulatedMoments(self):
@@ -912,7 +919,7 @@ def objectiveFunction(Parameters, return_market=False):
     The objective function for the estimation.  Makes and solves a market, then
     returns the weighted sum of moment differences between simulation and data.
     '''
-    EvalType  = 2  # Number of times to do a static search for eqbm premiums
+    EvalType  = 0  # Number of times to do a static search for eqbm premiums
     InsChoice = 1  # Extent of insurance choice
     TestPremiums = True # Whether to start with the test premium level
     
@@ -957,9 +964,9 @@ if __name__ == '__main__':
     import matplotlib.pyplot as plt
     mystr = lambda number : "{:.4f}".format(number)
     
-    test_obj_func = True
+    test_obj_func = False
     test_one_type = False
-    perturb_one_param = False
+    perturb_one_param = True
     
     if test_obj_func:
     # This block is for actually testing the objective function
@@ -1186,9 +1193,10 @@ if __name__ == '__main__':
         
     if perturb_one_param:
         # Test model identification by perturbing one parameter at a time
-        param_i = 4
-        param_min = 0.12
-        param_max = 0.24
+        param_i = 0
+        param_min = 0.923
+        param_max = 0.9255
+        
         N = 35
         perturb_vec = np.linspace(param_min,param_max,num=N)
         
@@ -1198,7 +1206,6 @@ if __name__ == '__main__':
             params = copy(Params.test_param_vec)
             params[param_i] = perturb_vec[j]
             parameter_set_list.append(params)
-#            fit_vec[j] = objectiveFunction(params)
         
         fit_list = Parallel(n_jobs=7)(delayed(objectiveFunction)(params) for params in parameter_set_list)
         fit_vec = np.array(fit_list)

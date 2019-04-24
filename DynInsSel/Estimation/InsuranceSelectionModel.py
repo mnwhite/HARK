@@ -1789,6 +1789,12 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
             HealthBoolArray[:,:,h] = np.logical_and(np.mod(MrkvHist,5) == h, LiveBoolArray)
         self.HealthBoolArray = HealthBoolArray
         self.LiveBoolArray = LiveBoolArray
+        
+        # Make boolean array for overall Markov state for all agents
+        MrkvBoolArray = np.zeros((self.T_sim,self.AgentCount,15),dtype=bool)
+        for j in range(15):
+            MrkvBoolArray[:,:,j] = MrkvHist == j
+        self.MrkvBoolArray = MrkvBoolArray
             
         # Store the history arrays as attributes of self
         self.pLvlHist = pLvlHist
