@@ -33,6 +33,8 @@ class ValueFuncCL(object):
         Array of normalized market resource values.
     pLvlGrid : np.array
         Array of permanent income levels.
+    pLvlGridAlt : np.array
+        Alternate array of permanent income levels, used only for determining mLvlGrid by pLvl.
     vNvrsZeroShkData : np.array
         2D array of pseudo-inverse value when MedShk=0 of shape (pLvlGrid.size,mNrmGrid.size+1).
     vNvrsRescaledData : np.array
@@ -50,7 +52,7 @@ class ValueFuncCL(object):
     -------
     None
     '''
-    def __init__(self,mNrmGrid,pLvlGrid,vNvrsZeroShkData,vNvrsRescaledData,CRRA,DevMin,DevMax,DevCount):
+    def __init__(self,mNrmGrid,pLvlGrid,pLvlGridAlt,vNvrsZeroShkData,vNvrsRescaledData,CRRA,DevMin,DevMax,DevCount):
         # Make two short vectors of inputs
         self.IntegerInputs = np.array([mNrmGrid.size,pLvlGrid.size,DevCount,0],dtype=np.int32) # Last element will be overwritten
         DoubleInputs = np.array([CRRA,DevMin,DevMax])
@@ -58,6 +60,7 @@ class ValueFuncCL(object):
         # Make buffers
         self.mNrmGrid_buf = ctx.create_buffer(cl.CL_MEM_READ_ONLY | cl.CL_MEM_COPY_HOST_PTR,mNrmGrid)
         self.pLvlGrid_buf = ctx.create_buffer(cl.CL_MEM_READ_ONLY | cl.CL_MEM_COPY_HOST_PTR,pLvlGrid)
+        self.pLvlGridAlt_buf = ctx.create_buffer(cl.CL_MEM_READ_ONLY | cl.CL_MEM_COPY_HOST_PTR,pLvlGridAlt)
         self.vNvrsZeroShkData_buf = ctx.create_buffer(cl.CL_MEM_READ_ONLY | cl.CL_MEM_COPY_HOST_PTR,vNvrsZeroShkData)
         self.vNvrsRescaledData_buf = ctx.create_buffer(cl.CL_MEM_READ_ONLY | cl.CL_MEM_COPY_HOST_PTR,vNvrsRescaledData)
         self.DoubleInputs_buf = ctx.create_buffer(cl.CL_MEM_READ_ONLY | cl.CL_MEM_COPY_HOST_PTR,DoubleInputs)
@@ -97,6 +100,7 @@ class ValueFuncCL(object):
             # Assign buffers to kernel arguments
             vFuncKernel.set_args(self.mNrmGrid_buf,
                                  self.pLvlGrid_buf,
+                                 self.pLvlGridAlt_buf,
                                  self.vNvrsZeroShkData_buf,
                                  self.vNvrsRescaledData_buf,
                                  mLvlQuery_buf,

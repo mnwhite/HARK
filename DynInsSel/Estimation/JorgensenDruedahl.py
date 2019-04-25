@@ -143,6 +143,7 @@ class JDfixerSimple(object):
         self.cLvlData_buf = ctx.create_buffer(cl.CL_MEM_READ_WRITE | cl.CL_MEM_COPY_HOST_PTR,data_temp)
         self.mGridDense_buf = ctx.create_buffer(cl.CL_MEM_READ_WRITE | cl.CL_MEM_COPY_HOST_PTR,np.zeros(mGridDenseSize))
         self.pGridDense_buf = ctx.create_buffer(cl.CL_MEM_READ_WRITE | cl.CL_MEM_COPY_HOST_PTR,np.zeros(pGridDenseSize))
+        self.pGridDenseAlt_buf = ctx.create_buffer(cl.CL_MEM_READ_WRITE | cl.CL_MEM_COPY_HOST_PTR,np.zeros(pGridDenseSize))
         self.cLvlOut_buf = ctx.create_buffer(cl.CL_MEM_READ_WRITE | cl.CL_MEM_COPY_HOST_PTR,out_temp)
         self.ValueOut_buf = ctx.create_buffer(cl.CL_MEM_READ_WRITE | cl.CL_MEM_COPY_HOST_PTR,out_temp)
         self.IntegerInputs_buf = ctx.create_buffer(cl.CL_MEM_READ_ONLY | cl.CL_MEM_COPY_HOST_PTR,IntegerInputs)
@@ -155,11 +156,12 @@ class JDfixerSimple(object):
                       self.cLvlData_buf,
                       self.mGridDense_buf,
                       self.pGridDense_buf,
+                      self.pGridDenseAlt_buf,
                       self.cLvlOut_buf,
                       self.ValueOut_buf,
                       self.IntegerInputs_buf)
         
-    def __call__(self,mLvlData,pLvlData,ValueData,cLvlData,mGridDense,pGridDense,EndOfPrdvFunc_Cnst):
+    def __call__(self,mLvlData,pLvlData,ValueData,cLvlData,mGridDense,pGridDense,pGridDenseAlt,EndOfPrdvFunc_Cnst):
         '''
         Use the Jorgensen-Druedahl convexity fix for given data.
         '''
@@ -168,9 +170,9 @@ class JDfixerSimple(object):
         
         # Construct the grid of mLvl that will come out of JD fix
         mGrid_tiled = np.tile(np.reshape(mGridDense,(self.mGridDenseSize,1)),(1,self.pGridDenseSize))
-        pGrid_tiled = np.tile(np.reshape(pGridDense,(1,self.pGridDenseSize)),(self.mGridDenseSize,1))
+        pGrid_tiled = np.tile(np.reshape(pGridDenseAlt,(1,self.pGridDenseSize)),(self.mGridDenseSize,1))
         mLvlOut = mGrid_tiled*pGrid_tiled
-        if pGridDense[0] == 0.:
+        if pGridDenseAlt[0] == 0.:
             mLvlOut[:,0] = mLvlOut[:,1]
         
         # Make arrays to hold the output
@@ -192,6 +194,7 @@ class JDfixerSimple(object):
         queue.write_buffer(self.cLvlData_buf,cLvlData_temp)
         queue.write_buffer(self.mGridDense_buf,mGridDense)
         queue.write_buffer(self.pGridDense_buf,pGridDense)
+        queue.write_buffer(self.pGridDenseAlt_buf,pGridDenseAlt)
         queue.write_buffer(self.cLvlOut_buf,cLvlOut)
         queue.write_buffer(self.ValueOut_buf,ValueOut)
         

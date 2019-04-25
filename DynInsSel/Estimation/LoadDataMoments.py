@@ -1,408 +1,802 @@
 '''
-This module unpacks data moments as calculated in the MEPS, HRS, and SCF, loading them as arrays.
+This file loads in data from the MEPS and SCF and calculates empirical moments.
+It also resamples/booststraps the datasets to compute standard errors for the
+empirical moments and produce a weighting matrix.  Alternatively, it can simply
+load the previously computed weighting matrix from a file.
 '''
+import sys 
+sys.path.insert(0,'../../')
+
 import numpy as np
+import matplotlib.pyplot as plt
 import csv
 import os
+from HARKutilities import getPercentiles
 
-# Choose which classes of moments will actually be used in estimation
-use_data_weights = False # Whether to use moment weights from data or just all ones
-MomentBools = np.array([
-               False, #WealthRatioByAge
-               True,  #MeanLogTotalMedByAge
-               False, #StdevLogTotalMedByAge
-               False, #InsuredRateByAge
-               False, #NoPremShareRateByAge
-               False, #MeanPremiumByAge
-               False, #StdevPremiumByAge
-               False, #MeanLogTotalMedByAgeHealth
-               False, #StdevLogTotalMedByAgeHealth
-               False, #WealthRatioByAgeIncome
-               False, #MeanLogTotalMedByAgeIncome
-               False, #StdevLogTotalMedByAgeIncome
-               False, #InsuredRateByAgeIncome
-               False, #MeanPremiumByAgeIncome
-               False, #MeanLogOOPmedByAge
-               False, #StdevLogOOPmedByAge
-               False, #OOPshareByAge
-              ])
+# Set file locations and number of times to bootstrap data for empirical moment variances
+bootstrap_count = 0
+plot_data_moment_figs = False
+MEPS_data_filename = 'MEPSdataForDynInsSel.txt'
+SCF_data_filename = 'SCFdataForDynInsSel.txt'
+moment_weight_filename = 'MomentWeights.txt'
 
-# Load the moments by one-year age groups into a CSV reader object
+# Select which types of moments should be used in the SMM estimator
+MomentTypeBool = np.array([False, # MeanLogOOPmedByAge
+                           False, # MeanLogTotalMedByAge
+                           False, # StdevLogOOPmedByAge
+                           False, # StdevLogTotalMedByAge
+                           False, # OOPshareByAge
+                           True,  # ESIinsuredRateByAge
+                           True,  # IMIinsuredRateByAge
+                           False, # MeanESIpremiumByAge
+                           False, # StdevESIpremiumByAge
+                           False, # NoPremShareRateByAge
+                           False, # MeanLogOOPmedByAgeHealth
+                           False, # MeanLogTotalMedByAgeHealth
+                           False, # StdevLogOOPmedByAgeHealth
+                           False, # StdevLogTotalMedByAgeHealth
+                           False, # OOPshareByAgeHealth
+                           False, # ESIinsuredRateByAgeHealth
+                           False, # IMIinsuredRateByAgeHealth
+                           False, # MeanESIpremiumByAgeHealth
+                           False, # StdevESIpremiumByAgeHealth
+                           False, # NoPremShareRateByAgeHealth
+                           False, # MeanLogOOPmedByAgeIncome
+                           False, # MeanLogTotalMedByAgeIncome
+                           False, # StdevLogOOPmedByAgeIncome
+                           False, # StdevLogTotalMedByAgeIncome
+                           False, # OOPshareByAgeIncome
+                           True,  # ESIinsuredRateByAgeIncome
+                           False, # IMIinsuredRateByAgeIncome
+                           False, # MeanESIpremiumByAgeIncome
+                           False, # StdevESIpremiumByAgeIncome
+                           False, # NoPremShareRateByAgeIncome
+                           False, # MedianWealthRatioByAge
+                           False  # MedianWealthRatioByAgeIncome
+                           ])
+
+# Load the MEPS data into a CSV reader object
 data_location = os.path.dirname(os.path.abspath(__file__))
-f = open(data_location + '\MomentsByAge.txt','r')
-moment_reader = csv.reader(f,delimiter='\t')
-raw_moments = list(moment_reader)
+f = open(data_location + '/' + MEPS_data_filename,'r')
+MEPS_reader = csv.reader(f,delimiter='\t')
+raw_MEPS_data = list(MEPS_reader)[1:]
 f.close()
+MEPS_obs = len(raw_MEPS_data)
 
-# Store the moments by one-year age groups in arrays
-OneYearAge = np.arange(25,65)
-OneYearAgeLong = np.arange(25,85)
-MeanLogOOPmedByAge = np.zeros(60) + np.nan
-MeanLogTotalMedByAge = np.zeros(60) + np.nan
-StdevLogOOPmedByAge = np.zeros(60) + np.nan
-StdevLogTotalMedByAge = np.zeros(60) + np.nan
-InsuredRateByAge = np.zeros(40) + np.nan
-MeanPremiumByAge = np.zeros(40) + np.nan
-StdevPremiumByAge = np.zeros(40) + np.nan
-NoPremShareRateByAge = np.zeros(40) + np.nan
-OOPshareByAge = np.zeros(60) + np.nan
-OOPmomentWeightsByAge = np.zeros(60) + np.nan
-totMomentWeightsByAge = np.zeros(60) + np.nan
-premMomentWeightsByAge = np.zeros(40) + np.nan
-otherMomentWeightsByAge = np.zeros(40) + np.nan
-for j in range(60):
-    MeanLogOOPmedByAge[j] = float(raw_moments[j][1])
-    MeanLogTotalMedByAge[j] = float(raw_moments[j][2])
-    StdevLogOOPmedByAge[j] = float(raw_moments[j][3])
-    StdevLogTotalMedByAge[j] = float(raw_moments[j][4])
-    OOPshareByAge[j] = float(raw_moments[j][9])
-    OOPmomentWeightsByAge[j] = float(raw_moments[j][10])
-    totMomentWeightsByAge[j] = float(raw_moments[j][11])
-    if j < 40:
-        InsuredRateByAge[j] = float(raw_moments[j][5])
-        MeanPremiumByAge[j] = float(raw_moments[j][6])
-        StdevPremiumByAge[j] = float(raw_moments[j][7])
-        NoPremShareRateByAge[j] = float(raw_moments[j][8])
-        premMomentWeightsByAge[j] = float(raw_moments[j][12])
-        otherMomentWeightsByAge[j] = float(raw_moments[j][13])    
-
-# Load the moments by five-year age groups and income quintile into a CSV reader object
+# Load the SCF data into a CSV reader object
 data_location = os.path.dirname(os.path.abspath(__file__))
-f = open(data_location + '\MomentsByAgeIncome.txt','r')
-moment_reader = csv.reader(f,delimiter='\t')
-raw_moments = list(moment_reader)
+f = open(data_location + '/' + SCF_data_filename,'r')
+SCF_reader = csv.reader(f,delimiter='\t')
+raw_SCF_data = list(SCF_reader)[1:]
 f.close()
+SCF_obs = len(raw_SCF_data)
 
-# Store the moments by five-year age groups and income quintile in arrays
-FiveYearAge = 5*np.arange(8) + 27
-FiveYearAgeLong = 5*np.arange(12) + 27
-MeanLogOOPmedByAgeIncome = np.zeros((8,5)) + np.nan
-MeanLogTotalMedByAgeIncome = np.zeros((8,5)) + np.nan
-StdevLogOOPmedByAgeIncome = np.zeros((8,5)) + np.nan
-StdevLogTotalMedByAgeIncome = np.zeros((8,5)) + np.nan
-InsuredRateByAgeIncome = np.zeros((8,5)) + np.nan
-MeanPremiumByAgeIncome = np.zeros((8,5)) + np.nan
-StdevPremiumByAgeIncome = np.zeros((8,5)) + np.nan
-NoPremShareRateByAgeIncome = np.zeros((8,5)) + np.nan
-OOPmomentWeightsByAgeIncome = np.zeros((8,5)) + np.nan
-totMomentWeightsByAgeIncome = np.zeros((8,5)) + np.nan
-premMomentWeightsByAgeIncome = np.zeros((8,5)) + np.nan
-otherMomentWeightsByAgeIncome = np.zeros((8,5)) + np.nan
-for j in range(40):
-    i = int(raw_moments[j][1])-1
-    k = int(raw_moments[j][0])-1
-    MeanLogOOPmedByAgeIncome[i,k] = float(raw_moments[j][2])
-    MeanLogTotalMedByAgeIncome[i,k] = float(raw_moments[j][3])
-    StdevLogOOPmedByAgeIncome[i,k] = float(raw_moments[j][4])
-    StdevLogTotalMedByAgeIncome[i,k] = float(raw_moments[j][5])
-    InsuredRateByAgeIncome[i,k] = float(raw_moments[j][6])
-    MeanPremiumByAgeIncome[i,k] = float(raw_moments[j][7])
-    StdevPremiumByAgeIncome[i,k] = float(raw_moments[j][8])
-    NoPremShareRateByAgeIncome[i,k] = float(raw_moments[j][9])
-    OOPmomentWeightsByAgeIncome[i,k] = float(raw_moments[j][10])
-    totMomentWeightsByAgeIncome[i,k] = float(raw_moments[j][11])
-    premMomentWeightsByAgeIncome[i,k] = float(raw_moments[j][12])
-    otherMomentWeightsByAgeIncome[i,k] = float(raw_moments[j][13])
+# Initialize arrays to hold the MEPS data
+Age_MEPSorig = np.zeros(MEPS_obs,dtype=int)
+Health_MEPSorig = np.zeros(MEPS_obs,dtype=int)
+Employed_MEPSorig = np.zeros(MEPS_obs,dtype=bool)
+Offered_MEPSorig = np.zeros(MEPS_obs,dtype=bool)
+Uninsured_MEPSorig = np.zeros(MEPS_obs,dtype=bool)
+HasESI_MEPSorig = np.zeros(MEPS_obs,dtype=bool)
+NoPremShare_MEPSorig = np.zeros(MEPS_obs,dtype=bool)
+OOPmed_MEPSorig = np.zeros(MEPS_obs,dtype=float)
+TotalMed_MEPSorig = np.zeros(MEPS_obs,dtype=float)
+Income_MEPSorig = np.zeros(MEPS_obs,dtype=float)
+Premiums_MEPSorig = np.zeros(MEPS_obs,dtype=float)
+Weight_MEPSorig = np.zeros(MEPS_obs,dtype=float)
+
+# Loop through each observation of the MEPS data and put it in the arrays
+for i in range(MEPS_obs):
+    this_ob = raw_MEPS_data[i]
+    Age_MEPSorig[i] = int(float(this_ob[0]))
+    Health_MEPSorig[i] = int(float(this_ob[1]))
+    Employed_MEPSorig[i] = bool(float(this_ob[2]))
+    Offered_MEPSorig[i] = bool(float(this_ob[3]))
+    Uninsured_MEPSorig[i] = bool(float(this_ob[4]))
+    HasESI_MEPSorig[i] = bool(float(this_ob[5]))
+    NoPremShare_MEPSorig[i] = bool(float(this_ob[6]))
+    OOPmed_MEPSorig[i] = float(this_ob[7])
+    TotalMed_MEPSorig[i] = float(this_ob[8])
+    Income_MEPSorig[i] = float(this_ob[9])
+    Premiums_MEPSorig[i] = float(this_ob[10])
+    Weight_MEPSorig[i] = float(this_ob[11])
     
+# Initialize arrays to hold the MEPS data
+Age_SCForig = np.zeros(SCF_obs,dtype=int)
+Employed_SCForig = np.zeros(SCF_obs,dtype=bool)
+HasESI_SCForig = np.zeros(SCF_obs,dtype=bool)
+NetWorth_SCForig = np.zeros(SCF_obs,dtype=float)
+Income_SCForig = np.zeros(SCF_obs,dtype=float)
+Weight_SCForig = np.zeros(SCF_obs,dtype=float)
+
+# Loop through each observation of the SCF data and put it in the arrays
+for i in range(SCF_obs):
+    this_ob = raw_SCF_data[i]
+    Age_SCForig[i] = int(float(this_ob[0]))
+    Employed_SCForig[i] = bool(float(this_ob[1]))
+    HasESI_SCForig[i] = bool(float(this_ob[2]))
+    NetWorth_SCForig[i] = float(this_ob[3])
+    Income_SCForig[i] = float(this_ob[4])
+    Weight_SCForig[i] = float(this_ob[5])
     
-# Load the moments by five-year age groups and health into a CSV reader object
-data_location = os.path.dirname(os.path.abspath(__file__))
-f = open(data_location + '\MomentsByAgeHealth.txt','r')
-moment_reader = csv.reader(f,delimiter='\t')
-raw_moments = list(moment_reader)
-f.close()
+# Initialize arrays to hold empirical moments based on the MEPS and SCF
+MeanLogOOPmedByAge = np.zeros(60)   # 0:60
+MeanLogTotalMedByAge = np.zeros(60) # 60:120
+StdevLogOOPmedByAge = np.zeros(60)  # 120:180
+StdevLogTotalMedByAge = np.zeros(60)# 180:240
+OOPshareByAge = np.zeros(60)        # 240:300
+ESIinsuredRateByAge = np.zeros(40)  # 300:340
+IMIinsuredRateByAge = np.zeros(40)  # 340:380
+MeanESIpremiumByAge = np.zeros(40)  # 380:420
+StdevESIpremiumByAge = np.zeros(40) # 420:460
+NoPremShareRateByAge = np.zeros(40) # 460:500
 
-# Store the moments by five-year age groups and health in arrays
-MeanLogOOPmedByAgeHealth = np.zeros((12,5)) + np.nan
-MeanLogTotalMedByAgeHealth = np.zeros((12,5)) + np.nan
-StdevLogOOPmedByAgeHealth = np.zeros((12,5)) + np.nan
-StdevLogTotalMedByAgeHealth = np.zeros((12,5)) + np.nan
-InsuredRateByAgeHealth = np.zeros((8,5)) + np.nan
-MeanPremiumByAgeHealth = np.zeros((8,5)) + np.nan
-StdevPremiumByAgeHealth = np.zeros((8,5)) + np.nan
-NoPremShareRateByAgeHealth = np.zeros((8,5)) + np.nan
-OOPmomentWeightsByAgeHealth = np.zeros((12,5)) + np.nan
-totMomentWeightsByAgeHealth = np.zeros((12,5)) + np.nan
-for j in range(60):
-    i = int(raw_moments[j][1])-1
-    k = int(raw_moments[j][0])-1
-    MeanLogOOPmedByAgeHealth[i,k] = float(raw_moments[j][2])
-    MeanLogTotalMedByAgeHealth[i,k] = float(raw_moments[j][3])
-    StdevLogOOPmedByAgeHealth[i,k] = float(raw_moments[j][4])
-    StdevLogTotalMedByAgeHealth[i,k] = float(raw_moments[j][5])
-    if i < 8:
-        InsuredRateByAgeHealth[i,k] = float(raw_moments[j][6])
-        MeanPremiumByAgeHealth[i,k] = float(raw_moments[j][7])
-        StdevPremiumByAgeHealth[i,k] = float(raw_moments[j][8])
-        NoPremShareRateByAgeHealth[i,k] = float(raw_moments[j][9])
-        OOPmomentWeightsByAgeHealth[i,k] = float(raw_moments[j][10])
-        totMomentWeightsByAgeHealth[i,k] = float(raw_moments[j][11])
+MeanLogOOPmedByAgeHealth = np.zeros((12,5))   # 500:560
+MeanLogTotalMedByAgeHealth = np.zeros((12,5)) # 560:620
+StdevLogOOPmedByAgeHealth = np.zeros((12,5))  # 620:680
+StdevLogTotalMedByAgeHealth = np.zeros((12,5))# 680:740
+OOPshareByAgeHealth = np.zeros((12,5))        # 740:800
+ESIinsuredRateByAgeHealth = np.zeros((8,5))   # 800:840
+IMIinsuredRateByAgeHealth = np.zeros((8,5))   # 840:880
+MeanESIpremiumByAgeHealth = np.zeros((8,5))   # 880:920
+StdevESIpremiumByAgeHealth = np.zeros((8,5))  # 920:960
+NoPremShareRateByAgeHealth = np.zeros((8,5))  # 960:1000
+
+MeanLogOOPmedByAgeIncome = np.zeros((8,5))    # 1000:1040
+MeanLogTotalMedByAgeIncome = np.zeros((8,5))  # 1040:1080
+StdevLogOOPmedByAgeIncome = np.zeros((8,5))   # 1080:1120
+StdevLogTotalMedByAgeIncome = np.zeros((8,5)) # 1120:1160
+OOPshareByAgeIncome = np.zeros((8,5))         # 1160:1200
+ESIinsuredRateByAgeIncome = np.zeros((8,5))   # 1200:1240
+IMIinsuredRateByAgeIncome = np.zeros((8,5))   # 1240:1280
+MeanESIpremiumByAgeIncome = np.zeros((8,5))   # 1280:1320
+StdevESIpremiumByAgeIncome = np.zeros((8,5))  # 1320:1360
+NoPremShareRateByAgeIncome = np.zeros((8,5))  # 1360:1400
+
+MedianWealthRatioByAge = np.zeros(40)         # 1400:1440
+MedianWealthRatioByAgeIncome = np.zeros((8,5))# 1440:1480
+MeanWealthRatioByAge = np.zeros(40) # Not a moment to match
+MeanWealthRatioByAgeIncome = np.zeros((8,5))
+
+ESIofferRateByAge = np.zeros(40) # Can't be estimated, exogenous process
+ESIofferRateByAgeHealth = np.zeros((8,5)) # Can't be estimated, exogenous process
+ESIofferRateByAgeIncome = np.zeros((8,5)) # Can't be estimated, exogenous process
+
+# Make a list of the bounds of each moment type
+MomentTypeBounds =        [[0,60],      # MeanLogOOPmedByAge
+                           [60,120],    # MeanLogTotalMedByAge
+                           [120,180],   # StdevLogOOPmedByAge
+                           [180,240],   # StdevLogTotalMedByAge
+                           [240,300],   # OOPshareByAge
+                           [300,340],   # ESIinsuredRateByAge
+                           [340,380],   # IMIinsuredRateByAge
+                           [380,420],   # MeanESIpremiumByAge
+                           [420,460],   # StdevESIpremiumByAge
+                           [460,500],   # NoPremShareRateByAge
+                           [500,560],   # MeanLogOOPmedByAgeHealth
+                           [560,620],   # MeanLogTotalMedByAgeHealth
+                           [620,680],   # StdevLogOOPmedByAgeHealth
+                           [680,740],   # StdevLogTotalMedByAgeHealth
+                           [740,800],   # OOPshareByAgeHealth
+                           [800,840],   # ESIinsuredRateByAgeHealth
+                           [840,880],   # IMIinsuredRateByAgeHealth
+                           [880,920],   # MeanESIpremiumByAgeHealth
+                           [920,960],   # StdevESIpremiumByAgeHealth
+                           [960,1000],  # NoPremShareRateByAgeHealth
+                           [1000,1040], # MeanLogOOPmedByAgeIncome
+                           [1040,1080], # MeanLogTotalMedByAgeIncome
+                           [1080,1120], # StdevLogOOPmedByAgeIncome
+                           [1120,1160], # StdevLogTotalMedByAgeIncome
+                           [1160,1200], # OOPshareByAgeIncome
+                           [1200,1240], # ESIinsuredRateByAgeIncome
+                           [1240,1280], # IMIinsuredRateByAgeIncome
+                           [1280,1320], # MeanESIpremiumByAgeIncome
+                           [1320,1360], # StdevESIpremiumByAgeIncome
+                           [1360,1400], # NoPremShareRateByAgeIncome
+                           [1400,1440], # MedianWealthRatioByAge
+                           [1440,1480]  # MedianWealthRatioByAgeIncome
+                           ]
+moment_count = 1480
+age_group_limits = [[25,29],[30,34],[35,39],[40,44],[45,49],[50,54],[55,59],[60,64],[65,69],[70,74],[75,79],[80,84]]
+
+# Initialize a giant array to hold bootstrapped empirical moments
+if bootstrap_count > 0:
+    BootstrappedMomentArray = np.zeros((moment_count,bootstrap_count))
+
+# Bootstrap the data, resampling from the MEPS
+b = 0
+while b <= bootstrap_count:
     
+    if b == bootstrap_count: # If this is the final pass, use the MEPS data as is
+        idx = np.arange(MEPS_obs,dtype=int)
+    else: # Otherwise, randomly resample from the MEPS
+        idx = np.floor(np.random.rand(MEPS_obs)*MEPS_obs).astype(int)
     
-# Load the moments for wealth-to-income ratio by age
-data_location = os.path.dirname(os.path.abspath(__file__))
-f = open(data_location + '\WealthByAge.txt','r')
-moment_reader = csv.reader(f,delimiter='\t')
-raw_moments = list(moment_reader)
-f.close()
-
-# Store the moments for wealth-to-income ratio by age
-WealthRatioByAge = np.zeros(40) + np.nan
-WealthMomentWeightsByAge = np.zeros(40) + np.nan
-for j in range(40):
-    WealthRatioByAge[j] = float(raw_moments[j][1])
-    WealthMomentWeightsByAge[j] = float(raw_moments[j][2])
-
-
-# Load the moments for wealth-to-income ratio by age and income quintile
-data_location = os.path.dirname(os.path.abspath(__file__))
-f = open(data_location + '\WealthByAgeIncome.txt','r')
-moment_reader = csv.reader(f,delimiter='\t')
-raw_moments = list(moment_reader)
-f.close()
-
-# Store the moments for wealth-to-income ratio by age
-WealthRatioByAgeIncome = np.zeros((8,5)) + np.nan
-WealthMomentWeightsByAgeIncome = np.zeros((8,5)) + np.nan
-for j in range(40):
-    i = int(raw_moments[j][1])-1
-    k = int(raw_moments[j][0])-1
-    WealthRatioByAgeIncome[i,k] = float(raw_moments[j][2])
-    WealthMomentWeightsByAgeIncome[i,k] = float(raw_moments[j][3])
-  
-# Combine all data moments into a single 1D array
-MomentList = [WealthRatioByAge,
-              MeanLogTotalMedByAge,
-              StdevLogTotalMedByAge,
-              InsuredRateByAge,
-              NoPremShareRateByAge,
-              MeanPremiumByAge,
-              StdevPremiumByAge,
-              MeanLogTotalMedByAgeHealth.flatten(),
-              StdevLogTotalMedByAgeHealth.flatten(),
-              WealthRatioByAgeIncome.flatten(),
-              MeanLogTotalMedByAgeIncome.flatten(),
-              StdevLogTotalMedByAgeIncome.flatten(),
-              InsuredRateByAgeIncome.flatten(),
-              MeanPremiumByAgeIncome.flatten(),
-              MeanLogOOPmedByAge.flatten(),
-              StdevLogOOPmedByAge.flatten(),
-              OOPshareByAge]
-data_moments = np.hstack(MomentList)
-
-# Construct the vector of moment weights
-if use_data_weights:
-    moment_weights = np.zeros_like(data_moments) + np.nan
-    moment_weights[0:40]    = WealthMomentWeightsByAge
-    moment_weights[40:100]  = totMomentWeightsByAge
-    moment_weights[100:160] = totMomentWeightsByAge
-    moment_weights[160:200] = otherMomentWeightsByAge
-    moment_weights[200:240] = premMomentWeightsByAge
-    moment_weights[240:280] = premMomentWeightsByAge
-    moment_weights[280:320] = premMomentWeightsByAge
-    moment_weights[320:380] = totMomentWeightsByAgeHealth.flatten()
-    moment_weights[380:440] = totMomentWeightsByAgeHealth.flatten()
-    moment_weights[440:480] = WealthMomentWeightsByAgeIncome.flatten()
-    moment_weights[480:520] = totMomentWeightsByAgeIncome.flatten()
-    moment_weights[520:560] = totMomentWeightsByAgeIncome.flatten()
-    moment_weights[560:600] = otherMomentWeightsByAgeIncome.flatten()
-    moment_weights[600:640] = premMomentWeightsByAgeIncome.flatten()
-    moment_weights[640:700] = OOPmomentWeightsByAge
-    moment_weights[700:760] = OOPmomentWeightsByAge
-    moment_weights[760:820] = otherMomentWeightsByAge
+    # Extract this resampling of the MEPS
+    Age = Age_MEPSorig[idx]
+    Health = Health_MEPSorig[idx]
+    Employed = Employed_MEPSorig[idx]
+    Offered = Offered_MEPSorig[idx]
+    Uninsured = Uninsured_MEPSorig[idx]
+    HasESI = HasESI_MEPSorig[idx]
+    NoPremShare = NoPremShare_MEPSorig[idx]
+    OOPmed = OOPmed_MEPSorig[idx]
+    TotalMed = TotalMed_MEPSorig[idx]
+    Income = Income_MEPSorig[idx]
+    Premiums = Premiums_MEPSorig[idx]*12 # Convert monthly to annual
+    Weight = Weight_MEPSorig[idx]
     
-else:
-    moment_weights = np.ones_like(data_moments)
-
-    # Make a moment weighting vector by turning on/off each type of moment
-if not MomentBools[0]:
-    moment_weights[0:40] = 0.0
-if not MomentBools[1]:
-    moment_weights[40:100] = 0.0
-if not MomentBools[2]:
-    moment_weights[100:160] = 0.0
-if not MomentBools[3]:
-    moment_weights[160:200] = 0.0
-if not MomentBools[4]:
-    moment_weights[200:240] = 0.0
-if not MomentBools[5]:
-    moment_weights[240:280] = 0.0
-if not MomentBools[6]:
-    moment_weights[280:320] = 0.0
-if not MomentBools[7]:
-    moment_weights[320:380] = 0.0
-if not MomentBools[8]:
-    moment_weights[380:440] = 0.0
-if not MomentBools[9]:
-    moment_weights[440:480] = 0.0
-if not MomentBools[10]:
-    moment_weights[480:520] = 0.0
-if not MomentBools[11]:
-    moment_weights[520:560] = 0.0
-if not MomentBools[12]:
-    moment_weights[560:600] = 0.0
-if not MomentBools[13]:
-    moment_weights[600:640] = 0.0
-if not MomentBools[14]:
-    moment_weights[640:700] = 0.0
-if not MomentBools[15]:
-    moment_weights[700:760] = 0.0
-if not MomentBools[16]:
-    moment_weights[760:820] = 0.0
-
+    # Calculate some simple objects from the data
+    OOPnonzero = OOPmed > 0.
+    TotalNonzero = TotalMed > 0.
+    LogOOPmed = np.log(OOPmed)
+    LogTotalMed = np.log(TotalMed)
+    PremSeen = Premiums >= 0.
+    
+    # Make a boolean array of health states
+    HealthBoolArray = np.zeros((MEPS_obs,5),dtype=bool)
+    for h in range(5):
+        these = Health == (h+1)
+        HealthBoolArray[these,h] = True
+        
+    # Initialize a boolean array of income quintiles
+    IncQuintBoolArray = np.zeros((MEPS_obs,5),dtype=bool)
+    
+    # Loop through each age and calculate moments
+    for j in range(60):
+        if j < 40:
+            these = np.logical_and(Age == (j + 25), Employed)
+        else:
+            these = Age == (j + 25)
+            
+        # Fill in income quintile data for this age
+        IncomeTemp = Income[these]
+        WeightTemp = Weight[these]
+        WeightTemp = WeightTemp/np.sum(WeightTemp)
+        IncPctiles = getPercentiles(IncomeTemp,weights=WeightTemp,percentiles=[0.2,0.4,0.6,0.8],presorted=False)
+        IncQuintBoolArray[these,0] = IncomeTemp < IncPctiles[0]
+        IncQuintBoolArray[these,1] = np.logical_and(IncomeTemp >= IncPctiles[0], IncomeTemp < IncPctiles[1]) 
+        IncQuintBoolArray[these,2] = np.logical_and(IncomeTemp >= IncPctiles[1], IncomeTemp < IncPctiles[2]) 
+        IncQuintBoolArray[these,3] = np.logical_and(IncomeTemp >= IncPctiles[2], IncomeTemp < IncPctiles[3])
+        IncQuintBoolArray[these,4] = IncomeTemp >= IncPctiles[3]
+        
+        # Get mean and stdev of log non-zero OOP medical expenses
+        those = np.logical_and(these, OOPnonzero)
+        WeightTemp = Weight[those]
+        WeightTemp = WeightTemp/np.sum(WeightTemp)
+        MeanLogOOPmed_j = np.dot(LogOOPmed[those],WeightTemp)
+        MeanLogOOPmedByAge[j] = MeanLogOOPmed_j
+        LogOOPmed_errsq = (LogOOPmed[those] - MeanLogOOPmed_j)**2
+        VarLogOOPmed_j = np.dot(LogOOPmed_errsq,WeightTemp)
+        StdevLogOOPmed_j = np.sqrt(VarLogOOPmed_j)
+        StdevLogOOPmedByAge[j] = StdevLogOOPmed_j
+        
+        # Get mean and stdev of log non-zero total medical expenses
+        those = np.logical_and(these, TotalNonzero)
+        WeightTemp = Weight[those]
+        WeightTemp = WeightTemp/np.sum(WeightTemp)
+        MeanLogTotalMed_j = np.dot(LogTotalMed[those],WeightTemp)
+        MeanLogTotalMedByAge[j] = MeanLogTotalMed_j
+        LogTotalMed_errsq = (LogTotalMed[those] - MeanLogTotalMed_j)**2
+        VarLogTotalMed_j = np.dot(LogTotalMed_errsq,WeightTemp)
+        StdevLogTotalMed_j = np.sqrt(VarLogTotalMed_j)
+        StdevLogTotalMedByAge[j] = StdevLogTotalMed_j
+        
+        # Get out-of-pocket medical spending share
+        if j < 40:
+            those = np.logical_and(these, HasESI)
+        else:
+            those = these
+        WeightTemp = Weight[those]
+        WeightTemp = WeightTemp/np.sum(WeightTemp)
+        OOPmedSum = np.dot(OOPmed[those], WeightTemp)
+        TotalMedSum = np.dot(TotalMed[those], WeightTemp)
+        OOPshareByAge[j] = OOPmedSum/TotalMedSum
+        
+        # Get insured rate for the ESI and IMI populations, mean/stdev of ESI
+        # out-of-pocket premiums, and rate of paying full price for ESI.
+        if j < 40:
+            those = these
+            WeightTemp = Weight[those]
+            WeightTemp = WeightTemp/np.sum(WeightTemp)
+            ESIofferRateByAge[j] = np.dot(Offered[those],WeightTemp)
+            
+            those = np.logical_and(these, Offered)
+            WeightTemp = Weight[those]
+            WeightTemp = WeightTemp/np.sum(WeightTemp)
+            ESIinsuredRateByAge[j] = np.dot(np.logical_not(Uninsured[those]),WeightTemp)
+            
+            those = np.logical_and(these, np.logical_not(Offered))
+            WeightTemp = Weight[those]
+            WeightTemp = WeightTemp/np.sum(WeightTemp)
+            IMIinsuredRateByAge[j] = np.dot(np.logical_not(Uninsured[those]),WeightTemp)
+            
+            those = np.logical_and(these, PremSeen)
+            WeightTemp = Weight[those]
+            WeightTemp = WeightTemp/np.sum(WeightTemp)
+            MeanESIpremium_j = np.dot(Premiums[those],WeightTemp)
+            ESIpremium_errsq = (Premiums[those] - MeanESIpremium_j)**2
+            VarESIpremium_j = np.dot(ESIpremium_errsq, WeightTemp)
+            StdevESIpremium_j = np.sqrt(VarESIpremium_j)
+            MeanESIpremiumByAge[j] = MeanESIpremium_j
+            StdevESIpremiumByAge[j] = StdevESIpremium_j
+            
+            those = np.logical_and(np.logical_and(these, HasESI), PremSeen)
+            WeightTemp = Weight[those]
+            WeightTemp = WeightTemp/np.sum(WeightTemp)
+            NoPremShareRateByAge[j] = np.dot(NoPremShare[those], WeightTemp)
+            
+    # Loop through each age group
+    for g in range(12):
+        age_min = age_group_limits[g][0]
+        age_max = age_group_limits[g][1]
+        THESE = np.logical_and(Age >= age_min, Age <= age_max)
+        if g < 8:
+            THESE = np.logical_and(THESE, Employed)
+            
+        # Loop through each health status
+        for h in range(5):
+            these = np.logical_and(THESE, HealthBoolArray[:,h])
+            
+            # Get mean and stdev of log non-zero OOP medical expenses
+            those = np.logical_and(these, OOPnonzero)
+            WeightTemp = Weight[those]
+            WeightTemp = WeightTemp/np.sum(WeightTemp)
+            MeanLogOOPmed_gh = np.dot(LogOOPmed[those],WeightTemp)
+            MeanLogOOPmedByAgeHealth[g,h] = MeanLogOOPmed_gh
+            LogOOPmed_errsq = (LogOOPmed[those] - MeanLogOOPmed_gh)**2
+            VarLogOOPmed_gh = np.dot(LogOOPmed_errsq,WeightTemp)
+            StdevLogOOPmed_gh = np.sqrt(VarLogOOPmed_gh)
+            StdevLogOOPmedByAgeHealth[g,h] = StdevLogOOPmed_gh
+            
+            # Get mean and stdev of log non-zero total medical expenses
+            those = np.logical_and(these, TotalNonzero)
+            WeightTemp = Weight[those]
+            WeightTemp = WeightTemp/np.sum(WeightTemp)
+            MeanLogTotalMed_gh = np.dot(LogTotalMed[those],WeightTemp)
+            MeanLogTotalMedByAgeHealth[g,h] = MeanLogTotalMed_gh
+            LogTotalMed_errsq = (LogTotalMed[those] - MeanLogTotalMed_gh)**2
+            VarLogTotalMed_gh = np.dot(LogTotalMed_errsq,WeightTemp)
+            StdevLogTotalMed_gh = np.sqrt(VarLogTotalMed_gh)
+            StdevLogTotalMedByAgeHealth[g,h] = StdevLogTotalMed_gh
+            
+            # Get out-of-pocket medical spending share
+            if g < 8:
+                those = np.logical_and(these, HasESI)
+            else:
+                those = these
+            WeightTemp = Weight[those]
+            WeightTemp = WeightTemp/np.sum(WeightTemp)
+            OOPmedSum = np.dot(OOPmed[those], WeightTemp)
+            TotalMedSum = np.dot(TotalMed[those], WeightTemp)
+            OOPshareByAgeHealth[g,h] = OOPmedSum/TotalMedSum
+            
+            # Get insured rate for the ESI and IMI populations, mean/stdev of ESI
+            # out-of-pocket premiums, and rate of paying full price for ESI.
+            if g < 8:
+                those = these
+                WeightTemp = Weight[those]
+                WeightTemp = WeightTemp/np.sum(WeightTemp)
+                ESIofferRateByAgeHealth[g,h] = np.dot(Offered[those],WeightTemp)
+                
+                those = np.logical_and(these, Offered)
+                WeightTemp = Weight[those]
+                WeightTemp = WeightTemp/np.sum(WeightTemp)
+                ESIinsuredRateByAgeHealth[g,h] = np.dot(np.logical_not(Uninsured[those]),WeightTemp)
+                
+                those = np.logical_and(these, np.logical_not(Offered))
+                WeightTemp = Weight[those]
+                WeightTemp = WeightTemp/np.sum(WeightTemp)
+                IMIinsuredRateByAgeHealth[g,h] = np.dot(np.logical_not(Uninsured[those]),WeightTemp)
+                
+                those = np.logical_and(these, PremSeen)
+                WeightTemp = Weight[those]
+                WeightTemp = WeightTemp/np.sum(WeightTemp)
+                MeanESIpremium_gh = np.dot(Premiums[those],WeightTemp)
+                ESIpremium_errsq = (Premiums[those] - MeanESIpremium_gh)**2
+                VarESIpremium_gh = np.dot(ESIpremium_errsq, WeightTemp)
+                StdevESIpremium_gh = np.sqrt(VarESIpremium_gh)
+                MeanESIpremiumByAgeHealth[g,h] = MeanESIpremium_gh
+                StdevESIpremiumByAgeHealth[g,h] = StdevESIpremium_gh
+                
+                those = np.logical_and(np.logical_and(these, HasESI), PremSeen)
+                WeightTemp = Weight[those]
+                WeightTemp = WeightTemp/np.sum(WeightTemp)
+                NoPremShareRateByAgeHealth[g,h] = np.dot(NoPremShare[those], WeightTemp)
+                
+        # Loop through each income quintile
+        for i in range(5):
+            if g >= 8:
+                continue
+            
+            these = np.logical_and(THESE, IncQuintBoolArray[:,i])
+            
+            # Get mean and stdev of log non-zero OOP medical expenses
+            those = np.logical_and(these, OOPnonzero)
+            WeightTemp = Weight[those]
+            WeightTemp = WeightTemp/np.sum(WeightTemp)
+            MeanLogOOPmed_gi = np.dot(LogOOPmed[those],WeightTemp)
+            MeanLogOOPmedByAgeIncome[g,i] = MeanLogOOPmed_gi
+            LogOOPmed_errsq = (LogOOPmed[those] - MeanLogOOPmed_gi)**2
+            VarLogOOPmed_gi = np.dot(LogOOPmed_errsq,WeightTemp)
+            StdevLogOOPmed_gi = np.sqrt(VarLogOOPmed_gi)
+            StdevLogOOPmedByAgeIncome[g,i] = StdevLogOOPmed_gi
+            
+            # Get mean and stdev of log non-zero total medical expenses
+            those = np.logical_and(these, TotalNonzero)
+            WeightTemp = Weight[those]
+            WeightTemp = WeightTemp/np.sum(WeightTemp)
+            MeanLogTotalMed_gi = np.dot(LogTotalMed[those],WeightTemp)
+            MeanLogTotalMedByAgeIncome[g,i] = MeanLogTotalMed_gi
+            LogTotalMed_errsq = (LogTotalMed[those] - MeanLogTotalMed_gi)**2
+            VarLogTotalMed_gi = np.dot(LogTotalMed_errsq,WeightTemp)
+            StdevLogTotalMed_gi = np.sqrt(VarLogTotalMed_gi)
+            StdevLogTotalMedByAgeIncome[g,i] = StdevLogTotalMed_gi
+            
+            # Get out-of-pocket medical spending share
+            those = np.logical_and(these, HasESI)
+            WeightTemp = Weight[those]
+            WeightTemp = WeightTemp/np.sum(WeightTemp)
+            OOPmedSum = np.dot(OOPmed[those], WeightTemp)
+            TotalMedSum = np.dot(TotalMed[those], WeightTemp)
+            OOPshareByAgeIncome[g,i] = OOPmedSum/TotalMedSum
+            
+            # Calculate ESI offer rate
+            those = these
+            WeightTemp = Weight[those]
+            WeightTemp = WeightTemp/np.sum(WeightTemp)
+            ESIofferRateByAgeIncome[g,i] = np.dot(Offered[those],WeightTemp)
+            
+            # Get insured rate for the ESI and IMI populations, mean/stdev of ESI
+            # out-of-pocket premiums, and rate of paying full price for ESI.
+            those = np.logical_and(these, Offered)
+            WeightTemp = Weight[those]
+            WeightTemp = WeightTemp/np.sum(WeightTemp)
+            ESIinsuredRateByAgeIncome[g,i] = np.dot(np.logical_not(Uninsured[those]),WeightTemp)
+            
+            those = np.logical_and(these, np.logical_not(Offered))
+            WeightTemp = Weight[those]
+            WeightTemp = WeightTemp/np.sum(WeightTemp)
+            IMIinsuredRateByAgeIncome[g,i] = np.dot(np.logical_not(Uninsured[those]),WeightTemp)
+            
+            those = np.logical_and(these, PremSeen)
+            WeightTemp = Weight[those]
+            WeightTemp = WeightTemp/np.sum(WeightTemp)
+            MeanESIpremium_gi = np.dot(Premiums[those],WeightTemp)
+            ESIpremium_errsq = (Premiums[those] - MeanESIpremium_gi)**2
+            VarESIpremium_gi = np.dot(ESIpremium_errsq, WeightTemp)
+            StdevESIpremium_gi = np.sqrt(VarESIpremium_gi)
+            MeanESIpremiumByAgeIncome[g,i] = MeanESIpremium_gi
+            StdevESIpremiumByAgeIncome[g,i] = StdevESIpremium_gi
+            
+            those = np.logical_and(np.logical_and(these, HasESI), PremSeen)
+            WeightTemp = Weight[those]
+            WeightTemp = WeightTemp/np.sum(WeightTemp)
+            NoPremShareRateByAgeIncome[g,i] = np.dot(NoPremShare[those], WeightTemp)
+    
+    # Now resample from the SCF    
+    if b == bootstrap_count: # If this is the final pass, use the SCF data as is
+        idx = np.arange(SCF_obs,dtype=int)
+    else: # Otherwise, randomly resample from the SCF
+        idx = np.floor(np.random.rand(SCF_obs)*SCF_obs).astype(int)
+        
+    # Extract this resampling of the SCF
+    Age = Age_SCForig[idx]
+    Employed = Employed_SCForig[idx]
+    HasESI = HasESI_SCForig[idx]
+    NetWorth = NetWorth_SCForig[idx]
+    Income = Income_SCForig[idx]
+    Weight = Weight_SCForig[idx]
+    WealthRatio = NetWorth/Income
+    
+    # Initialize the income quintile boolean array for the SCF
+    IncQuintBoolArray = np.zeros((SCF_obs,5),dtype=bool)
+    Valid = np.logical_and(Income > 0., WealthRatio < 150.)
+    
+    # Loop through each age and calculate median wealth ratio
+    for j in range(40):
+        these = np.logical_and(Age == (j + 25), Employed)
+        
+        WeightTemp = Weight[these]
+        WeightTemp = WeightTemp/np.sum(WeightTemp)
+        MedianWealthRatioByAge[j] = getPercentiles(WealthRatio[these],weights=WeightTemp)
+        
+        those = np.logical_and(these, Valid)
+        WeightTemp = Weight[those]
+        WeightTemp = WeightTemp/np.sum(WeightTemp)
+        MeanWealthRatioByAge[j] = np.dot(WealthRatio[those],WeightTemp)
+        
+        # Fill in income quintile data for this age
+        IncomeTemp = Income[these]
+        WeightTemp = Weight[these]
+        WeightTemp = WeightTemp/np.sum(WeightTemp)
+        IncPctiles = getPercentiles(IncomeTemp,weights=WeightTemp,percentiles=[0.2,0.4,0.6,0.8],presorted=False)
+        IncQuintBoolArray[these,0] = IncomeTemp < IncPctiles[0]
+        IncQuintBoolArray[these,1] = np.logical_and(IncomeTemp >= IncPctiles[0], IncomeTemp < IncPctiles[1]) 
+        IncQuintBoolArray[these,2] = np.logical_and(IncomeTemp >= IncPctiles[1], IncomeTemp < IncPctiles[2]) 
+        IncQuintBoolArray[these,3] = np.logical_and(IncomeTemp >= IncPctiles[2], IncomeTemp < IncPctiles[3])
+        IncQuintBoolArray[these,4] = IncomeTemp >= IncPctiles[3]
+        
+    # Loop through each age group
+    for g in range(8):
+        age_min = age_group_limits[g][0]
+        age_max = age_group_limits[g][1]
+        THESE = np.logical_and(np.logical_and(Age >= age_min, Age <= age_max), Employed)
+        
+        # Loop through each income quintile
+        for i in range(5):
+            these = np.logical_and(THESE,IncQuintBoolArray[:,i])
+            
+            WeightTemp = Weight[these]
+            WeightTemp = WeightTemp/np.sum(WeightTemp)
+            MedianWealthRatioByAgeIncome[g,i] = getPercentiles(WealthRatio[these],weights=WeightTemp)
+            
+            those = np.logical_and(these, Valid)
+            WeightTemp = Weight[those]
+            WeightTemp = WeightTemp/np.sum(WeightTemp)
+            MeanWealthRatioByAgeIncome[g,i] = np.dot(WealthRatio[those],WeightTemp)
+            
+    # Gather the SCF and MEPS moments into a list
+    MomentList = [
+            MeanLogOOPmedByAge,
+            MeanLogTotalMedByAge,
+            StdevLogOOPmedByAge,
+            StdevLogTotalMedByAge,
+            OOPshareByAge,
+            ESIinsuredRateByAge,
+            IMIinsuredRateByAge,
+            MeanESIpremiumByAge,
+            StdevESIpremiumByAge,
+            NoPremShareRateByAge,
+            MeanLogOOPmedByAgeHealth.flatten(),
+            MeanLogTotalMedByAgeHealth.flatten(),
+            StdevLogOOPmedByAgeHealth.flatten(),
+            StdevLogTotalMedByAgeHealth.flatten(),
+            OOPshareByAgeHealth.flatten(),
+            ESIinsuredRateByAgeHealth.flatten(),
+            IMIinsuredRateByAgeHealth.flatten(),
+            MeanESIpremiumByAgeHealth.flatten(),
+            StdevESIpremiumByAgeHealth.flatten(),
+            NoPremShareRateByAgeHealth.flatten(),
+            MeanLogOOPmedByAgeIncome.flatten(),
+            MeanLogTotalMedByAgeIncome.flatten(),
+            StdevLogOOPmedByAgeIncome.flatten(),
+            StdevLogTotalMedByAgeIncome.flatten(),
+            OOPshareByAgeIncome.flatten(),
+            ESIinsuredRateByAgeIncome.flatten(),
+            IMIinsuredRateByAgeIncome.flatten(),
+            MeanESIpremiumByAgeIncome.flatten(),
+            StdevESIpremiumByAgeIncome.flatten(),
+            NoPremShareRateByAgeIncome.flatten(),
+            MedianWealthRatioByAge,
+            MedianWealthRatioByAgeIncome.flatten()
+            ]
+    
+    # Combine the MEPS moments into a single vector
+    data_moments = np.concatenate(MomentList)
+    if (bootstrap_count > 0) and (b < bootstrap_count):
+        BootstrappedMomentArray[:,b] = data_moments
+        
+    # Move to the next bootstrap
+    if (bootstrap_count > 0) and (b < bootstrap_count) and (np.mod(b+1,10) == 0):
+        print('Finished bootstrap #' + str(b+1) + ' of ' + str(bootstrap_count) + '.')
+    elif (b == bootstrap_count):
+        print('Calculated MEPS and SCF empirical moments.')
+    b += 1
+    
+# If the data was bootstrapped, calculate the variance of each empirical moment
+# and save it to the moment file.
+if bootstrap_count > 0:
+    EmpiricalMomentVariances = np.var(BootstrappedMomentArray,axis=1)
+    moment_weights = EmpiricalMomentVariances**(-1)
+    moment_weights[np.isinf(moment_weights)] = 0. # NoPremShareByAgeHealth has no variation for some poor health, young ages
+    moment_weights[800] = 0. # This moment has *almost* no observations and no variation, and thus ends up with a weight of 10**32, yikes
+    moment_weights = np.minimum(moment_weights,1e6) # Two other moments have *very little* variation and would get *insane* weights
+    f = open(data_location + '/' + moment_weight_filename,'w')
+    my_writer = csv.writer(f, delimiter = '\t')
+    my_writer.writerow(moment_weights)
+    f.close()
+    print('Saved moment weighting file to disk.')
+        
+else: # If the data was not bootstrapped, try to read the moment weights from file
+    try:
+        f = open(data_location + '/' + moment_weight_filename,'r')
+        my_reader = csv.reader(f, delimiter='\t')
+        raw_weights = list(my_reader)[0]
+        moment_weights = np.zeros(moment_count)
+        for i in range(moment_count):
+            moment_weights[i] = float(raw_weights[i])
+        f.close()
+        print('Loaded moment weights from file.')
+    except:
+        print('Unable to open moment weighting file!')
+        
+      
+# Apply a "moment mask" to select which moments are actually used by the SMM estimator
+moment_mask = np.zeros(moment_count)
+for n in range(MomentTypeBool.size):
+    bot = MomentTypeBounds[n][0]
+    top = MomentTypeBounds[n][1]
+    if MomentTypeBool[n]:
+        moment_mask[bot:top] = 1.
+moment_weights *= moment_mask
+print('Estimator will use ' + str(int(np.sum(moment_mask))) + ' moments.')
+     
+   
 if __name__ == '__main__':
-    import matplotlib.pyplot as plt
     os.chdir('..')
     os.chdir('Figures')
     
-    plt.plot(OneYearAge,MeanLogOOPmedByAge[0:40],'.k')
-    plt.plot(FiveYearAge,MeanLogOOPmedByAgeIncome)
-    plt.xlabel('Age')
-    plt.ylabel('Mean log OOP medical expenses')
-    plt.legend(['Overall average','Bottom income quintile','Second income quintile','Third income quintile','Fourth income quintile','Top income quintile'],loc=0,fontsize=8)
-    plt.savefig('MeanLogOOPmedByAgeIncome.pdf')
-    plt.show()
+    OneYearAgeLong = np.arange(25,85)
+    FiveYearAgeLong = np.arange(25,85,5) + 2.5
+    OneYearAge = np.arange(25,65)
+    FiveYearAge = np.arange(25,65,5) + 2.5
     
-    plt.plot(OneYearAge,MeanLogTotalMedByAge[0:40],'.k')
-    plt.plot(FiveYearAge,MeanLogTotalMedByAgeIncome)
-    plt.xlabel('Age')
-    plt.ylabel('Mean log total medical expenses')
-    plt.legend(['Overall average','Bottom income quintile','Second income quintile','Third income quintile','Fourth income quintile','Top income quintile'],loc=0,fontsize=8)
-    plt.savefig('MeanLogTotalMedByAgeIncome.pdf')
-    plt.show()
-    
-    plt.plot(OneYearAge,StdevLogOOPmedByAge[0:40],'.k')
-    plt.plot(FiveYearAge,StdevLogOOPmedByAgeIncome)
-    plt.xlabel('Age')
-    plt.ylabel('Stdev log OOP medical expenses')
-    plt.legend(['Overall average','Bottom income quintile','Second income quintile','Third income quintile','Fourth income quintile','Top income quintile'],loc=0,fontsize=8)
-    plt.savefig('StdevLogOOPmedByAgeIncome.pdf')
-    plt.show()
-    
-    plt.plot(OneYearAge,StdevLogTotalMedByAge[0:40],'.k')
-    plt.plot(FiveYearAge,StdevLogTotalMedByAgeIncome)
-    plt.xlabel('Age')
-    plt.ylabel('Stdev log total medical expenses')
-    plt.legend(['Overall average','Bottom income quintile','Second income quintile','Third income quintile','Fourth income quintile','Top income quintile'],loc=0,fontsize=8)
-    plt.savefig('StdevLogTotalMedByAgeIncome.pdf')
-    plt.show()
-    
-    plt.plot(OneYearAge,InsuredRateByAge,'.k')
-    plt.plot(FiveYearAge,InsuredRateByAgeIncome)
-    plt.xlabel('Age')
-    plt.ylabel('ESI uptake rate')
-    plt.legend(['Overall average','Bottom income quintile','Second income quintile','Third income quintile','Fourth income quintile','Top income quintile'],loc=0,fontsize=8)
-    plt.savefig('InsuredRateByAgeIncome.pdf')
-    plt.show()
-    
-    plt.plot(OneYearAge,MeanPremiumByAge,'.k')
-    plt.plot(FiveYearAge,MeanPremiumByAgeIncome)
-    plt.xlabel('Age')
-    plt.ylabel('Mean OOP premium')
-    plt.ylim([500,3500])
-    plt.legend(['Overall average','Bottom income quintile','Second income quintile','Third income quintile','Fourth income quintile','Top income quintile'],loc=0,fontsize=8)
-    plt.savefig('MeanPremiumByAgeIncome.pdf')
-    plt.show()
-    
-    plt.plot(OneYearAge,StdevPremiumByAge,'.k')
-    plt.plot(FiveYearAge,StdevPremiumByAgeIncome)
-    plt.xlabel('Age')
-    plt.ylabel('Stdev OOP premium')
-    plt.legend(['Overall average','Bottom income quintile','Second income quintile','Third income quintile','Fourth income quintile','Top income quintile'],loc=0,fontsize=8)
-    plt.savefig('StdevPremiumByAgeIncome.pdf')
-    plt.show()
-    
-    plt.plot(OneYearAge,NoPremShareRateByAge,'.k')
-    plt.plot(FiveYearAge,NoPremShareRateByAgeIncome)
-    plt.xlabel('Age')
-    plt.ylabel('Pct ESI buyers with no employer contribution')
-    plt.legend(['Overall average','Bottom income quintile','Second income quintile','Third income quintile','Fourth income quintile','Top income quintile'],loc=0,fontsize=8)
-    plt.savefig('NoPremShareByAgeIncome.pdf')
-    plt.show()
-    
-    plt.plot(OneYearAge,WealthRatioByAge,'.k')
-    plt.plot(FiveYearAge,WealthRatioByAgeIncome)
-    plt.xlabel('Age')
-    plt.ylabel('Median wealth-to-income ratio')
-    plt.legend(['Overall average','Bottom income quintile','Second income quintile','Third income quintile','Fourth income quintile','Top income quintile'],loc=0,fontsize=8)
-    plt.savefig('WealthRatioByAgeIncome.pdf')
-    plt.show()
-    
-    plt.plot(OneYearAgeLong,MeanLogOOPmedByAge,'.k')
-    plt.plot(FiveYearAgeLong,MeanLogOOPmedByAgeHealth)
-    plt.xlabel('Age')
-    plt.ylabel('Mean log OOP medical expenses')
-    plt.legend(['Overall average','Poor health','Fair health','Good health','Very good health','Excellent health'],loc=0,fontsize=8)
-    plt.savefig('MeanLogOOPmedByAgeHealth.pdf')
-    plt.show()
-    
-    plt.plot(OneYearAgeLong,MeanLogTotalMedByAge,'.k')
-    plt.plot(FiveYearAgeLong,MeanLogTotalMedByAgeHealth)
-    plt.xlabel('Age')
-    plt.ylabel('Mean log total medical expenses')
-    plt.legend(['Overall average','Poor health','Fair health','Good health','Very good health','Excellent health'],loc=0,fontsize=8)
-    plt.savefig('MeanLogTotalMedByAgeHealth.pdf')
-    plt.show()
-    
-    plt.plot(OneYearAgeLong,OOPshareByAge,'.k')
-    plt.xlabel('Age')
-    plt.ylabel('Out-of-pocket medical spending share')
-    plt.ylim([0.0,0.25])
-    plt.savefig('OOPshareByAge.pdf')
-    plt.show()
-    
-    plt.plot(OneYearAgeLong,StdevLogOOPmedByAge,'.k')
-    plt.plot(FiveYearAgeLong,StdevLogOOPmedByAgeHealth)
-    plt.xlabel('Age')
-    plt.ylabel('Stdev log OOP medical expenses')
-    plt.legend(['Overall average','Poor health','Fair health','Good health','Very good health','Excellent health'],loc=0,fontsize=8)
-    plt.savefig('StdevLogOOPmedByAgeHealth.pdf')
-    plt.show()
-    
-    plt.plot(OneYearAgeLong,StdevLogTotalMedByAge,'.k')
-    plt.plot(FiveYearAgeLong,StdevLogTotalMedByAgeHealth)
-    plt.xlabel('Age')
-    plt.ylabel('Stdev log total medical expenses')
-    plt.legend(['Overall average','Poor health','Fair health','Good health','Very good health','Excellent health'],loc=0,fontsize=8)
-    plt.savefig('StdevLogTotalMedByAgeHealth.pdf')
-    plt.show()
-    
-    plt.plot(OneYearAge,InsuredRateByAge,'.k')
-    plt.plot(FiveYearAge,InsuredRateByAgeHealth)
-    plt.xlabel('Age')
-    plt.ylabel('ESI uptake rate')
-    plt.legend(['Overall average','Poor health','Fair health','Good health','Very good health','Excellent health'],loc=0,fontsize=8)
-    plt.savefig('InsuredRateByAgeHealth.pdf')
-    plt.show()
-    
-    plt.plot(OneYearAge,MeanPremiumByAge,'.k')
-    plt.plot(FiveYearAge,MeanPremiumByAgeHealth)
-    plt.xlabel('Age')
-    plt.ylabel('Mean OOP premium')
-    plt.ylim([500,3500])
-    plt.legend(['Overall average','Poor health','Fair health','Good health','Very good health','Excellent health'],loc=0,fontsize=8)
-    plt.savefig('MeanPremiumByAgeHealth.pdf')
-    plt.show()
-    
-    plt.plot(OneYearAge,StdevPremiumByAge,'.k')
-    plt.plot(FiveYearAge,StdevPremiumByAgeHealth)
-    plt.xlabel('Age')
-    plt.ylabel('Stdev OOP premium')
-    plt.legend(['Overall average','Poor health','Fair health','Good health','Very good health','Excellent health'],loc=0,fontsize=8)
-    plt.savefig('StdevPremiumByAgeHealth.pdf')
-    plt.show()
-    
-    plt.plot(OneYearAge,NoPremShareRateByAge,'.k')
-    plt.plot(FiveYearAge,NoPremShareRateByAgeHealth)
-    plt.xlabel('Age')
-    plt.ylabel('Pct ESI buyers with no employer contribution')
-    plt.legend(['Overall average','Poor health','Fair health','Good health','Very good health','Excellent health'],loc=0,fontsize=8)
-    plt.savefig('NoPremShareByAgeHealth.pdf')
-    plt.show()
-    
-    plt.plot(OneYearAge,NoPremShareRateByAge,'.k')
-    plt.xlabel('Age')
-    plt.ylabel('Pct ESI buyers with no employer contribution')
-    plt.savefig('NoPremShareByAge.pdf')
-    plt.show()
-
+    if plot_data_moment_figs:
+        plt.plot(OneYearAge,MeanLogOOPmedByAge[0:40],'.k')
+        plt.plot(FiveYearAge,MeanLogOOPmedByAgeIncome)
+        plt.xlabel('Age')
+        plt.ylabel('Mean log OOP medical expenses')
+        plt.legend(['Overall average','Bottom income quintile','Second income quintile','Third income quintile','Fourth income quintile','Top income quintile'],loc=0,fontsize=8)
+        plt.savefig('MeanLogOOPmedByAgeIncome.pdf')
+        plt.show()
+        
+        plt.plot(OneYearAge,MeanLogTotalMedByAge[0:40],'.k')
+        plt.plot(FiveYearAge,MeanLogTotalMedByAgeIncome)
+        plt.xlabel('Age')
+        plt.ylabel('Mean log total medical expenses')
+        plt.legend(['Overall average','Bottom income quintile','Second income quintile','Third income quintile','Fourth income quintile','Top income quintile'],loc=0,fontsize=8)
+        plt.savefig('MeanLogTotalMedByAgeIncome.pdf')
+        plt.show()
+        
+        plt.plot(OneYearAge,StdevLogOOPmedByAge[0:40],'.k')
+        plt.plot(FiveYearAge,StdevLogOOPmedByAgeIncome)
+        plt.xlabel('Age')
+        plt.ylabel('Stdev log OOP medical expenses')
+        plt.legend(['Overall average','Bottom income quintile','Second income quintile','Third income quintile','Fourth income quintile','Top income quintile'],loc=0,fontsize=8)
+        plt.savefig('StdevLogOOPmedByAgeIncome.pdf')
+        plt.show()
+        
+        plt.plot(OneYearAge,StdevLogTotalMedByAge[0:40],'.k')
+        plt.plot(FiveYearAge,StdevLogTotalMedByAgeIncome)
+        plt.xlabel('Age')
+        plt.ylabel('Stdev log total medical expenses')
+        plt.legend(['Overall average','Bottom income quintile','Second income quintile','Third income quintile','Fourth income quintile','Top income quintile'],loc=0,fontsize=8)
+        plt.savefig('StdevLogTotalMedByAgeIncome.pdf')
+        plt.show()
+        
+        plt.plot(OneYearAge,ESIinsuredRateByAge,'.k')
+        plt.plot(FiveYearAge,ESIinsuredRateByAgeIncome)
+        plt.xlabel('Age')
+        plt.ylabel('ESI uptake rate')
+        plt.legend(['Overall average','Bottom income quintile','Second income quintile','Third income quintile','Fourth income quintile','Top income quintile'],loc=0,fontsize=8)
+        plt.savefig('InsuredRateESIByAgeIncome.pdf')
+        plt.show()
+        
+        plt.plot(OneYearAge,IMIinsuredRateByAge,'.k')
+        plt.plot(FiveYearAge,IMIinsuredRateByAgeIncome)
+        plt.xlabel('Age')
+        plt.ylabel('IMI insured rate')
+        plt.legend(['Overall average','Bottom income quintile','Second income quintile','Third income quintile','Fourth income quintile','Top income quintile'],loc=0,fontsize=8)
+        plt.savefig('InsuredRateIMIByAgeIncome.pdf')
+        plt.show()
+        
+        plt.plot(OneYearAge,MeanESIpremiumByAge,'.k')
+        plt.plot(FiveYearAge,MeanESIpremiumByAgeIncome)
+        plt.xlabel('Age')
+        plt.ylabel('Mean ESI out-of-pocket premium')
+        plt.ylim([500,3500])
+        plt.legend(['Overall average','Bottom income quintile','Second income quintile','Third income quintile','Fourth income quintile','Top income quintile'],loc=0,fontsize=8)
+        plt.savefig('MeanPremiumByAgeIncome.pdf')
+        plt.show()
+        
+        plt.plot(OneYearAge,StdevESIpremiumByAge,'.k')
+        plt.plot(FiveYearAge,StdevESIpremiumByAgeIncome)
+        plt.xlabel('Age')
+        plt.ylabel('Stdev ESI out-of-pocket premium')
+        plt.legend(['Overall average','Bottom income quintile','Second income quintile','Third income quintile','Fourth income quintile','Top income quintile'],loc=0,fontsize=8)
+        plt.savefig('StdevPremiumByAgeIncome.pdf')
+        plt.show()
+        
+        plt.plot(OneYearAge,NoPremShareRateByAge,'.k')
+        plt.plot(FiveYearAge,NoPremShareRateByAgeIncome)
+        plt.xlabel('Age')
+        plt.ylabel('Pct ESI buyers with no employer contribution')
+        plt.legend(['Overall average','Bottom income quintile','Second income quintile','Third income quintile','Fourth income quintile','Top income quintile'],loc=0,fontsize=8)
+        plt.savefig('NoPremShareByAgeIncome.pdf')
+        plt.show()
+        
+        plt.plot(OneYearAge,MedianWealthRatioByAge,'.k')
+        plt.plot(FiveYearAge,MedianWealthRatioByAgeIncome)
+        plt.xlabel('Age')
+        plt.ylabel('Median wealth-to-income ratio')
+        plt.legend(['Overall average','Bottom income quintile','Second income quintile','Third income quintile','Fourth income quintile','Top income quintile'],loc=0,fontsize=8)
+        plt.savefig('WealthRatioByAgeIncome.pdf')
+        plt.show()
+        
+        plt.plot(OneYearAgeLong,MeanLogOOPmedByAge,'.k')
+        plt.plot(FiveYearAgeLong,MeanLogOOPmedByAgeHealth)
+        plt.xlabel('Age')
+        plt.ylabel('Mean log OOP medical expenses')
+        plt.legend(['Overall average','Poor health','Fair health','Good health','Very good health','Excellent health'],loc=0,fontsize=8)
+        plt.savefig('MeanLogOOPmedByAgeHealth.pdf')
+        plt.show()
+        
+        plt.plot(OneYearAgeLong,MeanLogTotalMedByAge,'.k')
+        plt.plot(FiveYearAgeLong,MeanLogTotalMedByAgeHealth)
+        plt.xlabel('Age')
+        plt.ylabel('Mean log total medical expenses')
+        plt.legend(['Overall average','Poor health','Fair health','Good health','Very good health','Excellent health'],loc=0,fontsize=8)
+        plt.savefig('MeanLogTotalMedByAgeHealth.pdf')
+        plt.show()
+        
+        plt.plot(OneYearAgeLong,OOPshareByAge,'.k')
+        plt.xlabel('Age')
+        plt.ylabel('Out-of-pocket medical spending share')
+        plt.ylim([0.0,0.25])
+        plt.savefig('OOPshareByAge.pdf')
+        plt.show()
+        
+        plt.plot(OneYearAgeLong,StdevLogOOPmedByAge,'.k')
+        plt.plot(FiveYearAgeLong,StdevLogOOPmedByAgeHealth)
+        plt.xlabel('Age')
+        plt.ylabel('Stdev log OOP medical expenses')
+        plt.legend(['Overall average','Poor health','Fair health','Good health','Very good health','Excellent health'],loc=0,fontsize=8)
+        plt.savefig('StdevLogOOPmedByAgeHealth.pdf')
+        plt.show()
+        
+        plt.plot(OneYearAgeLong,StdevLogTotalMedByAge,'.k')
+        plt.plot(FiveYearAgeLong,StdevLogTotalMedByAgeHealth)
+        plt.xlabel('Age')
+        plt.ylabel('Stdev log total medical expenses')
+        plt.legend(['Overall average','Poor health','Fair health','Good health','Very good health','Excellent health'],loc=0,fontsize=8)
+        plt.savefig('StdevLogTotalMedByAgeHealth.pdf')
+        plt.show()
+        
+        plt.plot(OneYearAge,ESIinsuredRateByAge,'.k')
+        plt.plot(FiveYearAge,ESIinsuredRateByAgeHealth)
+        plt.xlabel('Age')
+        plt.ylabel('ESI uptake rate')
+        plt.legend(['Overall average','Poor health','Fair health','Good health','Very good health','Excellent health'],loc=0,fontsize=8)
+        plt.savefig('InsuredRateByAgeHealth.pdf')
+        plt.show()
+        
+        plt.plot(OneYearAge,MeanESIpremiumByAge,'.k')
+        plt.plot(FiveYearAge,MeanESIpremiumByAgeHealth)
+        plt.xlabel('Age')
+        plt.ylabel('Mean OOP premium')
+        plt.ylim([500,3500])
+        plt.legend(['Overall average','Poor health','Fair health','Good health','Very good health','Excellent health'],loc=0,fontsize=8)
+        plt.savefig('MeanPremiumByAgeHealth.pdf')
+        plt.show()
+        
+        plt.plot(OneYearAge,StdevESIpremiumByAge,'.k')
+        plt.plot(FiveYearAge,StdevESIpremiumByAgeHealth)
+        plt.xlabel('Age')
+        plt.ylabel('Stdev OOP premium')
+        plt.legend(['Overall average','Poor health','Fair health','Good health','Very good health','Excellent health'],loc=0,fontsize=8)
+        plt.savefig('StdevPremiumByAgeHealth.pdf')
+        plt.show()
+        
+        plt.plot(OneYearAge,NoPremShareRateByAge,'.k')
+        plt.plot(FiveYearAge,NoPremShareRateByAgeHealth)
+        plt.xlabel('Age')
+        plt.ylabel('Pct ESI buyers with no employer contribution')
+        plt.legend(['Overall average','Poor health','Fair health','Good health','Very good health','Excellent health'],loc=0,fontsize=8)
+        plt.savefig('NoPremShareByAgeHealth.pdf')
+        plt.show()
+        
+        plt.plot(OneYearAge,NoPremShareRateByAge,'.k')
+        plt.xlabel('Age')
+        plt.ylabel('Pct ESI buyers with no employer contribution')
+        plt.savefig('NoPremShareByAge.pdf')
+        plt.show()
+        
+        plt.plot(OneYearAge,ESIofferRateByAge,'.k')
+        plt.plot(FiveYearAge,ESIofferRateByAgeIncome,'.')
+        plt.xlabel('Age')
+        plt.ylabel('ESI offer rate by income quintile')
+        plt.legend(['Overall average','Bottom income quintile','Second income quintile','Third income quintile','Fourth income quintile','Top income quintile'],loc=0,fontsize=8)
+        plt.savefig('ESIofferRateByAgeIncome.pdf')
+        plt.show()
+        

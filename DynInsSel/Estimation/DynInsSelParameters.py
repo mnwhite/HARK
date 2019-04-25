@@ -16,8 +16,7 @@ AgentCountTotal = 100000
 StaticBool = False
 
 # Calibrated / other parameters (grid sizes, etc)
-Cfloor = 0.20                       # Consumption floor
-Rfree = 5*[1.03]                    # Interest factor on assets
+Rfree = 5*[1.02]                    # Interest factor on assets
 aXtraMin = 0.001                    # Minimum end-of-period "assets above minimum" value
 aXtraMax = 16                       # Minimum end-of-period "assets above minimum" value               
 aXtraExtra = [0.005,0.01]           # Some other value of "assets above minimum" to add to the grid, not used
@@ -35,72 +34,235 @@ DecurveBool = True                  # "Decurve" value through the inverse utilit
 pLvlPctiles = np.concatenate(([0.001, 0.005, 0.01, 0.03], np.linspace(0.05, 0.95, num=12),[0.97, 0.99, 0.995, 0.999]))
 pLvlInitStd = 0.4                   # Initial standard deviation of (log) permanent income
 pLvlInitMean = 0.0                  # Initial average of log permanent income
-PermIncCorr = 1.0                   # Serial correlation coefficient for permanent income
-MedShkCount = 25                    # Number of medical shock points
+PermIncCorr = 0.99                  # Serial correlation coefficient for permanent income
+MedShkCount = 20                    # Number of medical shock points
 DevMin = -3.0                       # Minimum standard deviations below MedShk mean
 DevMax = 5.0                        # Maximum standard deviations above MedShk mean
 MedPrice = 1.0                      # Relative price of a unit of medical care
 AgentCount = 10000                  # Number of agents of this type (only matters for simulation)
 DeductibleList = [0.06,0.05,0.04,0.03,0.02] # List of deductibles for working-age insurance contracts
 T_sim = 60                          # Number of periods to simulate (age 25 to 84)
+retired_T = 55
+working_T = 40
 
-# These are the results of ordered probits of h_t and age on h_t+1 using MEPS data OLD VALUES
-f1 = lambda x : .0579051*x -.0046128*x**2 + .0001069*x**3 - 7.85e-07*x**4
-f2 = lambda x : -.0111249*x - .0010771*x**2 + .0000325*x**3 - 2.53e-07*x**4
-f3 = lambda x : -.0068616*x - .0006085*x**2 + .0000169*x**3 - 1.35e-07*x**4
-f4 = lambda x : -.0176393*x - .0002275*x**2 + .0000157*x**3 - 1.68e-07*x**4
-f5 = lambda x : -.0002997*x -.0009072*x**2 + .0000311*x**3 - 2.96e-07*x**4
-cuts1 = np.array([-.3176859, .5868993,1.416312,2.028111])
-cuts2 = np.array([-2.028909,-.6592757,.4080535,1.13179])
-cuts3 = np.array([-2.517836,-1.475572,-.0567525,.8971419])
-cuts4 = np.array([-2.88919,-2.089985,-.9015471,.4327963])
-cuts5 = np.array([-2.865663,-2.172939,-1.207311,-.3371267])
 
-# Fill in the Markov array at each age (probably could have written this more cleverly but meh)
-MrkvArrayYoung = np.zeros([67,5,5]) + np.nan
-Age = np.arange(67,dtype=float)
-fitted = f1(Age)
-MrkvArrayYoung[:,0,0] = norm.cdf(cuts1[0] - fitted) - norm.cdf(-np.inf  - fitted)
-MrkvArrayYoung[:,0,1] = norm.cdf(cuts1[1] - fitted) - norm.cdf(cuts1[0] - fitted)
-MrkvArrayYoung[:,0,2] = norm.cdf(cuts1[2] - fitted) - norm.cdf(cuts1[1] - fitted)
-MrkvArrayYoung[:,0,3] = norm.cdf(cuts1[3] - fitted) - norm.cdf(cuts1[2] - fitted)
-MrkvArrayYoung[:,0,4] = norm.cdf(np.inf   - fitted) - norm.cdf(cuts1[3] - fitted)
-fitted = f2(Age)
-MrkvArrayYoung[:,1,0] = norm.cdf(cuts2[0] - fitted) - norm.cdf(-np.inf  - fitted)
-MrkvArrayYoung[:,1,1] = norm.cdf(cuts2[1] - fitted) - norm.cdf(cuts2[0] - fitted)
-MrkvArrayYoung[:,1,2] = norm.cdf(cuts2[2] - fitted) - norm.cdf(cuts2[1] - fitted)
-MrkvArrayYoung[:,1,3] = norm.cdf(cuts2[3] - fitted) - norm.cdf(cuts2[2] - fitted)
-MrkvArrayYoung[:,1,4] = norm.cdf(np.inf   - fitted) - norm.cdf(cuts2[3] - fitted)
-fitted = f3(Age)
-MrkvArrayYoung[:,2,0] = norm.cdf(cuts3[0] - fitted) - norm.cdf(-np.inf  - fitted)
-MrkvArrayYoung[:,2,1] = norm.cdf(cuts3[1] - fitted) - norm.cdf(cuts3[0] - fitted)
-MrkvArrayYoung[:,2,2] = norm.cdf(cuts3[2] - fitted) - norm.cdf(cuts3[1] - fitted)
-MrkvArrayYoung[:,2,3] = norm.cdf(cuts3[3] - fitted) - norm.cdf(cuts3[2] - fitted)
-MrkvArrayYoung[:,2,4] = norm.cdf(np.inf   - fitted) - norm.cdf(cuts3[3] - fitted)
-fitted = f4(Age)
-MrkvArrayYoung[:,3,0] = norm.cdf(cuts4[0] - fitted) - norm.cdf(-np.inf  - fitted)
-MrkvArrayYoung[:,3,1] = norm.cdf(cuts4[1] - fitted) - norm.cdf(cuts4[0] - fitted)
-MrkvArrayYoung[:,3,2] = norm.cdf(cuts4[2] - fitted) - norm.cdf(cuts4[1] - fitted)
-MrkvArrayYoung[:,3,3] = norm.cdf(cuts4[3] - fitted) - norm.cdf(cuts4[2] - fitted)
-MrkvArrayYoung[:,3,4] = norm.cdf(np.inf   - fitted) - norm.cdf(cuts4[3] - fitted)
-fitted = f5(Age)
-MrkvArrayYoung[:,4,0] = norm.cdf(cuts5[0] - fitted) - norm.cdf(-np.inf  - fitted)
-MrkvArrayYoung[:,4,1] = norm.cdf(cuts5[1] - fitted) - norm.cdf(cuts5[0] - fitted)
-MrkvArrayYoung[:,4,2] = norm.cdf(cuts5[2] - fitted) - norm.cdf(cuts5[1] - fitted)
-MrkvArrayYoung[:,4,3] = norm.cdf(cuts5[3] - fitted) - norm.cdf(cuts5[2] - fitted)
-MrkvArrayYoung[:,4,4] = norm.cdf(np.inf   - fitted) - norm.cdf(cuts5[3] - fitted)
-# MrkvArrayYoung runs from age 18 to age 84
+class SpecialTaxFunction():
+    '''
+    A simple class for representing income taxes to fund health care.  It simply
+    taxes all income above a given threshold at a particular rate.
+    '''
+    def __init__(self,threshold,rate):
+        self.threshold = threshold
+        self.rate = rate
+        
+    def __call__(self,yLvl):
+        return np.maximum((yLvl-self.threshold)*self.rate, 0.0)
 
-# Make the array of health transitions after age 85
-MrkvArrayOld = np.array([[0.450,0.367,0.183,0.000,0.000],
-                        [0.140,0.445,0.290,0.115,0.010],
-                        [0.060,0.182,0.497,0.208,0.053],
-                        [0.032,0.090,0.389,0.342,0.147],
-                        [0.000,0.061,0.231,0.285,0.423]])
+
+class PolynomialFunction():
+    '''
+    A simple class for representing polynomial functions.
+    '''
+    def __init__(self,coeffs):
+        self.coeffs = coeffs
+        self.N = len(coeffs)
+        
+    def __call__(self,x):
+        try:
+            shape_orig = x.shape
+            z = x.flatten()
+        except:
+            shape_orig = None
+            z = x
+        
+        out = np.zeros_like(z) + self.coeffs[-1]
+        for n in range(self.N-2,-1,-1):
+            out *= z
+            out += self.coeffs[n]
+        
+        if shape_orig is not None:
+            return np.reshape(out,shape_orig)
+        else:
+            return out
+        
+        
+class ESImarkovFunction():
+    '''
+    A class for representing transition probabilities among ESI states as a function
+    of (log) permanent income.
+    '''
+    def __init__(self,ESItoNoneFunc,NoneToESIfunc,ContrToFullFunc,FullToContrFunc,EmpContrShare):
+        self.ESItoNoneFunc = ESItoNoneFunc
+        self.NoneToESIfunc = NoneToESIfunc
+        self.ContrToFullFunc = ContrToFullFunc
+        self.FullToContrFunc = FullToContrFunc
+        self.EmpContrShare = EmpContrShare
+        
+    def __call__(self,pLvl):
+        '''
+        Generate a 3D array of transition probabilities among ESI states by pLvl.
+        '''
+        try:
+            N = pLvl.size
+        except:
+            N = 1
+        pLog = np.log(pLvl)
+        ESImrkvArray = np.zeros((N,3,3))
+        
+        # Get probabilities of transitioning out of ESI
+        ESItoNone = norm.cdf(self.ESItoNoneFunc(pLog))
+        StayESI = 1.0 - ESItoNone
+        ESImrkvArray[:,1,0] = ESItoNone
+        ESImrkvArray[:,2,0] = ESItoNone
+        
+        # Get probabilities of transitioning into ESI
+        NoneToESI = norm.cdf(self.NoneToESIfunc(pLog))
+        StayNone = 1.0 - NoneToESI
+        ESImrkvArray[:,0,0] = StayNone
+        ESImrkvArray[:,0,1] = NoneToESI*(1.0-self.EmpContrShare)
+        ESImrkvArray[:,0,2] = NoneToESI*self.EmpContrShare
+        
+        # Get probabilities of switching from getting employer contribution
+        ContrToFull = norm.cdf(self.ContrToFullFunc(pLog))
+        StayContr = 1.0 - ContrToFull
+        ESImrkvArray[:,2,1] = ContrToFull*StayESI
+        ESImrkvArray[:,2,2] = StayContr*StayESI
+        
+        # get probabilities of switching from paying full premium for ESI
+        FullToContr = norm.cdf(self.FullToContrFunc(pLog))
+        StayFull = 1.0 - FullToContr
+        ESImrkvArray[:,1,2] = FullToContr*StayESI
+        ESImrkvArray[:,1,1] = StayFull*StayESI
+        
+        return ESImrkvArray
+        
+# Make a trivial array of transition probabilities among ESI states.
+# Order: No ESI, ESI with no emp contribution, ESI with emp contribution
+ESImrkvArray = np.array([[0.8,0.1,0.1],
+                         [0.03,0.80,0.17],
+                         [0.01,0.015,0.975]])
+       
+# Make multinomial probit transition functions among ESI states
+ESItoNone_0  = -2.2417979
+ESItoNone_a1 = .0693082
+ESItoNone_a2 = -.0018354
+ESItoNone_a3 = .0000154
+ESItoNone_ageFunc = PolynomialFunction([ESItoNone_0, ESItoNone_a1, ESItoNone_a2, ESItoNone_a3])
+ESItoNone_p1 = -.1293572
+ESItoNone_p2 = -.0601291
+ESItoNone_p3 = .0241346
+ESItoNone_ap = -.0018197
+ESItoNone_d  = .2843128
+ESItoNone_h  = 0.0 # Omitted
+ESItoNone_c  = -.1736794
+NoneToESI_0  = -.4653491
+NoneToESI_a1 = -.0693082
+NoneToESI_a2 = .0018354
+NoneToESI_a3 = -.0000154
+NoneToESI_ageFunc = PolynomialFunction([NoneToESI_0, NoneToESI_a1, NoneToESI_a2, NoneToESI_a3])
+NoneToESI_p1 = .1293572
+NoneToESI_p2 = .0601291
+NoneToESI_p3 =  -.0241346
+NoneToESI_ap = .0018197
+NoneToESI_d  = -.2843128
+NoneToESI_h  = 0.0 # Omitted
+NoneToESI_c  = .1736794
+ContrToFull_0  = norm.ppf(0.04)
+ContrToFull_a1 = 0.0
+ContrToFull_a2 = 0.0
+ContrToFull_a3 = 0.0
+ContrToFull_ageFunc = PolynomialFunction([ContrToFull_0, ContrToFull_a1, ContrToFull_a2, ContrToFull_a3])
+ContrToFull_p1 = 0.0
+ContrToFull_p2 = 0.0
+ContrToFull_p3 = 0.0
+ContrToFull_ap = 0.0
+ContrToFull_d  = 0.0
+ContrToFull_h  = 0.0 # Omitted
+ContrToFull_c  = 0.0
+FullToContr_0  = norm.ppf(0.60)
+FullToContr_a1 = 0.0
+FullToContr_a2 = 0.0
+FullToContr_a3 = 0.0
+FullToContr_ageFunc = PolynomialFunction([FullToContr_0, FullToContr_a1, FullToContr_a2, FullToContr_a3])
+FullToContr_p1 = 0.0
+FullToContr_p2 = 0.0
+FullToContr_p3 = 0.0
+FullToContr_ap = 0.0
+FullToContr_d  = 0.0
+FullToContr_h  = 0.0 # Omitted
+FullToContr_c  = 0.0
+EmpContrShare_d = 0.5
+EmpContrShare_h = 0.5
+EmpContrShare_c = 0.5
+ESItoNoneFuncs_d = []
+NoneToESIfuncs_d = []
+ContrToFullFuncs_d = []
+FullToContrFuncs_d = []
+ESItoNoneFuncs_h = []
+NoneToESIfuncs_h = []
+ContrToFullFuncs_h = []
+FullToContrFuncs_h = []
+ESItoNoneFuncs_c = []
+NoneToESIfuncs_c = []
+ContrToFullFuncs_c = []
+FullToContrFuncs_c = []
+for a in range(18,64):
+    ESItoNone_base = ESItoNone_ageFunc(a)
+    ESItoNoneFuncs_d.append(PolynomialFunction([ESItoNone_base + ESItoNone_d, ESItoNone_p1 + a*ESItoNone_ap, ESItoNone_p2, ESItoNone_p3]))
+    ESItoNoneFuncs_h.append(PolynomialFunction([ESItoNone_base + ESItoNone_h, ESItoNone_p1 + a*ESItoNone_ap, ESItoNone_p2, ESItoNone_p3]))
+    ESItoNoneFuncs_c.append(PolynomialFunction([ESItoNone_base + ESItoNone_c, ESItoNone_p1 + a*ESItoNone_ap, ESItoNone_p2, ESItoNone_p3]))
+    NoneToESI_base = NoneToESI_ageFunc(a)
+    NoneToESIfuncs_d.append(PolynomialFunction([NoneToESI_base + NoneToESI_d, NoneToESI_p1 + a*NoneToESI_ap, NoneToESI_p2, NoneToESI_p3]))
+    NoneToESIfuncs_h.append(PolynomialFunction([NoneToESI_base + NoneToESI_h, NoneToESI_p1 + a*NoneToESI_ap, NoneToESI_p2, NoneToESI_p3]))
+    NoneToESIfuncs_c.append(PolynomialFunction([NoneToESI_base + NoneToESI_c, NoneToESI_p1 + a*NoneToESI_ap, NoneToESI_p2, NoneToESI_p3]))
+    ContrToFull_base = ContrToFull_ageFunc(a)
+    ContrToFullFuncs_d.append(PolynomialFunction([ContrToFull_base + ContrToFull_d, ContrToFull_p1 + a*ContrToFull_ap, ContrToFull_p2, ContrToFull_p3]))
+    ContrToFullFuncs_h.append(PolynomialFunction([ContrToFull_base + ContrToFull_h, ContrToFull_p1 + a*ContrToFull_ap, ContrToFull_p2, ContrToFull_p3]))
+    ContrToFullFuncs_c.append(PolynomialFunction([ContrToFull_base + ContrToFull_c, ContrToFull_p1 + a*ContrToFull_ap, ContrToFull_p2, ContrToFull_p3]))
+    FullToContr_base = FullToContr_ageFunc(a)
+    FullToContrFuncs_d.append(PolynomialFunction([FullToContr_base + FullToContr_d, FullToContr_p1 + a*FullToContr_ap, FullToContr_p2, FullToContr_p3]))
+    FullToContrFuncs_h.append(PolynomialFunction([FullToContr_base + FullToContr_h, FullToContr_p1 + a*FullToContr_ap, FullToContr_p2, FullToContr_p3]))
+    FullToContrFuncs_c.append(PolynomialFunction([FullToContr_base + FullToContr_c, FullToContr_p1 + a*FullToContr_ap, FullToContr_p2, FullToContr_p3]))
+ESImrkvFuncs_d = []
+ESImrkvFuncs_h = []
+ESImrkvFuncs_c = []    
+for a in range(18,64):
+    t = a-18
+    ESImrkvFuncs_d.append(ESImarkovFunction(ESItoNoneFuncs_d[t],NoneToESIfuncs_d[t],ContrToFullFuncs_d[t],FullToContrFuncs_d[t],EmpContrShare_d))
+    ESImrkvFuncs_h.append(ESImarkovFunction(ESItoNoneFuncs_h[t],NoneToESIfuncs_h[t],ContrToFullFuncs_h[t],FullToContrFuncs_h[t],EmpContrShare_h))
+    ESImrkvFuncs_c.append(ESImarkovFunction(ESItoNoneFuncs_c[t],NoneToESIfuncs_c[t],ContrToFullFuncs_c[t],FullToContrFuncs_c[t],EmpContrShare_c))
+    
+# Make ESI transition functions for retirement
+class RetirementESIfunction():
+    def __init__(self):
+        pass
+    
+    def __call__(self,pLvl):
+        try:
+            N = pLvl.size
+        except:
+            N = 1
+        ESImrkvArray = np.ones((N,3,1))
+        return ESImrkvArray
+    
+class RetiredESIfunction():
+    def __init__(self):
+        pass
+    
+    def __call__(self,pLvl):
+        try:
+            N = pLvl.size
+        except:
+            N = 1
+        ESImrkvArray = np.ones((N,1,1))
+        return ESImrkvArray
+    
+ESImrkvFuncs_retired = [RetirementESIfunction()] + retired_T*[RetiredESIfunction()]
+ESImrkvFuncs_d = ESImrkvFuncs_d[7:46] + ESImrkvFuncs_retired
+ESImrkvFuncs_h = ESImrkvFuncs_h[7:46] + ESImrkvFuncs_retired
+ESImrkvFuncs_c = ESImrkvFuncs_c[7:46] + ESImrkvFuncs_retired
     
 # Make survival probabilities by health state and age based on a probit on HRS data for ages 50-119
-#AgeMortParams = [-2.881993,.0631395,-.0025132,.0000761,-6.27e-07] # MEN AND WOMEN
-#HealthMortAdj = [.0384278,.231691,.3289953,.4941035]              # MEN AND WOMEN
 AgeMortParams = [-2.757652,.044746,-.0010514,.0000312,-1.62e-07]  # MEN ONLY
 HealthMortAdj = [.0930001,.2299474,.3242607,.5351414]             # MEN ONLY
 
@@ -132,55 +294,22 @@ DiePrb = np.array(DiePrb)[24:] # Take from age 24 onward
 DiePrbBiannual = 1.0 - (1.0 - DiePrb[:-1])*(1.0 - DiePrb[1:])
 
 # Specify the initial distribution of health at age 24-26, taken directly from MEPS data
-#HealthPrbsInit = [0.010,0.058,0.233,0.327,0.372]
-#HealthPrbsInit_d = [0.023,0.104,0.323,0.288,0.262]
-#HealthPrbsInit_h = [0.013,0.058,0.235,0.347,0.347]
-#HealthPrbsInit_c = [0.004,0.027,0.173,0.380,0.416]
 HealthPrbsInit = [0.003,0.036,0.196,0.348,0.417]
-HealthPrbsInit_d = [0.004,0.063,0.304,0.297,0.332]
-HealthPrbsInit_h = [0.004,0.042,0.202,0.346,0.406]
-HealthPrbsInit_c = [0.003,0.019,0.163,0.363,0.452]
+HealthPrbsInit_d = np.array([0.004,0.063,0.304,0.297,0.332])
+HealthPrbsInit_h = np.array([0.004,0.042,0.202,0.346,0.406])
+HealthPrbsInit_c = np.array([0.003,0.019,0.163,0.363,0.452])
+MrkvPrbsInit_d = np.concatenate([0.3*HealthPrbsInit_d,0.05*HealthPrbsInit_d,0.65*HealthPrbsInit_d])
+MrkvPrbsInit_h = np.concatenate([0.2*HealthPrbsInit_h,0.05*HealthPrbsInit_h,0.75*HealthPrbsInit_h])
+MrkvPrbsInit_c = np.concatenate([0.1*HealthPrbsInit_c,0.05*HealthPrbsInit_c,0.85*HealthPrbsInit_c])
 EducWeight = [0.080,0.566,0.354]
 
-# Solve for survival probabilities at each health state for ages 24-60 by quasi-simulation
-HealthDstnNow = np.array(HealthPrbsInit)
-LivPrbYoung = np.zeros((5,60)) + np.nan
-omega_vec = np.zeros(60)
-HealthDstnHist = np.zeros((5,95))
-for t in range(95):
-    P = HealthDstnNow # For convenient typing
-    DiePrbFunc = lambda q : P[0]*norm.cdf(q + HealthMortCum[3]) + P[1]*norm.cdf(q + HealthMortCum[2]) + P[2]*norm.cdf(q + HealthMortCum[1]) + P[3]*norm.cdf(q + HealthMortCum[0]) + P[4]*norm.cdf(q)
-    LivPrbOut = lambda q : (1. - np.array([norm.cdf(q + HealthMortCum[3]),norm.cdf(q + HealthMortCum[2]),norm.cdf(q + HealthMortCum[1]),norm.cdf(q + HealthMortCum[0]),norm.cdf(q)]))**0.5
-    ObjFunc = lambda q : DiePrbBiannual[t] - DiePrbFunc(q)
-    if t < 60:
-        omega_t = newton(ObjFunc,-3.)
-        omega_vec[t] = omega_t
-        LivPrbYoung[:,t] = LivPrbOut(omega_t)
-        HealthDstnTemp = HealthDstnNow*LivPrbYoung[:,t] # Kill agents by health type
-        HealthDstnNow = HealthDstnTemp/np.sum(HealthDstnTemp) # Renormalize to a stochastic vector
-        HealthDstnNow = np.dot(HealthDstnNow,MrkvArrayYoung[t+6,:,:]) # Apply health transitions to survivors
-    else:
-        HealthDstnTemp = HealthDstnNow*LivPrbOld[:,t-26] # Kill agents by health type
-        HealthDstnNow = HealthDstnTemp/np.sum(HealthDstnTemp) # Renormalize to a stochastic vector
-        HealthDstnNow = np.dot(HealthDstnNow,MrkvArrayOld[:,:]) # Apply health transitions to survivors
-    HealthDstnHist[:,t] = HealthDstnNow
-    
-#plt.plot(np.cumsum(HealthDstnHist,axis=0).transpose())
-#plt.show()
-
-#plt.plot(HealthDstnHist.transpose())
-#plt.show()
-
 # Make the income shock standard deviations by age, from age 25-120
-retired_T = 55
-working_T = 40
+# These might need revising
 AgeCount = retired_T + working_T
 T_cycle = retired_T + working_T
-TranShkStd = (np.concatenate((np.linspace(0.1,0.12,4), 0.12*np.ones(4), np.linspace(0.12,0.075,15), np.linspace(0.074,0.007,16), np.zeros(retired_T+1))))**0.5
-#TranShkStd = np.concatenate([0.2*np.ones(working_T-1),np.zeros(retired_T+1)])
+TranShkStd = (np.concatenate((np.linspace(0.1,0.12,4), 0.12*np.ones(4), np.linspace(0.12,0.075,15), np.linspace(0.074,0.047,16), np.zeros(retired_T+1))))**0.5
 TranShkStd = np.ndarray.tolist(TranShkStd)
 PermShkStd = np.concatenate((((0.00011342*(np.linspace(24,64.75,working_T-1)-47)**2 + 0.01))**0.5,np.zeros(retired_T+1)))
-#PermShkStd = np.concatenate([0.15*np.ones(working_T-1),np.zeros(retired_T+1)])
 PermShkStd[31:39] = PermShkStd[30] # Don't extrapolate permanent shock stdev
 PermShkStd = np.ndarray.tolist(PermShkStd)
 TranShkStdAllHealth = []
@@ -189,39 +318,13 @@ for t in range(AgeCount):
     TranShkStdAllHealth.append(5*[TranShkStd[t]])
     PermShkStdAllHealth.append(5*[PermShkStd[t]])
 
-#plt.plot(Age+50,MortProbitEX(Age))
-#plt.plot(np.arange(24,84),omega_vec)
-#plt.show()
-
-# These are the results of ordered probits of h_t and age on h_t+1 using HRS data
-#f1 = lambda x : -.0474234*x + .0041993*x**2 - .0001465*x**3 + 1.78e-06*x**4
-#f2 = lambda x : .0156372*x - .0016657*x**2 + .0000403*x**3 - 2.43e-07*x**4
-#f3 = lambda x : -.0360361*x + .0032427*x**2 - .0001282*x**3 + 1.56e-06*x**4
-#f4 = lambda x : -.0267533*x + .002038*x**2 - .0000888*x**3 + 1.08e-06*x**4
-#f5 = lambda x : -.0211791*x +.0020567*x**2 - .0000981*x**3 + 1.20e-06*x**4
-#cuts1 = np.array([.0008348, .9714973, 1.636862, 2.213901])
-#cuts2 = np.array([-1.04425,.3155104,1.303483,2.11849])
-#cuts3 = np.array([-1.944034,-.9095382,.4746595,1.596067])
-#cuts4 = np.array([-2.38825,-1.600396,-.5677765,.9822929])
-#cuts5 = np.array([-2.462641,-1.833973,-1.10436,-.0848614])
-
-# Reformat the Markov array into a lifecycle list, from age 18 to 120
-MrkvArray = []
-for t in range(67): # Until age 85
-    MrkvArray.append(MrkvArrayYoung[t,:,:])
-for t in range(35): # Until age ~120
-    MrkvArray.append(MrkvArrayOld)
-MrkvArray = MrkvArray[7:] # Begin at age 25, dropping first 7 years
-
-# Reformat LivPrb into a lifeycle list, from age 25 to 120
-LivPrb = []
-#LivPrbYoung[:,:] = LivPrbYoung[4,:] # Shut off health-based mortality
-#LivPrbOld[:,:] = LivPrbOld[4,:]
-for t in range(40):
-    LivPrb.append(LivPrbYoung[:,t+1])
-for t in range(55):
-    LivPrb.append(LivPrbOld[:,t+15])
-LivPrb[-1] = np.array([0.,0.,0.,0.,0.])
+# Make an age-varying list of ESImrkvArray
+ESImrkvArray_list = []
+for t in range(working_T-1):
+    ESImrkvArray_list.append(copy(ESImrkvArray))
+ESImrkvArray_list.append(np.array([[1.],[1.],[1.]]))
+for t in range(retired_T):
+    ESImrkvArray_list.append(np.array([[1.]]))
     
 # Make education-specific health transitions, estimated directly from the MEPS
 f1 = lambda x :  .1780641*x - .0094783*x**2 + .0001773*x**3 - 1.12e-06*x**4
@@ -280,6 +383,13 @@ for j in range(3):
     MrkvArrayByEduc[:,4,3,j] = norm.cdf(cuts5[3] - fitted) - norm.cdf(cuts5[2] - fitted)
     MrkvArrayByEduc[:,4,4,j] = norm.cdf(np.inf   - fitted) - norm.cdf(cuts5[3] - fitted)
     
+# Make the array of health transitions after age 85
+MrkvArrayOld = np.array([[0.450,0.367,0.183,0.000,0.000],
+                        [0.140,0.445,0.290,0.115,0.010],
+                        [0.060,0.182,0.497,0.208,0.053],
+                        [0.032,0.090,0.389,0.342,0.147],
+                        [0.000,0.061,0.231,0.285,0.423]])
+    
 # Reformat the Markov array into lifecycle lists by education, from age 18 to 120
 MrkvArray_d = []
 MrkvArray_h = []
@@ -296,6 +406,37 @@ MrkvArray_d = MrkvArray_d[7:] # Begin at age 25, dropping first 7 years
 MrkvArray_h = MrkvArray_h[7:]
 MrkvArray_c = MrkvArray_c[7:]
 
+# Solve for survival probabilities at each health state for ages 24-60 by quasi-simulation
+HealthDstnNow = np.array(HealthPrbsInit)
+LivPrbYoung = np.zeros((5,60)) + np.nan
+omega_vec = np.zeros(60)
+HealthDstnHist = np.zeros((5,95))
+for t in range(95):
+    P = HealthDstnNow # For convenient typing
+    DiePrbFunc = lambda q : P[0]*norm.cdf(q + HealthMortCum[3]) + P[1]*norm.cdf(q + HealthMortCum[2]) + P[2]*norm.cdf(q + HealthMortCum[1]) + P[3]*norm.cdf(q + HealthMortCum[0]) + P[4]*norm.cdf(q)
+    LivPrbOut = lambda q : (1. - np.array([norm.cdf(q + HealthMortCum[3]),norm.cdf(q + HealthMortCum[2]),norm.cdf(q + HealthMortCum[1]),norm.cdf(q + HealthMortCum[0]),norm.cdf(q)]))**0.5
+    ObjFunc = lambda q : DiePrbBiannual[t] - DiePrbFunc(q)
+    if t < 60:
+        omega_t = newton(ObjFunc,-3.)
+        omega_vec[t] = omega_t
+        LivPrbYoung[:,t] = LivPrbOut(omega_t)
+        HealthDstnTemp = HealthDstnNow*LivPrbYoung[:,t] # Kill agents by health type
+        HealthDstnNow = HealthDstnTemp/np.sum(HealthDstnTemp) # Renormalize to a stochastic vector
+        HealthDstnNow = np.dot(HealthDstnNow,MrkvArrayByEduc[t+6,:,:,1]) # Apply health transitions to survivors
+    else:
+        HealthDstnTemp = HealthDstnNow*LivPrbOld[:,t-26] # Kill agents by health type
+        HealthDstnNow = HealthDstnTemp/np.sum(HealthDstnTemp) # Renormalize to a stochastic vector
+        HealthDstnNow = np.dot(HealthDstnNow,MrkvArrayOld[:,:]) # Apply health transitions to survivors
+    HealthDstnHist[:,t] = HealthDstnNow
+    
+# Reformat LivPrb into a lifeycle list, from age 25 to 120
+LivPrb = []
+for t in range(working_T):
+    LivPrb.append(LivPrbYoung[:,t+1])
+for t in range(retired_T):
+    LivPrb.append(LivPrbOld[:,t+15])
+LivPrb[-1] = np.array([0.,0.,0.,0.,0.])
+
 # Semi-arbitrary initial income levels (grab from data later)
 pLvlInitMean_d = np.log(2.0)
 pLvlInitMean_h = np.log(3.0)
@@ -311,7 +452,7 @@ PermGroFac_c = PermGroFac_c_base[1:] + 31*[PermGroFac_c_base[-1]]
 PermGroFac_dx = []
 PermGroFac_hx = []
 PermGroFac_cx = []
-for t in range(95):
+for t in range(working_T + retired_T):
     if t < working_T:
         PermGroFac_dx.append(5*[PermGroFac_d[t]+1.0])
         PermGroFac_hx.append(5*[PermGroFac_h[t]+1.0])
@@ -382,9 +523,33 @@ ZeroMedShkPrb_list = []
 for j in range(ZeroMedShkPrb.shape[0]):
     ZeroMedShkPrb_list.append(ZeroMedShkPrb[j,:])
     
+# Individual market premiums by age
+IMIpremiums = np.array([[ 0.52443952,  0.56815677,  0.57218412,  0.59311664,  0.5867773 ,
+         0.63538713,  0.63031934,  0.62102323,  0.63477115,  0.65781716,
+         0.66536708,  0.67518922,  0.68657593,  0.70874336,  0.74616299,
+         0.75882565,  0.76927548,  0.80853746,  0.80531018,  0.83498888,
+         0.86216834,  0.89672674,  0.93250396,  0.9655451 ,  1.00218659,
+         1.05063905,  1.08599153,  1.12964756,  1.15342225,  1.22744504,
+         1.28969391,  1.33457261,  1.40572558,  1.46544877,  1.51913245,
+         1.62561418,  1.68252505,  1.74386433,  1.8161294 ,  1.8973403 ],
+       [ 0.26700673,  0.27334264,  0.27815674,  0.28238801,  0.28621037,
+         0.28991167,  0.29379341,  0.29738653,  0.30060264,  0.30526831,
+         0.30846094,  0.31259336,  0.31806188,  0.32276284,  0.32859392,
+         0.33342674,  0.3404172 ,  0.34788198,  0.35654189,  0.36498224,
+         0.374123  ,  0.38606273,  0.39702154,  0.41121794,  0.42473861,
+         0.44100994,  0.45868553,  0.47450347,  0.49358079,  0.51353312,
+         0.53585553,  0.55682682,  0.57850262,  0.60369582,  0.62405809,
+         0.64716928,  0.6666223 ,  0.68925565,  0.71147287,  0.74279907]])
+
+# Define basic parameters of the economy
+HealthTaxFunc = SpecialTaxFunction(0.0,0.00) # Tax rate will be overwritten by installPremiumFuncs
+HealthTaxRate_init = 0.04515
+LoadFacESI   = 1.20 # Loading factor for employer sponsored insurance
+LoadFacIMI   = 1.20 # Loading factor for individual market insurance
+CohortGroFac = 1.01 # Year-on-year growth rate of population; each cohort is this factor larger than previous
+    
 # Make a basic dictionary with parameters that never change
 BasicDictionary = { 'Rfree': Rfree,
-                    'Cfloor': Cfloor,
                     'LivPrb': LivPrb,
                     'aXtraMin': aXtraMin,
                     'aXtraMax': aXtraMax,
@@ -407,13 +572,15 @@ BasicDictionary = { 'Rfree': Rfree,
                     'pLvlInitStd': pLvlInitStd,
                     'pLvlInitMean': pLvlInitMean,
                     'PermIncCorr': PermIncCorr,
+                    'TaxFunc': HealthTaxFunc,
                     'MedShkCount': MedShkCount,
                     'DevMin' : DevMin,
                     'DevMax' : DevMax,
                     'ZeroMedShkPrb': ZeroMedShkPrb_list,
                     'MedPrice': T_cycle*[MedPrice],
-                    'MrkvArray': MrkvArray,
+                    'ESImrkvArray': ESImrkvArray_list,
                     'MrkvPrbsInit': HealthPrbsInit,
+                    'HealthTaxRate': HealthTaxRate_init,
                     'T_cycle': T_cycle,
                     'T_sim': T_sim,
                     'AgentCount': AgentCount,
@@ -425,47 +592,50 @@ BasicDictionary = { 'Rfree': Rfree,
 # Make education-specific dictionaries
 DropoutDictionary = copy(BasicDictionary)
 DropoutDictionary['PermGroFac'] = PermGroFac_dx
-DropoutDictionary['MrkvPrbsInit'] = HealthPrbsInit_d
-DropoutDictionary['MrkvArray'] = MrkvArray_d
+DropoutDictionary['MrkvPrbsInit'] = MrkvPrbsInit_d
+DropoutDictionary['HealthMrkvArray'] = MrkvArray_d
+DropoutDictionary['ESImrkvFunc'] = ESImrkvFuncs_d
 DropoutDictionary['pLvlInitMean'] = pLvlInitMean_d
 DropoutDictionary['pLvlNextFuncRet'] = RetirementFunc_d
 HighschoolDictionary = copy(BasicDictionary)
 HighschoolDictionary['PermGroFac'] = PermGroFac_hx
-HighschoolDictionary['MrkvPrbsInit'] = HealthPrbsInit_h
-HighschoolDictionary['MrkvArray'] = MrkvArray_h
+HighschoolDictionary['MrkvPrbsInit'] = MrkvPrbsInit_h
+HighschoolDictionary['HealthMrkvArray'] = MrkvArray_h
+HighschoolDictionary['ESImrkvFunc'] = ESImrkvFuncs_h
 HighschoolDictionary['pLvlInitMean'] = pLvlInitMean_h
 HighschoolDictionary['pLvlNextFuncRet'] = RetirementFunc_h
 CollegeDictionary = copy(BasicDictionary)
 CollegeDictionary['PermGroFac'] = PermGroFac_cx
-CollegeDictionary['MrkvPrbsInit'] = HealthPrbsInit_c
-CollegeDictionary['MrkvArray'] = MrkvArray_c
+CollegeDictionary['MrkvPrbsInit'] = MrkvPrbsInit_c
+CollegeDictionary['HealthMrkvArray'] = MrkvArray_c
+CollegeDictionary['ESImrkvFunc'] = ESImrkvFuncs_c
 CollegeDictionary['pLvlInitMean'] = pLvlInitMean_c
 CollegeDictionary['pLvlNextFuncRet'] = RetirementFunc_c
 
 # Make a test parameter vector for estimation
-test_param_vec = np.array([0.92, # DiscFac
-                           3.3,  # CRRAcon
+test_param_vec = np.array([0.9265, # DiscFac
+                           2.7,  # CRRA
                            8.0,  # MedCurve 
                           -8.5,  # ChoiceShkMag in log
-                           2.6,  # SubsidyZeroRate scaler
-                         -1.51,  # SubsidyAvg
-                          -3.0,  # SubsidyWidth scaler
+                           0.16, # Cfloor
+                         -1.62,  # EmpContr
+                          -3.0,  # UNUSED
                           10.0,  # BequestShift shifter for bequest motive
                            3.0,  # BequestScale scale of bequest motive
-                         -3.45,  # MedShkMean constant coefficient
+                         -3.50,  # MedShkMean constant coefficient
                         0.0045,  # MedShkMean linear age coefficient
-                       0.00101,  # MedShkMean quadratic age coefficient
-                    -0.0000019,  # MedShkMean cubic age coefficient
-                   -0.00000013,  # MedShkMean quartic age coefficient
+                       0.00075,  # MedShkMean quadratic age coefficient
+                     0.0000080,  # MedShkMean cubic age coefficient
+                   -0.00000021,  # MedShkMean quartic age coefficient
                           0.25,  # MedShkMean "very good" constant coefficient
                         0.0025,  # MedShkMean "very good" linear coefficient
-                          0.30,  # MedShkMean "good" constant coefficient
+                          0.28,  # MedShkMean "good" constant coefficient
                         0.0000,  # MedShkMean "good" linear coefficient
-                          0.50,  # MedShkMean "fair" constant coefficient
-                       -0.0010,  # MedShkMean "fair" linear coefficient
-                          1.35,  # MedShkMean "poor" constant coefficient
-                        -0.014,  # MedShkMean "poor" linear coefficient
-                          0.40,  # MedShkStd constant coefficient
+                          0.45,  # MedShkMean "fair" constant coefficient
+                       -0.0011,  # MedShkMean "fair" linear coefficient
+                          1.20,  # MedShkMean "poor" constant coefficient
+                        -0.012,  # MedShkMean "poor" linear coefficient
+                          0.42,  # MedShkStd constant coefficient
                         -0.001,  # MedShkStd linear age coefficient
                            0.0,  # MedShkStd quadratic age coefficient
                            0.0,  # MedShkStd cubic age coefficient
@@ -480,41 +650,5 @@ test_param_vec = np.array([0.92, # DiscFac
                            0.0   # MedShkStd "poor" linear coefficient
                            ])
 
-# These are some parameters where things go crazy (only works with static model)
-#test_param_vec = np.array([0.9, # DiscFac
-#                           2.0,  # CRRAcon
-#                           20.,  # CRRAmed
-#                          -7.0,  # ChoiceShkMag in log
-#                           2.0,  # SubsidyZeroRate scaler
-#                           0.0,  # SubsidyAvg
-#                           0.0,  # SubsidyWidth scaler
-#                         -66.5,  # MedShkMean constant coefficient
-#                          0.40,  # MedShkMean linear age coefficient
-#                        0.0060,  # MedShkMean quadratic age coefficient
-#                     -0.000004,  # MedShkMean cubic age coefficient
-#                   -0.00000005,  # MedShkMean quartic age coefficient
-#                           5.5,  # MedShkMean "very good" constant coefficient
-#                           0.0,  # MedShkMean "very good" linear coefficient
-#                           6.0,  # MedShkMean "good" constant coefficient
-#                           0.0,  # MedShkMean "good" linear coefficient
-#                           8.0,  # MedShkMean "fair" constant coefficient
-#                         -0.00,  # MedShkMean "fair" linear coefficient
-#                          25.0,  # MedShkMean "poor" constant coefficient
-#                         -0.20,  # MedShkMean "poor" linear coefficient
-#                          3.25,  # MedShkStd constant coefficient
-#                         0.002,  # MedShkStd linear age coefficient
-#                           0.0,  # MedShkStd quadratic age coefficient
-#                           0.0,  # MedShkStd cubic age coefficient
-#                           0.0,  # MedShkStd quartic age coefficient
-#                           0.0,  # MedShkStd "very good" constant coefficient
-#                           0.0,  # MedShkStd "very good" linear coefficient
-#                           0.0,  # MedShkStd "good" constant coefficient
-#                           0.0,  # MedShkStd "good" linear coefficient
-#                           0.0,  # MedShkStd "fair" constant coefficient
-#                           0.0,  # MedShkStd "fair" linear coefficient
-#                           0.0,  # MedShkStd "poor" constant coefficient
-#                           0.0   # MedShkStd "poor" linear coefficient
-#                           ])
-    
 # This is very poor form, but I'm doing it anyway:
 PremiumsLast = np.zeros(5)    

@@ -104,7 +104,10 @@ def runCommands(agent,command_list):
 # ========  Define a parallel Nelder-Mead algorithm ==========
 #=============================================================
     
-def parallelNelderMead(objFunc,guess,perturb=None,P=1,ftol=0.000001,xtol=0.00000001,maxiter=np.inf,maxeval=np.inf,r_param=1.0,e_param=1.0,c_param=0.5,s_param=0.5,maxcores=None,name=None,resume=False,savefreq=None,verbose=1):
+def parallelNelderMead(objFunc,guess,perturb=None,P=1,ftol=0.000001,xtol=0.00000001,
+                       maxiter=np.inf,maxeval=np.inf,r_param=1.0,e_param=1.0,
+                       c_param=0.5,s_param=0.5,maxcores=None,name=None,resume=False,
+                       savefreq=None,verbose=1):
     '''
     A parallel implementation of the Nelder-Mead minimization algorithm, as
     described in Lee and Wiswall.  For long optimization procedures, it can
@@ -441,7 +444,7 @@ def parallelNelderMeadWorker(objFunc,simplex,f_vals,j,P,opt_params):
         else:
             temp_point = my_point
             temp_val = my_val
-        c_point = beta*(centroid + temp_point)
+        c_point = temp_point + beta*(centroid - temp_point)
         c_val = objFunc(c_point) # Calculate contraction point
         evals += 1
         if c_val < temp_val:
