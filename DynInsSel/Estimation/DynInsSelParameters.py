@@ -629,12 +629,12 @@ test_param_vec = np.array([0.9265, # DiscFac
                    -0.00000021,  # MedShkMean quartic age coefficient
                           0.25,  # MedShkMean "very good" constant coefficient
                         0.0025,  # MedShkMean "very good" linear coefficient
-                          0.28,  # MedShkMean "good" constant coefficient
-                        0.0000,  # MedShkMean "good" linear coefficient
-                          0.45,  # MedShkMean "fair" constant coefficient
-                       -0.0011,  # MedShkMean "fair" linear coefficient
-                          1.20,  # MedShkMean "poor" constant coefficient
-                        -0.012,  # MedShkMean "poor" linear coefficient
+                          0.53,  # MedShkMean "good" constant coefficient
+                        0.0025,  # MedShkMean "good" linear coefficient
+                          0.98,  # MedShkMean "fair" constant coefficient
+                        0.0014,  # MedShkMean "fair" linear coefficient
+                          2.18,  # MedShkMean "poor" constant coefficient
+                       -0.0106,  # MedShkMean "poor" linear coefficient
                           0.42,  # MedShkStd constant coefficient
                         -0.001,  # MedShkStd linear age coefficient
                            0.0,  # MedShkStd quadratic age coefficient
@@ -644,9 +644,9 @@ test_param_vec = np.array([0.9265, # DiscFac
                            0.0,  # MedShkStd "very good" linear coefficient
                            0.04, # MedShkStd "good" constant coefficient
                            0.0,  # MedShkStd "good" linear coefficient
-                           0.09, # MedShkStd "fair" constant coefficient
+                           0.13, # MedShkStd "fair" constant coefficient
                            0.0,  # MedShkStd "fair" linear coefficient
-                           0.02, # MedShkStd "poor" constant coefficient
+                           0.15, # MedShkStd "poor" constant coefficient
                            0.0   # MedShkStd "poor" linear coefficient
                            ])
 

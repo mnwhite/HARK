@@ -683,18 +683,20 @@ def makeDynInsSelType(CRRAcon,MedCurve,DiscFac,BequestShift,BequestScale,Cfloor,
     MedShkMeanArray = np.zeros((5,Params.AgeCount)) + np.nan
     MedShkStdArray  = np.zeros((5,Params.AgeCount)) + np.nan
     AgeArray = np.arange(Params.AgeCount,dtype=float)
-    MedShkMeanEXfunc = lambda age : MedShkMeanAgeParams[0] + MedShkMeanAgeParams[1]*age + MedShkMeanAgeParams[2]*age**2 \
+    MedShkMeanBaseFunc = lambda age : MedShkMeanAgeParams[0] + MedShkMeanAgeParams[1]*age + MedShkMeanAgeParams[2]*age**2 \
                         + MedShkMeanAgeParams[3]*age**3 + MedShkMeanAgeParams[4]*age**4
-    MedShkMeanVGfunc = lambda age : MedShkMeanEXfunc(age) + MedShkMeanVGparams[0] + MedShkMeanVGparams[1]*age
-    MedShkMeanGDfunc = lambda age : MedShkMeanVGfunc(age) + MedShkMeanGDparams[0] + MedShkMeanGDparams[1]*age
-    MedShkMeanFRfunc = lambda age : MedShkMeanGDfunc(age) + MedShkMeanFRparams[0] + MedShkMeanFRparams[1]*age
-    MedShkMeanPRfunc = lambda age : MedShkMeanFRfunc(age) + MedShkMeanPRparams[0] + MedShkMeanPRparams[1]*age
-    MedShkStdEXfunc = lambda age : MedShkStdAgeParams[0] + MedShkStdAgeParams[1]*age + MedShkStdAgeParams[2]*age**2 \
+    MedShkMeanEXfunc = lambda age : MedShkMeanBaseFunc(age)
+    MedShkMeanVGfunc = lambda age : MedShkMeanBaseFunc(age) + MedShkMeanVGparams[0] + MedShkMeanVGparams[1]*age
+    MedShkMeanGDfunc = lambda age : MedShkMeanBaseFunc(age) + MedShkMeanGDparams[0] + MedShkMeanGDparams[1]*age
+    MedShkMeanFRfunc = lambda age : MedShkMeanBaseFunc(age) + MedShkMeanFRparams[0] + MedShkMeanFRparams[1]*age
+    MedShkMeanPRfunc = lambda age : MedShkMeanBaseFunc(age) + MedShkMeanPRparams[0] + MedShkMeanPRparams[1]*age
+    MedShkStdBaseFunc = lambda age : MedShkStdAgeParams[0] + MedShkStdAgeParams[1]*age + MedShkStdAgeParams[2]*age**2 \
                         + MedShkStdAgeParams[3]*age**3 + MedShkStdAgeParams[4]*age**4
-    MedShkStdVGfunc = lambda age : MedShkStdEXfunc(age) + MedShkStdVGparams[0] + MedShkStdVGparams[1]*age
-    MedShkStdGDfunc = lambda age : MedShkStdVGfunc(age) + MedShkStdGDparams[0] + MedShkStdGDparams[1]*age
-    MedShkStdFRfunc = lambda age : MedShkStdGDfunc(age) + MedShkStdFRparams[0] + MedShkStdFRparams[1]*age
-    MedShkStdPRfunc = lambda age : MedShkStdFRfunc(age) + MedShkStdPRparams[0] + MedShkStdPRparams[1]*age
+    MedShkStdEXfunc = lambda age : MedShkStdBaseFunc(age)
+    MedShkStdVGfunc = lambda age : MedShkStdBaseFunc(age) + MedShkStdVGparams[0] + MedShkStdVGparams[1]*age
+    MedShkStdGDfunc = lambda age : MedShkStdBaseFunc(age) + MedShkStdGDparams[0] + MedShkStdGDparams[1]*age
+    MedShkStdFRfunc = lambda age : MedShkStdBaseFunc(age) + MedShkStdFRparams[0] + MedShkStdFRparams[1]*age
+    MedShkStdPRfunc = lambda age : MedShkStdBaseFunc(age) + MedShkStdPRparams[0] + MedShkStdPRparams[1]*age
     MedShkMeanArray[4,:] = MedShkMeanEXfunc(AgeArray)
     MedShkMeanArray[3,:] = MedShkMeanVGfunc(AgeArray)
     MedShkMeanArray[2,:] = MedShkMeanGDfunc(AgeArray)
@@ -940,7 +942,7 @@ def objectiveFunction(Parameters, return_market=False):
     multiThreadCommandsFake(MyMarket.agents,['makeIncBoolArray()'])
     
     if EvalType == 0:
-        multiThreadCommandsFake(MyMarket.agents,['solve()'])
+        multiThreadCommands(MyMarket.agents,['solve()'])
     else:
         MyMarket.max_loops = EvalType
         MyMarket.solve()
@@ -964,9 +966,9 @@ if __name__ == '__main__':
     import matplotlib.pyplot as plt
     mystr = lambda number : "{:.4f}".format(number)
     
-    test_obj_func = False
+    test_obj_func = True
     test_one_type = False
-    perturb_one_param = True
+    perturb_one_param = False
     
     if test_obj_func:
     # This block is for actually testing the objective function
