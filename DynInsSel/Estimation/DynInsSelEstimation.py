@@ -261,9 +261,9 @@ class DynInsSelMarket(InsuranceMarket):
                     Offered = ThisType.MrkvHist[t,:] >= 5
                     NotOffered = np.logical_and(ThisType.MrkvHist[t,:] < 5, ThisType.MrkvHist[t,:] >= 0) 
                     HaveESI = np.logical_and(Insured, Offered)
-                    ESIcount += np.sum(HaveESI)
+                    ESIcount += np.sum(ThisType.InsProbNow_hist[t,Offered])
                     OfferedCount += np.sum(Offered)
-                    IMIcount += np.sum(np.logical_and(Insured,NotOffered))
+                    IMIcount += np.sum(ThisType.InsProbNow_hist[t,NotOffered])
                     NotOfferedCount += np.sum(NotOffered)
                     ZeroCount += np.sum(np.logical_and(HaveESI, ThisType.MrkvHist[t,:] <= 9))
                     PremiumList.append(ThisType.PremNow_hist[t,HaveESI])
@@ -341,9 +341,9 @@ class DynInsSelMarket(InsuranceMarket):
                         Offered = MrkvTemp >= 5
                         NotOffered = np.logical_and(MrkvTemp < 5, MrkvTemp >= 0) 
                         HaveESI = np.logical_and(Insured, Offered)
-                        ESIcount += np.sum(HaveESI)
+                        ESIcount += np.sum(ThisType.InsProbNow_hist[bot:top,:][these][Offered])
                         OfferedCount += np.sum(Offered)
-                        IMIcount += np.sum(np.logical_and(Insured,NotOffered))
+                        IMIcount += np.sum(ThisType.InsProbNow_hist[bot:top,:][these][NotOffered])
                         NotOfferedCount += np.sum(NotOffered)
                         ZeroCount += np.sum(np.logical_and(HaveESI, MrkvTemp <= 9))
                         PremiumList.append(ThisType.PremNow_hist[bot:top,:][these][HaveESI])
@@ -424,9 +424,9 @@ class DynInsSelMarket(InsuranceMarket):
                     NotOfferedCount += np.sum(NotOffered)
                     WealthRatioList.append(ThisType.WealthRatioHist[bot:top,:][these])
                     HaveESI = np.logical_and(Insured,Offered)
-                    ESIcount += np.sum(HaveESI)
-                    HaveIMI = np.logical_and(Insured,NotOffered)
-                    IMIcount += np.sum(HaveIMI)
+                    ESIcount += np.sum(ThisType.InsProbNow_hist[bot:top,:][these][Offered])
+                    #HaveIMI = np.logical_and(Insured,NotOffered)
+                    IMIcount += np.sum(ThisType.InsProbNow_hist[bot:top,:][these][NotOffered])
                     ZeroCount += np.sum(np.logical_and(HaveESI, MrkvTemp <= 9))
                     PremiumList.append(ThisType.PremNow_hist[bot:top,][these][HaveESI])
                     TotalMedSum += np.sum(ThisType.TotalMedHist[bot:top,:][these][HaveESI])
@@ -464,7 +464,7 @@ class DynInsSelMarket(InsuranceMarket):
         self.MeanESIpremiumByAge = MeanESIpremiumByAge*10000
         self.StdevESIpremiumByAge = StdevESIpremiumByAge*10000
         self.NoPremShareRateByAge = NoPremShareRateByAge
-        self.MedianWealthRatioByAge = MeanWealthRatioByAge # CHANGE THIS BACK
+        self.MedianWealthRatioByAge = MeanWealthRatioByAge # CHANGE THIS BACK?
         self.MeanLogOOPmedByAgeHealth = MeanLogOOPmedByAgeHealth + np.log(10000)
         self.MeanLogTotalMedByAgeHealth = MeanLogTotalMedByAgeHealth + np.log(10000)
         self.StdevLogOOPmedByAgeHealth = StdevLogOOPmedByAgeHealth
@@ -787,7 +787,7 @@ def makeDynInsSelType(CRRAcon,MedCurve,DiscFac,BequestShift,BequestScale,Cfloor,
     
     # Make and return a DynInsSelType
     ThisType = DynInsSelType(**TypeDict)
-    ThisType.track_vars = ['aLvlNow','mLvlNow','BudgetNow','cLvlNow','MedLvlNow','PremNow','ContractNow','OOPnow']
+    ThisType.track_vars = ['aLvlNow','mLvlNow','BudgetNow','cLvlNow','MedLvlNow','PremNow','ContractNow','OOPnow','InsProbNow']
     ThisType.EmpContr = EmpContr
     if EmpContr == 0.0:
         ThisType.ZeroSubsidyBool = True
@@ -1193,9 +1193,9 @@ if __name__ == '__main__':
         
     if perturb_one_param:
         # Test model identification by perturbing one parameter at a time
-        param_i = 0
-        param_min = 0.923
-        param_max = 0.9255
+        param_i = 1
+        param_min = 2.735
+        param_max = 2.760
         
         N = 35
         perturb_vec = np.linspace(param_min,param_max,num=N)

@@ -1859,6 +1859,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         SubsidyNow = np.zeros_like(mLvlNow)
         MedicareNow = np.zeros_like(mLvlNow)
         ContractNow = -np.ones(self.AgentCount,dtype=int)
+        InsProbNow = np.zeros_like(mLvlNow) + np.nan
 
         # Loop through each health state and get agents' controls
         for h in range(StateCountNow):
@@ -1892,6 +1893,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
                 v_sum_rep = np.tile(np.reshape(np.sum(v_adj_exp,axis=1),(N,1)),(1,Z))
                 ChoicePrbs = v_adj_exp/v_sum_rep
                 Cutoffs = np.cumsum(ChoicePrbs,axis=1)
+                InsProbNow[these] = 1.0 - ChoicePrbs[:,0]
                 
                 # Select a contract for each agent based on the unified preference shock
                 PrefShk_temp = np.tile(np.reshape(PrefShkNow[these],(N,1)),(1,Z))
@@ -1987,6 +1989,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         self.OOPnow = OOPnow
         self.PremNow = PremNow
         self.ContractNow = ContractNow
+        self.InsProbNow = InsProbNow
         
         
     def calcExpInsPayByContract(self):
