@@ -715,9 +715,9 @@ def makeDynInsSelType(CRRAcon,MedCurve,DiscFac,BequestShift,BequestScale,Cfloor,
         MedShkMeanPR85 = MedShkMeanPRfunc(60.)
         MedShkSlopeEX85 = MedShkMeanAgeParams[1] + 2*MedShkMeanAgeParams[2]*60 + 3*MedShkMeanAgeParams[3]*60**2 + 4*MedShkMeanAgeParams[4]*60**3
         MedShkSlopeVG85 = MedShkSlopeEX85 + MedShkMeanVGparams[1]
-        MedShkSlopeGD85 = MedShkSlopeVG85 + MedShkMeanGDparams[1]
-        MedShkSlopeFR85 = MedShkSlopeGD85 + MedShkMeanFRparams[1]
-        MedShkSlopePR85 = MedShkSlopeFR85 + MedShkMeanPRparams[1]
+        MedShkSlopeGD85 = MedShkSlopeEX85 + MedShkMeanGDparams[1]
+        MedShkSlopeFR85 = MedShkSlopeEX85 + MedShkMeanFRparams[1]
+        MedShkSlopePR85 = MedShkSlopeEX85 + MedShkMeanPRparams[1]
         EX_A = -MedShkSlopeEX85/70.
         EX_B = 19./7.*MedShkSlopeEX85
         EX_C = MedShkMeanEX85 - 3600*EX_A - 60*EX_B        
@@ -738,6 +738,12 @@ def makeDynInsSelType(CRRAcon,MedCurve,DiscFac,BequestShift,BequestScale,Cfloor,
         MedShkMeanArray[2,60:] = GD_A*AgeArray[60:]**2 + GD_B*AgeArray[60:] + GD_C
         MedShkMeanArray[1,60:] = FR_A*AgeArray[60:]**2 + FR_B*AgeArray[60:] + FR_C
         MedShkMeanArray[0,60:] = PR_A*AgeArray[60:]**2 + PR_B*AgeArray[60:] + PR_C
+        
+        MedShkStdArray[4,60:] = MedShkStdArray[4,59]
+        MedShkStdArray[3,60:] = MedShkStdArray[3,59]
+        MedShkStdArray[2,60:] = MedShkStdArray[2,59]
+        MedShkStdArray[1,60:] = MedShkStdArray[1,59]
+        MedShkStdArray[0,60:] = MedShkStdArray[0,59]
                 
     if Taper > 1:
         MedShkMeanArray[:,60:] = np.tile(np.reshape(MedShkMeanArray[:,60],(5,1)),(1,35)) # Hold distribution constant after age 85
@@ -926,7 +932,7 @@ def objectiveFunction(Parameters, return_market=False):
     TestPremiums = True # Whether to start with the test premium level
     
     if TestPremiums:
-        ESIpremiums = np.array([0.3000, 0.0, 0.0, 0.0, 0.0])
+        ESIpremiums = np.array([0.3380, 0.0, 0.0, 0.0, 0.0])
     else:
         ESIpremiums = Params.PremiumsLast
     IMIpremiums_init = Params.IMIpremiums
@@ -942,7 +948,7 @@ def objectiveFunction(Parameters, return_market=False):
     multiThreadCommandsFake(MyMarket.agents,['makeIncBoolArray()'])
     
     if EvalType == 0:
-        multiThreadCommands(MyMarket.agents,['solve()'])
+        multiThreadCommandsFake(MyMarket.agents,['solve()'])
     else:
         MyMarket.max_loops = EvalType
         MyMarket.solve()
@@ -966,9 +972,9 @@ if __name__ == '__main__':
     import matplotlib.pyplot as plt
     mystr = lambda number : "{:.4f}".format(number)
     
-    test_obj_func = True
+    test_obj_func = False
     test_one_type = False
-    perturb_one_param = False
+    perturb_one_param = True
     
     if test_obj_func:
     # This block is for actually testing the objective function
@@ -1195,9 +1201,9 @@ if __name__ == '__main__':
         
     if perturb_one_param:
         # Test model identification by perturbing one parameter at a time
-        param_i = 1
-        param_min = 2.735
-        param_max = 2.760
+        param_i = 27
+        param_min = 0.00
+        param_max = 0.10
         
         N = 35
         perturb_vec = np.linspace(param_min,param_max,num=N)

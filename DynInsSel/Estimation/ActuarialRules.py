@@ -410,7 +410,7 @@ def ageHealthRatedActuarialRule(self,ExpInsPay,ExpBuyers):
         try:
             NewPremiums = (1.0-DampingFac)*(self.LoadFacIMI*AvgInsPay + 0.2) + DampingFac*self.IMIpremiums[:,g,:]
         except:
-            NewPremiums = self.LoadFacIMI*AvgInsPay + 0.2
+            NewPremiums = self.LoadFacIMI*AvgInsPay + 0.12
         NewPremiums[:,0] = 0.0 # First contract is always free
         PremiumArray[:,g,:] = NewPremiums
         if ExcludedGroups[g]:
