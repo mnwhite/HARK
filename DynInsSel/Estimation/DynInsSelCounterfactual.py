@@ -302,7 +302,7 @@ def makeCounterfactualFigures(specification,AgeHealthLim,AgeIncomeLim,OfferAgeLi
     # Make a plot of insured rate by age (and income) in the after scenario
     IMIinsuredRateByAgeIncome = np.zeros((T,5))
     for t in range(T):
-        these = np.logical_and(age == t, np.logical_not(offer))
+        these = age == t
         p_temp = pLvl[these]
         i_temp = iAfter[these]
         quintile_cuts = getPercentiles(p_temp,percentiles=[0.2,0.4,0.6,0.8])
@@ -310,7 +310,7 @@ def makeCounterfactualFigures(specification,AgeHealthLim,AgeIncomeLim,OfferAgeLi
         for i in range(4):
             quintiles[p_temp > quintile_cuts[i]] += 1
         for i in range(5):
-            those = quintiles==i
+            those = np.logical_and(quintiles==i, np.logical_not(offer))
             IMIinsuredRateByAgeIncome[t,i] = float(np.sum(i_temp[those]))/float(np.sum(those))
     plt.plot(AgeVec,IMIinsuredRateByAge,'--k')
     plt.plot(AgeVec,IMIinsuredRateByAgeIncome,'-')
@@ -391,23 +391,6 @@ def makeCounterfactualFigures(specification,AgeHealthLim,AgeIncomeLim,OfferAgeLi
     plt.savefig(FigsDir + 'WTPbyAgeOffer' + specification.name + '.pdf')
     plt.show()
     
-#    for a in range(4):
-#        age_min = a*10
-#        age_max = age_min+10
-#        these = np.logical_and(np.logical_and(age >= age_min,age < age_max), valid)
-#        p_temp = pLvl[these]
-#        cuts = getPercentiles(p_temp,percentiles=[0.01,0.99])
-#        f = kernelRegression(p_temp,WTP[these],bot=cuts[0],top=20.,N=200,h=0.5)
-#        P = np.linspace(cuts[0],20.,200)
-#        plt.plot(P*10,f(P)*100,'-')
-#    plt.xlabel('Permanent income level (thousands of USD)')
-#    plt.ylabel('Willingness-to-pay (% of permanent income)')
-#    plt.title('Mean willingness-to-pay by income and age, ' + specification.text)
-#    plt.legend(labels=['Age 25-34','Age 35-44','Age 45-54','Age 55-64'],loc=1)
-#    plt.ylim(IncomeAgeLim)
-#    plt.savefig(FigsDir + 'WTPbyAgeIncome' + specification.name + '.pdf')
-#    plt.show()
-    
     # Make a plot of kernel regression of willingness to pay by permanent income and health
     for h in range(5):
         these = np.logical_and(health==h, valid)
@@ -425,6 +408,284 @@ def makeCounterfactualFigures(specification,AgeHealthLim,AgeIncomeLim,OfferAgeLi
     plt.show()
 
         
+
+def makeCrossPolicyFigures(name,specifications,AgeHealthLim,AgeIncomeLim,AgeOfferLim):
+    '''
+    Produces many figures to graphically represent the results of a counterfactual
+    experiment and saves them to the folder ../CounterfactualFigures.
+    
+    Parameters
+    ----------
+    name : str
+        Filename prefix for this set of specifications
+    specifications : [ActuarialSpecification]
+        Counterfactual specification whose figures are to be produced.
+    AgeHealthLim : [float,float]
+        Vertical axis limits for the age-health WTP plot.
+    AgeIncomeLim : [float,float]
+        Vertical axis limits for the income-age WTP plot.
+    AgeOfferLim : [float,float]
+        Vertical axis limits for the offer-age WTP plot
+        
+    Returns
+    -------
+    None
+    '''
+    T = 40
+    P = len(specifications)
+    
+    # Initialize arrays to hold counterfactual results
+    IMIinsuredRateByAge = np.zeros((P,T))
+    IMIinsuredRateByAgeGoodHealth = np.zeros((P,T))
+    IMIinsuredRateByAgeBadHealth = np.zeros((P,T))
+    IMIinsuredRateByAgeHighInc = np.zeros((P,T))
+    IMIinsuredRateByAgeMidInc = np.zeros((P,T))
+    IMIinsuredRateByAgeLowInc = np.zeros((P,T))
+    WTPmeanByAge = np.zeros((P,T))
+    WTPmeanByAgeGoodHealth = np.zeros((P,T))
+    WTPmeanByAgeBadHealth = np.zeros((P,T))
+    WTPmeanByAgeHighInc = np.zeros((P,T))
+    WTPmeanByAgeMidInc = np.zeros((P,T))
+    WTPmeanByAgeLowInc = np.zeros((P,T))
+    WTPmeanByAgeIMI = np.zeros((P,T))
+    WTPmeanByAgeESI = np.zeros((P,T))
+    label_list = []
+    
+    for p in range(P):
+        specification = specifications[p]
+        print('Processing the specification labeled ' + specification.text + '...')
+        label_list.append(specification.text)
+        
+        with open('../Results/' + specification.name + 'Data.txt','r') as f:
+            my_reader = csv.reader(f, delimiter = '\t')
+            all_data = list(my_reader)
+        FigsDir = '../CounterfactualFigs/'
+        
+        # Initialize data arrays
+        N = len(all_data) - 1
+        T = 40
+        age = np.zeros(N,dtype=int)
+        health = np.zeros(N,dtype=int)
+        offer = np.zeros(N,dtype=int)
+        mLvl = np.zeros(N,dtype=float)
+        pLvl = np.zeros(N,dtype=float)
+        pComp = np.zeros(N,dtype=float)
+        invalid = np.zeros(N,dtype=bool)
+        iBefore = np.zeros(N,dtype=bool)
+        iAfter = np.zeros(N,dtype=bool)
+        
+        # Read in the data
+        for i in range(N):
+            j = i+1
+            age[i] = int(float(all_data[j][0]))
+            health[i] = int(float(all_data[j][1]))
+            offer[i] = int(float(all_data[j][2]))
+            mLvl[i] = float(all_data[j][3])
+            pLvl[i] = float(all_data[j][4])
+            pComp[i] = float(all_data[j][5])
+            invalid[i] = bool(float(all_data[j][6]))
+            iBefore[i] = bool(float(all_data[j][7]))
+            iAfter[i] = bool(float(all_data[j][8]))  
+        WTP = 1. - pComp/pLvl
+        valid = np.logical_not(invalid)
+        
+        good_health = health >= 3
+        bad_health = health < 3
+        
+        # Calculate IMI insured rate for this policy by age and health
+        for t in range(T):
+            these = np.logical_and(age == t, np.logical_not(offer))
+            IMIinsuredRateByAge[p,t] = float(np.sum(iAfter[these]))/float(np.sum(these))
+            those = np.logical_and(these, good_health)
+            IMIinsuredRateByAgeGoodHealth[p,t] = float(np.sum(iAfter[those]))/float(np.sum(those))
+            those = np.logical_and(these, bad_health)
+            IMIinsuredRateByAgeBadHealth[p,t] = float(np.sum(iAfter[those]))/float(np.sum(those))
+        
+        # Calculate mean WTP by age, health, and offer status
+        for t in range(T):
+            these = np.logical_and(age == t, valid)
+            WTPmeanByAge[p,t] = np.mean(WTP[these])
+            those = np.logical_and(these, good_health)
+            WTPmeanByAgeGoodHealth[p,t] = np.mean(WTP[those])
+            those = np.logical_and(these, bad_health)
+            WTPmeanByAgeBadHealth[p,t] = np.mean(WTP[those])
+            those = np.logical_and(these, offer)
+            WTPmeanByAgeESI[p,t] = np.mean(WTP[those])
+            those = np.logical_and(these, np.logical_not(offer))
+            WTPmeanByAgeIMI[p,t] = np.mean(WTP[those])
+            
+        # Calculate IMI insured rate and WTP for this policy by age and income       
+        for t in range(T):
+            these = age == t
+            p_temp = pLvl[these]
+            i_temp = iAfter[these]
+            WTP_temp = WTP[these]
+            group_cuts = getPercentiles(p_temp,percentiles=[0.2,0.8])
+            group = np.zeros(np.sum(these),dtype=int)
+            for i in range(2):
+                group[p_temp > group_cuts[i]] += 1
+            IMI_temp = np.logical_not(offer[these])
+            those = np.logical_and(group == 0, IMI_temp)
+            IMIinsuredRateByAgeLowInc[p,t] = float(np.sum(i_temp[those]))/float(np.sum(those))
+            those = np.logical_and(group == 1, IMI_temp)
+            IMIinsuredRateByAgeMidInc[p,t] = float(np.sum(i_temp[those]))/float(np.sum(those))
+            those = np.logical_and(group == 2, IMI_temp)
+            IMIinsuredRateByAgeHighInc[p,t] = float(np.sum(i_temp[those]))/float(np.sum(those))
+            
+            group = np.zeros(np.sum(these),dtype=int)
+            for i in range(2):
+                group[p_temp > group_cuts[i]] += 1
+            group[np.logical_not(valid[these])] = -1
+            those = group == 0
+            WTPmeanByAgeLowInc[p,t] = np.mean(WTP_temp[those])
+            those = group == 1
+            WTPmeanByAgeMidInc[p,t] = np.mean(WTP_temp[those])
+            those = group == 2
+            WTPmeanByAgeHighInc[p,t] = np.mean(WTP_temp[those])
+            
+    
+    line_styles = ['-b','-g','-r','-c','-m']
+    AgeVec = np.arange(25,65)
+    
+    plt.figure(figsize=(6.4,5.0))
+    
+    plt.subplot(3,2,1)
+    for p in range(P):
+        plt.plot(AgeVec,IMIinsuredRateByAge[p,:], line_styles[p])
+    #plt.xlabel('Age')
+    plt.ylabel('Overall')
+    plt.xlim(25,65)
+    plt.ylim(0.,1.)
+    plt.xticks([])
+    
+    plt.subplot(3,2,3)
+    for p in range(P):
+        plt.plot(AgeVec,IMIinsuredRateByAgeGoodHealth[p,:], line_styles[p])
+    #plt.xlabel('Age')
+    plt.ylabel('Healthy')
+    plt.xlim(25,65)
+    plt.ylim(0.,1.)
+    plt.xticks([])
+    
+    plt.subplot(3,2,5)
+    for p in range(P):
+        plt.plot(AgeVec,IMIinsuredRateByAgeBadHealth[p,:], line_styles[p])
+    plt.xlabel('Age')
+    plt.ylabel('Unhealthy')
+    plt.xlim(25,65)
+    plt.ylim(0.,1.)
+    plt.legend(labels=label_list,bbox_to_anchor=(0., -0.55, 2.5, .102), loc=10,
+           ncol=P, mode="expand")
+    
+    plt.subplot(3,2,2)
+    for p in range(P):
+        plt.plot(AgeVec,IMIinsuredRateByAgeHighInc[p,:], line_styles[p])
+    #plt.xlabel('Age')
+    plt.ylabel('High income')
+    plt.xlim(25,65)
+    plt.ylim(0.,1.)
+    plt.xticks([])
+    
+    plt.subplot(3,2,4)
+    for p in range(P):
+        plt.plot(AgeVec,IMIinsuredRateByAgeMidInc[p,:], line_styles[p])
+    #plt.xlabel('Age')
+    plt.ylabel('Mid income')
+    plt.xlim(25,65)
+    plt.ylim(0.,1.)
+    plt.xticks([])
+    
+    plt.subplot(3,2,6)
+    for p in range(P):
+        plt.plot(AgeVec,IMIinsuredRateByAgeLowInc[p,:], line_styles[p])
+    plt.xlabel('Age')
+    plt.ylabel('Low income')
+    plt.xlim(25,65)
+    plt.ylim(0.,1.)
+    
+    plt.suptitle('Individual market insured rate across counterfactual policies',y=1.02)
+    plt.tight_layout()
+    plt.savefig(FigsDir + name + 'InsuredRateIMI.pdf',bbox_inches='tight')
+    plt.show()
+    
+    
+    
+    plt.figure(figsize=(6.4,6.6))
+    
+    plt.subplot(4,2,1)
+    for p in range(P):
+        plt.plot(AgeVec,WTPmeanByAge[p,:]*100, line_styles[p])
+    plt.ylabel('Overall')
+    plt.xlim(25,65)
+    #plt.ylim(0.,1.)
+    plt.xticks([])
+    
+    plt.subplot(4,2,3)
+    for p in range(P):
+        plt.plot(AgeVec,WTPmeanByAgeGoodHealth[p,:]*100, line_styles[p])
+    plt.ylabel('Healthy')
+    plt.xlim(25,65)
+    plt.ylim(AgeHealthLim[0],AgeHealthLim[1])
+    plt.xticks([])
+    
+    plt.subplot(4,2,5)
+    for p in range(P):
+        plt.plot(AgeVec,WTPmeanByAgeBadHealth[p,:]*100, line_styles[p])
+    plt.ylabel('Unhealthy')
+    plt.xlim(25,65)
+    plt.ylim(AgeHealthLim[0],AgeHealthLim[1])
+    plt.xticks([])
+    
+    plt.subplot(4,2,7)
+    for p in range(P):
+        plt.plot(AgeVec,WTPmeanByAgeIMI[p,:]*100, line_styles[p])
+    plt.xlabel('Age')
+    plt.ylabel('Not offered ESI')
+    plt.xlim(25,65)
+    plt.ylim(AgeOfferLim[0],AgeOfferLim[1])
+    plt.legend(labels=label_list,bbox_to_anchor=(0., -0.55, 2.5, .102), loc=10,
+           ncol=P, mode="expand")
+    
+    plt.subplot(4,2,2)
+    for p in range(P):
+        plt.plot(AgeVec,WTPmeanByAgeHighInc[p,:]*100, line_styles[p])
+    plt.ylabel('High income')
+    plt.xlim(25,65)
+    plt.ylim(AgeIncomeLim[0],AgeIncomeLim[1])
+    plt.xticks([])
+    
+    plt.subplot(4,2,4)
+    for p in range(P):
+        plt.plot(AgeVec,WTPmeanByAgeMidInc[p,:]*100, line_styles[p])
+    plt.ylabel('Mid income')
+    plt.xlim(25,65)
+    plt.ylim(AgeIncomeLim[0],AgeIncomeLim[1])
+    plt.xticks([])
+    
+    plt.subplot(4,2,6)
+    for p in range(P):
+        plt.plot(AgeVec,WTPmeanByAgeLowInc[p,:]*100, line_styles[p])
+    plt.ylabel('Low income')
+    plt.xlim(25,65)
+    plt.ylim(AgeIncomeLim[0],AgeIncomeLim[1])
+    plt.xticks([])
+    
+    plt.subplot(4,2,8)
+    for p in range(P):
+        plt.plot(AgeVec,WTPmeanByAgeESI[p,:]*100, line_styles[p])
+    plt.xlabel('Age')
+    plt.ylabel('Offered ESI')
+    plt.xlim(25,65)
+    plt.ylim(AgeOfferLim[0],AgeOfferLim[1])
+    
+    plt.suptitle('Mean WTP (as % of permanent income) for counterfactual policies',y=1.02)
+    plt.tight_layout()
+    plt.savefig(FigsDir + name + 'WTPmean.pdf',bbox_inches='tight')
+    plt.show()
+        
+        
+    
+
 
 ###############################################################################
 ###############################################################################
@@ -540,7 +801,7 @@ if __name__ == '__main__':
     
     # Choose which experiments to work on
     do_trivial = False
-    do_health_groups = True
+    do_health_groups = False
     do_age_bands = False
     do_mandate_tax = False
     do_eligibility_cutoff = False
@@ -548,7 +809,7 @@ if __name__ == '__main__':
     
     # Choose what kind of work to do
     run_experiments = False
-    make_figures = True
+    make_figures = False
     
     if do_trivial:
         if run_experiments:
@@ -630,6 +891,9 @@ if __name__ == '__main__':
         if make_figures:
             # Make figures for the maximum OOP premium (FPL pct) experiments
             for specification in ACAaltMaxOOPpctSpecs:
-                makeCounterfactualFigures(specification,[-2,10],[-2,10],[-2,10],[-2,10])             
+                makeCounterfactualFigures(specification,[-2,10],[-2,10],[-2,10],[-2,10])
+                
+                
+    #makeCrossPolicyFigures('AgeBand531',[AgeBandSpecs[1],AgeBandSpecs[11],AgeBandSpecs[-1]],[-2.,4.],[-2.,8.],[-4.,9.])
     
     

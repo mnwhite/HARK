@@ -524,22 +524,22 @@ for j in range(ZeroMedShkPrb.shape[0]):
     ZeroMedShkPrb_list.append(ZeroMedShkPrb[j,:])
     
 # Individual market premiums by age
-IMIpremiums = np.array([[0.56331433,  0.62422374,  0.64507266,  0.68053228,  0.67998574,
-          0.75146384,  0.76266865,  0.75444025,  0.78179675,  0.82307501,
-          0.83918211,  0.86488015,  0.89469897,  0.93100952,  0.99588788,
-          1.01824302,  1.03831185,  1.10967969,  1.11128327,  1.15893574,
-          1.209857  ,  1.2651165 ,  1.32688271,  1.37294196,  1.42558945,
-          1.5093768 ,  1.56153356,  1.63354643,  1.66308769,  1.77215961,
-          1.86164924,  1.92256987,  2.02619305,  2.10311368,  2.16235787,
-          2.31892249,  2.36467425,  2.43732913,  2.5228908 ,  2.57999338],
-        [ 0.3027577 ,  0.3076634 ,  0.31456955,  0.32140919,  0.32698222,
-          0.33294988,  0.33913139,  0.34550911,  0.35030406,  0.35753015,
-          0.36250326,  0.3687402 ,  0.37695683,  0.38408171,  0.39344306,
-          0.40152776,  0.41227864,  0.42408391,  0.43797255,  0.45109382,
-          0.46507483,  0.48326446,  0.49941105,  0.52054644,  0.54062443,
-          0.56449842,  0.59086126,  0.61419621,  0.64161945,  0.67126279,
-          0.70237612,  0.73166511,  0.7634803 ,  0.80076803,  0.82973909,
-          0.86307583,  0.89164903,  0.9201023 ,  0.94319148,  0.97350064]])
+IMIpremiums = np.array([[ 0.60943227,  0.68208973,  0.70047491,  0.73968832,  0.73444823,
+         0.82178193,  0.82505145,  0.80617651,  0.83369291,  0.88117651,
+         0.89314044,  0.91514624,  0.94462088,  0.98095408,  1.05130041,
+         1.06799447,  1.08221531,  1.15532452,  1.14582152,  1.19366374,
+         1.24278919,  1.29331082,  1.3543004 ,  1.39689236,  1.44439245,
+         1.52416051,  1.56810293,  1.63489029,  1.65236199,  1.75444907,
+         1.84627517,  1.89426322,  1.9903606 ,  2.05711477,  2.10300349,
+         2.25675096,  2.2830132 ,  2.34199545,  2.41009351,  2.45155437],
+       [ 0.28869452,  0.29643533,  0.30330561,  0.30915938,  0.31432162,
+         0.32027612,  0.3261338 ,  0.33222994,  0.33787204,  0.34570607,
+         0.35176004,  0.35875408,  0.36789398,  0.37627073,  0.38587719,
+         0.39417477,  0.40546477,  0.41760867,  0.43097591,  0.44427483,
+         0.45816341,  0.47619562,  0.49239739,  0.51307795,  0.53203196,
+         0.55525849,  0.57990786,  0.60243212,  0.62748161,  0.65491577,
+         0.68564829,  0.71326476,  0.7435451 ,  0.77699664,  0.80423601,
+         0.83613816,  0.86400432,  0.89584052,  0.92588806,  0.96359178]])
 
 # Define basic parameters of the economy
 HealthTaxFunc = SpecialTaxFunction(0.0,0.00) # Tax rate will be overwritten by installPremiumFuncs
@@ -613,42 +613,44 @@ CollegeDictionary['pLvlInitMean'] = pLvlInitMean_c
 CollegeDictionary['pLvlNextFuncRet'] = RetirementFunc_c
 
 # Make a test parameter vector for estimation
-test_param_vec = np.array([0.92, # DiscFac
-                           2.7,  # CRRA
-                           8.0,  # MedCurve 
-                          -8.5,  # ChoiceShkMag in log
-                          0.17,  # Cfloor
-                         -1.44,  # EmpContr
-                          -3.0,  # UNUSED
-                          10.0,  # BequestShift shifter for bequest motive
-                           3.0,  # BequestScale scale of bequest motive
-                         -3.50,  # MedShkMean constant coefficient
-                        0.0045,  # MedShkMean linear age coefficient
-                       0.00075,  # MedShkMean quadratic age coefficient
-                     0.0000080,  # MedShkMean cubic age coefficient
-                   -0.00000021,  # MedShkMean quartic age coefficient
-                          0.25,  # MedShkMean "very good" constant coefficient
-                        0.0025,  # MedShkMean "very good" linear coefficient
-                          0.53,  # MedShkMean "good" constant coefficient
-                        0.0025,  # MedShkMean "good" linear coefficient
-                          0.98,  # MedShkMean "fair" constant coefficient
-                        0.0014,  # MedShkMean "fair" linear coefficient
-                          2.18,  # MedShkMean "poor" constant coefficient
-                       -0.0106,  # MedShkMean "poor" linear coefficient
-                         0.340,  # MedShkStd constant coefficient
-                        0.0065,  # MedShkStd linear age coefficient
-                      -0.00014,  # MedShkStd quadratic age coefficient
-                           0.0,  # MedShkStd cubic age coefficient
-                           0.0,  # MedShkStd quartic age coefficient
-                           0.0,  # MedShkStd "very good" constant coefficient
-                           0.0,  # MedShkStd "very good" linear coefficient
-                           0.04, # MedShkStd "good" constant coefficient
-                           0.0,  # MedShkStd "good" linear coefficient
-                           0.13, # MedShkStd "fair" constant coefficient
-                           0.0,  # MedShkStd "fair" linear coefficient
-                           0.15, # MedShkStd "poor" constant coefficient
-                           0.0   # MedShkStd "poor" linear coefficient
-                           ])
+test_param_vec = np.array([
+          0.87,                #  0 DiscFac           : Intertemporal discount factor
+          3.4,                 #  1 CRRA              : Coefficient of relative risk aversion for consumption
+          8.0,                 #  2 MedCurve          : Ratio of CRRA for medical care to CRRA for consumption
+          -7.5,                #  3 log(ChoiceShkMag) : Log stdev of taste shocks over insurance contracts
+          0.25,                #  4 Cfloor            : Consumption floor ($10,000)
+          -1.44,               #  5 log(EmpContr)     : Log of employer contribution to ESI ($10,000)
+          -3.0,                #  6 UNUSED            : UNUSED
+          10.0,                #  7 BequestShift      : Constant term in bequest motive
+          3.0,                 #  8 BequestScale      : Scale of bequest motive
+          -3.42,               #  9 MedShkMean_0      : Constant term for log mean medical need shock
+          0.0045,              # 10 MedShkMean_a1     : Linear coefficient on age for log mean medical need shock
+          0.00075,             # 11 MedShkMean_a2     : Quadratic coefficient on age for log mean medical need shock
+          8e-06,               # 12 MedShkMean_a3     : Cubic coefficient on age for log mean medical need shock
+          -2.1e-07,            # 13 MedShkMean_a4     : Quartic coefficient on age for log mean medical need shock
+          0.25,                # 14 MedShkMean_VG0    : Very good health shifter for log mean medical need shock
+          0.0025,              # 15 MedShkMean_VGa1   : Very good health linear age coefficient shifter for log mean med shock
+          0.53,                # 16 MedShkMean_GD0    : Good health shifter for log mean medical need shock
+          0.0025,              # 17 MedShkMean_GDa1   : Good health linear age coefficient shifter for log mean med shock
+          0.98,                # 18 MedShkMean_FR0    : Fair health shifter for log mean medical need shock
+          0.0014,              # 19 MedShkMean_FRa1   : Fair health linear age coefficient shifter for log mean med shock
+          2.18,                # 20 MedShkMean_PR0    : Poor health shifter for log mean medical need shock
+          -0.0106,             # 21 MedShkMean_PRa1   : Poor health linear age coefficient shifter for log mean med shock
+          0.34,                # 22 MedShkStd_0       : Constant term for log stdev medical need shock
+          0.0065,              # 23 MedShkStd_a1      : Linear coefficient on age for log stdev medical need shock
+          -0.00014,            # 24 MedShkStd_a2      : Quadratic coefficient on age for log stdev medical need shock
+          0.0,                 # 25 MedShkStd_a3      : Cubic coefficient on age for log stdev medical need shock
+          0.0,                 # 26 MedShkStd_a4      : Quartic coefficient on age for log stdev medical need shock
+          0.041,               # 27 MedShkStd_VG0     : Very good health shifter for log stdev medical need shock
+          0.0,                 # 28 MedShkStd_VGa1    : Very good health linear age coefficient shifter for log stdev med shock
+          0.08,                # 29 MedShkStd_GD0     : Good health shifter for log stdev medical need shock
+          0.0,                 # 30 MedShkStd_GDa1    : Good health linear age coefficient shifter for log stdev med shock
+          0.19,                # 31 MedShkStd_FR0     : Fair health shifter for log stdev medical need shock
+         -0.0013,              # 32 MedShkStd_FRa1    : Fair health linear age coefficient shifter for log stdev med shock
+          0.27,                # 33 MedShkStd_PR0     : Poor health shifter for log stdev medical need shock
+         -0.0020,              # 34 MedShkStd_PRa1    : Poor health linear age coefficient shifter for log stdev med shock
+])
+
 
 # This is very poor form, but I'm doing it anyway:
 PremiumsLast = np.zeros(5)    
