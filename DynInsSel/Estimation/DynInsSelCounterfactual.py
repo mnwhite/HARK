@@ -9,7 +9,7 @@ import numpy as np
 import csv
 from copy import copy
 from DynInsSelEstimation import makeMarketFromParams
-from ActuarialRules import PolicySpecification, BaselinePolicySpec, ageHealthRatedActuarialRule, ageRatedActuarialRule
+from ActuarialRules import PolicySpecification, BaselinePolicySpec, generalIMIactuarialRule
 from SubsidyFuncs import NullSubsidyFuncs, makeACAstyleSubsidyPolicy
 from HARKutilities import getPercentiles, kernelRegression
 from HARKparallel import multiThreadCommands, multiThreadCommandsFake
@@ -717,7 +717,7 @@ HealthGroupSpecs = [OnlyPoorHealthSpec,FiveGroupSpec,AgeRatedSpec]
 # Define alternate specifications for varying the age band limit
 AgeBandSpecBase = PolicySpecification(
                         SubsidyFunc=NullSubsidyFuncs,
-                        ActuarialRule = ageRatedActuarialRule,
+                        ActuarialRule = generalIMIactuarialRule,
                         HealthGroups = [[0,1,2,3,4]], # irrelevant
                         ExcludedGroups = [False], # irrelevant
                         AgeBandLimit = 10.0,
@@ -738,7 +738,7 @@ for AgeBandLimit in AgeBandLimits:
 
 # Define alternate specifications for varying the individual mandate tax
 MandateSpecBase = PolicySpecification(
-                        ActuarialRule = ageRatedActuarialRule,
+                        ActuarialRule = generalIMIactuarialRule,
                         SubsidyFunc=NullSubsidyFuncs,
                         HealthGroups = [[0,1,2,3,4]], # irrelevant
                         ExcludedGroups = [False], # irrelevant
@@ -760,7 +760,7 @@ for MandateTaxRate in MandateTaxRates:
     
 # Define alternate specifications for ACA-style subsidies
 ACAspecBase = PolicySpecification(
-                        ActuarialRule = ageRatedActuarialRule,
+                        ActuarialRule = generalIMIactuarialRule,
                         SubsidyFunc=None, # will be replaced below
                         HealthGroups = [[0,1,2,3,4]], # irrelevant
                         ExcludedGroups = [False], # irrelevant
