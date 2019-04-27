@@ -304,7 +304,7 @@ def generalIMIactuarialRule(self,ExpInsPay,ExpBuyers):
     
 
 # Specify the baseline structure of the insurance market
-BaselinePolicySpec = PolicySpecification(SubsidyFunc=NullSubsidyFuncs,
+PreACAbaselineSpec = PolicySpecification(SubsidyFunc = NullSubsidyFuncs,
                                          ActuarialRule = generalIMIactuarialRule,
                                          HealthGroups = [[0,1],[2,3,4]],
                                          ExcludedGroups = [False,False],
@@ -314,5 +314,19 @@ BaselinePolicySpec = PolicySpecification(SubsidyFunc=NullSubsidyFuncs,
                                          MandateForESI = False,
                                          name = 'Baseline',
                                          text = 'baseline specification')
+
+
+# Define the baseline post-ACA policy
+PostACAbaselineSpec = PolicySpecification(
+                        ActuarialRule = generalIMIactuarialRule,
+                        SubsidyFunc= makeACAstyleSubsidyPolicy(0.095, 4.0),
+                        HealthGroups = [[0,1,2,3,4]],
+                        ExcludedGroups = [False],
+                        AgeBandLimit = 3.0,
+                        MandateTaxRate = 0.025,
+                        MandateFloor = 0.07,
+                        MandateForESI = False,
+                        name = 'ACAbaseline',
+                        text = 'ACA baseline')
         
         
