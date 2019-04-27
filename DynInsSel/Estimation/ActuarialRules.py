@@ -450,46 +450,75 @@ def ageRatedActuarialRule(self,ExpInsPay,ExpBuyers):
     IMIpremiumArray : np.array
         3D array with individual market insurance premiums, ordered (age,health,contract).
     '''
-    AgeRatingFunc = lambda x : (np.exp(x/40.*3.0)-1.)/(np.exp(3.0)-1.)
     AgeBandLimit = self.AgeBandLimit
+    HealthGroups = self.HealthGroups
+    ExcludedGroups = self.ExcludedGroups
+    GroupCount = len(HealthGroups)
     AgeCount = 40
+    InfPrem = 10000.
     
+    # Define the age rating function
+    AgeRatingFunc = lambda x : (np.exp(x/40.*3.0)-1.)/(np.exp(3.0)-1.)
+    if AgeBandLimit is not None:
+        AgeRatingScale = 1.0 + (AgeBandLimit-1.0)*AgeRatingFunc(np.arange(AgeCount,dtype=float))
+    
+    # Combine expected payments and buyers across types
     ExpInsPayX = np.stack(ExpInsPay,axis=3)[:40,:5,:,:] # This is collected in reap_vars
     ExpBuyersX = np.stack(ExpBuyers,axis=3)[:40,:5,:,:] # This is collected in reap_vars
     HealthCount = ExpInsPayX.shape[1]
     MaxContracts = ExpInsPayX.shape[2]
-    # Order of indices: age, health, contract, type
-    
-    PremiumArray = np.zeros((AgeCount,MaxContracts)) + np.nan
-    TotalInsPay = np.sum(ExpInsPayX,axis=(0,1,3))
-    TotalBuyers = np.sum(ExpBuyersX,axis=(0,1,3))
-    TotalInsPayByAge = np.sum(ExpInsPayX,axis=(1,3)) # Don't sum across ages
-    TotalBuyersByAge = np.sum(ExpBuyersX,axis=(1,3)) # Don't sum across ages
     CohortWeight = self.CohortGroFac**(-np.arange(40))
     CohortWeightX = np.tile(np.reshape(CohortWeight,(40,1)),(1,MaxContracts))
-    TotalInsPayByAge *= CohortWeightX # Cohort-size adjusted
-    TotalBuyersByAge *= CohortWeightX # Cohort-size adjusted
-    AvgInsPay = TotalInsPay/TotalBuyers
-    fix_me = np.logical_or(np.isinf(AvgInsPay),np.isnan(AvgInsPay))
-    AvgInsPay[fix_me] = 0.0
+    # Order of indices: age, health, contract, type
     
-    AgeRatingScale = 1.0 + (AgeBandLimit-1.0)*AgeRatingFunc(np.arange(AgeCount,dtype=float))
-    for z in range(1,MaxContracts):
-        TotalCost = np.sum(TotalBuyersByAge[:,z]*0.2 + TotalInsPayByAge[:,z]*self.LoadFacIMI)
-        def tempFunc(BasePremium): # Profit function to be zero'ed
-            PremiumVec = BasePremium*AgeRatingScale
-            TotalRevenue = np.sum(PremiumVec*TotalBuyersByAge[:,z])
-            return TotalRevenue - TotalCost
+    # Initialize the premium array
+    PremiumArray = np.zeros((AgeCount,GroupCount,MaxContracts))
+    
+    # Loop through each health group and calculate new premiums for each contract
+    for g in range(GroupCount):
+        these = HealthGroups[g] # Health levels for this group
+        TotalInsPayByAge = np.sum(ExpInsPayX[:,these,:,:],axis=(1,3)) # Don't sum across ages
+        TotalBuyersByAge = np.sum(ExpBuyersX[:,these,:,:],axis=(1,3)) # Don't sum across ages
+        TotalInsPayByAge *= CohortWeightX # Cohort-size adjusted
+        TotalBuyersByAge *= CohortWeightX # Cohort-size adjusted 
         
-        NewPremium = brentq(tempFunc,0.0,AvgInsPay[z]*self.LoadFacIMI + 0.2)
-        PremiumArray[:,z] = NewPremium*AgeRatingScale
+        if AgeBandLimit is not None: # If there is an age band limit...
+            # Loop through each contract and zero out the profit function
+            for z in range(1,MaxContracts):
+                TotalCost = np.sum(TotalBuyersByAge[:,z]*0.12 + TotalInsPayByAge[:,z]*self.LoadFacIMI)
+                
+                def tempFunc(BasePremium): # Profit function to be zero'ed
+                    PremiumVec = BasePremium*AgeRatingScale
+                    TotalRevenue = np.sum(PremiumVec*TotalBuyersByAge[:,z])
+                    return TotalRevenue - TotalCost
+                
+                NewBasePremium = brentq(tempFunc, 0.0, 1.0)
+                PremiumArray[:,g,z] = NewBasePremium*AgeRatingScale
+        
+        else: # If there is not an age band limit...
+            AvgInsPayByAge = TotalInsPayByAge/TotalBuyersByAge
+            NewPremiums = self.LoadFacIMI*AvgInsPayByAge + 0.12
+            PremiumArray[:,g,:] = NewPremiums
+            PremiumArray[:,g,0] = 0.
+            
+        if ExcludedGroups[g]: # Exclude group with absurdly high premium
+            PremiumArray[:,g,1:] = InfPrem
+    
     self.IMIpremiums = PremiumArray
     
+    # Calculate and report overall insured rate
+    TotalBuyersByAge = np.sum(ExpBuyersX,axis=(1,3))
+    TotalBuyersByAge *= CohortWeightX # Cohort-size adjusted
+    TotalBuyers = np.sum(TotalBuyersByAge,axis=0)
     print('IMI insured rate: ' + str(TotalBuyers[1]/np.sum(TotalBuyers)))
-    plt.plot(PremiumArray[:,1])
+    plt.plot(PremiumArray[:,:,1])
     plt.show()
     
-    IMIpremiums = np.tile(np.reshape(PremiumArray,(AgeCount,1,MaxContracts)),(1,HealthCount,1))
+    # Distribute health group premiums into each health state as appropriate
+    IMIpremiums = np.zeros((AgeCount,HealthCount,MaxContracts))
+    for g in range(GroupCount):
+        for h in HealthGroups[g]:
+            IMIpremiums[:,h,:] = PremiumArray[:,g,:]
     return IMIpremiums
 
 
@@ -498,12 +527,12 @@ def ageRatedActuarialRule(self,ExpInsPay,ExpBuyers):
 
 # Specify the baseline structure of the insurance market
 BaselinePolicySpec = PolicySpecification(SubsidyFunc=NullSubsidyFuncs,
-                                         ActuarialRule = ageHealthRatedActuarialRule,
+                                         ActuarialRule = ageRatedActuarialRule,
                                          HealthGroups = [[0,1],[2,3,4]],
                                          ExcludedGroups = [False,False],
                                          AgeBandLimit = None,
-                                         MandateTaxRate = 0.0,
-                                         MandateFloor = 0.0,
+                                         MandateTaxRate = 0.00,
+                                         MandateFloor = 0.00,
                                          MandateForESI = False,
                                          name = 'Baseline',
                                          text = 'baseline specification')

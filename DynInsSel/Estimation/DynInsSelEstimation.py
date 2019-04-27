@@ -880,7 +880,7 @@ def makeMarketFromParams(ParamArray,PolicySpec,IMIpremiumArray,ESIpremiumArray,I
             if PolicySpec.ExcludedGroups[g]:
                 IMIpremiumArray_big[h,:] = 10000.
             else:
-                IMIpremiumArray_big[h,:] = IMIpremiumArray[1,:]
+                IMIpremiumArray_big[h,:] = IMIpremiumArray[g,:]
             
     # Construct an initial nested list for premiums
     PremiumFuncs_init = []
@@ -927,12 +927,12 @@ def objectiveFunction(Parameters, return_market=False):
     The objective function for the estimation.  Makes and solves a market, then
     returns the weighted sum of moment differences between simulation and data.
     '''
-    EvalType  = 0  # Number of times to do a static search for eqbm premiums
+    EvalType  = 2  # Number of times to do a static search for eqbm premiums
     InsChoice = 1  # Extent of insurance choice
     TestPremiums = True # Whether to start with the test premium level
     
     if TestPremiums:
-        ESIpremiums = np.array([0.3440, 0.0, 0.0, 0.0, 0.0])
+        ESIpremiums = np.array([0.3500, 0.0, 0.0, 0.0, 0.0])
     else:
         ESIpremiums = Params.PremiumsLast
     IMIpremiums_init = Params.IMIpremiums
