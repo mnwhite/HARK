@@ -779,7 +779,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,TaxFunc,SubsidyFunc,MedShkA
     
     # Make alternate versions of pLvlGrid and pGridDense
     aXtraMax = np.max(aXtraGrid)
-    aLvlMax_min_acceptable = 5.
+    aLvlMax_min_acceptable = 10.
     pLvlAlt = aLvlMax_min_acceptable/aXtraMax
     aLvlMax_by_pLvl = aXtraMax*pLvlGrid
     pLvlGrid_alt = copy(pLvlGrid)
@@ -787,7 +787,6 @@ def solveInsuranceSelection(solution_next,IncomeDstn,TaxFunc,SubsidyFunc,MedShkA
     aLvlMax_by_pLvl = aXtraMax*pGridDense
     pGridDense_alt = copy(pGridDense)
     pGridDense_alt[aLvlMax_by_pLvl < aLvlMax_min_acceptable] = pLvlAlt
-    #print(np.sum(pLvlGrid_alt != pLvlGrid))
     
     # Make a JDfixer instance to use when necessary
     mGridDenseBase = makeGridDenser(aXtraGrid,mLvl_aug_factor)
@@ -882,6 +881,10 @@ def solveInsuranceSelection(solution_next,IncomeDstn,TaxFunc,SubsidyFunc,MedShkA
         EndOfPrdvPcond[:,:,h]  = Rfree[h_alt]*np.sum(tempvP*ShkPrbs_tiled,axis=0)
         EndOfPrdvCond[:,:,h]   = np.sum(tempv*ShkPrbs_tiled,axis=0)
         
+#        temp = np.isnan(tempv)
+#        if np.any(temp):
+#            print('vNext',h,np.argwhere(temp))
+        
     # Calculate end of period value and marginal value conditional on each current health state
     EndOfPrdv = np.zeros((pLvlCount,aLvlCount+1,StateCountNow))
     EndOfPrdvP = np.zeros((pLvlCount,aLvlCount+1,StateCountNow))
@@ -896,6 +899,10 @@ def solveInsuranceSelection(solution_next,IncomeDstn,TaxFunc,SubsidyFunc,MedShkA
         # Weight future health states according to the transition probabilities
         EndOfPrdv[:,:,h]  = DiscFacEff*np.sum(EndOfPrdvCond*MrkvArray_temp,axis=2) + DiePrb*BequestMotive(aLvlNow)
         EndOfPrdvP[:,:,h] = DiscFacEff*np.sum(EndOfPrdvPcond*MrkvArray_temp,axis=2) + DiePrb*BequestMotiveP(aLvlNow)
+        
+#        temp = np.isnan(EndOfPrdv[:,:,h])
+#        if h==0 and np.any(temp):
+#            print('EndOfPrdv',h,np.argwhere(temp))
             
     # Calculate human wealth conditional on each current health state 
     hLvlGrid = np.sum(MrkvArray_all*np.tile(np.reshape(hLvlCond,(pLvlCount,1,StateCountNext)),(1,StateCountNow,1)),axis=2)
@@ -947,6 +954,9 @@ def solveInsuranceSelection(solution_next,IncomeDstn,TaxFunc,SubsidyFunc,MedShkA
         v_data = u(cLvl_data) + EndOfPrdv[:,:,h].transpose()
         vNvrs_data = uinv(v_data)
         cFuncZeroShk, vFuncZeroShk = MyJDfixerZeroShk(mLvl_data,pLvl_data,vNvrs_data,cLvl_data,mGridDenseBase,pGridDense,pGridDense_alt,EndOfPrdvFunc_Cnst)
+        
+#        if h == 7:
+#            print(mLvl_data[-1,0],mLvl_data[-1,1])
             
         # For each coinsurance rate, make policy and value functions (for this health state)
         for k in range(len(EffPriceList)):
@@ -1019,10 +1029,14 @@ def solveInsuranceSelection(solution_next,IncomeDstn,TaxFunc,SubsidyFunc,MedShkA
             q = np.exp(-cShareTrans)
             cLvlArray = xLvlArray/(1.+q)
             MedLvlArray = xLvlArray/MedPriceEff*q/(1.+q)            
-            aLvlArray = np.abs(mLvlArray - xLvlArray) # OCCASIONAL VIOLATIONS BY 1E-18 !!!
+            aLvlArray = np.maximum(mLvlArray - xLvlArray,0.0) # OCCASIONAL VIOLATIONS BY 1E-18 !!!
             EndOfPrdvArray = EndOfPrdvFunc(aLvlArray,pLvlArray)
             vNow = u(cLvlArray) + uMed(MedLvlArray/MedShkArray) + EndOfPrdvArray
             vNvrsNow  = uinv(vNow)
+            
+            #temp = np.isnan(EndOfPrdvArray)
+            #if h==0 and np.any(temp):
+            #    print('vNvrs_contruction',h,k,aLvlArray[np.where(temp)])
             
             # Calculate "candidate" v_ZeroShk values from consuming all expenditure with zero MedShk
             v_ZeroShk_cand = np.max(u(xLvlArray) + EndOfPrdvArray,axis=0)
@@ -1046,7 +1060,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,TaxFunc,SubsidyFunc,MedShkA
         mMinArray    = np.tile(np.reshape(mLvlMinNow(pLvlGrid),(1,pLvlCount,1)),(aLvlCount,1,MedShkCount))
         pLvlArray    = np.tile(np.reshape(pLvlGrid,(1,pLvlCount,1)),(aLvlCount,1,MedShkCount))
         pLvlArray_alt= np.tile(np.reshape(pLvlGrid_alt,(1,pLvlCount,1)),(aLvlCount,1,MedShkCount))
-        mLvlArray    = mMinArray + tempArray*pLvlArray + Cfloor
+        mLvlArray    = mMinArray + tempArray*pLvlArray_alt + Cfloor
         if pLvlGrid[0] == 0.0: # Fix the problem of all mLvls = 0 when pLvl = 0
             mLvlArray[:,0,:] = mLvlArray[:,1,:]
             
@@ -1110,6 +1124,10 @@ def solveInsuranceSelection(solution_next,IncomeDstn,TaxFunc,SubsidyFunc,MedShkA
             vArrayBig, vParrayBig, vPParrayBig = PolicyFuncsThisHealth[-1].evalvAndvPandvPP(mLvlArray,pLvlArray,DevArray)
             ConArrayBig, MedArrayBig, xLvlArrayBig = PolicyFuncsThisHealth[-1](mLvlArray,pLvlArray,DevArray)
             
+            #temp = np.isnan(vArrayBig)
+            #if np.any(temp) and h==0:
+            #    print('vBig',h,z,pLvlArray[np.where(temp)])
+            
             # Calculate expected value when hitting Cfloor (use truncated lognormal formula)
             mu = (1.-1./CRRAmed)*MedShkAvg[h_alt] # underlying mean of lognormal shocks
             sigma = (1.-1./CRRAmed)*MedShkStd[h_alt] # underlying std of lognormal shocks
@@ -1131,6 +1149,10 @@ def solveInsuranceSelection(solution_next,IncomeDstn,TaxFunc,SubsidyFunc,MedShkA
             vArray   = vArrayMain + ZeroMedShkPrb[h_alt]*vArrayZeroShk + (1.0-ZeroMedShkPrb[h_alt])*CritShkPrbArray*vFloor_expected
             vParray  = np.sum(vParrayBig*MedShkPrbArray,axis=2) + ZeroMedShkPrb[h_alt]*vParrayZeroShk + (1.0-ZeroMedShkPrb[h_alt])*CritShkPrbArray*0.0
             
+            #temp = np.isnan(vArrayZeroShk)
+            #if np.any(temp):
+            #    print('vZeroShk',h,z,mLvlArray[:,:,0][temp],pLvlArray[:,:,0][temp])
+            
             # Calculate actuarial value at each (mLvl,pLvl), combining shocks above and below the critical value
             AVarrayBig = MedArrayBig*MedPrice - Contract.OOPfunc(MedArrayBig) # realized "actuarial value" below critical shock
             ExpectedMedatCfloor = (Copay*MedPrice)**(-1./CRRAmed)*ExpectedAdjShkAtCfloor*Cfloor**(CRRA/CRRAmed) # Use truncated lognormal formula
@@ -1144,6 +1166,10 @@ def solveInsuranceSelection(solution_next,IncomeDstn,TaxFunc,SubsidyFunc,MedShkA
             mGrid_small_C = np.concatenate((np.zeros((1,pLvlCount)),mLvlArray_temp),axis=0) # for AV
             vPnvrsArray   = uPinv(vParray)
             vNvrsArray    = np.concatenate((np.tile(np.reshape(vNvrsFloorBypLvl,(1,pLvlCount)),(2,1)),uinv(vArray)),axis=0)
+            
+            #temp = np.isnan(vNvrsArray)
+            #if np.any(temp):
+            #    print('vNvrs',h,z,np.argwhere(temp))
             
             # Construct the pseudo-inverse value and marginal value functions over mLvl,pLvl
             vNvrsFunc_by_pLvl = []
@@ -1184,6 +1210,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,TaxFunc,SubsidyFunc,MedShkA
         if len(ContractList[h]) == 1:
             vFunc = vFuncsThisHealth[0]   # only element
             vPfunc = vPfuncsThisHealth[0] # only element
+        
         else: # If there is more than one contract available, take expectation over choice shock.
             mLvlGrid = mGridDenseBase
             mLvlCount = mLvlGrid.size
@@ -1192,7 +1219,8 @@ def solveInsuranceSelection(solution_next,IncomeDstn,TaxFunc,SubsidyFunc,MedShkA
             tempArray    = np.tile(np.reshape(mLvlGrid,(mLvlCount,1)),(1,pLvlCount))
             mMinArray    = np.tile(np.reshape(mLvlMinNow(pLvlGrid),(1,pLvlCount)),(mLvlCount,1))
             pLvlArray    = np.tile(np.reshape(pLvlGrid,(1,pLvlCount)),(mLvlCount,1))
-            mLvlArray    = mMinArray + tempArray*pLvlArray + Cfloor
+            pLvlArray_alt= np.tile(np.reshape(pLvlGrid_alt,(1,pLvlCount)),(mLvlCount,1))
+            mLvlArray    = mMinArray + tempArray*pLvlArray_alt + Cfloor
             if pLvlGrid[0] == 0.0: # Fix the problem of all mLvls = 0 when pLvl = 0
                 mLvlArray[:,0] = mLvlArray[:,1]
             
@@ -1288,7 +1316,6 @@ def solveInsuranceSelection(solution_next,IncomeDstn,TaxFunc,SubsidyFunc,MedShkA
         UpperEnvelope_time += (t3-t2)
     
     # Return the solution for this period
-#    solution_now.MPCminNvrs = MPCminNvrsNow
     t_end = clock()
     if verbosity > 0:
         print('Solving a period of the problem took ' + str(t_end-t_start) + ' seconds, fix count = ' + str(JDfixCount))

@@ -927,7 +927,7 @@ def objectiveFunction(Parameters, return_market=False):
     The objective function for the estimation.  Makes and solves a market, then
     returns the weighted sum of moment differences between simulation and data.
     '''
-    EvalType  = 2  # Number of times to do a static search for eqbm premiums
+    EvalType  = 0  # Number of times to do a static search for eqbm premiums
     InsChoice = 1  # Extent of insurance choice
     TestPremiums = True # Whether to start with the test premium level
     
@@ -1147,7 +1147,7 @@ if __name__ == '__main__':
         TestPremiums = True # Whether to start with the test premium level
         
         if TestPremiums:
-            ESIpremiums = np.array([0.3000, 0.0, 0.0, 0.0, 0.0])
+            ESIpremiums = np.array([0.3500, 0.0, 0.0, 0.0, 0.0])
         else:
             ESIpremiums = Params.PremiumsLast
         IMIpremiums_init = Params.IMIpremiums
@@ -1156,7 +1156,7 @@ if __name__ == '__main__':
         ESIpremiums_init_short = np.concatenate((np.array([0.]),ESIpremiums[0:ContractCounts[InsChoice]]))
         ESIpremiums_init = np.tile(np.reshape(ESIpremiums_init_short,(1,ESIpremiums_init_short.size)),(40,1))
         
-        MyMarket = makeMarketFromParams(Params.test_param_vec,BaselinePolicySpec,IMIpremiums_init,ESIpremiums_init,InsChoice)
+        MyMarket = makeMarketFromParams(Params.test_param_vec,PreACAbaselineSpec,IMIpremiums_init,ESIpremiums_init,InsChoice)
         MyMarket.ESIpremiums = ESIpremiums_init_short
         multiThreadCommandsFake(MyMarket.agents,['update()','makeShockHistory()'])
         MyMarket.getIncomeQuintiles()
@@ -1167,14 +1167,14 @@ if __name__ == '__main__':
         t_start = clock()
         MyType = MyMarket.agents[2]
         MyType.del_soln = False
-        MyType.do_sim = True
+        MyType.do_sim = False
         MyType.verbosity = 10
         MyType.solve()
         t_end = clock()
         print('Solving and simulating one agent type took ' + str(t_end-t_start) + ' seconds.')
            
         t = 0
-        p = 3.0    
+        p = 3.0
         h = 9        
         Dev = 0.0
         z = 0

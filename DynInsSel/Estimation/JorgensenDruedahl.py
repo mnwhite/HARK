@@ -109,8 +109,21 @@ class JDfixer(object):
         # Transform xLvlOut into a BilinearInterp and return it
         xLvlOut_reshaped = np.reshape(xLvlOut,(self.mGridDenseSize,self.DevGridDenseSize))
         xLvlNow = np.concatenate((np.zeros((1,self.DevGridDenseSize)),xLvlOut_reshaped),axis=0)
-        xFunc_this_pLvl = BilinearInterp(xLvlNow,np.insert(mGridDense,0,0.0),DevGridDense)
-        return xFunc_this_pLvl, (xLvlOut_reshaped[:,np.arange(0,self.DevGridDenseSize,3)]).transpose()
+        mLvlGrid = np.insert(mGridDense,0,0.0)
+        for j in range(self.DevGridDenseSize):
+            try:
+                END = np.where(xLvlNow[:,j] < 0.95*mLvlGrid)[0][-1]
+                m0 = mLvlGrid[END-1]
+                m1 = mLvlGrid[END-0]
+                x0 = xLvlNow[END-1,j]
+                x1 = xLvlNow[END-0,j]
+                MPX = (x1-x0)/(m1-m0)
+                xLvlNow[END:,j] = (mLvlGrid[END:] - m0)*MPX + x0
+            except:
+                pass
+            
+        xFunc_this_pLvl = BilinearInterp(xLvlNow,mLvlGrid,DevGridDense)
+        return xFunc_this_pLvl, (xLvlNow[1:,np.arange(0,self.DevGridDenseSize,3)]).transpose()
         # TODO: The 3 in the line above should be MedShk_aug_factor
     
     
@@ -210,9 +223,13 @@ class JDfixerSimple(object):
         cFunc_by_pLvl_ZeroShk = []
         vNvrsFunc_by_pLvl_ZeroShk = []
         for j in range(self.pGridDenseSize):
-            mLvl_temp = mLvlNow[:,j]
-            cLvl_temp = cLvlNow[:,j]
-            vNvrs_temp= vNvrsNow[:,j]
+            try:
+                END = np.where(cLvlNow[:,j] < 0.95*mLvlNow[:,j])[0][-1] + 1
+            except:
+                END = cLvlNow.shape[0]   
+            mLvl_temp = mLvlNow[:END,j]
+            cLvl_temp = cLvlNow[:END,j]
+            vNvrs_temp= vNvrsNow[:END,j]
             cFunc_by_pLvl_ZeroShk.append(LinearInterp(mLvl_temp,cLvl_temp))
             vNvrsFunc_by_pLvl_ZeroShk.append(LinearInterp(mLvl_temp,vNvrs_temp))
         cFuncZeroShk = LinearInterpOnInterp1D(cFunc_by_pLvl_ZeroShk,pGridDense)

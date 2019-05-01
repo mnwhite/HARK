@@ -34,7 +34,7 @@ DecurveBool = True                  # "Decurve" value through the inverse utilit
 pLvlPctiles = np.concatenate(([0.001, 0.005, 0.01, 0.03], np.linspace(0.05, 0.95, num=12),[0.97, 0.99, 0.995, 0.999]))
 pLvlInitStd = 0.4                   # Initial standard deviation of (log) permanent income
 pLvlInitMean = 0.0                  # Initial average of log permanent income
-PermIncCorr = 0.99                  # Serial correlation coefficient for permanent income
+PermIncCorr = 0.995                 # Serial correlation coefficient for permanent income
 MedShkCount = 20                    # Number of medical shock points
 DevMin = -3.0                       # Minimum standard deviations below MedShk mean
 DevMax = 5.0                        # Maximum standard deviations above MedShk mean
@@ -614,16 +614,16 @@ CollegeDictionary['pLvlNextFuncRet'] = RetirementFunc_c
 
 # Make a test parameter vector for estimation
 test_param_vec = np.array([
-          0.87,                #  0 DiscFac           : Intertemporal discount factor
-          3.4,                 #  1 CRRA              : Coefficient of relative risk aversion for consumption
+          0.90,                #  0 DiscFac           : Intertemporal discount factor
+          2.7,                 #  1 CRRA              : Coefficient of relative risk aversion for consumption
           8.0,                 #  2 MedCurve          : Ratio of CRRA for medical care to CRRA for consumption
           -7.5,                #  3 log(ChoiceShkMag) : Log stdev of taste shocks over insurance contracts
-          0.25,                #  4 Cfloor            : Consumption floor ($10,000)
+          0.15,                #  4 Cfloor            : Consumption floor ($10,000)
           -1.39,               #  5 log(EmpContr)     : Log of employer contribution to ESI ($10,000)
           -3.0,                #  6 UNUSED            : UNUSED
           10.0,                #  7 BequestShift      : Constant term in bequest motive
           3.0,                 #  8 BequestScale      : Scale of bequest motive
-          -3.42,               #  9 MedShkMean_0      : Constant term for log mean medical need shock
+          -3.45,               #  9 MedShkMean_0      : Constant term for log mean medical need shock
           0.0045,              # 10 MedShkMean_a1     : Linear coefficient on age for log mean medical need shock
           0.00075,             # 11 MedShkMean_a2     : Quadratic coefficient on age for log mean medical need shock
           8e-06,               # 12 MedShkMean_a3     : Cubic coefficient on age for log mean medical need shock
