@@ -34,7 +34,7 @@ DecurveBool = True                  # "Decurve" value through the inverse utilit
 pLvlPctiles = np.concatenate(([0.001, 0.005, 0.01, 0.03], np.linspace(0.05, 0.95, num=12),[0.97, 0.99, 0.995, 0.999]))
 pLvlInitStd = 0.4                   # Initial standard deviation of (log) permanent income
 pLvlInitMean = 0.0                  # Initial average of log permanent income
-PermIncCorr = 0.995                 # Serial correlation coefficient for permanent income
+PermIncCorr = 0.99                  # Serial correlation coefficient for permanent income
 MedShkCount = 20                    # Number of medical shock points
 DevMin = -3.0                       # Minimum standard deviations below MedShk mean
 DevMax = 5.0                        # Maximum standard deviations above MedShk mean
@@ -524,28 +524,28 @@ for j in range(ZeroMedShkPrb.shape[0]):
     ZeroMedShkPrb_list.append(ZeroMedShkPrb[j,:])
     
 # Individual market premiums by age
-IMIpremiums = np.array([[ 0.56395071,  0.63682949,  0.65857765,  0.69825665,  0.69033408,
-         0.78093357,  0.7821668 ,  0.76620534,  0.79322677,  0.84558052,
-         0.85727813,  0.88186274,  0.90417085,  0.95132382,  1.02521902,
-         1.04717417,  1.05767908,  1.12838929,  1.12440571,  1.17693667,
-         1.22958869,  1.28510499,  1.35290315,  1.39900379,  1.44787562,
-         1.53437672,  1.58015597,  1.65821981,  1.67224884,  1.79136948,
-         1.88265378,  1.93841431,  2.04524288,  2.11862184,  2.16534075,
-         2.32856151,  2.36524268,  2.44566535,  2.50396856,  2.56844614],
-       [ 0.19227612,  0.19946044,  0.20496188,  0.21070048,  0.21613666,
-         0.22134182,  0.22702642,  0.23331805,  0.23935453,  0.24660279,
-         0.25278134,  0.26037769,  0.26964432,  0.27772846,  0.28775375,
-         0.29712204,  0.30849903,  0.32070221,  0.33402449,  0.34761812,
-         0.36175849,  0.3781411 ,  0.39434237,  0.41427755,  0.43273798,
-         0.45532005,  0.47899018,  0.50147227,  0.52479842,  0.5514479 ,
-         0.57917138,  0.6067839 ,  0.63746805,  0.67381383,  0.70264359,
-         0.73703794,  0.76709836,  0.79924864,  0.82967981,  0.86020803]])
+IMIpremiums = np.array([[ 1.90720776,  2.04733647,  2.09829736,  2.17896955,  2.22399231,
+         2.271415  ,  2.31307986,  2.38737238,  2.45785184,  2.49594084,
+         2.61279515,  2.60154544,  2.65382462,  2.70512115,  2.80536537,
+         2.88313992,  2.96702573,  3.03236017,  3.11056428,  3.1696871 ,
+         3.23526486,  3.32615963,  3.39319149,  3.52281168,  3.64036025,
+         3.68719623,  3.80061138,  3.89738029,  4.05530509,  4.11555093,
+         4.22203937,  4.33874121,  4.43892108,  4.57171832,  4.74798875,
+         4.80763363,  4.92758941,  5.00968932,  5.1773331 ,  5.32721074],
+       [ 0.3350381 ,  0.34179464,  0.3520346 ,  0.36066132,  0.3676093 ,
+         0.3807557 ,  0.38942585,  0.3989395 ,  0.40940091,  0.41464459,
+         0.42477153,  0.44099948,  0.45216506,  0.46331762,  0.4760266 ,
+         0.48985183,  0.51233712,  0.52757109,  0.54808677,  0.56782115,
+         0.59195688,  0.61695224,  0.64489221,  0.67384281,  0.70496672,
+         0.73445768,  0.77984304,  0.80981509,  0.85208137,  0.90039156,
+         0.93316004,  0.98088127,  1.02657617,  1.07069898,  1.11196758,
+         1.15387465,  1.19883363,  1.24260055,  1.26661215,  1.30059763]])
 
 # Define basic parameters of the economy
 HealthTaxFunc = SpecialTaxFunction(0.0,0.00) # Tax rate will be overwritten by installPremiumFuncs
 HealthTaxRate_init = 0.046
 LoadFacESI   = 1.20 # Loading factor for employer sponsored insurance
-LoadFacIMI   = 1.50 # Loading factor for individual market insurance
+LoadFacIMI   = 1.80 # Loading factor for individual market insurance
 CohortGroFac = 1.01 # Year-on-year growth rate of population; each cohort is this factor larger than previous
     
 # Make a basic dictionary with parameters that never change
@@ -614,16 +614,16 @@ CollegeDictionary['pLvlNextFuncRet'] = RetirementFunc_c
 
 # Make a test parameter vector for estimation
 test_param_vec = np.array([
-          0.90,                #  0 DiscFac           : Intertemporal discount factor
-          2.7,                 #  1 CRRA              : Coefficient of relative risk aversion for consumption
+          0.88,                #  0 DiscFac           : Intertemporal discount factor
+          2.9,                 #  1 CRRA              : Coefficient of relative risk aversion for consumption
           8.0,                 #  2 MedCurve          : Ratio of CRRA for medical care to CRRA for consumption
           -7.5,                #  3 log(ChoiceShkMag) : Log stdev of taste shocks over insurance contracts
           0.15,                #  4 Cfloor            : Consumption floor ($10,000)
-          -1.39,               #  5 log(EmpContr)     : Log of employer contribution to ESI ($10,000)
+          -1.43,               #  5 log(EmpContr)     : Log of employer contribution to ESI ($10,000)
           -3.0,                #  6 UNUSED            : UNUSED
           10.0,                #  7 BequestShift      : Constant term in bequest motive
           3.0,                 #  8 BequestScale      : Scale of bequest motive
-          -3.45,               #  9 MedShkMean_0      : Constant term for log mean medical need shock
+          -3.47,               #  9 MedShkMean_0      : Constant term for log mean medical need shock
           0.0045,              # 10 MedShkMean_a1     : Linear coefficient on age for log mean medical need shock
           0.00075,             # 11 MedShkMean_a2     : Quadratic coefficient on age for log mean medical need shock
           8e-06,               # 12 MedShkMean_a3     : Cubic coefficient on age for log mean medical need shock
@@ -636,7 +636,7 @@ test_param_vec = np.array([
           0.0014,              # 19 MedShkMean_FRa1   : Fair health linear age coefficient shifter for log mean med shock
           2.18,                # 20 MedShkMean_PR0    : Poor health shifter for log mean medical need shock
           -0.0106,             # 21 MedShkMean_PRa1   : Poor health linear age coefficient shifter for log mean med shock
-          0.34,                # 22 MedShkStd_0       : Constant term for log stdev medical need shock
+          0.338,               # 22 MedShkStd_0       : Constant term for log stdev medical need shock
           0.0065,              # 23 MedShkStd_a1      : Linear coefficient on age for log stdev medical need shock
           -0.00014,            # 24 MedShkStd_a2      : Quadratic coefficient on age for log stdev medical need shock
           0.0,                 # 25 MedShkStd_a3      : Cubic coefficient on age for log stdev medical need shock

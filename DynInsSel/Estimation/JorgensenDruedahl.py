@@ -112,7 +112,7 @@ class JDfixer(object):
         mLvlGrid = np.insert(mGridDense,0,0.0)
         for j in range(self.DevGridDenseSize):
             try:
-                END = np.where(xLvlNow[:,j] < 0.95*mLvlGrid)[0][-1]
+                END = np.where(xLvlNow[:,j] < 0.95*mLvlGrid)[0][-1] - 1
                 m0 = mLvlGrid[END-1]
                 m1 = mLvlGrid[END-0]
                 x0 = xLvlNow[END-1,j]

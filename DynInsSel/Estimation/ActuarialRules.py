@@ -265,7 +265,7 @@ def generalIMIactuarialRule(self,ExpInsPay,ExpBuyers):
         if AgeBandLimit is not None: # If there is an age band limit...
             # Loop through each contract and zero out the profit function
             for z in range(1,MaxContracts):
-                TotalCost = np.sum(TotalBuyersByAge[:,z]*0.12 + TotalInsPayByAge[:,z]*self.LoadFacIMI)
+                TotalCost = np.sum(TotalBuyersByAge[:,z]*0.2 + TotalInsPayByAge[:,z]*self.LoadFacIMI)
                 
                 def tempFunc(BasePremium): # Profit function to be zero'ed
                     PremiumVec = BasePremium*AgeRatingScale
@@ -277,7 +277,7 @@ def generalIMIactuarialRule(self,ExpInsPay,ExpBuyers):
         
         else: # If there is not an age band limit...
             AvgInsPayByAge = TotalInsPayByAge/TotalBuyersByAge
-            NewPremiums = self.LoadFacIMI*AvgInsPayByAge + 0.12
+            NewPremiums = self.LoadFacIMI*AvgInsPayByAge + 0.2
             PremiumArray[:,g,:] = NewPremiums
             PremiumArray[:,g,0] = 0.
             
@@ -304,16 +304,17 @@ def generalIMIactuarialRule(self,ExpInsPay,ExpBuyers):
     
 
 # Specify the baseline structure of the insurance market
-PreACAbaselineSpec = PolicySpecification(SubsidyFunc = NullSubsidyFuncs,
-                                         ActuarialRule = generalIMIactuarialRule,
-                                         HealthGroups = [[0,1],[2,3,4]],
-                                         ExcludedGroups = [False,False],
-                                         AgeBandLimit = None,
-                                         MandateTaxRate = 0.00,
-                                         MandateFloor = 0.00,
-                                         MandateForESI = False,
-                                         name = 'Baseline',
-                                         text = 'baseline specification')
+PreACAbaselineSpec = PolicySpecification(
+                        ActuarialRule = generalIMIactuarialRule,
+                        SubsidyFunc = NullSubsidyFuncs,                
+                        HealthGroups = [[0],[1,2,3,4]],
+                        ExcludedGroups = [False,False],
+                        AgeBandLimit = None,
+                        MandateTaxRate = 0.00,
+                        MandateFloor = 0.00,
+                        MandateForESI = False,
+                        name = 'Baseline',
+                        text = 'baseline specification')
 
 
 # Define the baseline post-ACA policy

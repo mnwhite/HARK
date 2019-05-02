@@ -881,9 +881,9 @@ def solveInsuranceSelection(solution_next,IncomeDstn,TaxFunc,SubsidyFunc,MedShkA
         EndOfPrdvPcond[:,:,h]  = Rfree[h_alt]*np.sum(tempvP*ShkPrbs_tiled,axis=0)
         EndOfPrdvCond[:,:,h]   = np.sum(tempv*ShkPrbs_tiled,axis=0)
         
-#        temp = np.isnan(tempv)
-#        if np.any(temp):
-#            print('vNext',h,np.argwhere(temp))
+        temp = np.isnan(tempv)
+        if np.any(temp):
+            print('vNext',h,np.argwhere(temp))
         
     # Calculate end of period value and marginal value conditional on each current health state
     EndOfPrdv = np.zeros((pLvlCount,aLvlCount+1,StateCountNow))
@@ -901,7 +901,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,TaxFunc,SubsidyFunc,MedShkA
         EndOfPrdvP[:,:,h] = DiscFacEff*np.sum(EndOfPrdvPcond*MrkvArray_temp,axis=2) + DiePrb*BequestMotiveP(aLvlNow)
         
 #        temp = np.isnan(EndOfPrdv[:,:,h])
-#        if h==0 and np.any(temp):
+#        if np.any(temp):
 #            print('EndOfPrdv',h,np.argwhere(temp))
             
     # Calculate human wealth conditional on each current health state 

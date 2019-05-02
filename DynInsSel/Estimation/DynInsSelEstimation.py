@@ -932,7 +932,7 @@ def objectiveFunction(Parameters, return_market=False):
     TestPremiums = True # Whether to start with the test premium level
     
     if TestPremiums:
-        ESIpremiums = np.array([0.3500, 0.0, 0.0, 0.0, 0.0])
+        ESIpremiums = np.array([0.3460, 0.0, 0.0, 0.0, 0.0])
     else:
         ESIpremiums = Params.PremiumsLast
     IMIpremiums_init = Params.IMIpremiums
@@ -1165,7 +1165,7 @@ if __name__ == '__main__':
         print('Making the agents took ' + mystr(t_end-t_start) + ' seconds.')
         
         t_start = clock()
-        MyType = MyMarket.agents[2]
+        MyType = MyMarket.agents[0]
         MyType.del_soln = False
         MyType.do_sim = False
         MyType.verbosity = 10
@@ -1201,9 +1201,9 @@ if __name__ == '__main__':
         
     if perturb_one_param:
         # Test model identification by perturbing one parameter at a time
-        param_i = 33
-        param_min = 0.12
-        param_max = 0.20
+        param_i = 1
+        param_min = 2.5
+        param_max = 3.0
         
         N = 35
         perturb_vec = np.linspace(param_min,param_max,num=N)
