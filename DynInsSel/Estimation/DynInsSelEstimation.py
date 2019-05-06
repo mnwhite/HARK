@@ -14,7 +14,7 @@ import SaveParameters
 from SaveParameters import writeParametersToFile
 import LoadDataMoments as Data
 from LoadDataMoments import data_moments, moment_weights
-from ActuarialRules import PreACAbaselineSpec, InsuranceMarket
+from ActuarialRules import PreACAbaselineSpec, PostACAbaselineSpec, InsuranceMarket
 from HARKinterpolation import ConstantFunction
 from HARKutilities import getPercentiles
 from HARKparallel import multiThreadCommands, multiThreadCommandsFake
@@ -112,19 +112,23 @@ class DynInsSelType(InsSelConsumerType):
         objected that is pickled back to the master process by joblib.  Keeps
         the value function (overall and by contract) and the actuarial value
         functions, as these are needed during static premium equilibrium search
-        and counterfactual analysis.
+        and counterfactual analysis.  Also keeps human wealth function, as this
+        is needed in counterfactual analysis to calculate WTP in dollars.
         '''
         vFuncByContract = []
         AVfunc = []
         vFunc = []
+        hFunc = []
         for t in range(self.T_cycle):
             vFuncByContract.append(self.solution[t].vFuncByContract)
             AVfunc.append(self.solution[t].AVfunc)
             vFunc.append(self.solution[t].vFunc)
+            hFunc.append(self.solution[t].hLvl)
         self.vFuncByContract = vFuncByContract
         self.AVfunc = AVfunc
         self.vFunc = vFunc
-        self.addToTimeVary('AVfunc','vFuncByContract','vFunc')
+        self.hFunc = hFunc
+        self.addToTimeVary('AVfunc','vFuncByContract','vFunc','hFunc')
         del self.solution
         self.delFromTimeVary('solution')
         
@@ -160,6 +164,7 @@ class DynInsSelType(InsSelConsumerType):
         N = self.AgentCount
         T = 60
         pCompHist = np.zeros((T,N)) + np.nan
+        hCompHist = np.zeros((T,N)) + np.nan
         out_of_bounds = np.zeros((T,N),dtype=bool) # Mark agents whose pComp is too high (requires extrapolation)
         for t in range(T):
             StateCount = len(self.vFunc[t])
@@ -167,9 +172,11 @@ class DynInsSelType(InsSelConsumerType):
                 # Extract data for this age-health
                 these = self.MrkvHist[t,:] == h
                 m = self.mLvlNow_hist[t,these]
+                p = self.pLvlHist[t,these]
                 vTarg = self.vTarg_hist[t,these]
                 vFunc = self.vFunc[t][h]
-                pMin = vFunc.func.func.y_list[0] # Lowest pLvl
+                hFunc = self.hFunc[t][h]
+                pMin = vFunc.func.func.y_list[0]  # Lowest pLvl
                 pMax = vFunc.func.func.y_list[-1] # Highest pLvl in grid
                  
                 # Evaluate the value function at the minimum and maximum pLvl
@@ -192,9 +199,16 @@ class DynInsSelType(InsSelConsumerType):
                 # Record the result of the bracketing search in pComp_hist
                 pCompHist[t,these] = pMid
                 
+                # Calculate WTP in terms of dollars by comparing baseline and
+                # counterfactual human wealth
+                hBaseline = hFunc(p)
+                hAlternate = hFunc(pMid)
+                hCompHist[t,these] = hBaseline - hAlternate
+                
         # Store the results as attributes of self
         self.pCompHist = pCompHist
         self.pComp_invalid = out_of_bounds
+        self.hCompHist = hCompHist
         
         
 class DynInsSelMarket(InsuranceMarket):
@@ -772,7 +786,7 @@ def makeDynInsSelType(CRRAcon,MedCurve,DiscFac,BequestShift,BequestScale,Cfloor,
     
     if InsChoiceType > 0:
         IndMarketContractList = [MedInsuranceContract(ConstantFunction(0.0),0.0,1.0,Params.MedPrice),
-                                 MedInsuranceContract(ConstantFunction(0.0),0.2,Copay,Params.MedPrice)]
+                                 MedInsuranceContract(ConstantFunction(0.0),0.1,Copay,Params.MedPrice)]
     else:
          IndMarketContractList = [MedInsuranceContract(ConstantFunction(0.0),0.2,0.08,Params.MedPrice)]   
     RetiredContractList = [MedInsuranceContract(ConstantFunction(0.0),0.0,0.12,Params.MedPrice)]
@@ -880,7 +894,7 @@ def makeMarketFromParams(ParamArray,PolicySpec,IMIpremiumArray,ESIpremiumArray,I
             if PolicySpec.ExcludedGroups[g]:
                 IMIpremiumArray_big[h,:] = 10000.
             else:
-                IMIpremiumArray_big[h,:] = IMIpremiumArray[g,:]
+                IMIpremiumArray_big[h,:] = IMIpremiumArray[1,:]
             
     # Construct an initial nested list for premiums
     PremiumFuncs_init = []
@@ -927,12 +941,12 @@ def objectiveFunction(Parameters, return_market=False):
     The objective function for the estimation.  Makes and solves a market, then
     returns the weighted sum of moment differences between simulation and data.
     '''
-    EvalType  = 0  # Number of times to do a static search for eqbm premiums
+    EvalType  = 2  # Number of times to do a static search for eqbm premiums
     InsChoice = 1  # Extent of insurance choice
     TestPremiums = True # Whether to start with the test premium level
     
     if TestPremiums:
-        ESIpremiums = np.array([0.3460, 0.0, 0.0, 0.0, 0.0])
+        ESIpremiums = np.array([0.3200, 0.0, 0.0, 0.0, 0.0])
     else:
         ESIpremiums = Params.PremiumsLast
     IMIpremiums_init = Params.IMIpremiums
@@ -972,8 +986,8 @@ if __name__ == '__main__':
     import matplotlib.pyplot as plt
     mystr = lambda number : "{:.4f}".format(number)
     
-    test_obj_func = True
-    test_one_type = False
+    test_obj_func = False
+    test_one_type = True
     perturb_one_param = False
     
     if test_obj_func:
@@ -1147,7 +1161,7 @@ if __name__ == '__main__':
         TestPremiums = True # Whether to start with the test premium level
         
         if TestPremiums:
-            ESIpremiums = np.array([0.3500, 0.0, 0.0, 0.0, 0.0])
+            ESIpremiums = np.array([0.3200, 0.0, 0.0, 0.0, 0.0])
         else:
             ESIpremiums = Params.PremiumsLast
         IMIpremiums_init = Params.IMIpremiums
@@ -1156,7 +1170,7 @@ if __name__ == '__main__':
         ESIpremiums_init_short = np.concatenate((np.array([0.]),ESIpremiums[0:ContractCounts[InsChoice]]))
         ESIpremiums_init = np.tile(np.reshape(ESIpremiums_init_short,(1,ESIpremiums_init_short.size)),(40,1))
         
-        MyMarket = makeMarketFromParams(Params.test_param_vec,PreACAbaselineSpec,IMIpremiums_init,ESIpremiums_init,InsChoice)
+        MyMarket = makeMarketFromParams(Params.test_param_vec,PostACAbaselineSpec,IMIpremiums_init,ESIpremiums_init,InsChoice)
         MyMarket.ESIpremiums = ESIpremiums_init_short
         multiThreadCommandsFake(MyMarket.agents,['update()','makeShockHistory()'])
         MyMarket.getIncomeQuintiles()
@@ -1165,9 +1179,9 @@ if __name__ == '__main__':
         print('Making the agents took ' + mystr(t_end-t_start) + ' seconds.')
         
         t_start = clock()
-        MyType = MyMarket.agents[0]
+        MyType = MyMarket.agents[2]
         MyType.del_soln = False
-        MyType.do_sim = False
+        MyType.do_sim = True
         MyType.verbosity = 10
         MyType.solve()
         t_end = clock()

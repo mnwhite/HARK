@@ -118,3 +118,22 @@ class ValueFuncCL(object):
             v = np.array([]) # Trivial case
             
         return v
+    
+    
+    def dumpCLdata(self):
+        '''
+        Copy CL buffer data for mNrmGrid, pLvlGrid, pLvlGridAlt, vNvrsZeroShk,
+        and vNvrsRescaled into arrays that are attributes of self.
+        '''
+        self.mNrmGrid = np.zeros(self.IntegerInputs[0])
+        self.pLvlGrid = np.zeros(self.IntegerInputs[1])
+        self.pLvlGridAlt = np.zeros((self.IntegerInputs[1]))
+        self.vNvrsZeroShk = np.zeros((self.IntegerInputs[1],self.IntegerInputs[0]+1))
+        self.vNvrsRescaled = np.zeros((self.IntegerInputs[2],self.IntegerInputs[1],self.IntegerInputs[0]))
+        
+        queue.read_buffer(self.mNrmGrid_buf,self.mNrmGrid)
+        queue.read_buffer(self.pLvlGrid_buf,self.pLvlGrid)
+        queue.read_buffer(self.pLvlGridAlt_buf,self.pLvlGridAlt)
+        queue.read_buffer(self.vNvrsZeroShkData_buf,self.vNvrsZeroShk)
+        queue.read_buffer(self.vNvrsRescaledData_buf,self.vNvrsRescaled)
+        

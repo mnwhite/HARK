@@ -51,7 +51,7 @@ def runCounterfactual(Parameters,Baseline,Counterfactuals,PremiumLim):
     TestPremiums = True # Whether to start with the test premium level
     
     if TestPremiums:
-        ESIpremiums = np.array([0.3000, 0.0, 0.0, 0.0, 0.0])
+        ESIpremiums = np.array([0.3200, 0.0, 0.0, 0.0, 0.0])
     else:
         ESIpremiums = Params.PremiumsLast
     IMIpremiums_init = Params.IMIpremiums
@@ -132,6 +132,14 @@ def runCounterfactual(Parameters,Baseline,Counterfactuals,PremiumLim):
         plt.savefig(FigsDir + 'Premiums' + Counterfactual.name + '.pdf')
         plt.show()
         
+        # Write the premiums to a data file
+        if len(PremiumsAfter.shape) == 3:
+            Prem_temp = ThisMarket.IMIpremiums[:,-1,1]
+            with open('../Results/' + Counterfactual.name + 'Premiums.txt','wb') as f:
+                my_writer = csv.writer(f, delimiter = '\t')
+                my_writer.writerow(Prem_temp)
+                f.close()
+        
         # Replace the simulated histories of the after market with those of the before market
         K = 0 # Running count of position in big arrays
         for this_type in ThisMarket.agents:
@@ -143,6 +151,7 @@ def runCounterfactual(Parameters,Baseline,Counterfactuals,PremiumLim):
         # Find compensating variation for each simulated individual, in terms of pLvl (and extract the results)
         multiThreadCommands(ThisMarket.agents,['findCompensatingpLvl()'])
         pComp_all = np.concatenate([this_type.pCompHist for this_type in ThisMarket.agents],axis=1)
+        hComp_all = np.concatenate([this_type.hCompHist for this_type in ThisMarket.agents],axis=1)
         Invalid_all = np.concatenate([this_type.pComp_invalid for this_type in ThisMarket.agents],axis=1)
         iHistAfter = np.concatenate([this_type.ContractNow_hist for this_type in ThisMarket.agents],axis=1) > 0
         
@@ -154,19 +163,21 @@ def runCounterfactual(Parameters,Baseline,Counterfactuals,PremiumLim):
         offer = OfferHist[which]
         age = ageHist[which]
         pComp = pComp_all[which]
+        WTP_hLvl = hComp_all[which]
         Invalid = Invalid_all[which]
         iBefore = iHistBefore[which]
         iAfter = iHistAfter[which]
-        counterfactual_data = np.vstack([age,health,offer,mLvl,pLvl,pComp,Invalid,iBefore,iAfter]).transpose()
+        WTP_pPct = 1. - pComp/pLvl
+        counterfactual_data = np.vstack([age,health,offer,mLvl,pLvl,WTP_pPct,WTP_hLvl,Invalid,iBefore,iAfter]).transpose()
         
         # Write the counterfactual results to a CSV file
-        VarNames = ['age','health','offer','mLvl','pLvl','pComp','Invalid','iBefore','iAfter']
+        VarNames = ['age','health','offer','mLvl','pLvl','WTP_pPct','WTP_hLvl','Invalid','iBefore','iAfter']
         with open('../Results/' + Counterfactual.name + 'Data.txt.','wb') as f:
             my_writer = csv.writer(f, delimiter = '\t')
             my_writer.writerow(VarNames)
             for i in range(counterfactual_data.shape[0]):
                 X = counterfactual_data[i,:]
-                this_row = ['%.0f' % X[0], '%.0f' % X[1], '%.0f' % X[2], '%.4f' % X[3], '%.4f' % X[4], '%.4f' % X[5], '%.0f' % X[6], '%.0f' % X[7], '%.0f' % X[8]]
+                this_row = ['%.0f' % X[0], '%.0f' % X[1], '%.0f' % X[2], '%.4f' % X[3], '%.4f' % X[4], '%.4f' % X[5], '%.4f' % X[6], '%.0f' % X[7], '%.0f' % X[8], '%.0f' % X[9]]
                 my_writer.writerow(this_row)
             f.close()
             print('Wrote counterfactual results to ' + Counterfactual.name + 'Data.txt.')
@@ -280,38 +291,56 @@ for MaxOOPpct in MaxOOPpcts:
 
 # Define a set of policy counterfactuals that one ACA policy feature at a time
 AddCommunityRatingSpec = copy(PreACAbaselineSpec)
-AddCommunityRatingSpec.HealthGroups = [[0,1,2,3,4,5]]
+AddCommunityRatingSpec.HealthGroups = [[0,1,2,3,4]]
 AddCommunityRatingSpec.ExcludedGroups = [False]
+AddCommunityRatingSpec.name = 'AddCommRating'
+AddCommunityRatingSpec.text = 'baseline plus community rating'
 
 AddAgeRatingLimitSpec = copy(PreACAbaselineSpec)
 AddAgeRatingLimitSpec.AgeBandLimit = 3.0
+AddAgeRatingLimitSpec.name = 'AddAgeBandLimit'
+AddAgeRatingLimitSpec.text = 'baseline plus 3x age rating limit'
 
 AddIndividualMandateSpec = copy(PreACAbaselineSpec)
 AddIndividualMandateSpec.MandateTaxRate = 0.025
 AddIndividualMandateSpec.MandateFloor = 0.07
+AddIndividualMandateSpec.name = 'AddIndMandate'
+AddIndividualMandateSpec.text = 'baseline plus individual mandate'
 
 AddIMIsubsidiesSpec = copy(PreACAbaselineSpec)
 AddIMIsubsidiesSpec.SubsidyFunc = makeACAstyleSubsidyPolicy(0.095, 4.0)
+AddIMIsubsidiesSpec.name = 'AddIMIsubsidies'
+AddIMIsubsidiesSpec.text = 'baseline plus subsidies for IMI'
 
 AddACAfeaturesSpecs = [AddCommunityRatingSpec,AddAgeRatingLimitSpec,AddIndividualMandateSpec,AddIMIsubsidiesSpec]
+#AddACAfeaturesSpecs = [AddAgeRatingLimitSpec]
 
 
 # Define a set of policy counterfactuals that remove ACA policy feature at a time
 DelCommunityRatingSpec = copy(PostACAbaselineSpec)
-DelCommunityRatingSpec.HealthGroups = [[0,1],[2,3,4,5]]
+DelCommunityRatingSpec.HealthGroups = [[0],[1,2,3,4]]
 DelCommunityRatingSpec.ExcludedGroups = [False,False]
+DelCommunityRatingSpec.name = 'DelCommRating'
+DelCommunityRatingSpec.text = 'ACA without community rating'
 
 DelAgeRatingLimitSpec = copy(PostACAbaselineSpec)
 DelAgeRatingLimitSpec.AgeBandLimit = None
+DelAgeRatingLimitSpec.name = 'DelAgeBandLimit'
+DelAgeRatingLimitSpec.text = 'ACA without age rating limit'
 
 DelIndividualMandateSpec = copy(PostACAbaselineSpec)
 DelIndividualMandateSpec.MandateTaxRate = 0.00
 DelIndividualMandateSpec.MandateFloor = 0.00
+DelIndividualMandateSpec.name = 'DelIndMandate'
+DelIndividualMandateSpec.text = 'ACA without individual mandate'
 
 DelIMIsubsidiesSpec = copy(PostACAbaselineSpec)
 DelIMIsubsidiesSpec.SubsidyFunc = NullSubsidyFuncs
+DelIMIsubsidiesSpec.name = 'DelIMIsubsidies'
+DelIMIsubsidiesSpec.text = 'ACA without subsidies for IMI'
 
 DelACAfeaturesSpecs = [DelCommunityRatingSpec,DelAgeRatingLimitSpec,DelIndividualMandateSpec,DelIMIsubsidiesSpec]
+#DelACAfeaturesSpecs = [DelIndividualMandateSpec]
 
 
 
@@ -330,11 +359,11 @@ if __name__ == '__main__':
     do_eligibility_cutoff = False
     do_max_OOP_prem = False
     do_add_features = False
-    do_del_features = False
+    do_del_features = True
     
     # Choose what kind of work to do
     run_experiments = False
-    make_figures = False
+    make_figures = True
     
     if do_trivial:
         if run_experiments:
@@ -426,7 +455,7 @@ if __name__ == '__main__':
             MyMarket = runCounterfactual(Params.test_param_vec,
                                          PreACAbaselineSpec,
                                          AddACAfeaturesSpecs,
-                                         [0.,30.])
+                                         [0.,20.])
             t_end = clock()
             print('Adding ACA features counterfactual experiment took ' + mystr(t_end-t_start) + ' seconds.')
             
@@ -444,7 +473,7 @@ if __name__ == '__main__':
             MyMarket = runCounterfactual(Params.test_param_vec,
                                          PostACAbaselineSpec,
                                          DelACAfeaturesSpecs,
-                                         [0.,30.])
+                                         [0.,20.])
             t_end = clock()
             print('Removing ACA features counterfactual experiment took ' + mystr(t_end-t_start) + ' seconds.')
             
@@ -452,9 +481,9 @@ if __name__ == '__main__':
             # Make figures for the maximum OOP premium (FPL pct) experiments
             for specification in DelACAfeaturesSpecs:
                 makeSinglePolicyFigures(specification,[-2,10],[-2,10],[-2,10],[-2,10])
-            makeCrossPolicyFigures('DelACAfeatures',DelACAfeaturesSpecs,[-2.,4.],[-2.,8.],[-4.,9.])
+            makeCrossPolicyFigures('DelACAfeatures',DelACAfeaturesSpecs,[-6.5,1.],[-20.,2.],[-20.,2.])
             
             
-    makeVaryParameterFigures('AgeBand','age band limit',AgeBandLimits,AgeBandSpecs[1:],[-1,2],[-1,4],[-1,4],[-1,2])
+    #makeVaryParameterFigures('AgeBand','age band limit',AgeBandLimits,AgeBandSpecs[1:],[-1,2],[-1,4],[-1,4],[-1,2])
     
     

@@ -272,7 +272,7 @@ def generalIMIactuarialRule(self,ExpInsPay,ExpBuyers):
                     TotalRevenue = np.sum(PremiumVec*TotalBuyersByAge[:,z])
                     return TotalRevenue - TotalCost
                 
-                NewBasePremium = brentq(tempFunc, 0.0, 1.0)
+                NewBasePremium = brentq(tempFunc, 0.0, 3.0)
                 PremiumArray[:,g,z] = NewBasePremium*AgeRatingScale
         
         else: # If there is not an age band limit...

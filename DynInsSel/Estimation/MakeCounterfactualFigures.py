@@ -41,7 +41,8 @@ def makeSinglePolicyFigures(specification,AgeHealthLim,AgeIncomeLim,OfferAgeLim,
     offer = np.zeros(N,dtype=int)
     mLvl = np.zeros(N,dtype=float)
     pLvl = np.zeros(N,dtype=float)
-    pComp = np.zeros(N,dtype=float)
+    WTP_pPct = np.zeros(N,dtype=float)
+    WTP_hLvl = np.zeros(N,dtype=float)
     invalid = np.zeros(N,dtype=bool)
     iBefore = np.zeros(N,dtype=bool)
     iAfter = np.zeros(N,dtype=bool)
@@ -53,11 +54,12 @@ def makeSinglePolicyFigures(specification,AgeHealthLim,AgeIncomeLim,OfferAgeLim,
         offer[i] = int(float(all_data[j][2]))
         mLvl[i] = float(all_data[j][3])
         pLvl[i] = float(all_data[j][4])
-        pComp[i] = float(all_data[j][5])
-        invalid[i] = bool(float(all_data[j][6]))
-        iBefore[i] = bool(float(all_data[j][7]))
-        iAfter[i] = bool(float(all_data[j][8]))  
-    WTP = 1. - pComp/pLvl
+        WTP_pPct[i] = float(all_data[j][5])
+        WTP_hLvl[i] = float(all_data[j][6])
+        invalid[i] = bool(float(all_data[j][7]))
+        iBefore[i] = bool(float(all_data[j][8]))
+        iAfter[i] = bool(float(all_data[j][9]))  
+    WTP = WTP_pPct
     valid = np.logical_not(invalid)
         
     # Make a quantile plot of permanent income by age
@@ -143,7 +145,7 @@ def makeSinglePolicyFigures(specification,AgeHealthLim,AgeIncomeLim,OfferAgeLim,
         for i in range(4):
             quintiles[p_temp > quintile_cuts[i]] += 1
         for i in range(5):
-            those = np.logical_and(quintiles==i, np.logical_not(offer))
+            those = np.logical_and(quintiles==i, np.logical_not(offer[these]))
             IMIinsuredRateByAgeIncome[t,i] = float(np.sum(i_temp[those]))/float(np.sum(those))
     plt.plot(AgeVec,IMIinsuredRateByAge,'--k')
     plt.plot(AgeVec,IMIinsuredRateByAgeIncome,'-')
@@ -302,7 +304,8 @@ def makeCrossPolicyFigures(name,specifications,AgeHealthLim,AgeIncomeLim,AgeOffe
         offer = np.zeros(N,dtype=int)
         mLvl = np.zeros(N,dtype=float)
         pLvl = np.zeros(N,dtype=float)
-        pComp = np.zeros(N,dtype=float)
+        WTP_pPct = np.zeros(N,dtype=float)
+        WTP_hLvl = np.zeros(N,dtype=float)
         invalid = np.zeros(N,dtype=bool)
         iBefore = np.zeros(N,dtype=bool)
         iAfter = np.zeros(N,dtype=bool)
@@ -315,11 +318,12 @@ def makeCrossPolicyFigures(name,specifications,AgeHealthLim,AgeIncomeLim,AgeOffe
             offer[i] = int(float(all_data[j][2]))
             mLvl[i] = float(all_data[j][3])
             pLvl[i] = float(all_data[j][4])
-            pComp[i] = float(all_data[j][5])
-            invalid[i] = bool(float(all_data[j][6]))
-            iBefore[i] = bool(float(all_data[j][7]))
-            iAfter[i] = bool(float(all_data[j][8]))  
-        WTP = 1. - pComp/pLvl
+            WTP_pPct[i] = float(all_data[j][5])
+            WTP_hLvl[i] = float(all_data[j][6])
+            invalid[i] = bool(float(all_data[j][7]))
+            iBefore[i] = bool(float(all_data[j][8]))
+            iAfter[i] = bool(float(all_data[j][9]))  
+        WTP = np.maximum(WTP_pPct,-1.0)
         valid = np.logical_not(invalid)
         
         good_health = health >= 3
@@ -389,7 +393,7 @@ def makeCrossPolicyFigures(name,specifications,AgeHealthLim,AgeIncomeLim,AgeOffe
     plt.ylabel('Overall')
     plt.xlim(25,65)
     plt.ylim(0.,1.)
-    plt.xticks([])
+    #plt.xticks([])
     
     plt.subplot(3,2,3)
     for p in range(P):
@@ -398,7 +402,7 @@ def makeCrossPolicyFigures(name,specifications,AgeHealthLim,AgeIncomeLim,AgeOffe
     plt.ylabel('Healthy')
     plt.xlim(25,65)
     plt.ylim(0.,1.)
-    plt.xticks([])
+    #plt.xticks([])
     
     plt.subplot(3,2,5)
     for p in range(P):
@@ -407,8 +411,8 @@ def makeCrossPolicyFigures(name,specifications,AgeHealthLim,AgeIncomeLim,AgeOffe
     plt.ylabel('Unhealthy')
     plt.xlim(25,65)
     plt.ylim(0.,1.)
-    plt.legend(labels=label_list,bbox_to_anchor=(0., -0.55, 2.5, .102), loc=10,
-           ncol=P, mode="expand")
+    plt.legend(labels=label_list,bbox_to_anchor=(-0.2, -0.65, 2.5, .102), loc=10,
+           ncol=2, mode="expand")
     
     plt.subplot(3,2,2)
     for p in range(P):
@@ -417,7 +421,7 @@ def makeCrossPolicyFigures(name,specifications,AgeHealthLim,AgeIncomeLim,AgeOffe
     plt.ylabel('High income')
     plt.xlim(25,65)
     plt.ylim(0.,1.)
-    plt.xticks([])
+    #plt.xticks([])
     
     plt.subplot(3,2,4)
     for p in range(P):
@@ -426,7 +430,7 @@ def makeCrossPolicyFigures(name,specifications,AgeHealthLim,AgeIncomeLim,AgeOffe
     plt.ylabel('Mid income')
     plt.xlim(25,65)
     plt.ylim(0.,1.)
-    plt.xticks([])
+    #plt.xticks([])
     
     plt.subplot(3,2,6)
     for p in range(P):
@@ -450,8 +454,7 @@ def makeCrossPolicyFigures(name,specifications,AgeHealthLim,AgeIncomeLim,AgeOffe
         plt.plot(AgeVec,WTPmeanByAge[p,:]*100, line_styles[p])
     plt.ylabel('Overall')
     plt.xlim(25,65)
-    #plt.ylim(0.,1.)
-    plt.xticks([])
+    #plt.xticks([])
     
     plt.subplot(4,2,3)
     for p in range(P):
@@ -459,7 +462,7 @@ def makeCrossPolicyFigures(name,specifications,AgeHealthLim,AgeIncomeLim,AgeOffe
     plt.ylabel('Healthy')
     plt.xlim(25,65)
     plt.ylim(AgeHealthLim[0],AgeHealthLim[1])
-    plt.xticks([])
+    #plt.xticks([])
     
     plt.subplot(4,2,5)
     for p in range(P):
@@ -467,7 +470,7 @@ def makeCrossPolicyFigures(name,specifications,AgeHealthLim,AgeIncomeLim,AgeOffe
     plt.ylabel('Unhealthy')
     plt.xlim(25,65)
     plt.ylim(AgeHealthLim[0],AgeHealthLim[1])
-    plt.xticks([])
+    #plt.xticks([])
     
     plt.subplot(4,2,7)
     for p in range(P):
@@ -476,8 +479,8 @@ def makeCrossPolicyFigures(name,specifications,AgeHealthLim,AgeIncomeLim,AgeOffe
     plt.ylabel('Not offered ESI')
     plt.xlim(25,65)
     plt.ylim(AgeOfferLim[0],AgeOfferLim[1])
-    plt.legend(labels=label_list,bbox_to_anchor=(0., -0.55, 2.5, .102), loc=10,
-           ncol=P, mode="expand")
+    plt.legend(labels=label_list,bbox_to_anchor=(-0.2, -0.65, 2.5, .102), loc=10,
+           ncol=2, mode="expand")
     
     plt.subplot(4,2,2)
     for p in range(P):
@@ -485,7 +488,7 @@ def makeCrossPolicyFigures(name,specifications,AgeHealthLim,AgeIncomeLim,AgeOffe
     plt.ylabel('High income')
     plt.xlim(25,65)
     plt.ylim(AgeIncomeLim[0],AgeIncomeLim[1])
-    plt.xticks([])
+    #plt.xticks([])
     
     plt.subplot(4,2,4)
     for p in range(P):
@@ -493,7 +496,7 @@ def makeCrossPolicyFigures(name,specifications,AgeHealthLim,AgeIncomeLim,AgeOffe
     plt.ylabel('Mid income')
     plt.xlim(25,65)
     plt.ylim(AgeIncomeLim[0],AgeIncomeLim[1])
-    plt.xticks([])
+    #plt.xticks([])
     
     plt.subplot(4,2,6)
     for p in range(P):
@@ -501,7 +504,7 @@ def makeCrossPolicyFigures(name,specifications,AgeHealthLim,AgeIncomeLim,AgeOffe
     plt.ylabel('Low income')
     plt.xlim(25,65)
     plt.ylim(AgeIncomeLim[0],AgeIncomeLim[1])
-    plt.xticks([])
+    #plt.xticks([])
     
     plt.subplot(4,2,8)
     for p in range(P):
@@ -581,7 +584,8 @@ def makeVaryParameterFigures(param_name,param_label,param_values,specifications,
         offer = np.zeros(N,dtype=int)
         mLvl = np.zeros(N,dtype=float)
         pLvl = np.zeros(N,dtype=float)
-        pComp = np.zeros(N,dtype=float)
+        WTP_pPct = np.zeros(N,dtype=float)
+        WTP_hLvl = np.zeros(N,dtype=float)
         invalid = np.zeros(N,dtype=bool)
         iBefore = np.zeros(N,dtype=bool)
         iAfter = np.zeros(N,dtype=bool)
@@ -594,11 +598,12 @@ def makeVaryParameterFigures(param_name,param_label,param_values,specifications,
             offer[i] = int(float(all_data[j][2]))
             mLvl[i] = float(all_data[j][3])
             pLvl[i] = float(all_data[j][4])
-            pComp[i] = float(all_data[j][5])
-            invalid[i] = bool(float(all_data[j][6]))
-            iBefore[i] = bool(float(all_data[j][7]))
-            iAfter[i] = bool(float(all_data[j][8]))  
-        WTP = 1. - pComp/pLvl
+            WTP_pPct[i] = float(all_data[j][5])
+            WTP_hLvl[i] = float(all_data[j][6])
+            invalid[i] = bool(float(all_data[j][7]))
+            iBefore[i] = bool(float(all_data[j][8]))
+            iAfter[i] = bool(float(all_data[j][9]))  
+        WTP = WTP_pPct
         valid = np.logical_not(invalid)
         IMI = np.logical_not(offer)
         

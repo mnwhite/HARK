@@ -524,26 +524,26 @@ for j in range(ZeroMedShkPrb.shape[0]):
     ZeroMedShkPrb_list.append(ZeroMedShkPrb[j,:])
     
 # Individual market premiums by age
-IMIpremiums = np.array([[ 1.90720776,  2.04733647,  2.09829736,  2.17896955,  2.22399231,
-         2.271415  ,  2.31307986,  2.38737238,  2.45785184,  2.49594084,
-         2.61279515,  2.60154544,  2.65382462,  2.70512115,  2.80536537,
-         2.88313992,  2.96702573,  3.03236017,  3.11056428,  3.1696871 ,
-         3.23526486,  3.32615963,  3.39319149,  3.52281168,  3.64036025,
-         3.68719623,  3.80061138,  3.89738029,  4.05530509,  4.11555093,
-         4.22203937,  4.33874121,  4.43892108,  4.57171832,  4.74798875,
-         4.80763363,  4.92758941,  5.00968932,  5.1773331 ,  5.32721074],
-       [ 0.3350381 ,  0.34179464,  0.3520346 ,  0.36066132,  0.3676093 ,
-         0.3807557 ,  0.38942585,  0.3989395 ,  0.40940091,  0.41464459,
-         0.42477153,  0.44099948,  0.45216506,  0.46331762,  0.4760266 ,
-         0.48985183,  0.51233712,  0.52757109,  0.54808677,  0.56782115,
-         0.59195688,  0.61695224,  0.64489221,  0.67384281,  0.70496672,
-         0.73445768,  0.77984304,  0.80981509,  0.85208137,  0.90039156,
-         0.93316004,  0.98088127,  1.02657617,  1.07069898,  1.11196758,
-         1.15387465,  1.19883363,  1.24260055,  1.26661215,  1.30059763]])
+IMIpremiums = np.array([[ 1.99167702,  2.12575822,  2.17794489,  2.26374524,  2.2968011 ,
+         2.37556026,  2.43476155,  2.44365999,  2.53646858,  2.59139225,
+         2.6840839 ,  2.67887369,  2.75152485,  2.83044001,  2.88993337,
+         2.93415696,  3.01503168,  3.1150868 ,  3.15860366,  3.28183008,
+         3.35782124,  3.42626585,  3.5255796 ,  3.62097666,  3.66157355,
+         3.81329909,  3.91573376,  4.04322022,  4.18354965,  4.2221637 ,
+         4.31240355,  4.4251019 ,  4.62157225,  4.71159635,  4.82941791,
+         4.90316041,  5.08207427,  5.18213071,  5.25145547,  5.49322555],
+       [ 0.35070106,  0.35802511,  0.3680267 ,  0.37669415,  0.38643186,
+         0.39559097,  0.40573442,  0.41574982,  0.42702718,  0.43780981,
+         0.44719155,  0.45803575,  0.47216753,  0.48291856,  0.49911225,
+         0.51456198,  0.53334648,  0.55115343,  0.57244592,  0.59255621,
+         0.61795858,  0.64116343,  0.66674388,  0.69548525,  0.72370561,
+         0.76352649,  0.80337609,  0.83144459,  0.8746255 ,  0.91653556,
+         0.96176701,  1.00642451,  1.05436908,  1.09992104,  1.1543865 ,
+         1.19133532,  1.24685484,  1.29478345,  1.34049896,  1.39588969]])
 
 # Define basic parameters of the economy
 HealthTaxFunc = SpecialTaxFunction(0.0,0.00) # Tax rate will be overwritten by installPremiumFuncs
-HealthTaxRate_init = 0.046
+HealthTaxRate_init = 0.039
 LoadFacESI   = 1.20 # Loading factor for employer sponsored insurance
 LoadFacIMI   = 1.80 # Loading factor for individual market insurance
 CohortGroFac = 1.01 # Year-on-year growth rate of population; each cohort is this factor larger than previous
@@ -614,8 +614,8 @@ CollegeDictionary['pLvlNextFuncRet'] = RetirementFunc_c
 
 # Make a test parameter vector for estimation
 test_param_vec = np.array([
-          0.88,                #  0 DiscFac           : Intertemporal discount factor
-          2.9,                 #  1 CRRA              : Coefficient of relative risk aversion for consumption
+          0.90,                #  0 DiscFac           : Intertemporal discount factor
+          2.8,                 #  1 CRRA              : Coefficient of relative risk aversion for consumption
           8.0,                 #  2 MedCurve          : Ratio of CRRA for medical care to CRRA for consumption
           -7.5,                #  3 log(ChoiceShkMag) : Log stdev of taste shocks over insurance contracts
           0.15,                #  4 Cfloor            : Consumption floor ($10,000)
@@ -623,7 +623,7 @@ test_param_vec = np.array([
           -3.0,                #  6 UNUSED            : UNUSED
           10.0,                #  7 BequestShift      : Constant term in bequest motive
           3.0,                 #  8 BequestScale      : Scale of bequest motive
-          -3.47,               #  9 MedShkMean_0      : Constant term for log mean medical need shock
+          -3.60,               #  9 MedShkMean_0      : Constant term for log mean medical need shock
           0.0045,              # 10 MedShkMean_a1     : Linear coefficient on age for log mean medical need shock
           0.00075,             # 11 MedShkMean_a2     : Quadratic coefficient on age for log mean medical need shock
           8e-06,               # 12 MedShkMean_a3     : Cubic coefficient on age for log mean medical need shock
