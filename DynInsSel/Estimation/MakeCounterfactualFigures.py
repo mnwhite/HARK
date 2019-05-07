@@ -1,6 +1,9 @@
 '''
 This module has functions to produce figures from counterfactual experiments.
 '''
+import sys 
+sys.path.insert(0,'../../')
+
 import numpy as np
 import matplotlib.pyplot as plt
 import csv
@@ -268,6 +271,7 @@ def makeCrossPolicyFigures(name,specifications,AgeHealthLim,AgeIncomeLim,AgeOffe
     '''
     T = 40
     P = len(specifications)
+    FigsDir = '../CounterfactualFigs/'
     
     # Initialize arrays to hold counterfactual results
     IMIinsuredRateByAge = np.zeros((P,T))
@@ -294,7 +298,6 @@ def makeCrossPolicyFigures(name,specifications,AgeHealthLim,AgeIncomeLim,AgeOffe
         with open('../Results/' + specification.name + 'Data.txt','r') as f:
             my_reader = csv.reader(f, delimiter = '\t')
             all_data = list(my_reader)
-        FigsDir = '../CounterfactualFigs/'
         
         # Initialize data arrays
         N = len(all_data) - 1
@@ -551,6 +554,7 @@ def makeVaryParameterFigures(param_name,param_label,param_values,specifications,
     '''
     T = 40
     P = len(specifications)
+    FigsDir = '../CounterfactualFigs/'
     
     # Define age group (min,max)
     age_groups = [[0,9],[10,19],[20,29],[30,39]]
@@ -574,7 +578,6 @@ def makeVaryParameterFigures(param_name,param_label,param_values,specifications,
         with open('../Results/' + specification.name + 'Data.txt','r') as f:
             my_reader = csv.reader(f, delimiter = '\t')
             all_data = list(my_reader)
-        FigsDir = '../CounterfactualFigs/'
         
         # Initialize data arrays
         N = len(all_data) - 1
@@ -736,4 +739,50 @@ def makeVaryParameterFigures(param_name,param_label,param_values,specifications,
     plt.savefig(FigsDir + 'Vary' + param_name + 'WTPmean.pdf',bbox_inches='tight')
     plt.show()
             
+
+def makePremiumFigure(name,specifications):
+    '''
+    Produces figure to graphically represent premiums across counterfactual
+    experiments and saves them to the folder ../CounterfactualFigs.
+    
+    Parameters
+    ----------
+    name : str
+        Filename prefix for this set of specifications
+    specifications : [ActuarialSpecification]
+        Counterfactual specification whose premiums are to be plotted.
         
+    Returns
+    -------
+    None
+    '''
+    T = 40
+    P = len(specifications)
+    FigsDir = '../CounterfactualFigs/'
+    
+    PremiumArray = np.zeros((T,P))
+    label_list = []
+    
+    for p in range(P):
+        specification = specifications[p]
+        label_list.append(specification.text)
+        
+        with open('../Results/' + specification.name + 'Premiums.txt','r') as f:
+            my_reader = csv.reader(f, delimiter = '\t')
+            all_data = list(my_reader)
+            
+        PremiumArray[:,p] = np.array(all_data[0])
+    
+    line_styles = ['-b','-g','-r','-c','-m']
+    AgeVec = np.arange(25,65)
+    
+    for p in range(P):
+        plt.plot(AgeVec,PremiumArray[:,p]*10,line_styles[p])
+    plt.xlabel('Age')
+    plt.ylabel('Annual premium (thousands of USD)')
+    plt.title('Individual market premiums across policies')
+    plt.legend(labels=label_list)
+    plt.savefig(FigsDir + name + 'Premiums.pdf')
+    plt.show()
+
+    

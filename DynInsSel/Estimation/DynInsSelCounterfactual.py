@@ -11,7 +11,8 @@ from copy import copy
 from DynInsSelEstimation import makeMarketFromParams
 from ActuarialRules import PolicySpecification, PreACAbaselineSpec, PostACAbaselineSpec, generalIMIactuarialRule
 from SubsidyFuncs import NullSubsidyFuncs, makeACAstyleSubsidyPolicy
-from MakeCounterfactualFigures import makeSinglePolicyFigures, makeCrossPolicyFigures, makeVaryParameterFigures
+from MakeCounterfactualFigures import makeSinglePolicyFigures, makeCrossPolicyFigures, \
+                        makeVaryParameterFigures, makePremiumFigure
 from HARKparallel import multiThreadCommands, multiThreadCommandsFake
 import matplotlib.pyplot as plt
 
@@ -358,8 +359,8 @@ if __name__ == '__main__':
     do_mandate_tax = False
     do_eligibility_cutoff = False
     do_max_OOP_prem = False
-    do_add_features = False
-    do_del_features = True
+    do_add_features = True
+    do_del_features = False
     
     # Choose what kind of work to do
     run_experiments = False
@@ -461,9 +462,10 @@ if __name__ == '__main__':
             
         if make_figures:
             # Make figures for the adding one ACA feature at a time experiment
-            for specification in AddACAfeaturesSpecs:
-                makeSinglePolicyFigures(specification,[-2,10],[-2,10],[-2,10],[-2,10])
-            makeCrossPolicyFigures('AddACAfeatures',AddACAfeaturesSpecs,[-2.,4.],[-2.,8.],[-4.,9.])
+            #for specification in AddACAfeaturesSpecs:
+            #    makeSinglePolicyFigures(specification,[-2,10],[-2,10],[-2,10],[-2,10])
+            #makeCrossPolicyFigures('AddACAfeatures',AddACAfeaturesSpecs,[-2.,4.],[-2.,8.],[-4.,9.])
+            makePremiumFigure('AddACAfeatures',AddACAfeaturesSpecs)
             
             
     if do_del_features:
@@ -479,9 +481,10 @@ if __name__ == '__main__':
             
         if make_figures:
             # Make figures for the removing one ACA feature at a time experiment
-            #for specification in DelACAfeaturesSpecs:
-            #    makeSinglePolicyFigures(specification,[-2,10],[-2,10],[-2,10],[-2,10])
+            for specification in DelACAfeaturesSpecs:
+                makeSinglePolicyFigures(specification,[-2,10],[-2,10],[-2,10],[-2,10])
             makeCrossPolicyFigures('DelACAfeatures',DelACAfeaturesSpecs,[-6.5,1.],[-20.,2.],[-20.,2.])
+            makePremiumFigure('DelACAfeatures',DelACAfeaturesSpecs)
             
             
     #makeVaryParameterFigures('AgeBand','age band limit',AgeBandLimits,AgeBandSpecs[1:],[-1,2],[-1,4],[-1,4],[-1,2])
