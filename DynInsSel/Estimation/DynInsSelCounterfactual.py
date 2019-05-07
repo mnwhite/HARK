@@ -460,7 +460,7 @@ if __name__ == '__main__':
             print('Adding ACA features counterfactual experiment took ' + mystr(t_end-t_start) + ' seconds.')
             
         if make_figures:
-            # Make figures for the maximum OOP premium (FPL pct) experiments
+            # Make figures for the adding one ACA feature at a time experiment
             for specification in AddACAfeaturesSpecs:
                 makeSinglePolicyFigures(specification,[-2,10],[-2,10],[-2,10],[-2,10])
             makeCrossPolicyFigures('AddACAfeatures',AddACAfeaturesSpecs,[-2.,4.],[-2.,8.],[-4.,9.])
@@ -478,9 +478,9 @@ if __name__ == '__main__':
             print('Removing ACA features counterfactual experiment took ' + mystr(t_end-t_start) + ' seconds.')
             
         if make_figures:
-            # Make figures for the maximum OOP premium (FPL pct) experiments
-            for specification in DelACAfeaturesSpecs:
-                makeSinglePolicyFigures(specification,[-2,10],[-2,10],[-2,10],[-2,10])
+            # Make figures for the removing one ACA feature at a time experiment
+            #for specification in DelACAfeaturesSpecs:
+            #    makeSinglePolicyFigures(specification,[-2,10],[-2,10],[-2,10],[-2,10])
             makeCrossPolicyFigures('DelACAfeatures',DelACAfeaturesSpecs,[-6.5,1.],[-20.,2.],[-20.,2.])
             
             

@@ -1673,9 +1673,9 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         self.TranShkDstn = self.TranShkDstn_all
         
         self.updateFirstOrderConditionFuncs()
-        self.updateUninsuredPremium()
         self.updateEffPriceList()
         
+    
     def preSolve(self):
         self.update()
         
