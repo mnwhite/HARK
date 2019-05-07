@@ -17,7 +17,7 @@ from HARKparallel import multiThreadCommands, multiThreadCommandsFake
 import matplotlib.pyplot as plt
 
 
-def runCounterfactual(Parameters,Baseline,Counterfactuals,PremiumLim):
+def runCounterfactual(Parameters,Baseline,Counterfactuals,PremiumLim,IsPostACA):
     '''
     Runs a counterfactual experiment comparing individuals' welfare under two
     or more policies.  Constructs a market for the agents to live in, and solves
@@ -39,6 +39,9 @@ def runCounterfactual(Parameters,Baseline,Counterfactuals,PremiumLim):
         Specification(s) of the actuarial rule for the counterfactual world.
     PremiumLim : [float,float]
         Vertical axis limit for counterfactual premium-by-age-health figure.
+    IsPostACA : bool
+        True if this set of counterfactuals uses the post-ACA world as baseline.
+        False if it uses the pre-ACA world as baseline.
         
     Returns
     -------
@@ -107,6 +110,18 @@ def runCounterfactual(Parameters,Baseline,Counterfactuals,PremiumLim):
     plt.title('Premiums by age in baseline scenario')
     plt.savefig(FigsDir + 'PremiumsBaseline.pdf')
     plt.show()
+    
+    # Write the premiums to a data file
+    if IsPostACA:
+        prefix = 'Post'
+    else:
+        prefix = 'Pre'
+    if len(PremiumsBefore.shape) == 3:
+        Prem_temp = ThisMarket.IMIpremiums[:,-1,1]
+        with open('../Results/' + prefix + 'ACAbaselinePremiums.txt','wb') as f:
+            my_writer = csv.writer(f, delimiter = '\t')
+            my_writer.writerow(Prem_temp)
+            f.close()
     
     for Counterfactual in Counterfactuals:
         print('Now solving a counterfactual policy named ' + str(Counterfactual.text) + '.')
@@ -304,12 +319,12 @@ if __name__ == '__main__':
     do_mandate_tax = False
     do_eligibility_cutoff = False
     do_max_OOP_prem = False
-    do_add_features = False
+    do_add_features = True
     do_del_features = False
     
     # Choose what kind of work to do
     run_experiments = False
-    make_figures = False
+    make_figures = True
     
 
     if do_trivial:
@@ -417,7 +432,7 @@ if __name__ == '__main__':
             for specification in AddACAfeaturesSpecs:
                 makeSinglePolicyFigures(specification,[-2,10],[-2,10],[-2,10],[-2,10])
             makeCrossPolicyFigures('AddACAfeatures',AddACAfeaturesSpecs,[-2.,4.],[-2.,8.],[-4.,9.])
-            makePremiumFigure('AddACAfeatures',AddACAfeaturesSpecs)
+            makePremiumFigure('AddACAfeatures',AddACAfeaturesSpecs,False)
             
             
     if do_del_features:
@@ -436,5 +451,5 @@ if __name__ == '__main__':
             for specification in DelACAfeaturesSpecs:
                 makeSinglePolicyFigures(specification,[-2,10],[-2,10],[-2,10],[-2,10])
             makeCrossPolicyFigures('DelACAfeatures',DelACAfeaturesSpecs,[-6.5,1.],[-20.,2.],[-20.,2.])
-            makePremiumFigure('DelACAfeatures',DelACAfeaturesSpecs)
+            makePremiumFigure('DelACAfeatures',DelACAfeaturesSpecs,True)
             

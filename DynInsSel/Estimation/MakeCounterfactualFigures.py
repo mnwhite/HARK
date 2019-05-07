@@ -274,12 +274,12 @@ def makeCrossPolicyFigures(name,specifications,AgeHealthLim,AgeIncomeLim,AgeOffe
     FigsDir = '../CounterfactualFigs/'
     
     # Initialize arrays to hold counterfactual results
-    IMIinsuredRateByAge = np.zeros((P,T))
-    IMIinsuredRateByAgeGoodHealth = np.zeros((P,T))
-    IMIinsuredRateByAgeBadHealth = np.zeros((P,T))
-    IMIinsuredRateByAgeHighInc = np.zeros((P,T))
-    IMIinsuredRateByAgeMidInc = np.zeros((P,T))
-    IMIinsuredRateByAgeLowInc = np.zeros((P,T))
+    IMIinsuredRateByAge = np.zeros((P+1,T))
+    IMIinsuredRateByAgeGoodHealth = np.zeros((P+1,T))
+    IMIinsuredRateByAgeBadHealth = np.zeros((P+1,T))
+    IMIinsuredRateByAgeHighInc = np.zeros((P+1,T))
+    IMIinsuredRateByAgeMidInc = np.zeros((P+1,T))
+    IMIinsuredRateByAgeLowInc = np.zeros((P+1,T))
     WTPmeanByAge = np.zeros((P,T))
     WTPmeanByAgeGoodHealth = np.zeros((P,T))
     WTPmeanByAgeBadHealth = np.zeros((P,T))
@@ -335,11 +335,17 @@ def makeCrossPolicyFigures(name,specifications,AgeHealthLim,AgeIncomeLim,AgeOffe
         # Calculate IMI insured rate for this policy by age and health
         for t in range(T):
             these = np.logical_and(age == t, np.logical_not(offer))
-            IMIinsuredRateByAge[p,t] = float(np.sum(iAfter[these]))/float(np.sum(these))
+            IMIinsuredRateByAge[p+1,t] = float(np.sum(iAfter[these]))/float(np.sum(these))
+            if p==0:
+                IMIinsuredRateByAge[0,t] = float(np.sum(iBefore[these]))/float(np.sum(these))
             those = np.logical_and(these, good_health)
-            IMIinsuredRateByAgeGoodHealth[p,t] = float(np.sum(iAfter[those]))/float(np.sum(those))
+            IMIinsuredRateByAgeGoodHealth[p+1,t] = float(np.sum(iAfter[those]))/float(np.sum(those))
+            if p==0:
+                IMIinsuredRateByAgeGoodHealth[0,t] = float(np.sum(iBefore[those]))/float(np.sum(those))
             those = np.logical_and(these, bad_health)
-            IMIinsuredRateByAgeBadHealth[p,t] = float(np.sum(iAfter[those]))/float(np.sum(those))
+            IMIinsuredRateByAgeBadHealth[p+1,t] = float(np.sum(iAfter[those]))/float(np.sum(those))
+            if p==0:
+                IMIinsuredRateByAgeBadHealth[0,t] = float(np.sum(iBefore[those]))/float(np.sum(those))
         
         # Calculate mean WTP by age, health, and offer status
         for t in range(T):
@@ -359,6 +365,7 @@ def makeCrossPolicyFigures(name,specifications,AgeHealthLim,AgeIncomeLim,AgeOffe
             these = age == t
             p_temp = pLvl[these]
             i_temp = iAfter[these]
+            i_temp_alt = iBefore[these]
             WTP_temp = WTP[these]
             group_cuts = getPercentiles(p_temp,percentiles=[0.2,0.8])
             group = np.zeros(np.sum(these),dtype=int)
@@ -366,11 +373,17 @@ def makeCrossPolicyFigures(name,specifications,AgeHealthLim,AgeIncomeLim,AgeOffe
                 group[p_temp > group_cuts[i]] += 1
             IMI_temp = np.logical_not(offer[these])
             those = np.logical_and(group == 0, IMI_temp)
-            IMIinsuredRateByAgeLowInc[p,t] = float(np.sum(i_temp[those]))/float(np.sum(those))
+            IMIinsuredRateByAgeLowInc[p+1,t] = float(np.sum(i_temp[those]))/float(np.sum(those))
+            if p==0:
+                IMIinsuredRateByAgeLowInc[0,t] = float(np.sum(i_temp_alt[those]))/float(np.sum(those))
             those = np.logical_and(group == 1, IMI_temp)
-            IMIinsuredRateByAgeMidInc[p,t] = float(np.sum(i_temp[those]))/float(np.sum(those))
+            IMIinsuredRateByAgeMidInc[p+1,t] = float(np.sum(i_temp[those]))/float(np.sum(those))
+            if p==0:
+                IMIinsuredRateByAgeMidInc[0,t] = float(np.sum(i_temp_alt[those]))/float(np.sum(those))
             those = np.logical_and(group == 2, IMI_temp)
-            IMIinsuredRateByAgeHighInc[p,t] = float(np.sum(i_temp[those]))/float(np.sum(those))
+            IMIinsuredRateByAgeHighInc[p+1,t] = float(np.sum(i_temp[those]))/float(np.sum(those))
+            if p==0:
+                IMIinsuredRateByAgeHighInc[0,t] = float(np.sum(i_temp_alt[those]))/float(np.sum(those))
             
             group = np.zeros(np.sum(these),dtype=int)
             for i in range(2):
@@ -384,13 +397,13 @@ def makeCrossPolicyFigures(name,specifications,AgeHealthLim,AgeIncomeLim,AgeOffe
             WTPmeanByAgeHighInc[p,t] = np.mean(WTP_temp[those])
             
     
-    line_styles = ['-b','-g','-r','-c','-m']
+    line_styles = ['--k','-b','-g','-r','-c','-m']
     AgeVec = np.arange(25,65)
     
     plt.figure(figsize=(6.4,5.0))
     
     plt.subplot(3,2,1)
-    for p in range(P):
+    for p in range(P+1):
         plt.plot(AgeVec,IMIinsuredRateByAge[p,:], line_styles[p])
     #plt.xlabel('Age')
     plt.ylabel('Overall')
@@ -399,7 +412,7 @@ def makeCrossPolicyFigures(name,specifications,AgeHealthLim,AgeIncomeLim,AgeOffe
     #plt.xticks([])
     
     plt.subplot(3,2,3)
-    for p in range(P):
+    for p in range(P+1):
         plt.plot(AgeVec,IMIinsuredRateByAgeGoodHealth[p,:], line_styles[p])
     #plt.xlabel('Age')
     plt.ylabel('Healthy')
@@ -408,17 +421,21 @@ def makeCrossPolicyFigures(name,specifications,AgeHealthLim,AgeIncomeLim,AgeOffe
     #plt.xticks([])
     
     plt.subplot(3,2,5)
-    for p in range(P):
-        plt.plot(AgeVec,IMIinsuredRateByAgeBadHealth[p,:], line_styles[p])
+    for p in range(P+1):
+        if p == 0:
+            label = '_nolegend_'
+        else:
+            label = label_list[p-1]
+        plt.plot(AgeVec,IMIinsuredRateByAgeBadHealth[p,:], line_styles[p], label=label)
     plt.xlabel('Age')
     plt.ylabel('Unhealthy')
     plt.xlim(25,65)
     plt.ylim(0.,1.)
-    plt.legend(labels=label_list,bbox_to_anchor=(-0.2, -0.65, 2.5, .102), loc=10,
+    plt.legend(bbox_to_anchor=(-0.2, -0.65, 2.5, .102), loc=10,
            ncol=2, mode="expand")
     
     plt.subplot(3,2,2)
-    for p in range(P):
+    for p in range(P+1):
         plt.plot(AgeVec,IMIinsuredRateByAgeHighInc[p,:], line_styles[p])
     #plt.xlabel('Age')
     plt.ylabel('High income')
@@ -427,7 +444,7 @@ def makeCrossPolicyFigures(name,specifications,AgeHealthLim,AgeIncomeLim,AgeOffe
     #plt.xticks([])
     
     plt.subplot(3,2,4)
-    for p in range(P):
+    for p in range(P+1):
         plt.plot(AgeVec,IMIinsuredRateByAgeMidInc[p,:], line_styles[p])
     #plt.xlabel('Age')
     plt.ylabel('Mid income')
@@ -436,7 +453,7 @@ def makeCrossPolicyFigures(name,specifications,AgeHealthLim,AgeIncomeLim,AgeOffe
     #plt.xticks([])
     
     plt.subplot(3,2,6)
-    for p in range(P):
+    for p in range(P+1):
         plt.plot(AgeVec,IMIinsuredRateByAgeLowInc[p,:], line_styles[p])
     plt.xlabel('Age')
     plt.ylabel('Low income')
@@ -449,7 +466,7 @@ def makeCrossPolicyFigures(name,specifications,AgeHealthLim,AgeIncomeLim,AgeOffe
     plt.show()
     
     
-    
+    line_styles = ['-b','-g','-r','-c','-m']
     plt.figure(figsize=(6.4,6.6))
     
     plt.subplot(4,2,1)
@@ -740,7 +757,7 @@ def makeVaryParameterFigures(param_name,param_label,param_values,specifications,
     plt.show()
             
 
-def makePremiumFigure(name,specifications):
+def makePremiumFigure(name,specifications,post_bool):
     '''
     Produces figure to graphically represent premiums across counterfactual
     experiments and saves them to the folder ../CounterfactualFigs.
@@ -751,6 +768,9 @@ def makePremiumFigure(name,specifications):
         Filename prefix for this set of specifications
     specifications : [ActuarialSpecification]
         Counterfactual specification whose premiums are to be plotted.
+    post_bool : bool
+        If True, baseline for these counterfactuals is the post-ACA world.
+        If False, baseline is the pre-ACA world
         
     Returns
     -------
@@ -763,6 +783,17 @@ def makePremiumFigure(name,specifications):
     PremiumArray = np.zeros((T,P))
     label_list = []
     
+    if post_bool:
+        prefix = 'Post'
+    else:
+        prefix = 'Pre'
+        
+    with open('../Results/' + prefix + 'ACAbaselinePremiums.txt','r') as f:
+            my_reader = csv.reader(f, delimiter = '\t')
+            all_data = list(my_reader)
+    BaselinePremiums = np.array(all_data[0])
+    label_list.append(prefix + ' ACA baseline')
+        
     for p in range(P):
         specification = specifications[p]
         label_list.append(specification.text)
@@ -776,6 +807,7 @@ def makePremiumFigure(name,specifications):
     line_styles = ['-b','-g','-r','-c','-m']
     AgeVec = np.arange(25,65)
     
+    plt.plot(AgeVec,BaselinePremiums,'-k')
     for p in range(P):
         plt.plot(AgeVec,PremiumArray[:,p]*10,line_styles[p])
     plt.xlabel('Age')

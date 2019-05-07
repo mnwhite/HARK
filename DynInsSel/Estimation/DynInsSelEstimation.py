@@ -894,7 +894,7 @@ def makeMarketFromParams(ParamArray,PolicySpec,IMIpremiumArray,ESIpremiumArray,I
             if PolicySpec.ExcludedGroups[g]:
                 IMIpremiumArray_big[h,:] = 10000.
             else:
-                IMIpremiumArray_big[h,:] = IMIpremiumArray[1,:]
+                IMIpremiumArray_big[h,:] = IMIpremiumArray[g,:]
             
     # Construct an initial nested list for premiums
     PremiumFuncs_init = []
