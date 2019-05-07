@@ -314,16 +314,16 @@ if __name__ == '__main__':
     
     # Choose which experiments to work on
     do_trivial = False
-    do_add_ACA = False
+    do_add_ACA = True
     do_age_bands = False
     do_mandate_tax = False
     do_eligibility_cutoff = False
     do_max_OOP_prem = False
-    do_add_features = True
+    do_add_features = False
     do_del_features = False
     
     # Choose what kind of work to do
-    run_experiments = False
+    run_experiments = True
     make_figures = True
     
 
@@ -331,7 +331,11 @@ if __name__ == '__main__':
         if run_experiments:
             # Run the health groups experiments
             t_start = clock()
-            MyMarket = runCounterfactual(Params.test_param_vec,PreACAbaselineSpec,[PreACAbaselineSpec],[0.,20.])
+            MyMarket = runCounterfactual(Params.test_param_vec,
+                                         PreACAbaselineSpec,
+                                         [PreACAbaselineSpec],
+                                         [0.,20.],
+                                         False)
             t_end = clock()
             print('Trivial experiment took ' + mystr(t_end-t_start) + ' seconds.')
         
@@ -345,7 +349,11 @@ if __name__ == '__main__':
         if run_experiments:
             # Run the health groups experiments
             t_start = clock()
-            MyMarket = runCounterfactual(Params.test_param_vec,PreACAbaselineSpec,[PostACAbaselineSpec],[0.,20.])
+            MyMarket = runCounterfactual(Params.test_param_vec,
+                                         PreACAbaselineSpec,
+                                         [PostACAbaselineSpec],
+                                         [0.,20.],
+                                         False)
             t_end = clock()
             print('Basic ACA experiment took ' + mystr(t_end-t_start) + ' seconds.')
         
@@ -360,7 +368,10 @@ if __name__ == '__main__':
         if run_experiments:
             # Run the age band limits experiments
             t_start = clock()
-            MyMarket = runCounterfactual(Params.test_param_vec,PostACAbaselineSpec,AgeBandSpecs,[0.,20.])
+            MyMarket = runCounterfactual(Params.test_param_vec,
+                                         PostACAbaselineSpec,
+                                         AgeBandSpecs,[0.,20.],
+                                         True)
             t_end = clock()
             print('Age band limit counterfactual experiment took ' + mystr(t_end-t_start) + ' seconds.')
             
@@ -375,7 +386,10 @@ if __name__ == '__main__':
         if run_experiments:
             # Run the individual mandate experiments
             t_start = clock()
-            MyMarket = runCounterfactual(Params.test_param_vec,PostACAbaselineSpec,MandateSpecs,[0.,20.])
+            MyMarket = runCounterfactual(Params.test_param_vec,
+                                         PostACAbaselineSpec,
+                                         MandateSpecs,[0.,20.],
+                                         True)
             t_end = clock()
             print('Individual mandate counterfactual experiment took ' + mystr(t_end-t_start) + ' seconds.')
             
@@ -390,7 +404,10 @@ if __name__ == '__main__':
         if run_experiments:
             # Run the subsidy eligibility (FPL pct) experiments
             t_start = clock()
-            MyMarket = runCounterfactual(Params.test_param_vec,PostACAbaselineSpec,FPLcutoffSpecs,[0.,20.])
+            MyMarket = runCounterfactual(Params.test_param_vec,
+                                         PostACAbaselineSpec,
+                                         FPLcutoffSpecs,[0.,20.],
+                                         True)
             t_end = clock()
             print('Eligibility cutoff counterfactual experiment took ' + mystr(t_end-t_start) + ' seconds.')
             
@@ -405,7 +422,10 @@ if __name__ == '__main__':
         if run_experiments:
             # Run the maximum OOP premium experiments
             t_start = clock()
-            MyMarket = runCounterfactual(Params.test_param_vec,PostACAbaselineSpec,MaxOOPpctSpecs,[0.,20.])
+            MyMarket = runCounterfactual(Params.test_param_vec,
+                                         PostACAbaselineSpec,
+                                         MaxOOPpctSpecs,[0.,20.],
+                                         True)
             t_end = clock()
             print('Eligibility cutoff counterfactual experiment took ' + mystr(t_end-t_start) + ' seconds.')
             
@@ -423,7 +443,8 @@ if __name__ == '__main__':
             MyMarket = runCounterfactual(Params.test_param_vec,
                                          PreACAbaselineSpec,
                                          AddACAfeaturesSpecs,
-                                         [0.,20.])
+                                         [0.,20.],
+                                         False)
             t_end = clock()
             print('Adding ACA features counterfactual experiment took ' + mystr(t_end-t_start) + ' seconds.')
             
@@ -442,7 +463,8 @@ if __name__ == '__main__':
             MyMarket = runCounterfactual(Params.test_param_vec,
                                          PostACAbaselineSpec,
                                          DelACAfeaturesSpecs,
-                                         [0.,20.])
+                                         [0.,20.],
+                                         True)
             t_end = clock()
             print('Removing ACA features counterfactual experiment took ' + mystr(t_end-t_start) + ' seconds.')
             

@@ -10,7 +10,7 @@ import csv
 from HARKutilities import getPercentiles, kernelRegression
 
 
-def makeSinglePolicyFigures(specification,AgeHealthLim,AgeIncomeLim,OfferAgeLim,IncomeHealthLim):
+def makeSinglePolicyFigures(specification,AgeHealthLim,AgeIncomeLim,AgeOfferLim,IncomeHealthLim):
     '''
     Produces many figures to graphically represent the results of a counterfactual
     experiment and saves them to the folder ../CounterfactualFigures.
@@ -23,7 +23,7 @@ def makeSinglePolicyFigures(specification,AgeHealthLim,AgeIncomeLim,OfferAgeLim,
         Vertical axis limits for the age-health WTP plot.
     AgeIncomeLim : [float,float]
         Vertical axis limits for the income-age WTP plot.
-    OfferAgeLim : [float,float]
+    AgeOfferLim : [float,float]
         Vertical axis limits for the offer-age WTP plot
     IncomeHealthLim : [float,float]
         Vertical axis limits for the income-health WTP plot.
@@ -62,7 +62,7 @@ def makeSinglePolicyFigures(specification,AgeHealthLim,AgeIncomeLim,OfferAgeLim,
         invalid[i] = bool(float(all_data[j][7]))
         iBefore[i] = bool(float(all_data[j][8]))
         iAfter[i] = bool(float(all_data[j][9]))  
-    WTP = WTP_pPct
+    WTP = np.maximum(WTP_pPct,-1.)
     valid = np.logical_not(invalid)
         
     # Make a quantile plot of permanent income by age
@@ -225,7 +225,7 @@ def makeSinglePolicyFigures(specification,AgeHealthLim,AgeIncomeLim,OfferAgeLim,
     plt.ylabel('Willingness-to-pay (% of permanent income)')
     plt.title('Mean willingness-to-pay by age and ESI status, ' + specification.text)
     plt.legend(labels=['Not offered ESI','Offered ESI','Overall'],loc=2)
-    plt.ylim(OfferAgeLim)
+    plt.ylim(AgeOfferLim)
     plt.savefig(FigsDir + 'WTPbyAgeOffer' + specification.name + '.pdf')
     plt.show()
     
@@ -244,7 +244,33 @@ def makeSinglePolicyFigures(specification,AgeHealthLim,AgeIncomeLim,OfferAgeLim,
     plt.ylim(IncomeHealthLim)
     plt.savefig(FigsDir + 'WTPbyIncomeHealth' + specification.name + '.pdf')
     plt.show()
-
+    
+    
+    # Make a multipanel figure plotting all WTP results on one figure
+    plt.subplot(2,2,1)
+    plt.plot(AgeVec,WTPmeanByAgeOffer[:,2]*100,'-k')
+    plt.ylabel('All individuals')
+    
+    plt.subplot(2,2,2)
+    plt.plot(AgeVec,WTPmeanByAgeHealth*100,'-')
+    plt.ylabel('By health status')
+    plt.ylim(AgeHealthLim)
+    
+    plt.subplot(2,2,3)
+    plt.plot(AgeVec,WTPmeanByAgeOffer[:,0]*100,'-b')
+    plt.plot(AgeVec,WTPmeanByAgeOffer[:,1]*100,'-r')
+    plt.ylabel('By ESI status')
+    plt.ylim(AgeOfferLim)
+    
+    plt.subplot(2,2,4)
+    plt.plot(AgeVec,WTPmeanByAgeIncome*100,'-')
+    plt.ylabel('By income quintile')
+    plt.ylim(AgeIncomeLim)
+    
+    plt.suptitle('Mean WTP (as % of permanent income), ' + specification.text, y=1.02)
+    plt.tight_layout()
+    plt.savefig(FigsDir + specification.name + 'WTPall.pdf',bbox_inches='tight')
+    plt.show()
         
 
 def makeCrossPolicyFigures(name,specifications,AgeHealthLim,AgeIncomeLim,AgeOfferLim):
