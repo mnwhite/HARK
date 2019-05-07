@@ -190,42 +190,10 @@ def runCounterfactual(Parameters,Baseline,Counterfactuals,PremiumLim):
 ###############################################################################
 
 
-# Baseline specification is imported from ActuarialRules.py, same as in estimation
-BaselineSpec = PreACAbaselineSpec
-
-# Define alternate specifications for varying the health rating groups
-OnlyPoorHealthSpec = copy(BaselineSpec)
-OnlyPoorHealthSpec.HealthGroups = [[0],[1,2,3,4]]
-OnlyPoorHealthSpec.name = 'PoorHealthExcluded'
-OnlyPoorHealthSpec.text = 'only poor health separated'
-
-FiveGroupSpec = copy(BaselineSpec)
-FiveGroupSpec.HealthGroups = [[0],[1],[2],[3],[4]]
-FiveGroupSpec.ExcludedGroups = [False,False,False,False,False]
-FiveGroupSpec.name = 'FullHealthRated'
-FiveGroupSpec.text = 'full age-health rating'
-
-AgeRatedSpec = copy(BaselineSpec)
-AgeRatedSpec.HealthGroups = [[0,1,2,3,4]]
-AgeRatedSpec.ExcludedGroups = [False]
-AgeRatedSpec.name = 'OnlyAgeRated'
-AgeRatedSpec.text = 'only age rating'
-
-HealthGroupSpecs = [OnlyPoorHealthSpec,FiveGroupSpec,AgeRatedSpec]
 
 # Define alternate specifications for varying the age band limit
-AgeBandSpecBase = PolicySpecification(
-                        SubsidyFunc = NullSubsidyFuncs,
-                        ActuarialRule = generalIMIactuarialRule,
-                        HealthGroups = [[0,1,2,3,4]],
-                        ExcludedGroups = [False],
-                        AgeBandLimit = None, # Will be overwritten below
-                        MandateTaxRate = 0.0,
-                        MandateFloor = 0.0,
-                        MandateForESI = False,
-                        name = 'AgeBand10x',
-                        text = 'age band limit 10x')
-AgeBandSpecs = [AgeRatedSpec]
+AgeBandSpecBase = copy(PostACAbaselineSpec)
+AgeBandSpecs = []
 AgeBandLimits = [5.0,4.8,4.6,4.4,4.2,4.0,3.8,3.6,3.4,3.2,3.0,2.8,2.6,2.4,2.2,2.0,1.8,1.6,1.4,1.2,1.0]
 for AgeBandLimit in AgeBandLimits:
     NewSpec = copy(AgeBandSpecBase)
@@ -236,58 +204,37 @@ for AgeBandLimit in AgeBandLimits:
 
 
 # Define alternate specifications for varying the individual mandate tax
-MandateSpecBase = PolicySpecification(
-                        ActuarialRule = generalIMIactuarialRule,
-                        SubsidyFunc = NullSubsidyFuncs,
-                        HealthGroups = [[0,1,2,3,4]],
-                        ExcludedGroups = [False],
-                        AgeBandLimit = 3.0,
-                        MandateTaxRate = 0.0,
-                        MandateFloor = 0.0,
-                        MandateForESI = False,
-                        name = 'MandateBaseline',
-                        text = 'individual mandate 0%')
 MandateTaxRates = [0.000,0.005,0.010,0.015,0.020,0.025,0.030,0.035,0.04,0.045,0.050,0.055,0.060,0.065,0.070,0.075,0.080,0.085,0.090,0.095,0.100]
-MandateSpecs = [AgeRatedSpec]
+MandateSpecs = []
 for MandateTaxRate in MandateTaxRates:
-    NewSpec = copy(MandateSpecBase)
+    NewSpec = copy(PostACAbaselineSpec)
     NewSpec.MandateTaxRate = MandateTaxRate
     NewSpec.name = 'Mandate' + str(int(MandateTaxRate*1000))
     NewSpec.text = 'individual mandate ' +  '%.1f' % (MandateTaxRate*100) + '%'
     MandateSpecs.append(NewSpec)
     
     
-# Define alternate specifications for ACA-style subsidies
-ACAspecBase = PolicySpecification(
-                        ActuarialRule = generalIMIactuarialRule,
-                        SubsidyFunc = None, # will be replaced below
-                        HealthGroups = [[0,1,2,3,4]],
-                        ExcludedGroups = [False],
-                        AgeBandLimit = 3.0,
-                        MandateTaxRate = 0.025,
-                        MandateFloor = 0.07,
-                        MandateForESI = False,
-                        name = 'ACAbaseline',
-                        text = '400% FPL eligibility cap')
+# Define alternate specifications for varying the FPL cutoff for subsidies
 FPLcutoffs = [3.00,3.25,3.50,3.75,4.00,4.25,4.50,4.75,5.0,5.25,5.50,5.75,6.00]
-ACAaltFPLcutoffSpecs = [AgeRatedSpec]
+FPLcutoffSpecs = []
 for FPLcutoff in FPLcutoffs:
-    NewSpec = copy(ACAspecBase)
+    NewSpec = copy(PostACAbaselineSpec)
     NewSubsidyFunc = makeACAstyleSubsidyPolicy(0.095,FPLcutoff)
     NewSpec.SubsidyFunc = NewSubsidyFunc
     NewSpec.name = 'ACAcutoff' + str(int(FPLcutoff*100))
     NewSpec.text = str(int(FPLcutoff*100)) + '% FPL eligibility cap'
-    ACAaltFPLcutoffSpecs.append(NewSpec)
+    FPLcutoffSpecs.append(NewSpec)
+
     
 MaxOOPpcts = [0.080,0.085,0.090,0.095,0.100,0.105,0.110,0.115,0.120]
-ACAaltMaxOOPpctSpecs = [AgeRatedSpec]
+MaxOOPpctSpecs = []
 for MaxOOPpct in MaxOOPpcts:
-    NewSpec = copy(ACAspecBase)
+    NewSpec = copy(PostACAbaselineSpec)
     NewSubsidyFunc = makeACAstyleSubsidyPolicy(MaxOOPpct,4.0)
     NewSpec.SubsidyFunc = NewSubsidyFunc
     NewSpec.name = 'ACAmaxOOP' + str(int(MaxOOPpct*1000))
     NewSpec.text = 'max OOP premium: ' + str(int(MaxOOPpct*100)) + '% income' 
-    ACAaltMaxOOPpctSpecs.append(NewSpec)
+    MaxOOPpctSpecs.append(NewSpec)
     
 
 # Define a set of policy counterfactuals that one ACA policy feature at a time
@@ -314,7 +261,6 @@ AddIMIsubsidiesSpec.name = 'AddIMIsubsidies'
 AddIMIsubsidiesSpec.text = 'baseline plus subsidies for IMI'
 
 AddACAfeaturesSpecs = [AddCommunityRatingSpec,AddAgeRatingLimitSpec,AddIndividualMandateSpec,AddIMIsubsidiesSpec]
-#AddACAfeaturesSpecs = [AddAgeRatingLimitSpec]
 
 
 # Define a set of policy counterfactuals that remove ACA policy feature at a time
@@ -341,7 +287,6 @@ DelIMIsubsidiesSpec.name = 'DelIMIsubsidies'
 DelIMIsubsidiesSpec.text = 'ACA without subsidies for IMI'
 
 DelACAfeaturesSpecs = [DelCommunityRatingSpec,DelAgeRatingLimitSpec,DelIndividualMandateSpec,DelIMIsubsidiesSpec]
-#DelACAfeaturesSpecs = [DelIndividualMandateSpec]
 
 
 
@@ -354,50 +299,53 @@ if __name__ == '__main__':
     
     # Choose which experiments to work on
     do_trivial = False
-    do_health_groups = False
+    do_add_ACA = False
     do_age_bands = False
     do_mandate_tax = False
     do_eligibility_cutoff = False
     do_max_OOP_prem = False
-    do_add_features = True
+    do_add_features = False
     do_del_features = False
     
     # Choose what kind of work to do
     run_experiments = False
-    make_figures = True
+    make_figures = False
     
+
     if do_trivial:
         if run_experiments:
             # Run the health groups experiments
             t_start = clock()
-            MyMarket = runCounterfactual(Params.test_param_vec,BaselineSpec,[BaselineSpec],[0.,20.])
+            MyMarket = runCounterfactual(Params.test_param_vec,PreACAbaselineSpec,[PreACAbaselineSpec],[0.,20.])
             t_end = clock()
             print('Trivial experiment took ' + mystr(t_end-t_start) + ' seconds.')
         
         if make_figures:
             # Make figures for the health groups experiments
-            for specification in [BaselineSpec]:
+            for specification in [PreACAbaselineSpec]:
                 makeSinglePolicyFigures(specification,[-1,1],[-1,1],[-1,1],[-1,1])
-    
-    if do_health_groups:
+                
+                
+    if do_add_ACA:
         if run_experiments:
             # Run the health groups experiments
             t_start = clock()
-            MyMarket = runCounterfactual(Params.test_param_vec,BaselineSpec,HealthGroupSpecs,[0.,20.])
+            MyMarket = runCounterfactual(Params.test_param_vec,PreACAbaselineSpec,[PostACAbaselineSpec],[0.,20.])
             t_end = clock()
-            print('Health groups counterfactual experiment took ' + mystr(t_end-t_start) + ' seconds.')
+            print('Basic ACA experiment took ' + mystr(t_end-t_start) + ' seconds.')
         
         if make_figures:
             # Make figures for the health groups experiments
-            for specification in HealthGroupSpecs:
+            for specification in [PostACAbaselineSpec]:
                 makeSinglePolicyFigures(specification,[-2,6],[-2,6],[-2,6],[-2,6])
+            makeCrossPolicyFigures('BasicACA',[PostACAbaselineSpec],[-2,6],[-2,6],[-2,6])
                 
     
     if do_age_bands:
         if run_experiments:
             # Run the age band limits experiments
             t_start = clock()
-            MyMarket = runCounterfactual(Params.test_param_vec,BaselineSpec,AgeBandSpecs,[0.,20.])
+            MyMarket = runCounterfactual(Params.test_param_vec,PostACAbaselineSpec,AgeBandSpecs,[0.,20.])
             t_end = clock()
             print('Age band limit counterfactual experiment took ' + mystr(t_end-t_start) + ' seconds.')
             
@@ -405,13 +353,14 @@ if __name__ == '__main__':
             # Make figures for the age bands experiments
             for specification in AgeBandSpecs[1:]:
                 makeSinglePolicyFigures(specification,[-2,6],[-2,6],[-2,6],[-2,6])
+            makeVaryParameterFigures('AgeBand','age band limit',AgeBandLimits,AgeBandSpecs,[-1,2],[-1,4],[-1,4],[-1,2])
 
     
     if do_mandate_tax:
         if run_experiments:
             # Run the individual mandate experiments
             t_start = clock()
-            MyMarket = runCounterfactual(Params.test_param_vec,BaselineSpec,MandateSpecs,[0.,20.])
+            MyMarket = runCounterfactual(Params.test_param_vec,PostACAbaselineSpec,MandateSpecs,[0.,20.])
             t_end = clock()
             print('Individual mandate counterfactual experiment took ' + mystr(t_end-t_start) + ' seconds.')
             
@@ -419,35 +368,38 @@ if __name__ == '__main__':
             # Make figures for the individual mandate experiments
             for specification in MandateSpecs:
                 makeSinglePolicyFigures(specification,[-2,6],[-2,6],[-2,6],[-2,6])
+            makeVaryParameterFigures('Mandate','mandate tax rate',MandateTaxRates*100,MandateSpecs,[-1,2],[-1,4],[-1,4],[-1,2])
 
                 
     if do_eligibility_cutoff:
         if run_experiments:
             # Run the subsidy eligibility (FPL pct) experiments
             t_start = clock()
-            MyMarket = runCounterfactual(Params.test_param_vec,BaselineSpec,ACAaltFPLcutoffSpecs,[0.,20.])
+            MyMarket = runCounterfactual(Params.test_param_vec,PostACAbaselineSpec,FPLcutoffSpecs,[0.,20.])
             t_end = clock()
             print('Eligibility cutoff counterfactual experiment took ' + mystr(t_end-t_start) + ' seconds.')
             
         if make_figures:
             # Make figures for the subsidy eligibility (FPL pct) experiments
-            for specification in ACAaltFPLcutoffSpecs:
+            for specification in FPLcutoffSpecs:
                 makeSinglePolicyFigures(specification,[-2,10],[-2,10],[-2,10],[-2,10])
-                
+            makeVaryParameterFigures('FPLcutoff','IMI subsidy cutoff (% FPL)',FPLcutoffs*100,FPLcutoffSpecs,[-1,2],[-1,4],[-1,4],[-1,2])
+    
                 
     if do_max_OOP_prem:
         if run_experiments:
             # Run the maximum OOP premium experiments
             t_start = clock()
-            MyMarket = runCounterfactual(Params.test_param_vec,BaselineSpec,ACAaltMaxOOPpctSpecs,[0.,20.])
+            MyMarket = runCounterfactual(Params.test_param_vec,PostACAbaselineSpec,MaxOOPpctSpecs,[0.,20.])
             t_end = clock()
             print('Eligibility cutoff counterfactual experiment took ' + mystr(t_end-t_start) + ' seconds.')
             
         if make_figures:
             # Make figures for the maximum OOP premium (FPL pct) experiments
-            for specification in ACAaltMaxOOPpctSpecs:
+            for specification in MaxOOPpctSpecs:
                 makeSinglePolicyFigures(specification,[-2,10],[-2,10],[-2,10],[-2,10])
-                
+            makeVaryParameterFigures('MaxOOPpct','maximum OOP premium (% income)',MaxOOPpcts*100,MaxOOPpctSpecs,[-1,2],[-1,4],[-1,4],[-1,2])
+    
                 
     if do_add_features:
         if run_experiments:
@@ -462,9 +414,9 @@ if __name__ == '__main__':
             
         if make_figures:
             # Make figures for the adding one ACA feature at a time experiment
-            #for specification in AddACAfeaturesSpecs:
-            #    makeSinglePolicyFigures(specification,[-2,10],[-2,10],[-2,10],[-2,10])
-            #makeCrossPolicyFigures('AddACAfeatures',AddACAfeaturesSpecs,[-2.,4.],[-2.,8.],[-4.,9.])
+            for specification in AddACAfeaturesSpecs:
+                makeSinglePolicyFigures(specification,[-2,10],[-2,10],[-2,10],[-2,10])
+            makeCrossPolicyFigures('AddACAfeatures',AddACAfeaturesSpecs,[-2.,4.],[-2.,8.],[-4.,9.])
             makePremiumFigure('AddACAfeatures',AddACAfeaturesSpecs)
             
             
@@ -486,7 +438,3 @@ if __name__ == '__main__':
             makeCrossPolicyFigures('DelACAfeatures',DelACAfeaturesSpecs,[-6.5,1.],[-20.,2.],[-20.,2.])
             makePremiumFigure('DelACAfeatures',DelACAfeaturesSpecs)
             
-            
-    #makeVaryParameterFigures('AgeBand','age band limit',AgeBandLimits,AgeBandSpecs[1:],[-1,2],[-1,4],[-1,4],[-1,2])
-    
-    

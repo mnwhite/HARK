@@ -313,8 +313,8 @@ PreACAbaselineSpec = PolicySpecification(
                         MandateTaxRate = 0.00,
                         MandateFloor = 0.00,
                         MandateForESI = False,
-                        name = 'Baseline',
-                        text = 'baseline specification')
+                        name = 'PreACAbaseline',
+                        text = 'Pre ACA baseline')
 
 
 # Define the baseline post-ACA policy
@@ -327,7 +327,7 @@ PostACAbaselineSpec = PolicySpecification(
                         MandateTaxRate = 0.025,
                         MandateFloor = 0.07,
                         MandateForESI = False,
-                        name = 'ACAbaseline',
-                        text = 'ACA baseline')
+                        name = 'PostACAbaseline',
+                        text = 'Post ACA baseline')
         
         
