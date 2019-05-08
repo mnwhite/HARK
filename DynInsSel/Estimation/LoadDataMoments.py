@@ -24,7 +24,7 @@ moment_weight_filename = 'MomentWeights.txt'
 MomentTypeBool = np.array([False, # MeanLogOOPmedByAge
                            False, # MeanLogTotalMedByAge
                            False, # StdevLogOOPmedByAge
-                           False, # StdevLogTotalMedByAge
+                           True,  # StdevLogTotalMedByAge
                            False, # OOPshareByAge
                            False, # ESIinsuredRateByAge
                            False, # IMIinsuredRateByAge
@@ -34,7 +34,7 @@ MomentTypeBool = np.array([False, # MeanLogOOPmedByAge
                            False, # MeanLogOOPmedByAgeHealth
                            False, # MeanLogTotalMedByAgeHealth
                            False, # StdevLogOOPmedByAgeHealth
-                           False, # StdevLogTotalMedByAgeHealth
+                           True,  # StdevLogTotalMedByAgeHealth
                            False, # OOPshareByAgeHealth
                            False, # ESIinsuredRateByAgeHealth
                            False, # IMIinsuredRateByAgeHealth
@@ -46,8 +46,8 @@ MomentTypeBool = np.array([False, # MeanLogOOPmedByAge
                            False, # StdevLogOOPmedByAgeIncome
                            False, # StdevLogTotalMedByAgeIncome
                            False, # OOPshareByAgeIncome
-                           True,  # ESIinsuredRateByAgeIncome
-                           True,  # IMIinsuredRateByAgeIncome
+                           False, # ESIinsuredRateByAgeIncome
+                           False, # IMIinsuredRateByAgeIncome
                            False, # MeanESIpremiumByAgeIncome
                            False, # StdevESIpremiumByAgeIncome
                            False, # NoPremShareRateByAgeIncome

@@ -106,7 +106,7 @@ def runCommands(agent,command_list):
     
 def parallelNelderMead(objFunc,guess,perturb=None,P=1,ftol=0.000001,xtol=0.00000001,
                        maxiter=np.inf,maxeval=np.inf,r_param=1.0,e_param=1.0,
-                       c_param=0.5,s_param=0.5,maxcores=None,name=None,resume=False,
+                       c_param=0.5,s_param=0.5,maxthreads=None,name=None,resume=False,
                        savefreq=None,verbose=1):
     '''
     A parallel implementation of the Nelder-Mead minimization algorithm, as
@@ -124,7 +124,7 @@ def parallelNelderMead(objFunc,guess,perturb=None,P=1,ftol=0.000001,xtol=0.00000
         objFunc.  If perturb[j] is non-zero, a simplex point will be created
         that perturbs the j-th element of guess by perturb[j]; if it is zero,
         then the j-th parameter of objFunc will not be optimized over.  By
-        default, guess=None, indicating that all parameters should be optimized,
+        default, perturb=None, indicating that all parameters should be optimized,
         with an initial perturbation of 0.1*guess.
     P : int
         Degree of parallelization: the number of vertices of the simplex to try
@@ -151,7 +151,7 @@ def parallelNelderMead(objFunc,guess,perturb=None,P=1,ftol=0.000001,xtol=0.00000
         Parameter indicating magnitude of the contraction point calculation.
     s_param: float
         Parameter indicating magnitude of the shrink calculation.
-    maxcores : int
+    maxthreads : int
         The maximum number of CPU cores that the optimization should use,
         regardless of the size of the problem.
     name : string
@@ -200,10 +200,10 @@ def parallelNelderMead(objFunc,guess,perturb=None,P=1,ftol=0.000001,xtol=0.00000
         
     # Create the pool of worker processes
     cpu_cores = multiprocessing.cpu_count() # Total number of available CPU cores
-    cores_to_use = min(cpu_cores,dim_count)
-    if maxcores is not None: # Cap the number of cores if desired
-        cores_to_use = min(cores_to_use,maxcores)
-    parallel = Parallel(n_jobs=cores_to_use)  
+    threads_to_use = min(cpu_cores,dim_count)
+    if maxthreads is not None: # Cap the number of cores if desired
+        threads_to_use = min(threads_to_use,maxthreads)
+    parallel = Parallel(n_jobs=threads_to_use)  
         
     # Begin a new Nelder-Mead search
     if not resume: 

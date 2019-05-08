@@ -17,7 +17,7 @@ from LoadDataMoments import data_moments, moment_weights
 from ActuarialRules import PreACAbaselineSpec, PostACAbaselineSpec, InsuranceMarket
 from HARKinterpolation import ConstantFunction
 from HARKutilities import getPercentiles
-from HARKparallel import multiThreadCommands, multiThreadCommandsFake
+from HARKparallel import multiThreadCommands, multiThreadCommandsFake, parallelNelderMead
 from joblib import Parallel, delayed
 import dill as pickle
 
@@ -941,7 +941,7 @@ def objectiveFunction(Parameters, return_market=False):
     The objective function for the estimation.  Makes and solves a market, then
     returns the weighted sum of moment differences between simulation and data.
     '''
-    EvalType  = 2  # Number of times to do a static search for eqbm premiums
+    EvalType  = 0  # Number of times to do a static search for eqbm premiums
     InsChoice = 1  # Extent of insurance choice
     TestPremiums = True # Whether to start with the test premium level
     
@@ -962,7 +962,7 @@ def objectiveFunction(Parameters, return_market=False):
     multiThreadCommandsFake(MyMarket.agents,['makeIncBoolArray()'])
     
     if EvalType == 0:
-        multiThreadCommands(MyMarket.agents,['solve()'])
+        multiThreadCommandsFake(MyMarket.agents,['solve()'])
     else:
         MyMarket.max_loops = EvalType
         MyMarket.solve()
@@ -987,8 +987,9 @@ if __name__ == '__main__':
     mystr = lambda number : "{:.4f}".format(number)
     
     test_obj_func = False
-    test_one_type = True
+    test_one_type = False
     perturb_one_param = False
+    estimate_model = True
     
     if test_obj_func:
     # This block is for actually testing the objective function
@@ -1240,3 +1241,24 @@ if __name__ == '__main__':
         plt.ylabel('Sum of squared moment differences')
         plt.savefig('../Figures/Perturb' + SaveParameters.param_names[param_i] + '.pdf')
         plt.show()
+        
+        
+    if estimate_model:
+        # Estimate some or all structural parameters of the model
+        which_indices = which_indices = np.array([22,23,24,27,28,29,30,31,32,33,34])
+        which_bool = np.zeros(35,dtype=bool)
+        which_bool[which_indices] = True
+        opt_params, opt_f = parallelNelderMead(
+                           objectiveFunction,guess=Params.test_param_vec,
+                           perturb=which_bool*Params.test_param_vec*0.05,
+                           P=7,
+                           ftol=0.000001,
+                           xtol=0.000001,
+                           maxiter=np.inf, maxeval=np.inf,
+                           r_param=1.0, e_param=1.0, c_param=0.5, s_param=0.5,
+                           maxthreads=8,
+                           name='DynInsSel',
+                           resume=False, savefreq=1,
+                           verbose=1)
+        for i in which_indices.tolist():
+            print(Params.param_names[i] + ' = ' + str(opt_params[i]))

@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import os
 import csv
 from HARKinterpolation import LinearInterp
+from SaveParameters import param_names
 
 # Set parameters for estimation
 AgentCountTotal = 100000
@@ -642,9 +643,9 @@ test_param_vec = np.array([
           0.0,                 # 25 MedShkStd_a3      : Cubic coefficient on age for log stdev medical need shock
           0.0,                 # 26 MedShkStd_a4      : Quartic coefficient on age for log stdev medical need shock
           0.041,               # 27 MedShkStd_VG0     : Very good health shifter for log stdev medical need shock
-          0.0,                 # 28 MedShkStd_VGa1    : Very good health linear age coefficient shifter for log stdev med shock
+          0.0001,              # 28 MedShkStd_VGa1    : Very good health linear age coefficient shifter for log stdev med shock
           0.08,                # 29 MedShkStd_GD0     : Good health shifter for log stdev medical need shock
-          0.0,                 # 30 MedShkStd_GDa1    : Good health linear age coefficient shifter for log stdev med shock
+          0.0001,              # 30 MedShkStd_GDa1    : Good health linear age coefficient shifter for log stdev med shock
           0.19,                # 31 MedShkStd_FR0     : Fair health shifter for log stdev medical need shock
          -0.0013,              # 32 MedShkStd_FRa1    : Fair health linear age coefficient shifter for log stdev med shock
           0.27,                # 33 MedShkStd_PR0     : Poor health shifter for log stdev medical need shock
