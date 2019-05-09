@@ -249,7 +249,9 @@ class DynInsSelMarket(InsuranceMarket):
         MeanWealthRatioByAge = np.zeros(40) # Not moments
 
         # Calculate all simulated moments by age
-        for t in range(60):
+        for t in range(3,63):
+            tau = t-3 # Model starts at age 22, but moments start at age 25
+            
             WealthRatioList = []
             LogTotalMedList = []
             LogOOPmedList = []
@@ -268,7 +270,7 @@ class DynInsSelMarket(InsuranceMarket):
                 LogTotalMedList.append(np.log(ThisType.TotalMedHist[t,those]))
                 those = np.logical_and(these,ThisType.OOPmedHist[t,:]>0.0)
                 LogOOPmedList.append(np.log(ThisType.OOPmedHist[t,those]))
-                if t < 40:
+                if tau < 40:
                     WealthRatioList.append(ThisType.WealthRatioHist[t,these])
                     Insured = ThisType.InsuredBoolArray[t,:]
                     LiveCount += np.sum(ThisType.LiveBoolArray[t,:])
@@ -286,27 +288,27 @@ class DynInsSelMarket(InsuranceMarket):
                 else:
                     TotalMedSum += np.sum(ThisType.TotalMedHist[t,these])
                     OOPmedSum += np.sum(ThisType.OOPmedHist[t,these])
-            if t < 40:
+            if tau < 40:
                 WealthRatioArray = np.hstack(WealthRatioList)
-                MedianWealthRatioByAge[t] = np.median(WealthRatioArray)
-                MeanWealthRatioByAge[t] = np.mean(WealthRatioArray)
+                MedianWealthRatioByAge[tau] = np.median(WealthRatioArray)
+                MeanWealthRatioByAge[tau] = np.mean(WealthRatioArray)
                 PremiumArray = np.hstack(PremiumList)
-                MeanESIpremiumByAge[t] = np.mean(PremiumArray)
-                StdevESIpremiumByAge[t] = np.std(PremiumArray)
-                ESIinsuredRateByAge[t] = ESIcount/OfferedCount
-                IMIinsuredRateByAge[t] = IMIcount/NotOfferedCount
-                ESIofferRateByAge[t] = OfferedCount/LiveCount
+                MeanESIpremiumByAge[tau] = np.mean(PremiumArray)
+                StdevESIpremiumByAge[tau] = np.std(PremiumArray)
+                ESIinsuredRateByAge[tau] = ESIcount/OfferedCount
+                IMIinsuredRateByAge[tau] = IMIcount/NotOfferedCount
+                ESIofferRateByAge[tau] = OfferedCount/LiveCount
                 if ESIcount > 0.0:
-                    NoPremShareRateByAge[t] = ZeroCount/ESIcount
+                    NoPremShareRateByAge[tau] = ZeroCount/ESIcount
                 else:
-                    NoPremShareRateByAge[t] = 0.0 # This only happens with no insurance choice
+                    NoPremShareRateByAge[tau] = 0.0 # This only happens with no insurance choice
             LogTotalMedArray = np.hstack(LogTotalMedList)
-            MeanLogTotalMedByAge[t] = np.mean(LogTotalMedArray)
-            StdevLogTotalMedByAge[t] = np.std(LogTotalMedArray)
+            MeanLogTotalMedByAge[tau] = np.mean(LogTotalMedArray)
+            StdevLogTotalMedByAge[tau] = np.std(LogTotalMedArray)
             LogOOPmedArray = np.hstack(LogOOPmedList)
-            MeanLogOOPmedByAge[t] = np.mean(LogOOPmedArray)
-            StdevLogOOPmedByAge[t] = np.std(LogOOPmedArray)
-            OOPshareByAge[t] = OOPmedSum/TotalMedSum
+            MeanLogOOPmedByAge[tau] = np.mean(LogOOPmedArray)
+            StdevLogOOPmedByAge[tau] = np.std(LogOOPmedArray)
+            OOPshareByAge[tau] = OOPmedSum/TotalMedSum
             
         # Initialize moments by age-health and define age band bounds
         MeanLogOOPmedByAgeHealth = np.zeros((12,5))   # 500:560
@@ -321,7 +323,7 @@ class DynInsSelMarket(InsuranceMarket):
         NoPremShareRateByAgeHealth = np.zeros((8,5))  # 960:1000
         MedianWealthRatioByAgeHealth = np.zeros((8,5))# NO DATA
         ESIofferRateByAgeHealth = np.zeros((8,5)) # Can't be estimated, exogenous process
-        AgeBounds = [[0,5],[5,10],[10,15],[15,20],[20,25],[25,30],[30,35],[35,40],[40,45],[45,50],[50,55],[55,60]]
+        AgeBounds = [[3,8],[8,13],[13,18],[18,23],[23,28],[28,33],[33,38],[38,43],[43,48],[48,53],[53,58],[58,63]]
 
         # Calculate all simulated moments by age-health
         for a in range(12):
@@ -682,7 +684,7 @@ def makeDynInsSelType(CRRAcon,MedCurve,DiscFac,BequestShift,BequestScale,Cfloor,
         assert False, 'EducType must be 0, 1, or 2!'
         
     # Make a timepath of discount factors
-    DiscFac_time_vary = np.linspace(DiscFac-0.00,DiscFac,25).tolist() + 70*[DiscFac]  
+    DiscFac_time_vary = np.linspace(DiscFac-0.00,DiscFac,25).tolist() + 73*[DiscFac]  
         
     TypeDict['CRRA'] = CRRAcon
     TypeDict['MedCurve'] = MedCurve
@@ -747,21 +749,21 @@ def makeDynInsSelType(CRRAcon,MedCurve,DiscFac,BequestShift,BequestScale,Cfloor,
         PR_A = -MedShkSlopePR85/70.
         PR_B = 19./7.*MedShkSlopePR85
         PR_C = MedShkMeanPR85 - 3600*PR_A - 60*PR_B
-        MedShkMeanArray[4,60:] = EX_A*AgeArray[60:]**2 + EX_B*AgeArray[60:] + EX_C
-        MedShkMeanArray[3,60:] = VG_A*AgeArray[60:]**2 + VG_B*AgeArray[60:] + VG_C
-        MedShkMeanArray[2,60:] = GD_A*AgeArray[60:]**2 + GD_B*AgeArray[60:] + GD_C
-        MedShkMeanArray[1,60:] = FR_A*AgeArray[60:]**2 + FR_B*AgeArray[60:] + FR_C
-        MedShkMeanArray[0,60:] = PR_A*AgeArray[60:]**2 + PR_B*AgeArray[60:] + PR_C
+        MedShkMeanArray[4,63:] = EX_A*AgeArray[63:]**2 + EX_B*AgeArray[63:] + EX_C
+        MedShkMeanArray[3,63:] = VG_A*AgeArray[63:]**2 + VG_B*AgeArray[63:] + VG_C
+        MedShkMeanArray[2,63:] = GD_A*AgeArray[63:]**2 + GD_B*AgeArray[63:] + GD_C
+        MedShkMeanArray[1,63:] = FR_A*AgeArray[63:]**2 + FR_B*AgeArray[63:] + FR_C
+        MedShkMeanArray[0,63:] = PR_A*AgeArray[63:]**2 + PR_B*AgeArray[63:] + PR_C
         
-        MedShkStdArray[4,60:] = MedShkStdArray[4,59]
-        MedShkStdArray[3,60:] = MedShkStdArray[3,59]
-        MedShkStdArray[2,60:] = MedShkStdArray[2,59]
-        MedShkStdArray[1,60:] = MedShkStdArray[1,59]
-        MedShkStdArray[0,60:] = MedShkStdArray[0,59]
+        MedShkStdArray[4,63:] = MedShkStdArray[4,62]
+        MedShkStdArray[3,63:] = MedShkStdArray[3,62]
+        MedShkStdArray[2,63:] = MedShkStdArray[2,62]
+        MedShkStdArray[1,63:] = MedShkStdArray[1,62]
+        MedShkStdArray[0,63:] = MedShkStdArray[0,62]
                 
     if Taper > 1:
-        MedShkMeanArray[:,60:] = np.tile(np.reshape(MedShkMeanArray[:,60],(5,1)),(1,35)) # Hold distribution constant after age 85
-        MedShkStdArray[:,60:] = np.tile(np.reshape(MedShkStdArray[:,60],(5,1)),(1,35))
+        MedShkMeanArray[:,63:] = np.tile(np.reshape(MedShkMeanArray[:,63],(5,1)),(1,35)) # Hold distribution constant after age 85
+        MedShkStdArray[:,63:] = np.tile(np.reshape(MedShkStdArray[:,63],(5,1)),(1,35))
     TypeDict['MedShkAvg'] = MedShkMeanArray.transpose().tolist()
     TypeDict['MedShkStd'] = MedShkStdArray.transpose().tolist()
     
@@ -830,10 +832,10 @@ def makeMarketFromParams(ParamArray,PolicySpec,IMIpremiumArray,ESIpremiumArray,I
         Object describing the policy structure of the insurance market.
     IMIpremiumArray : np.array
         Array of premiums for IMI contracts for workers. Irrelevant if InsChoiceType = 0.
-        Should be of size (40,ContractCount).
+        Should be of size (43,ContractCount,GroupCount).
     ESIpremiumArray : np.array
         Array of premiums for ESI contracts for workers. Irrelevant if InsChoiceType = 0.
-        Should be of size (40,ContractCount).
+        Should be of size (43,ContractCount).
     InsChoiceType : int
         Indicator for the extent of consumer choice over contracts.  0 --> no choice,
         1 --> one non-null contract, 2 --> five non-null contracts.
@@ -888,7 +890,7 @@ def makeMarketFromParams(ParamArray,PolicySpec,IMIpremiumArray,ESIpremiumArray,I
         
     # Make an expanded array of IMI premiums
     GroupCount = len(PolicySpec.HealthGroups)
-    IMIpremiumArray_big = np.zeros((5,40))
+    IMIpremiumArray_big = np.zeros((5,Params.working_T))
     for g in range(GroupCount):
         for h in PolicySpec.HealthGroups[g]:
             if PolicySpec.ExcludedGroups[g]:
@@ -899,7 +901,7 @@ def makeMarketFromParams(ParamArray,PolicySpec,IMIpremiumArray,ESIpremiumArray,I
     # Construct an initial nested list for premiums
     PremiumFuncs_init = []
     HealthCount = 5
-    for t in range(40):
+    for t in range(Params.working_T):
         PremiumFuncs_t = []
         for h in range(HealthCount):
             PremiumFuncs_this_health = []
@@ -953,7 +955,7 @@ def objectiveFunction(Parameters, return_market=False):
     
     ContractCounts = [0,1,5] # plus one
     ESIpremiums_init_short = np.concatenate((np.array([0.]),ESIpremiums[0:ContractCounts[InsChoice]]))
-    ESIpremiums_init = np.tile(np.reshape(ESIpremiums_init_short,(1,ESIpremiums_init_short.size)),(40,1))
+    ESIpremiums_init = np.tile(np.reshape(ESIpremiums_init_short,(1,ESIpremiums_init_short.size)),(Params.working_T,1))
     
     MyMarket = makeMarketFromParams(Parameters,PreACAbaselineSpec,IMIpremiums_init,ESIpremiums_init,InsChoice)
     MyMarket.ESIpremiums = ESIpremiums_init_short
@@ -1169,7 +1171,7 @@ if __name__ == '__main__':
         
         ContractCounts = [0,1,5] # plus one
         ESIpremiums_init_short = np.concatenate((np.array([0.]),ESIpremiums[0:ContractCounts[InsChoice]]))
-        ESIpremiums_init = np.tile(np.reshape(ESIpremiums_init_short,(1,ESIpremiums_init_short.size)),(40,1))
+        ESIpremiums_init = np.tile(np.reshape(ESIpremiums_init_short,(1,ESIpremiums_init_short.size)),(Params.working_T,1))
         
         MyMarket = makeMarketFromParams(Params.test_param_vec,PostACAbaselineSpec,IMIpremiums_init,ESIpremiums_init,InsChoice)
         MyMarket.ESIpremiums = ESIpremiums_init_short
@@ -1182,7 +1184,7 @@ if __name__ == '__main__':
         t_start = clock()
         MyType = MyMarket.agents[2]
         MyType.del_soln = False
-        MyType.do_sim = True
+        MyType.do_sim = False
         MyType.verbosity = 10
         MyType.solve()
         t_end = clock()
@@ -1198,7 +1200,7 @@ if __name__ == '__main__':
         print('Individual market:')
         MyType.plotvFunc(t,p,H=[0,1,2,3,4],decurve=False,mMax=mTop)
         MyType.plotvPfunc(t,p,H=[0,1,2,3,4],decurve=False,mMax=mTop)
-        if t < 40:
+        if t < Params.working_T:
             print('ESI paying full price:')
             MyType.plotvFunc(t,p,H=[5,6,7,8,9],decurve=False,mMax=mTop)
             MyType.plotvPfunc(t,p,H=[5,6,7,8,9],decurve=False,mMax=mTop)

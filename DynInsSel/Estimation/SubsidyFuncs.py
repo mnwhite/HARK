@@ -5,7 +5,7 @@ import numpy as np
 from HARKinterpolation import ConstantFunction, LinearInterp
 from HARKutilities import plotFuncs
 
-T_working = 40
+T_working = 43
 T_retired = 55
 HealthCount = 5
 

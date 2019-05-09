@@ -1526,7 +1526,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         
         time_orig = self.time_flow
         self.timeFwd()
-        T_retire = 40 # For determining whether to apply subsidy
+        T_retire = 43 # For determining whether to apply subsidy
         T = len(self.PremiumFuncs)
         
         # Loop through each age-state-contract, filling in the updated premium in ContractList
@@ -2049,7 +2049,7 @@ class InsSelConsumerType(MedShockConsumerType,MarkovConsumerType):
         '''
         MaxContracts = 0
         MaxStateCount = 0
-        T_working = 40
+        T_working = 43
         for t in range(T_working):
             StateCount = len(self.ContractList[t])
             MaxContracts = np.maximum(MaxContracts,max([len(self.ContractList[t][h]) for h in range(StateCount)]))
