@@ -55,7 +55,7 @@ def runCounterfactual(Parameters,Baseline,Counterfactuals,PremiumLim,IsPostACA):
     TestPremiums = True # Whether to start with the test premium level
     
     if TestPremiums:
-        ESIpremiums = np.array([0.3200, 0.0, 0.0, 0.0, 0.0])
+        ESIpremiums = np.array([0.3400, 0.0, 0.0, 0.0, 0.0])
     else:
         ESIpremiums = Params.PremiumsLast
     IMIpremiums_init = Params.IMIpremiums
@@ -98,12 +98,12 @@ def runCounterfactual(Parameters,Baseline,Counterfactuals,PremiumLim,IsPostACA):
     # Make a plot of premiums by age and health state
     PremiumsBefore = copy(ThisMarket.IMIpremiums)
     if len(PremiumsBefore.shape) == 1:
-        plt.plot([25,64],[10*PremiumsBefore[1],10*PremiumsBefore[1]],'-b')
+        plt.plot([22,64],[10*PremiumsBefore[1],10*PremiumsBefore[1]],'-b')
     elif len(PremiumsBefore.shape) == 2:
-        plt.plot(np.arange(25,65),10*PremiumsBefore[:,1],'-b')
+        plt.plot(np.arange(22,65),10*PremiumsBefore[:,1],'-b')
     elif len(PremiumsBefore.shape) == 3:
         for g in range(0,PremiumsBefore.shape[1]):
-            plt.plot(np.arange(25,65),10*PremiumsBefore[:,g,1],'-')
+            plt.plot(np.arange(22,65),10*PremiumsBefore[:,g,1],'-')
     plt.xlabel('Age')
     plt.ylabel('Annual premium (thousands of USD)')
     plt.ylim(PremiumLim)
@@ -135,12 +135,12 @@ def runCounterfactual(Parameters,Baseline,Counterfactuals,PremiumLim,IsPostACA):
         # Make a plot of premiums by age and health state
         PremiumsAfter = copy(ThisMarket.IMIpremiums)
         if len(PremiumsAfter.shape) == 1:
-            plt.plot([25,64],[10*PremiumsAfter[1],10*PremiumsAfter[1]],'-b')
+            plt.plot([22,64],[10*PremiumsAfter[1],10*PremiumsAfter[1]],'-b')
         elif len(PremiumsAfter.shape) == 2:
-            plt.plot(np.arange(25,65),10*PremiumsAfter[:,1],'-b')
+            plt.plot(np.arange(22,65),10*PremiumsAfter[:,1],'-b')
         elif len(PremiumsAfter.shape) == 3:
             for g in range(0,PremiumsAfter.shape[1]):
-                plt.plot(np.arange(25,65),10*PremiumsAfter[:,g,1],'-')
+                plt.plot(np.arange(22,65),10*PremiumsAfter[:,g,1],'-')
         plt.xlabel('Age')
         plt.ylabel('Annual premium (thousands of USD)')
         plt.title('Premiums by age, ' + Counterfactual.text)
@@ -172,7 +172,7 @@ def runCounterfactual(Parameters,Baseline,Counterfactuals,PremiumLim,IsPostACA):
         iHistAfter = np.concatenate([this_type.ContractNow_hist for this_type in ThisMarket.agents],axis=1) > 0
         
         # Reshape the useable data into 1D arrays and combine
-        which = np.logical_and(hHist >= 0,ageHist < 40)
+        which = np.logical_and(np.logical_and(hHist >= 0,ageHist < 43),ageHist >= 3)
         mLvl = mHistBefore[which]
         pLvl = pHist[which]
         health = hHist[which]
@@ -184,7 +184,7 @@ def runCounterfactual(Parameters,Baseline,Counterfactuals,PremiumLim,IsPostACA):
         iBefore = iHistBefore[which]
         iAfter = iHistAfter[which]
         WTP_pPct = 1. - pComp/pLvl
-        counterfactual_data = np.vstack([age,health,offer,mLvl,pLvl,WTP_pPct,WTP_hLvl,Invalid,iBefore,iAfter]).transpose()
+        counterfactual_data = np.vstack([age-3,health,offer,mLvl,pLvl,WTP_pPct,WTP_hLvl,Invalid,iBefore,iAfter]).transpose()
         
         # Write the counterfactual results to a CSV file
         VarNames = ['age','health','offer','mLvl','pLvl','WTP_pPct','WTP_hLvl','Invalid','iBefore','iAfter']

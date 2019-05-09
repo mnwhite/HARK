@@ -22,7 +22,7 @@ moment_weight_filename = 'MomentWeights.txt'
 
 # Select which types of moments should be used in the SMM estimator
 MomentTypeBool = np.array([False, # MeanLogOOPmedByAge
-                           False, # MeanLogTotalMedByAge
+                           True,  # MeanLogTotalMedByAge
                            False, # StdevLogOOPmedByAge
                            True,  # StdevLogTotalMedByAge
                            False, # OOPshareByAge
@@ -32,7 +32,7 @@ MomentTypeBool = np.array([False, # MeanLogOOPmedByAge
                            False, # StdevESIpremiumByAge
                            False, # NoPremShareRateByAge
                            False, # MeanLogOOPmedByAgeHealth
-                           False, # MeanLogTotalMedByAgeHealth
+                           True,  # MeanLogTotalMedByAgeHealth
                            False, # StdevLogOOPmedByAgeHealth
                            True,  # StdevLogTotalMedByAgeHealth
                            False, # OOPshareByAgeHealth

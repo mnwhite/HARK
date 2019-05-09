@@ -480,7 +480,7 @@ class DynInsSelMarket(InsuranceMarket):
         self.MeanESIpremiumByAge = MeanESIpremiumByAge*10000
         self.StdevESIpremiumByAge = StdevESIpremiumByAge*10000
         self.NoPremShareRateByAge = NoPremShareRateByAge
-        self.MedianWealthRatioByAge = MeanWealthRatioByAge # CHANGE THIS BACK?
+        self.MedianWealthRatioByAge = MedianWealthRatioByAge
         self.MeanLogOOPmedByAgeHealth = MeanLogOOPmedByAgeHealth + np.log(10000)
         self.MeanLogTotalMedByAgeHealth = MeanLogTotalMedByAgeHealth + np.log(10000)
         self.StdevLogOOPmedByAgeHealth = StdevLogOOPmedByAgeHealth
@@ -948,7 +948,7 @@ def objectiveFunction(Parameters, return_market=False):
     TestPremiums = True # Whether to start with the test premium level
     
     if TestPremiums:
-        ESIpremiums = np.array([0.3400, 0.0, 0.0, 0.0, 0.0])
+        ESIpremiums = np.array([0.3200, 0.0, 0.0, 0.0, 0.0])
     else:
         ESIpremiums = Params.PremiumsLast
     IMIpremiums_init = Params.IMIpremiums
@@ -1219,8 +1219,8 @@ if __name__ == '__main__':
     if perturb_one_param:
         # Test model identification by perturbing one parameter at a time
         param_i = 22
-        param_min = 0.3
-        param_max = 0.4
+        param_min = 0.30
+        param_max = 0.36
         
         N = 35
         perturb_vec = np.linspace(param_min,param_max,num=N)
@@ -1247,19 +1247,19 @@ if __name__ == '__main__':
         
     if estimate_model:
         # Estimate some or all structural parameters of the model
-        which_indices = which_indices = np.array([22,23,24,27,28,29,30,31,32,33,34])
+        which_indices = which_indices = np.array([9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,27,28,29,30,31,32,33,34])
         which_bool = np.zeros(35,dtype=bool)
         which_bool[which_indices] = True
         opt_params, opt_f = parallelNelderMead(
                            objectiveFunction,guess=Params.test_param_vec,
-                           perturb=which_bool*Params.test_param_vec*0.05,
-                           P=7,
-                           ftol=0.000001,
+                           perturb=which_bool*Params.test_param_vec*0.10,
+                           P=8,
+                           ftol=0.001,
                            xtol=0.000001,
                            maxiter=np.inf, maxeval=np.inf,
                            r_param=1.0, e_param=1.0, c_param=0.5, s_param=0.5,
                            maxthreads=8,
-                           name='DynInsSel',
+                           name='MainEstimationProgress',
                            resume=False, savefreq=1,
                            verbose=1)
         for i in which_indices.tolist():
