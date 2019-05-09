@@ -270,7 +270,7 @@ def parallelNelderMead(objFunc,guess,perturb=None,P=1,ftol=0.000001,xtol=0.00000
         simplex = simplex[order,:]
         fmin = fvals[0]
         f_dist = np.abs(fmin - fvals[-1])
-        x_dist = np.max(np.sqrt(np.sum(simplex**2.0 - np.tile(simplex[0,:],(N,1))**2.0,axis=1)))
+        x_dist = np.max(np.sqrt(np.sum((simplex - np.tile(simplex[0,:],(N,1)))**2.0,axis=1)))
         t_end = clock()
         if verbose > 0:
             t_iter = t_end - t_start

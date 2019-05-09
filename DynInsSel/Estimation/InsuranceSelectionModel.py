@@ -442,7 +442,7 @@ class InsSelPolicyFunc(HARKobject):
         cTemp[Copay_better], MedTemp[Copay_better], xTemp[Copay_better] = self.PolicyFuncCopay(mTempAlt[Copay_better],pTemp[Copay_better],DevTemp[Copay_better])
         cTemp[FullPrice_better], MedTemp[FullPrice_better], xTemp[FullPrice_better] = self.PolicyFuncFullPrice(mTemp[FullPrice_better],pTemp[FullPrice_better],DevTemp[FullPrice_better])
         xTemp[Copay_better] += self.OptionCost
-        MedTemp[Copay_better] += self.OptionCost
+        #MedTemp[Copay_better] += self.OptionCost
         cLvl[these] = cTemp
         MedLvl[these] = MedTemp
         xLvl[these] = xTemp

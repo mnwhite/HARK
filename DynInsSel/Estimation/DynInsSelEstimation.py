@@ -946,7 +946,7 @@ def objectiveFunction(Parameters, return_market=False):
     TestPremiums = True # Whether to start with the test premium level
     
     if TestPremiums:
-        ESIpremiums = np.array([0.3200, 0.0, 0.0, 0.0, 0.0])
+        ESIpremiums = np.array([0.3400, 0.0, 0.0, 0.0, 0.0])
     else:
         ESIpremiums = Params.PremiumsLast
     IMIpremiums_init = Params.IMIpremiums
@@ -962,7 +962,7 @@ def objectiveFunction(Parameters, return_market=False):
     multiThreadCommandsFake(MyMarket.agents,['makeIncBoolArray()'])
     
     if EvalType == 0:
-        multiThreadCommandsFake(MyMarket.agents,['solve()'])
+        multiThreadCommands(MyMarket.agents,['solve()'])
     else:
         MyMarket.max_loops = EvalType
         MyMarket.solve()
@@ -986,10 +986,10 @@ if __name__ == '__main__':
     import matplotlib.pyplot as plt
     mystr = lambda number : "{:.4f}".format(number)
     
-    test_obj_func = False
+    test_obj_func = True
     test_one_type = False
     perturb_one_param = False
-    estimate_model = True
+    estimate_model = False
     
     if test_obj_func:
     # This block is for actually testing the objective function
@@ -1162,7 +1162,7 @@ if __name__ == '__main__':
         TestPremiums = True # Whether to start with the test premium level
         
         if TestPremiums:
-            ESIpremiums = np.array([0.3200, 0.0, 0.0, 0.0, 0.0])
+            ESIpremiums = np.array([0.3400, 0.0, 0.0, 0.0, 0.0])
         else:
             ESIpremiums = Params.PremiumsLast
         IMIpremiums_init = Params.IMIpremiums
@@ -1216,9 +1216,9 @@ if __name__ == '__main__':
         
     if perturb_one_param:
         # Test model identification by perturbing one parameter at a time
-        param_i = 1
-        param_min = 2.5
-        param_max = 3.0
+        param_i = 22
+        param_min = 0.3
+        param_max = 0.4
         
         N = 35
         perturb_vec = np.linspace(param_min,param_max,num=N)
