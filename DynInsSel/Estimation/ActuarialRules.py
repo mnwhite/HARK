@@ -121,7 +121,7 @@ class InsuranceMarket(Market):
         ESIpremiumFuncs_all_health = 2*HealthCount*[ESIpremiumFuncs]
         
         # Construct PremiumFuncs for IMI contracts and combine with IMI contracts
-        for t in range(40):
+        for t in range(43):
             PremiumFuncs_t = []
             for h in range(HealthCount):
                 PremiumFuncsIMI = []
@@ -153,15 +153,15 @@ class InsuranceMarket(Market):
         ESIpremiums np.array
             Vector with newly calculated ESI premiums; first element is always zero.
         '''
-        ExpInsPayX = np.stack(ExpInsPay,axis=3)[:40,5:,:,:] # This is collected in reap_vars
-        ExpBuyersX = np.stack(ExpBuyers,axis=3)[:40,5:,:,:] # This is collected in reap_vars
+        ExpInsPayX = np.stack(ExpInsPay,axis=3)[:43,5:,:,:] # This is collected in reap_vars
+        ExpBuyersX = np.stack(ExpBuyers,axis=3)[:43,5:,:,:] # This is collected in reap_vars
         MaxContracts = ExpInsPayX.shape[2]
         # Order of indices: age, health, contract, type
         
         TotalInsPay_ByAge = np.sum(ExpInsPayX,axis=(1,3))
         TotalBuyers_ByAge = np.sum(ExpBuyersX,axis=(1,3))
-        CohortWeight = self.CohortGroFac**(-np.arange(40))
-        CohortWeightX = np.tile(np.reshape(CohortWeight,(40,1)),(1,MaxContracts))
+        CohortWeight = self.CohortGroFac**(-np.arange(43))
+        CohortWeightX = np.tile(np.reshape(CohortWeight,(43,1)),(1,MaxContracts))
         TotalInsPay = np.sum(CohortWeightX*TotalInsPay_ByAge,axis=0)
         TotalBuyers = np.sum(CohortWeightX*TotalBuyers_ByAge,axis=0)
         AvgInsPay = TotalInsPay/TotalBuyers
@@ -234,7 +234,7 @@ def generalIMIactuarialRule(self,ExpInsPay,ExpBuyers):
     HealthGroups = self.HealthGroups
     ExcludedGroups = self.ExcludedGroups
     GroupCount = len(HealthGroups)
-    AgeCount = 40
+    AgeCount = 43
     InfPrem = 10000.
     
     # Define the age rating function
@@ -243,12 +243,12 @@ def generalIMIactuarialRule(self,ExpInsPay,ExpBuyers):
         AgeRatingScale = 1.0 + (AgeBandLimit-1.0)*AgeRatingFunc(np.arange(AgeCount,dtype=float))
     
     # Combine expected payments and buyers across types
-    ExpInsPayX = np.stack(ExpInsPay,axis=3)[:40,:5,:,:] # This is collected in reap_vars
-    ExpBuyersX = np.stack(ExpBuyers,axis=3)[:40,:5,:,:] # This is collected in reap_vars
+    ExpInsPayX = np.stack(ExpInsPay,axis=3)[:43,:5,:,:] # This is collected in reap_vars
+    ExpBuyersX = np.stack(ExpBuyers,axis=3)[:43,:5,:,:] # This is collected in reap_vars
     HealthCount = ExpInsPayX.shape[1]
     MaxContracts = ExpInsPayX.shape[2]
-    CohortWeight = self.CohortGroFac**(-np.arange(40))
-    CohortWeightX = np.tile(np.reshape(CohortWeight,(40,1)),(1,MaxContracts))
+    CohortWeight = self.CohortGroFac**(-np.arange(43))
+    CohortWeightX = np.tile(np.reshape(CohortWeight,(43,1)),(1,MaxContracts))
     # Order of indices: age, health, contract, type
     
     # Initialize the premium array

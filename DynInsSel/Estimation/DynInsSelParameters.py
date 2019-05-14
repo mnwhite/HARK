@@ -1,6 +1,8 @@
 '''
 This module makes exogenous agent parameters for the DynInsSel project.
 '''
+import sys 
+sys.path.insert(0,'../../')
 
 from copy import copy
 import numpy as np
@@ -42,9 +44,10 @@ DevMax = 5.0                        # Maximum standard deviations above MedShk m
 MedPrice = 1.0                      # Relative price of a unit of medical care
 AgentCount = 10000                  # Number of agents of this type (only matters for simulation)
 DeductibleList = [0.06,0.05,0.04,0.03,0.02] # List of deductibles for working-age insurance contracts
-T_sim = 60                          # Number of periods to simulate (age 25 to 84)
+T_sim = 83                          # Number of periods to simulate (age 22 to 104)
 retired_T = 55
-working_T = 40
+working_T = 43
+total_T = retired_T + working_T
 
 
 class SpecialTaxFunction():
@@ -259,40 +262,9 @@ class RetiredESIfunction():
         return ESImrkvArray
     
 ESImrkvFuncs_retired = [RetirementESIfunction()] + retired_T*[RetiredESIfunction()]
-ESImrkvFuncs_d = ESImrkvFuncs_d[7:46] + ESImrkvFuncs_retired
-ESImrkvFuncs_h = ESImrkvFuncs_h[7:46] + ESImrkvFuncs_retired
-ESImrkvFuncs_c = ESImrkvFuncs_c[7:46] + ESImrkvFuncs_retired
-    
-# Make survival probabilities by health state and age based on a probit on HRS data for ages 50-119
-AgeMortParams = [-2.757652,.044746,-.0010514,.0000312,-1.62e-07]  # MEN ONLY
-HealthMortAdj = [.0930001,.2299474,.3242607,.5351414]             # MEN ONLY
-
-HealthMortCum = np.cumsum(HealthMortAdj)
-MortProbitEX = lambda x : AgeMortParams[0] + AgeMortParams[1]*x + AgeMortParams[2]*x**2  + AgeMortParams[3]*x**3 + AgeMortParams[4]*x**4
-MortProbitVG = lambda x : MortProbitEX(x) + HealthMortCum[0]
-MortProbitGD = lambda x : MortProbitEX(x) + HealthMortCum[1]
-MortProbitFR = lambda x : MortProbitEX(x) + HealthMortCum[2]
-MortProbitPR = lambda x : MortProbitEX(x) + HealthMortCum[3]
-LivPrbOld = np.zeros((5,70))
-Age = np.arange(70)
-BiannualTransform = lambda f, x : (1.0 - norm.cdf(f(x)))**0.5
-LivPrbOld[0,:] = BiannualTransform(MortProbitPR,Age)
-LivPrbOld[1,:] = BiannualTransform(MortProbitFR,Age)
-LivPrbOld[2,:] = BiannualTransform(MortProbitGD,Age)
-LivPrbOld[3,:] = BiannualTransform(MortProbitVG,Age)
-LivPrbOld[4,:] = BiannualTransform(MortProbitEX,Age)
-
-# Import survival probabilities from SSA data, from age 0 to age 119
-data_location = os.path.dirname(os.path.abspath(__file__))
-f = open(data_location + '/' + 'USactuarial.txt','r')
-actuarial_reader = csv.reader(f,delimiter='\t')
-raw_actuarial = list(actuarial_reader)
-DiePrb = []
-for j in range(len(raw_actuarial)):
-    DiePrb += [float(raw_actuarial[j][1])] # This uses male death probabilities
-f.close
-DiePrb = np.array(DiePrb)[24:] # Take from age 24 onward
-DiePrbBiannual = 1.0 - (1.0 - DiePrb[:-1])*(1.0 - DiePrb[1:])
+ESImrkvFuncs_d = ESImrkvFuncs_d[4:46] + ESImrkvFuncs_retired
+ESImrkvFuncs_h = ESImrkvFuncs_h[4:46] + ESImrkvFuncs_retired
+ESImrkvFuncs_c = ESImrkvFuncs_c[4:46] + ESImrkvFuncs_retired
 
 # Specify the initial distribution of health at age 24-26, taken directly from MEPS data
 HealthPrbsInit = [0.003,0.036,0.196,0.348,0.417]
@@ -304,13 +276,13 @@ MrkvPrbsInit_h = np.concatenate([0.2*HealthPrbsInit_h,0.05*HealthPrbsInit_h,0.75
 MrkvPrbsInit_c = np.concatenate([0.1*HealthPrbsInit_c,0.05*HealthPrbsInit_c,0.85*HealthPrbsInit_c])
 EducWeight = [0.080,0.566,0.354]
 
-# Make the income shock standard deviations by age, from age 25-120
+# Make the income shock standard deviations by age, from age 22-120
 # These might need revising
 AgeCount = retired_T + working_T
 T_cycle = retired_T + working_T
-TranShkStd = (np.concatenate((np.linspace(0.1,0.12,4), 0.12*np.ones(4), np.linspace(0.12,0.075,15), np.linspace(0.074,0.047,16), np.zeros(retired_T+1))))**0.5
+TranShkStd = (np.concatenate((np.linspace(0.1,0.12,7), 0.12*np.ones(4), np.linspace(0.12,0.075,15), np.linspace(0.074,0.047,16), np.zeros(retired_T+1))))**0.5
 TranShkStd = np.ndarray.tolist(TranShkStd)
-PermShkStd = np.concatenate((((0.00011342*(np.linspace(24,64.75,working_T-1)-47)**2 + 0.01))**0.5,np.zeros(retired_T+1)))
+PermShkStd = np.concatenate((((0.00011342*(np.linspace(21,64.75,working_T-1)-47)**2 + 0.01))**0.5,np.zeros(retired_T+1)))
 PermShkStd[31:39] = PermShkStd[30] # Don't extrapolate permanent shock stdev
 PermShkStd = np.ndarray.tolist(PermShkStd)
 TranShkStdAllHealth = []
@@ -344,93 +316,124 @@ educ_bonus = np.array([[.080082,0.,.1814115],
                        [-.1128418,0.,.199002],
                        [-.2621089,0.,.1883597]])
 
-# Fill in the Markov array at each age (probably could have written this more cleverly but meh)
-MrkvArrayByEduc = np.zeros([67,5,5,3]) + np.nan
+# Fill in the health Markov array at each age (probably could have written this more cleverly but meh)
+HealthMrkvArrayByEduc = np.zeros([67,5,5,3]) + np.nan
 Age = np.arange(0,67,dtype=float) # This is age minus 18
 for j in range(3):
     f1a = lambda x : f1(x) + educ_bonus[0,j]
     fitted = f1a(Age)
-    MrkvArrayByEduc[:,0,0,j] = norm.cdf(cuts1[0] - fitted) - norm.cdf(-np.inf  - fitted)
-    MrkvArrayByEduc[:,0,1,j] = norm.cdf(cuts1[1] - fitted) - norm.cdf(cuts1[0] - fitted)
-    MrkvArrayByEduc[:,0,2,j] = norm.cdf(cuts1[2] - fitted) - norm.cdf(cuts1[1] - fitted)
-    MrkvArrayByEduc[:,0,3,j] = norm.cdf(cuts1[3] - fitted) - norm.cdf(cuts1[2] - fitted)
-    MrkvArrayByEduc[:,0,4,j] = norm.cdf(np.inf   - fitted) - norm.cdf(cuts1[3] - fitted)
+    HealthMrkvArrayByEduc[:,0,0,j] = norm.cdf(cuts1[0] - fitted) - norm.cdf(-np.inf  - fitted)
+    HealthMrkvArrayByEduc[:,0,1,j] = norm.cdf(cuts1[1] - fitted) - norm.cdf(cuts1[0] - fitted)
+    HealthMrkvArrayByEduc[:,0,2,j] = norm.cdf(cuts1[2] - fitted) - norm.cdf(cuts1[1] - fitted)
+    HealthMrkvArrayByEduc[:,0,3,j] = norm.cdf(cuts1[3] - fitted) - norm.cdf(cuts1[2] - fitted)
+    HealthMrkvArrayByEduc[:,0,4,j] = norm.cdf(np.inf   - fitted) - norm.cdf(cuts1[3] - fitted)
     f2a = lambda x : f2(x) + educ_bonus[1,j]
     fitted = f2a(Age)
-    MrkvArrayByEduc[:,1,0,j] = norm.cdf(cuts2[0] - fitted) - norm.cdf(-np.inf  - fitted)
-    MrkvArrayByEduc[:,1,1,j] = norm.cdf(cuts2[1] - fitted) - norm.cdf(cuts2[0] - fitted)
-    MrkvArrayByEduc[:,1,2,j] = norm.cdf(cuts2[2] - fitted) - norm.cdf(cuts2[1] - fitted)
-    MrkvArrayByEduc[:,1,3,j] = norm.cdf(cuts2[3] - fitted) - norm.cdf(cuts2[2] - fitted)
-    MrkvArrayByEduc[:,1,4,j] = norm.cdf(np.inf   - fitted) - norm.cdf(cuts2[3] - fitted)
+    HealthMrkvArrayByEduc[:,1,0,j] = norm.cdf(cuts2[0] - fitted) - norm.cdf(-np.inf  - fitted)
+    HealthMrkvArrayByEduc[:,1,1,j] = norm.cdf(cuts2[1] - fitted) - norm.cdf(cuts2[0] - fitted)
+    HealthMrkvArrayByEduc[:,1,2,j] = norm.cdf(cuts2[2] - fitted) - norm.cdf(cuts2[1] - fitted)
+    HealthMrkvArrayByEduc[:,1,3,j] = norm.cdf(cuts2[3] - fitted) - norm.cdf(cuts2[2] - fitted)
+    HealthMrkvArrayByEduc[:,1,4,j] = norm.cdf(np.inf   - fitted) - norm.cdf(cuts2[3] - fitted)
     f3a = lambda x : f3(x) + educ_bonus[2,j]
     fitted = f3a(Age)
-    MrkvArrayByEduc[:,2,0,j] = norm.cdf(cuts3[0] - fitted) - norm.cdf(-np.inf  - fitted)
-    MrkvArrayByEduc[:,2,1,j] = norm.cdf(cuts3[1] - fitted) - norm.cdf(cuts3[0] - fitted)
-    MrkvArrayByEduc[:,2,2,j] = norm.cdf(cuts3[2] - fitted) - norm.cdf(cuts3[1] - fitted)
-    MrkvArrayByEduc[:,2,3,j] = norm.cdf(cuts3[3] - fitted) - norm.cdf(cuts3[2] - fitted)
-    MrkvArrayByEduc[:,2,4,j] = norm.cdf(np.inf   - fitted) - norm.cdf(cuts3[3] - fitted)
+    HealthMrkvArrayByEduc[:,2,0,j] = norm.cdf(cuts3[0] - fitted) - norm.cdf(-np.inf  - fitted)
+    HealthMrkvArrayByEduc[:,2,1,j] = norm.cdf(cuts3[1] - fitted) - norm.cdf(cuts3[0] - fitted)
+    HealthMrkvArrayByEduc[:,2,2,j] = norm.cdf(cuts3[2] - fitted) - norm.cdf(cuts3[1] - fitted)
+    HealthMrkvArrayByEduc[:,2,3,j] = norm.cdf(cuts3[3] - fitted) - norm.cdf(cuts3[2] - fitted)
+    HealthMrkvArrayByEduc[:,2,4,j] = norm.cdf(np.inf   - fitted) - norm.cdf(cuts3[3] - fitted)
     f4a = lambda x : f4(x) + educ_bonus[3,j]
     fitted = f4a(Age)
-    MrkvArrayByEduc[:,3,0,j] = norm.cdf(cuts4[0] - fitted) - norm.cdf(-np.inf  - fitted)
-    MrkvArrayByEduc[:,3,1,j] = norm.cdf(cuts4[1] - fitted) - norm.cdf(cuts4[0] - fitted)
-    MrkvArrayByEduc[:,3,2,j] = norm.cdf(cuts4[2] - fitted) - norm.cdf(cuts4[1] - fitted)
-    MrkvArrayByEduc[:,3,3,j] = norm.cdf(cuts4[3] - fitted) - norm.cdf(cuts4[2] - fitted)
-    MrkvArrayByEduc[:,3,4,j] = norm.cdf(np.inf   - fitted) - norm.cdf(cuts4[3] - fitted)
+    HealthMrkvArrayByEduc[:,3,0,j] = norm.cdf(cuts4[0] - fitted) - norm.cdf(-np.inf  - fitted)
+    HealthMrkvArrayByEduc[:,3,1,j] = norm.cdf(cuts4[1] - fitted) - norm.cdf(cuts4[0] - fitted)
+    HealthMrkvArrayByEduc[:,3,2,j] = norm.cdf(cuts4[2] - fitted) - norm.cdf(cuts4[1] - fitted)
+    HealthMrkvArrayByEduc[:,3,3,j] = norm.cdf(cuts4[3] - fitted) - norm.cdf(cuts4[2] - fitted)
+    HealthMrkvArrayByEduc[:,3,4,j] = norm.cdf(np.inf   - fitted) - norm.cdf(cuts4[3] - fitted)
     f5a = lambda x : f5(x) + educ_bonus[4,j]
     fitted = f5a(Age)
-    MrkvArrayByEduc[:,4,0,j] = norm.cdf(cuts5[0] - fitted) - norm.cdf(-np.inf  - fitted)
-    MrkvArrayByEduc[:,4,1,j] = norm.cdf(cuts5[1] - fitted) - norm.cdf(cuts5[0] - fitted)
-    MrkvArrayByEduc[:,4,2,j] = norm.cdf(cuts5[2] - fitted) - norm.cdf(cuts5[1] - fitted)
-    MrkvArrayByEduc[:,4,3,j] = norm.cdf(cuts5[3] - fitted) - norm.cdf(cuts5[2] - fitted)
-    MrkvArrayByEduc[:,4,4,j] = norm.cdf(np.inf   - fitted) - norm.cdf(cuts5[3] - fitted)
+    HealthMrkvArrayByEduc[:,4,0,j] = norm.cdf(cuts5[0] - fitted) - norm.cdf(-np.inf  - fitted)
+    HealthMrkvArrayByEduc[:,4,1,j] = norm.cdf(cuts5[1] - fitted) - norm.cdf(cuts5[0] - fitted)
+    HealthMrkvArrayByEduc[:,4,2,j] = norm.cdf(cuts5[2] - fitted) - norm.cdf(cuts5[1] - fitted)
+    HealthMrkvArrayByEduc[:,4,3,j] = norm.cdf(cuts5[3] - fitted) - norm.cdf(cuts5[2] - fitted)
+    HealthMrkvArrayByEduc[:,4,4,j] = norm.cdf(np.inf   - fitted) - norm.cdf(cuts5[3] - fitted)
     
 # Make the array of health transitions after age 85
-MrkvArrayOld = np.array([[0.450,0.367,0.183,0.000,0.000],
+HealthMrkvArrayOld = np.array([[0.450,0.367,0.183,0.000,0.000],
                         [0.140,0.445,0.290,0.115,0.010],
                         [0.060,0.182,0.497,0.208,0.053],
                         [0.032,0.090,0.389,0.342,0.147],
                         [0.000,0.061,0.231,0.285,0.423]])
     
 # Reformat the Markov array into lifecycle lists by education, from age 18 to 120
-MrkvArray_d = []
-MrkvArray_h = []
-MrkvArray_c = []
+HealthMrkvArray_d = []
+HealthMrkvArray_h = []
+HealthMrkvArray_c = []
 for t in range(67): # Until age 85
-    MrkvArray_d.append(MrkvArrayByEduc[t,:,:,0])
-    MrkvArray_h.append(MrkvArrayByEduc[t,:,:,1])
-    MrkvArray_c.append(MrkvArrayByEduc[t,:,:,2])
+    HealthMrkvArray_d.append(HealthMrkvArrayByEduc[t,:,:,0])
+    HealthMrkvArray_h.append(HealthMrkvArrayByEduc[t,:,:,1])
+    HealthMrkvArray_c.append(HealthMrkvArrayByEduc[t,:,:,2])
 for t in range(35): # Until age ~120
-    MrkvArray_d.append(MrkvArrayOld)
-    MrkvArray_h.append(MrkvArrayOld)
-    MrkvArray_c.append(MrkvArrayOld)
-MrkvArray_d = MrkvArray_d[7:] # Begin at age 25, dropping first 7 years
-MrkvArray_h = MrkvArray_h[7:]
-MrkvArray_c = MrkvArray_c[7:]
+    HealthMrkvArray_d.append(HealthMrkvArrayOld)
+    HealthMrkvArray_h.append(HealthMrkvArrayOld)
+    HealthMrkvArray_c.append(HealthMrkvArrayOld)
+HealthMrkvArray_d = HealthMrkvArray_d[4:] # Begin at age 22, dropping first 4 years
+HealthMrkvArray_h = HealthMrkvArray_h[4:]
+HealthMrkvArray_c = HealthMrkvArray_c[4:]
 
-# Solve for survival probabilities at each health state for ages 24-60 by quasi-simulation
+# Make survival probabilities by health state and age based on a probit on HRS data for ages 50-119
+AgeMortParams = [-2.757652,.044746,-.0010514,.0000312,-1.62e-07]  # MEN ONLY
+HealthMortAdj = [.0930001,.2299474,.3242607,.5351414]             # MEN ONLY
+
+HealthMortCum = np.cumsum(HealthMortAdj)
+MortProbitEX = lambda x : AgeMortParams[0] + AgeMortParams[1]*x + AgeMortParams[2]*x**2  + AgeMortParams[3]*x**3 + AgeMortParams[4]*x**4
+MortProbitVG = lambda x : MortProbitEX(x) + HealthMortCum[0]
+MortProbitGD = lambda x : MortProbitEX(x) + HealthMortCum[1]
+MortProbitFR = lambda x : MortProbitEX(x) + HealthMortCum[2]
+MortProbitPR = lambda x : MortProbitEX(x) + HealthMortCum[3]
+LivPrbOld = np.zeros((5,70))
+Age = np.arange(70)
+BiannualTransform = lambda f, x : (1.0 - norm.cdf(f(x)))**0.5
+LivPrbOld[0,:] = BiannualTransform(MortProbitPR,Age)
+LivPrbOld[1,:] = BiannualTransform(MortProbitFR,Age)
+LivPrbOld[2,:] = BiannualTransform(MortProbitGD,Age)
+LivPrbOld[3,:] = BiannualTransform(MortProbitVG,Age)
+LivPrbOld[4,:] = BiannualTransform(MortProbitEX,Age)
+
+# Import survival probabilities from SSA data, from age 0 to age 119
+data_location = os.path.dirname(os.path.abspath(__file__))
+f = open(data_location + '/' + 'USactuarial.txt','r')
+actuarial_reader = csv.reader(f,delimiter='\t')
+raw_actuarial = list(actuarial_reader)
+DiePrb = []
+for j in range(len(raw_actuarial)):
+    DiePrb += [float(raw_actuarial[j][1])] # This uses male death probabilities
+f.close
+DiePrb = np.array(DiePrb)[21:] # Take from age 21 onward
+DiePrbBiannual = 1.0 - (1.0 - DiePrb[:-1])*(1.0 - DiePrb[1:])
+
+# Solve for survival probabilities at each health state for ages 22-85 by quasi-simulation
 HealthDstnNow = np.array(HealthPrbsInit)
-LivPrbYoung = np.zeros((5,60)) + np.nan
-omega_vec = np.zeros(60)
-HealthDstnHist = np.zeros((5,95))
-for t in range(95):
+LivPrbYoung = np.zeros((5,63)) + np.nan
+omega_vec = np.zeros(63)
+HealthDstnHist = np.zeros((5,total_T))
+for t in range(total_T):
     P = HealthDstnNow # For convenient typing
     DiePrbFunc = lambda q : P[0]*norm.cdf(q + HealthMortCum[3]) + P[1]*norm.cdf(q + HealthMortCum[2]) + P[2]*norm.cdf(q + HealthMortCum[1]) + P[3]*norm.cdf(q + HealthMortCum[0]) + P[4]*norm.cdf(q)
     LivPrbOut = lambda q : (1. - np.array([norm.cdf(q + HealthMortCum[3]),norm.cdf(q + HealthMortCum[2]),norm.cdf(q + HealthMortCum[1]),norm.cdf(q + HealthMortCum[0]),norm.cdf(q)]))**0.5
     ObjFunc = lambda q : DiePrbBiannual[t] - DiePrbFunc(q)
-    if t < 60:
+    if t < 63:
         omega_t = newton(ObjFunc,-3.)
         omega_vec[t] = omega_t
         LivPrbYoung[:,t] = LivPrbOut(omega_t)
         HealthDstnTemp = HealthDstnNow*LivPrbYoung[:,t] # Kill agents by health type
         HealthDstnNow = HealthDstnTemp/np.sum(HealthDstnTemp) # Renormalize to a stochastic vector
-        HealthDstnNow = np.dot(HealthDstnNow,MrkvArrayByEduc[t+6,:,:,1]) # Apply health transitions to survivors
+        HealthDstnNow = np.dot(HealthDstnNow,HealthMrkvArrayByEduc[t+3,:,:,1]) # Apply health transitions to survivors
     else:
-        HealthDstnTemp = HealthDstnNow*LivPrbOld[:,t-26] # Kill agents by health type
+        HealthDstnTemp = HealthDstnNow*LivPrbOld[:,t-29] # Kill agents by health type
         HealthDstnNow = HealthDstnTemp/np.sum(HealthDstnTemp) # Renormalize to a stochastic vector
-        HealthDstnNow = np.dot(HealthDstnNow,MrkvArrayOld[:,:]) # Apply health transitions to survivors
+        HealthDstnNow = np.dot(HealthDstnNow,HealthMrkvArrayOld[:,:]) # Apply health transitions to survivors
     HealthDstnHist[:,t] = HealthDstnNow
     
-# Reformat LivPrb into a lifeycle list, from age 25 to 120
+# Reformat LivPrb into a lifeycle list, from age 22 to 120
 LivPrb = []
 for t in range(working_T):
     LivPrb.append(LivPrbYoung[:,t+1])
@@ -439,21 +442,21 @@ for t in range(retired_T):
 LivPrb[-1] = np.array([0.,0.,0.,0.,0.])
 
 # Semi-arbitrary initial income levels (grab from data later)
-pLvlInitMean_d = np.log(2.0)
+pLvlInitMean_d = np.log(1.8)
 pLvlInitMean_h = np.log(3.0)
-pLvlInitMean_c = np.log(4.2)
+pLvlInitMean_c = np.log(4.5)
 
 # Permanent income growth rates from Cagetti (2003)
-PermGroFac_d_base = [5.2522391e-002,  5.0039782e-002,  4.7586132e-002,  4.5162424e-002,  4.2769638e-002,  4.0408757e-002,  3.8080763e-002,  3.5786635e-002,  3.3527358e-002,  3.1303911e-002,  2.9117277e-002,  2.6968437e-002,  2.4858374e-002, 2.2788068e-002,  2.0758501e-002,  1.8770655e-002,  1.6825511e-002,  1.4924052e-002,  1.3067258e-002,  1.1256112e-002, 9.4915947e-003,  7.7746883e-003,  6.1063742e-003,  4.4876340e-003,  2.9194495e-003,  1.4028022e-003, -6.1326258e-005, -1.4719542e-003, -2.8280999e-003, -4.1287819e-003, -5.3730185e-003, -6.5598280e-003, -7.6882288e-003, -8.7572392e-003, -9.7658777e-003, -1.0713163e-002, -1.1598112e-002, -1.2419745e-002, -1.3177079e-002, -1.3869133e-002, -4.3985368e-001, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003]
-PermGroFac_h_base = [4.1102173e-002,  4.1194381e-002,  4.1117402e-002,  4.0878307e-002,  4.0484168e-002,  3.9942056e-002,  3.9259042e-002,  3.8442198e-002,  3.7498596e-002,  3.6435308e-002,  3.5259403e-002,  3.3977955e-002,  3.2598035e-002,  3.1126713e-002,  2.9571062e-002,  2.7938153e-002,  2.6235058e-002,  2.4468848e-002,  2.2646594e-002,  2.0775369e-002,  1.8862243e-002,  1.6914288e-002,  1.4938576e-002,  1.2942178e-002,  1.0932165e-002,  8.9156095e-003,  6.8995825e-003,  4.8911556e-003,  2.8974003e-003,  9.2538802e-004, -1.0178097e-003, -2.9251214e-003, -4.7894755e-003, -6.6038005e-003, -8.3610250e-003, -1.0054077e-002, -1.1675886e-002, -1.3219380e-002, -1.4677487e-002, -1.6043137e-002, -5.5864350e-001, -1.0820465e-002, -1.0820465e-002, -1.0820465e-002, -1.0820465e-002, -1.0820465e-002, -1.0820465e-002, -1.0820465e-002, -1.0820465e-002, -1.0820465e-002, -1.0820465e-002, -1.0820465e-002, -1.0820465e-002, -1.0820465e-002, -1.0820465e-002, -1.0820465e-002, -1.0820465e-002, -1.0820465e-002, -1.0820465e-002, -1.0820465e-002, -1.0820465e-002, -1.0820465e-002, -1.0820465e-002, -1.0820465e-002, -1.0820465e-002]
-PermGroFac_c_base = [3.9375106e-002,  3.9030288e-002,  3.8601230e-002,  3.8091011e-002,  3.7502710e-002,  3.6839406e-002,  3.6104179e-002,  3.5300107e-002,  3.4430270e-002,  3.3497746e-002,  3.2505614e-002,  3.1456953e-002,  3.0354843e-002,  2.9202363e-002,  2.8002591e-002,  2.6758606e-002,  2.5473489e-002,  2.4150316e-002,  2.2792168e-002,  2.1402124e-002,  1.9983263e-002,  1.8538663e-002,  1.7071404e-002,  1.5584565e-002,  1.4081224e-002,  1.2564462e-002,  1.1037356e-002,  9.5029859e-003,  7.9644308e-003,  6.4247695e-003,  4.8870812e-003,  3.3544449e-003,  1.8299396e-003,  3.1664424e-004, -1.1823620e-003, -2.6640003e-003, -4.1251914e-003, -5.5628564e-003, -6.9739162e-003, -8.3552918e-003, -6.8938447e-001, -6.1023256e-004, -6.1023256e-004, -6.1023256e-004, -6.1023256e-004, -6.1023256e-004, -6.1023256e-004, -6.1023256e-004, -6.1023256e-004, -6.1023256e-004, -6.1023256e-004, -6.1023256e-004, -6.1023256e-004, -6.1023256e-004, -6.1023256e-004, -6.1023256e-004, -6.1023256e-004, -6.1023256e-004, -6.1023256e-004, -6.1023256e-004, -6.1023256e-004, -6.1023256e-004, -6.1023256e-004, -6.1023256e-004, -6.1023256e-004]
+PermGroFac_d_base = [0.053, 0.053, 0.053, 5.2522391e-002,  5.0039782e-002,  4.7586132e-002,  4.5162424e-002,  4.2769638e-002,  4.0408757e-002,  3.8080763e-002,  3.5786635e-002,  3.3527358e-002,  3.1303911e-002,  2.9117277e-002,  2.6968437e-002,  2.4858374e-002, 2.2788068e-002,  2.0758501e-002,  1.8770655e-002,  1.6825511e-002,  1.4924052e-002,  1.3067258e-002,  1.1256112e-002, 9.4915947e-003,  7.7746883e-003,  6.1063742e-003,  4.4876340e-003,  2.9194495e-003,  1.4028022e-003, -6.1326258e-005, -1.4719542e-003, -2.8280999e-003, -4.1287819e-003, -5.3730185e-003, -6.5598280e-003, -7.6882288e-003, -8.7572392e-003, -9.7658777e-003, -1.0713163e-002, -1.1598112e-002, -1.2419745e-002, -1.3177079e-002, -1.3869133e-002, -4.3985368e-001, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003, -8.5623256e-003]
+PermGroFac_h_base = [0.041, 0.041, 0.041, 4.1102173e-002,  4.1194381e-002,  4.1117402e-002,  4.0878307e-002,  4.0484168e-002,  3.9942056e-002,  3.9259042e-002,  3.8442198e-002,  3.7498596e-002,  3.6435308e-002,  3.5259403e-002,  3.3977955e-002,  3.2598035e-002,  3.1126713e-002,  2.9571062e-002,  2.7938153e-002,  2.6235058e-002,  2.4468848e-002,  2.2646594e-002,  2.0775369e-002,  1.8862243e-002,  1.6914288e-002,  1.4938576e-002,  1.2942178e-002,  1.0932165e-002,  8.9156095e-003,  6.8995825e-003,  4.8911556e-003,  2.8974003e-003,  9.2538802e-004, -1.0178097e-003, -2.9251214e-003, -4.7894755e-003, -6.6038005e-003, -8.3610250e-003, -1.0054077e-002, -1.1675886e-002, -1.3219380e-002, -1.4677487e-002, -1.6043137e-002, -5.5864350e-001, -1.0820465e-002, -1.0820465e-002, -1.0820465e-002, -1.0820465e-002, -1.0820465e-002, -1.0820465e-002, -1.0820465e-002, -1.0820465e-002, -1.0820465e-002, -1.0820465e-002, -1.0820465e-002, -1.0820465e-002, -1.0820465e-002, -1.0820465e-002, -1.0820465e-002, -1.0820465e-002, -1.0820465e-002, -1.0820465e-002, -1.0820465e-002, -1.0820465e-002, -1.0820465e-002, -1.0820465e-002, -1.0820465e-002, -1.0820465e-002]
+PermGroFac_c_base = [0.040, 0.040, 0.040, 3.9375106e-002,  3.9030288e-002,  3.8601230e-002,  3.8091011e-002,  3.7502710e-002,  3.6839406e-002,  3.6104179e-002,  3.5300107e-002,  3.4430270e-002,  3.3497746e-002,  3.2505614e-002,  3.1456953e-002,  3.0354843e-002,  2.9202363e-002,  2.8002591e-002,  2.6758606e-002,  2.5473489e-002,  2.4150316e-002,  2.2792168e-002,  2.1402124e-002,  1.9983263e-002,  1.8538663e-002,  1.7071404e-002,  1.5584565e-002,  1.4081224e-002,  1.2564462e-002,  1.1037356e-002,  9.5029859e-003,  7.9644308e-003,  6.4247695e-003,  4.8870812e-003,  3.3544449e-003,  1.8299396e-003,  3.1664424e-004, -1.1823620e-003, -2.6640003e-003, -4.1251914e-003, -5.5628564e-003, -6.9739162e-003, -8.3552918e-003, -6.8938447e-001, -6.1023256e-004, -6.1023256e-004, -6.1023256e-004, -6.1023256e-004, -6.1023256e-004, -6.1023256e-004, -6.1023256e-004, -6.1023256e-004, -6.1023256e-004, -6.1023256e-004, -6.1023256e-004, -6.1023256e-004, -6.1023256e-004, -6.1023256e-004, -6.1023256e-004, -6.1023256e-004, -6.1023256e-004, -6.1023256e-004, -6.1023256e-004, -6.1023256e-004, -6.1023256e-004, -6.1023256e-004, -6.1023256e-004, -6.1023256e-004]
 PermGroFac_d = PermGroFac_d_base[1:] + 31*[PermGroFac_d_base[-1]]
 PermGroFac_h = PermGroFac_h_base[1:] + 31*[PermGroFac_h_base[-1]]
 PermGroFac_c = PermGroFac_c_base[1:] + 31*[PermGroFac_c_base[-1]]
 PermGroFac_dx = []
 PermGroFac_hx = []
 PermGroFac_cx = []
-for t in range(working_T + retired_T):
+for t in range(total_T):
     if t < working_T:
         PermGroFac_dx.append(5*[PermGroFac_d[t]+1.0])
         PermGroFac_hx.append(5*[PermGroFac_h[t]+1.0])
@@ -512,8 +515,8 @@ RetirementFunc_c = RetirementFunc(0.0316, AIMEmax)
     
 # Construct the probability of getting zero medical need shock by age-health
 ZeroMedExFunc = lambda a : -0.2082171 - 0.0248579*a
-ZeroMedShkPrb = np.zeros((95,5))
-Age = np.arange(95)
+ZeroMedShkPrb = np.zeros((total_T,5))
+Age = np.arange(-3,total_T-3)
 ZeroMedShkPrb[:,4] = ZeroMedExFunc(Age)
 ZeroMedShkPrb[:,3] = ZeroMedShkPrb[:,4] - 0.2081694 
 ZeroMedShkPrb[:,2] = ZeroMedShkPrb[:,4] - 0.2503833 
@@ -525,26 +528,28 @@ for j in range(ZeroMedShkPrb.shape[0]):
     ZeroMedShkPrb_list.append(ZeroMedShkPrb[j,:])
     
 # Individual market premiums by age
-IMIpremiums = np.array([[ 1.91131946,  2.0475617 ,  2.08413183,  2.18067891,  2.20742798,
-         2.29051478,  2.35153019,  2.36372788,  2.44612629,  2.49838883,
-         2.58241446,  2.57748347,  2.64129829,  2.72331974,  2.7815    ,
-         2.83446604,  2.90198247,  2.99430985,  3.02822006,  3.14584522,
-         3.22097659,  3.27719999,  3.3714527 ,  3.45559575,  3.5127845 ,
-         3.64130503,  3.73305573,  3.85322198,  3.97071387,  4.00776596,
-         4.09101715,  4.19965884,  4.38154657,  4.45650665,  4.57428089,
-         4.62928845,  4.79310753,  4.88296306,  4.94608683,  5.14284316],
-       [ 0.39006873,  0.39138974,  0.4010615 ,  0.41054083,  0.41982969,
-         0.42888918,  0.43732683,  0.44702069,  0.45750048,  0.46650306,
-         0.47448587,  0.48350112,  0.49707321,  0.50709672,  0.52238672,
-         0.53847949,  0.55746347,  0.57469331,  0.59893444,  0.61798439,
-         0.64408678,  0.66824617,  0.69378468,  0.72347012,  0.75362325,
-         0.79689754,  0.83874505,  0.8658408 ,  0.91618145,  0.95999322,
-         1.00401192,  1.05013876,  1.0971531 ,  1.14299866,  1.19487935,
-         1.22731801,  1.2792601 ,  1.31753417,  1.3507292 ,  1.39386343]])
+IMIpremiums = np.array([[ 2.38444629,  2.48844517,  2.53505811,  2.5794558 ,  2.66780939,
+         2.77402697,  2.77981   ,  2.76527798,  2.86019891,  2.88105465,
+         2.99392559,  2.96139104,  3.04594176,  3.09406633,  3.13907984,
+         3.18066716,  3.18230412,  3.26627105,  3.2818221 ,  3.34814763,
+         3.41610486,  3.49160016,  3.54443955,  3.63519279,  3.67293728,
+         3.70223708,  3.80863103,  3.88851288,  4.00945705,  4.03129959,
+         4.15107308,  4.18033884,  4.31859914,  4.3711519 ,  4.41617223,
+         4.60685003,  4.65496475,  4.78552918,  4.85772172,  4.95863473,
+         5.107758  ,  5.16506809,  5.29284986],
+       [ 0.33889385,  0.34304985,  0.35102861,  0.36086554,  0.37165162,
+         0.3795144 ,  0.38573734,  0.39553285,  0.40559942,  0.41309962,
+         0.42095467,  0.433173  ,  0.44464865,  0.45489914,  0.46824532,
+         0.4773572 ,  0.4932601 ,  0.50654606,  0.52297804,  0.53840657,
+         0.55542448,  0.57336564,  0.59597056,  0.61755219,  0.64068609,
+         0.6689155 ,  0.69872919,  0.72645185,  0.75913302,  0.78983935,
+         0.82277155,  0.8687332 ,  0.90874478,  0.94417162,  0.987854  ,
+         1.02833722,  1.08126819,  1.13561664,  1.17619257,  1.22254156,
+         1.26069139,  1.29844417,  1.34467391]])
 
 # Define basic parameters of the economy
 HealthTaxFunc = SpecialTaxFunction(0.0,0.00) # Tax rate will be overwritten by installPremiumFuncs
-HealthTaxRate_init = 0.04267
+HealthTaxRate_init = 0.0442
 LoadFacESI   = 1.20 # Loading factor for employer sponsored insurance
 LoadFacIMI   = 1.80 # Loading factor for individual market insurance
 CohortGroFac = 1.01 # Year-on-year growth rate of population; each cohort is this factor larger than previous
@@ -594,62 +599,62 @@ BasicDictionary = { 'Rfree': Rfree,
 DropoutDictionary = copy(BasicDictionary)
 DropoutDictionary['PermGroFac'] = PermGroFac_dx
 DropoutDictionary['MrkvPrbsInit'] = MrkvPrbsInit_d
-DropoutDictionary['HealthMrkvArray'] = MrkvArray_d
+DropoutDictionary['HealthMrkvArray'] = HealthMrkvArray_d
 DropoutDictionary['ESImrkvFunc'] = ESImrkvFuncs_d
 DropoutDictionary['pLvlInitMean'] = pLvlInitMean_d
 DropoutDictionary['pLvlNextFuncRet'] = RetirementFunc_d
 HighschoolDictionary = copy(BasicDictionary)
 HighschoolDictionary['PermGroFac'] = PermGroFac_hx
 HighschoolDictionary['MrkvPrbsInit'] = MrkvPrbsInit_h
-HighschoolDictionary['HealthMrkvArray'] = MrkvArray_h
+HighschoolDictionary['HealthMrkvArray'] = HealthMrkvArray_h
 HighschoolDictionary['ESImrkvFunc'] = ESImrkvFuncs_h
 HighschoolDictionary['pLvlInitMean'] = pLvlInitMean_h
 HighschoolDictionary['pLvlNextFuncRet'] = RetirementFunc_h
 CollegeDictionary = copy(BasicDictionary)
 CollegeDictionary['PermGroFac'] = PermGroFac_cx
 CollegeDictionary['MrkvPrbsInit'] = MrkvPrbsInit_c
-CollegeDictionary['HealthMrkvArray'] = MrkvArray_c
+CollegeDictionary['HealthMrkvArray'] = HealthMrkvArray_c
 CollegeDictionary['ESImrkvFunc'] = ESImrkvFuncs_c
 CollegeDictionary['pLvlInitMean'] = pLvlInitMean_c
 CollegeDictionary['pLvlNextFuncRet'] = RetirementFunc_c
 
 # Make a test parameter vector for estimation
 test_param_vec = np.array([
-          0.9,                 #  0 DiscFac           : Intertemporal discount factor
-          2.8,                 #  1 CRRA              : Coefficient of relative risk aversion for consumption
+          0.89,                #  0 DiscFac           : Intertemporal discount factor
+          2.9,                 #  1 CRRA              : Coefficient of relative risk aversion for consumption
           8.0,                 #  2 MedCurve          : Ratio of CRRA for medical care to CRRA for consumption
           -7.5,                #  3 log(ChoiceShkMag) : Log stdev of taste shocks over insurance contracts
-          0.15,                #  4 Cfloor            : Consumption floor ($10,000)
-          -1.45,               #  5 log(EmpContr)     : Log of employer contribution to ESI ($10,000)
+          0.15,                #  4 Cfloor            : Consumption floor (10,000 USD)
+          -1.51,               #  5 log(EmpContr)     : Log of employer contribution to ESI (10,000 USD)
           -3.0,                #  6 UNUSED            : UNUSED
           10.0,                #  7 BequestShift      : Constant term in bequest motive
           3.0,                 #  8 BequestScale      : Scale of bequest motive
-          -3.5,                #  9 MedShkMean_0      : Constant term for log mean medical need shock
-          0.0045,              # 10 MedShkMean_a1     : Linear coefficient on age for log mean medical need shock
-          0.00075,             # 11 MedShkMean_a2     : Quadratic coefficient on age for log mean medical need shock
-          8e-06,               # 12 MedShkMean_a3     : Cubic coefficient on age for log mean medical need shock
-          -2.1e-07,            # 13 MedShkMean_a4     : Quartic coefficient on age for log mean medical need shock
-          0.25,                # 14 MedShkMean_VG0    : Very good health shifter for log mean medical need shock
-          0.0025,              # 15 MedShkMean_VGa1   : Very good health linear age coefficient shifter for log mean med shock
-          0.53,                # 16 MedShkMean_GD0    : Good health shifter for log mean medical need shock
-          0.0025,              # 17 MedShkMean_GDa1   : Good health linear age coefficient shifter for log mean med shock
-          0.98,                # 18 MedShkMean_FR0    : Fair health shifter for log mean medical need shock
-          0.0014,              # 19 MedShkMean_FRa1   : Fair health linear age coefficient shifter for log mean med shock
-          2.18,                # 20 MedShkMean_PR0    : Poor health shifter for log mean medical need shock
-          -0.0106,             # 21 MedShkMean_PRa1   : Poor health linear age coefficient shifter for log mean med shock
-          0.321,               # 22 MedShkStd_0       : Constant term for log stdev medical need shock
-          0.00754290199519,    # 23 MedShkStd_a1      : Linear coefficient on age for log stdev medical need shock
-          -0.000151204257844,  # 24 MedShkStd_a2      : Quadratic coefficient on age for log stdev medical need shock
+          -3.50708256057,      #  9 MedShkMean_0      : Excellent health constant for log mean med shock
+          0.00414593003656,    # 10 MedShkMean_a1     : Excellent health linear coefficient on age for log mean med shock
+          0.000554076909016,   # 11 MedShkMean_a2     : Quadratic coefficient on age for log mean medical need shock
+          1.18844734648e-05,   # 12 MedShkMean_a3     : Cubic coefficient on age for log mean medical need shock
+          -2.16039438366e-07,  # 13 MedShkMean_a4     : Quartic coefficient on age for log mean medical need shock
+          0.232590281953,      # 14 MedShkMean_VG0    : Very good health constant for log mean medical need shock
+          0.00204304411945,    # 15 MedShkMean_VGa1   : Very good health linear age coefficient for log mean med shock
+          0.462947957725,      # 16 MedShkMean_GD0    : Good health constant for log mean medical need shock
+          0.00298055834518,    # 17 MedShkMean_GDa1   : Good health linear age coefficient for log mean med shock
+          0.936017865297,      # 18 MedShkMean_FR0    : Fair health constant for log mean medical need shock
+          0.00166014517641,    # 19 MedShkMean_FRa1   : Fair health linear age coefficient for log mean med shock
+          2.35439304302,       # 20 MedShkMean_PR0    : Poor health constant for log mean medical need shock
+          -0.0118689668917,    # 21 MedShkMean_PRa1   : Poor health linear age coefficient for log mean med shock
+          0.317288764803,      # 22 MedShkStd_0       : Excellent health constant for log stdev med shock
+          0.00604211021969,    # 23 MedShkStd_a1      : Excellent health linear coefficient on age for log stdev med shock
+          -0.000112027041954,  # 24 MedShkStd_a2      : Quadratic coefficient on age for log stdev medical need shock
           0.0,                 # 25 MedShkStd_a3      : Cubic coefficient on age for log stdev medical need shock
           0.0,                 # 26 MedShkStd_a4      : Quartic coefficient on age for log stdev medical need shock
-          0.0219367447723,     # 27 MedShkStd_VG0     : Very good health shifter for log stdev medical need shock
-          8.65609267587e-05,   # 28 MedShkStd_VGa1    : Very good health linear age coefficient shifter for log stdev med shock
-          0.084712929903,      # 29 MedShkStd_GD0     : Good health shifter for log stdev medical need shock
-          7.24484709564e-05,   # 30 MedShkStd_GDa1    : Good health linear age coefficient shifter for log stdev med shock
-          0.215432518572,      # 31 MedShkStd_FR0     : Fair health shifter for log stdev medical need shock
-          -0.00193957426672,   # 32 MedShkStd_FRa1    : Fair health linear age coefficient shifter for log stdev med shock
-          0.279314685997,      # 33 MedShkStd_PR0     : Poor health shifter for log stdev medical need shock
-          -0.00280955041349,   # 34 MedShkStd_PRa1    : Poor health linear age coefficient shifter for log stdev med shock
+          0.0798380793117,     # 27 MedShkStd_VG0     : Very good health constant for log stdev medical need shock
+          -0.00124343031301,   # 28 MedShkStd_VGa1    : Very good health linear age coefficient for log stdev med shock
+          0.119943680087,      # 29 MedShkStd_GD0     : Good health constant for log stdev medical need shock
+          -0.000983585801214,  # 30 MedShkStd_GDa1    : Good health linear age coefficient for log stdev med shock
+          0.235124656251,      # 31 MedShkStd_FR0     : Fair health constant for log stdev medical need shock
+          -0.00258490744296,   # 32 MedShkStd_FRa1    : Fair health linear age coefficient for log stdev med shock
+          0.319865407186,      # 33 MedShkStd_PR0     : Poor health constant for log stdev medical need shock
+          -0.00414913999792,   # 34 MedShkStd_PRa1    : Poor health linear age coefficient for log stdev med shock
 ])
 
 

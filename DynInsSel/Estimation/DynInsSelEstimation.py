@@ -11,7 +11,7 @@ from time import clock
 from copy import copy, deepcopy
 from InsuranceSelectionModel import MedInsuranceContract, InsSelConsumerType
 import SaveParameters
-from SaveParameters import writeParametersToFile
+from SaveParameters import writeParametersToFile, makeParamTable
 import LoadDataMoments as Data
 from LoadDataMoments import data_moments, moment_weights
 from ActuarialRules import PreACAbaselineSpec, PostACAbaselineSpec, InsuranceMarket
@@ -249,7 +249,9 @@ class DynInsSelMarket(InsuranceMarket):
         MeanWealthRatioByAge = np.zeros(40) # Not moments
 
         # Calculate all simulated moments by age
-        for t in range(60):
+        for t in range(3,63):
+            tau = t-3 # Model starts at age 22, but moments start at age 25
+            
             WealthRatioList = []
             LogTotalMedList = []
             LogOOPmedList = []
@@ -268,7 +270,7 @@ class DynInsSelMarket(InsuranceMarket):
                 LogTotalMedList.append(np.log(ThisType.TotalMedHist[t,those]))
                 those = np.logical_and(these,ThisType.OOPmedHist[t,:]>0.0)
                 LogOOPmedList.append(np.log(ThisType.OOPmedHist[t,those]))
-                if t < 40:
+                if tau < 40:
                     WealthRatioList.append(ThisType.WealthRatioHist[t,these])
                     Insured = ThisType.InsuredBoolArray[t,:]
                     LiveCount += np.sum(ThisType.LiveBoolArray[t,:])
@@ -286,27 +288,27 @@ class DynInsSelMarket(InsuranceMarket):
                 else:
                     TotalMedSum += np.sum(ThisType.TotalMedHist[t,these])
                     OOPmedSum += np.sum(ThisType.OOPmedHist[t,these])
-            if t < 40:
+            if tau < 40:
                 WealthRatioArray = np.hstack(WealthRatioList)
-                MedianWealthRatioByAge[t] = np.median(WealthRatioArray)
-                MeanWealthRatioByAge[t] = np.mean(WealthRatioArray)
+                MedianWealthRatioByAge[tau] = np.median(WealthRatioArray)
+                MeanWealthRatioByAge[tau] = np.mean(WealthRatioArray)
                 PremiumArray = np.hstack(PremiumList)
-                MeanESIpremiumByAge[t] = np.mean(PremiumArray)
-                StdevESIpremiumByAge[t] = np.std(PremiumArray)
-                ESIinsuredRateByAge[t] = ESIcount/OfferedCount
-                IMIinsuredRateByAge[t] = IMIcount/NotOfferedCount
-                ESIofferRateByAge[t] = OfferedCount/LiveCount
+                MeanESIpremiumByAge[tau] = np.mean(PremiumArray)
+                StdevESIpremiumByAge[tau] = np.std(PremiumArray)
+                ESIinsuredRateByAge[tau] = ESIcount/OfferedCount
+                IMIinsuredRateByAge[tau] = IMIcount/NotOfferedCount
+                ESIofferRateByAge[tau] = OfferedCount/LiveCount
                 if ESIcount > 0.0:
-                    NoPremShareRateByAge[t] = ZeroCount/ESIcount
+                    NoPremShareRateByAge[tau] = ZeroCount/ESIcount
                 else:
-                    NoPremShareRateByAge[t] = 0.0 # This only happens with no insurance choice
+                    NoPremShareRateByAge[tau] = 0.0 # This only happens with no insurance choice
             LogTotalMedArray = np.hstack(LogTotalMedList)
-            MeanLogTotalMedByAge[t] = np.mean(LogTotalMedArray)
-            StdevLogTotalMedByAge[t] = np.std(LogTotalMedArray)
+            MeanLogTotalMedByAge[tau] = np.mean(LogTotalMedArray)
+            StdevLogTotalMedByAge[tau] = np.std(LogTotalMedArray)
             LogOOPmedArray = np.hstack(LogOOPmedList)
-            MeanLogOOPmedByAge[t] = np.mean(LogOOPmedArray)
-            StdevLogOOPmedByAge[t] = np.std(LogOOPmedArray)
-            OOPshareByAge[t] = OOPmedSum/TotalMedSum
+            MeanLogOOPmedByAge[tau] = np.mean(LogOOPmedArray)
+            StdevLogOOPmedByAge[tau] = np.std(LogOOPmedArray)
+            OOPshareByAge[tau] = OOPmedSum/TotalMedSum
             
         # Initialize moments by age-health and define age band bounds
         MeanLogOOPmedByAgeHealth = np.zeros((12,5))   # 500:560
@@ -321,7 +323,7 @@ class DynInsSelMarket(InsuranceMarket):
         NoPremShareRateByAgeHealth = np.zeros((8,5))  # 960:1000
         MedianWealthRatioByAgeHealth = np.zeros((8,5))# NO DATA
         ESIofferRateByAgeHealth = np.zeros((8,5)) # Can't be estimated, exogenous process
-        AgeBounds = [[0,5],[5,10],[10,15],[15,20],[20,25],[25,30],[30,35],[35,40],[40,45],[45,50],[50,55],[55,60]]
+        AgeBounds = [[3,8],[8,13],[13,18],[18,23],[23,28],[28,33],[33,38],[38,43],[43,48],[48,53],[53,58],[58,63]]
 
         # Calculate all simulated moments by age-health
         for a in range(12):
@@ -478,7 +480,7 @@ class DynInsSelMarket(InsuranceMarket):
         self.MeanESIpremiumByAge = MeanESIpremiumByAge*10000
         self.StdevESIpremiumByAge = StdevESIpremiumByAge*10000
         self.NoPremShareRateByAge = NoPremShareRateByAge
-        self.MedianWealthRatioByAge = MeanWealthRatioByAge # CHANGE THIS BACK?
+        self.MedianWealthRatioByAge = MedianWealthRatioByAge
         self.MeanLogOOPmedByAgeHealth = MeanLogOOPmedByAgeHealth + np.log(10000)
         self.MeanLogTotalMedByAgeHealth = MeanLogTotalMedByAgeHealth + np.log(10000)
         self.StdevLogOOPmedByAgeHealth = StdevLogOOPmedByAgeHealth
@@ -682,7 +684,7 @@ def makeDynInsSelType(CRRAcon,MedCurve,DiscFac,BequestShift,BequestScale,Cfloor,
         assert False, 'EducType must be 0, 1, or 2!'
         
     # Make a timepath of discount factors
-    DiscFac_time_vary = np.linspace(DiscFac-0.00,DiscFac,25).tolist() + 70*[DiscFac]  
+    DiscFac_time_vary = np.linspace(DiscFac-0.00,DiscFac,25).tolist() + 73*[DiscFac]  
         
     TypeDict['CRRA'] = CRRAcon
     TypeDict['MedCurve'] = MedCurve
@@ -747,21 +749,21 @@ def makeDynInsSelType(CRRAcon,MedCurve,DiscFac,BequestShift,BequestScale,Cfloor,
         PR_A = -MedShkSlopePR85/70.
         PR_B = 19./7.*MedShkSlopePR85
         PR_C = MedShkMeanPR85 - 3600*PR_A - 60*PR_B
-        MedShkMeanArray[4,60:] = EX_A*AgeArray[60:]**2 + EX_B*AgeArray[60:] + EX_C
-        MedShkMeanArray[3,60:] = VG_A*AgeArray[60:]**2 + VG_B*AgeArray[60:] + VG_C
-        MedShkMeanArray[2,60:] = GD_A*AgeArray[60:]**2 + GD_B*AgeArray[60:] + GD_C
-        MedShkMeanArray[1,60:] = FR_A*AgeArray[60:]**2 + FR_B*AgeArray[60:] + FR_C
-        MedShkMeanArray[0,60:] = PR_A*AgeArray[60:]**2 + PR_B*AgeArray[60:] + PR_C
+        MedShkMeanArray[4,63:] = EX_A*AgeArray[63:]**2 + EX_B*AgeArray[63:] + EX_C
+        MedShkMeanArray[3,63:] = VG_A*AgeArray[63:]**2 + VG_B*AgeArray[63:] + VG_C
+        MedShkMeanArray[2,63:] = GD_A*AgeArray[63:]**2 + GD_B*AgeArray[63:] + GD_C
+        MedShkMeanArray[1,63:] = FR_A*AgeArray[63:]**2 + FR_B*AgeArray[63:] + FR_C
+        MedShkMeanArray[0,63:] = PR_A*AgeArray[63:]**2 + PR_B*AgeArray[63:] + PR_C
         
-        MedShkStdArray[4,60:] = MedShkStdArray[4,59]
-        MedShkStdArray[3,60:] = MedShkStdArray[3,59]
-        MedShkStdArray[2,60:] = MedShkStdArray[2,59]
-        MedShkStdArray[1,60:] = MedShkStdArray[1,59]
-        MedShkStdArray[0,60:] = MedShkStdArray[0,59]
+        MedShkStdArray[4,63:] = MedShkStdArray[4,62]
+        MedShkStdArray[3,63:] = MedShkStdArray[3,62]
+        MedShkStdArray[2,63:] = MedShkStdArray[2,62]
+        MedShkStdArray[1,63:] = MedShkStdArray[1,62]
+        MedShkStdArray[0,63:] = MedShkStdArray[0,62]
                 
     if Taper > 1:
-        MedShkMeanArray[:,60:] = np.tile(np.reshape(MedShkMeanArray[:,60],(5,1)),(1,35)) # Hold distribution constant after age 85
-        MedShkStdArray[:,60:] = np.tile(np.reshape(MedShkStdArray[:,60],(5,1)),(1,35))
+        MedShkMeanArray[:,63:] = np.tile(np.reshape(MedShkMeanArray[:,63],(5,1)),(1,35)) # Hold distribution constant after age 85
+        MedShkStdArray[:,63:] = np.tile(np.reshape(MedShkStdArray[:,63],(5,1)),(1,35))
     TypeDict['MedShkAvg'] = MedShkMeanArray.transpose().tolist()
     TypeDict['MedShkStd'] = MedShkStdArray.transpose().tolist()
     
@@ -830,10 +832,10 @@ def makeMarketFromParams(ParamArray,PolicySpec,IMIpremiumArray,ESIpremiumArray,I
         Object describing the policy structure of the insurance market.
     IMIpremiumArray : np.array
         Array of premiums for IMI contracts for workers. Irrelevant if InsChoiceType = 0.
-        Should be of size (40,ContractCount).
+        Should be of size (43,ContractCount,GroupCount).
     ESIpremiumArray : np.array
         Array of premiums for ESI contracts for workers. Irrelevant if InsChoiceType = 0.
-        Should be of size (40,ContractCount).
+        Should be of size (43,ContractCount).
     InsChoiceType : int
         Indicator for the extent of consumer choice over contracts.  0 --> no choice,
         1 --> one non-null contract, 2 --> five non-null contracts.
@@ -888,7 +890,7 @@ def makeMarketFromParams(ParamArray,PolicySpec,IMIpremiumArray,ESIpremiumArray,I
         
     # Make an expanded array of IMI premiums
     GroupCount = len(PolicySpec.HealthGroups)
-    IMIpremiumArray_big = np.zeros((5,40))
+    IMIpremiumArray_big = np.zeros((5,Params.working_T))
     for g in range(GroupCount):
         for h in PolicySpec.HealthGroups[g]:
             if PolicySpec.ExcludedGroups[g]:
@@ -899,7 +901,7 @@ def makeMarketFromParams(ParamArray,PolicySpec,IMIpremiumArray,ESIpremiumArray,I
     # Construct an initial nested list for premiums
     PremiumFuncs_init = []
     HealthCount = 5
-    for t in range(40):
+    for t in range(Params.working_T):
         PremiumFuncs_t = []
         for h in range(HealthCount):
             PremiumFuncs_this_health = []
@@ -946,14 +948,14 @@ def objectiveFunction(Parameters, return_market=False):
     TestPremiums = True # Whether to start with the test premium level
     
     if TestPremiums:
-        ESIpremiums = np.array([0.3400, 0.0, 0.0, 0.0, 0.0])
+        ESIpremiums = np.array([0.3200, 0.0, 0.0, 0.0, 0.0])
     else:
         ESIpremiums = Params.PremiumsLast
     IMIpremiums_init = Params.IMIpremiums
     
     ContractCounts = [0,1,5] # plus one
     ESIpremiums_init_short = np.concatenate((np.array([0.]),ESIpremiums[0:ContractCounts[InsChoice]]))
-    ESIpremiums_init = np.tile(np.reshape(ESIpremiums_init_short,(1,ESIpremiums_init_short.size)),(40,1))
+    ESIpremiums_init = np.tile(np.reshape(ESIpremiums_init_short,(1,ESIpremiums_init_short.size)),(Params.working_T,1))
     
     MyMarket = makeMarketFromParams(Parameters,PreACAbaselineSpec,IMIpremiums_init,ESIpremiums_init,InsChoice)
     MyMarket.ESIpremiums = ESIpremiums_init_short
@@ -973,11 +975,65 @@ def objectiveFunction(Parameters, return_market=False):
     moment_sum = MyMarket.aggregateMomentConditions()
     writeParametersToFile(Parameters,'LatestParameters.txt')    
     
-    #print(moment_sum)
     if return_market:
         return moment_sum, MyMarket
     else:
         return moment_sum
+    
+    
+def calcStdErrs(params,perturb,which):
+    '''
+    Calculate standard errors of the estimated parameters for the (Re)Distribution
+    of Welfare project.  Approximates the Hessian of the objective function as
+    the inner product of the Jacobian of the moment difference function (with the
+    weighting matrix).
+    
+    Parameters
+    ----------
+    params : dict
+        The dictionary to be used to construct each of the types.
+    perturb : float
+        Relative perturbation to each parameter to calculate numeric derivatives.
+    which : np.array
+        Length 35 boolean array indicating which parameters should get std errs.
+    
+        
+    Returns
+    -------
+    StdErrVec : np.array
+        Vector of length np.sum(which) with standard errors for the indicated structural parameters.
+    ParamCovarMatrix : np.arrau
+        Square array of covariances for the indicated structural parameters.
+    '''
+    # Initialize an array of numeric derivatives of moment differences
+    N = np.sum(which)
+    MomentDerivativeArray = np.zeros((N,Params.moment_count))
+    
+    # Calculate the vector of moment differences for the estimated parameters
+    moment_sum, MyMarket = objectiveFunction(Params.test_param_vec, return_market=True)
+    base_moment_diffs = MyMarket.sim_moments - MyMarket.data_moments
+    print('Found moment differences for base parameter vector')
+    
+    # Loop through the parameters, perturbing each one and calculating moment derivatives
+    n = 0
+    for i in range(35):
+        if not which[i]:
+            continue
+        params_now = copy(params)
+        this_eps = perturb[i]
+        this_param = params[i] + this_eps
+        params_now[i] = this_param
+        moment_sum, MyMarket = objectiveFunction(Params.test_param_vec, return_market=True)
+        this_moment_diffs = MyMarket.sim_moments - MyMarket.data_moments
+        MomentDerivativeArray[n,:] = (this_moment_diffs - base_moment_diffs)/this_eps
+        n += 1
+        print('Finished perturbing parameter ' + str(n) + ' of ' + str(N) + ', NaN count = ' + str(np.sum(np.isnan(MomentDerivativeArray[n-1,:]))))
+        
+    # Calculate standard errors by finding the variance-covariance matrix for the parameters
+    WeightingMatrix = np.diag(MyMarket.moment_weights)
+    ParamCovMatrix = np.linalg.inv(np.dot(MomentDerivativeArray,np.dot(WeightingMatrix,MomentDerivativeArray.transpose())))
+    StdErrVec = np.sqrt(np.diag(ParamCovMatrix))
+    return StdErrVec, ParamCovMatrix, MomentDerivativeArray
 
 
 ###############################################################################
@@ -986,10 +1042,11 @@ if __name__ == '__main__':
     import matplotlib.pyplot as plt
     mystr = lambda number : "{:.4f}".format(number)
     
-    test_obj_func = True
-    test_one_type = False
+    test_obj_func     = True
+    test_one_type     = False
     perturb_one_param = False
-    estimate_model = False
+    estimate_model    = False
+    calc_std_errs     = False
     
     if test_obj_func:
     # This block is for actually testing the objective function
@@ -1162,16 +1219,16 @@ if __name__ == '__main__':
         TestPremiums = True # Whether to start with the test premium level
         
         if TestPremiums:
-            ESIpremiums = np.array([0.3400, 0.0, 0.0, 0.0, 0.0])
+            ESIpremiums = np.array([0.3200, 0.0, 0.0, 0.0, 0.0])
         else:
             ESIpremiums = Params.PremiumsLast
         IMIpremiums_init = Params.IMIpremiums
         
         ContractCounts = [0,1,5] # plus one
         ESIpremiums_init_short = np.concatenate((np.array([0.]),ESIpremiums[0:ContractCounts[InsChoice]]))
-        ESIpremiums_init = np.tile(np.reshape(ESIpremiums_init_short,(1,ESIpremiums_init_short.size)),(40,1))
+        ESIpremiums_init = np.tile(np.reshape(ESIpremiums_init_short,(1,ESIpremiums_init_short.size)),(Params.working_T,1))
         
-        MyMarket = makeMarketFromParams(Params.test_param_vec,PostACAbaselineSpec,IMIpremiums_init,ESIpremiums_init,InsChoice)
+        MyMarket = makeMarketFromParams(Params.test_param_vec,PreACAbaselineSpec,IMIpremiums_init,ESIpremiums_init,InsChoice)
         MyMarket.ESIpremiums = ESIpremiums_init_short
         multiThreadCommandsFake(MyMarket.agents,['update()','makeShockHistory()'])
         MyMarket.getIncomeQuintiles()
@@ -1180,7 +1237,7 @@ if __name__ == '__main__':
         print('Making the agents took ' + mystr(t_end-t_start) + ' seconds.')
         
         t_start = clock()
-        MyType = MyMarket.agents[2]
+        MyType = MyMarket.agents[0]
         MyType.del_soln = False
         MyType.do_sim = True
         MyType.verbosity = 10
@@ -1198,7 +1255,7 @@ if __name__ == '__main__':
         print('Individual market:')
         MyType.plotvFunc(t,p,H=[0,1,2,3,4],decurve=False,mMax=mTop)
         MyType.plotvPfunc(t,p,H=[0,1,2,3,4],decurve=False,mMax=mTop)
-        if t < 40:
+        if t < Params.working_T:
             print('ESI paying full price:')
             MyType.plotvFunc(t,p,H=[5,6,7,8,9],decurve=False,mMax=mTop)
             MyType.plotvPfunc(t,p,H=[5,6,7,8,9],decurve=False,mMax=mTop)
@@ -1217,8 +1274,8 @@ if __name__ == '__main__':
     if perturb_one_param:
         # Test model identification by perturbing one parameter at a time
         param_i = 22
-        param_min = 0.3
-        param_max = 0.4
+        param_min = 0.30
+        param_max = 0.36
         
         N = 35
         perturb_vec = np.linspace(param_min,param_max,num=N)
@@ -1245,20 +1302,42 @@ if __name__ == '__main__':
         
     if estimate_model:
         # Estimate some or all structural parameters of the model
-        which_indices = which_indices = np.array([22,23,24,27,28,29,30,31,32,33,34])
+        which_indices = np.array([9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,27,28,29,30,31,32,33,34])
         which_bool = np.zeros(35,dtype=bool)
         which_bool[which_indices] = True
         opt_params, opt_f = parallelNelderMead(
                            objectiveFunction,guess=Params.test_param_vec,
-                           perturb=which_bool*Params.test_param_vec*0.05,
-                           P=7,
-                           ftol=0.000001,
+                           perturb=which_bool*Params.test_param_vec*0.10,
+                           P=8,
+                           ftol=0.001,
                            xtol=0.000001,
                            maxiter=np.inf, maxeval=np.inf,
                            r_param=1.0, e_param=1.0, c_param=0.5, s_param=0.5,
                            maxthreads=8,
-                           name='DynInsSel',
+                           name='MainEstimationProgress',
                            resume=False, savefreq=1,
                            verbose=1)
         for i in which_indices.tolist():
             print(Params.param_names[i] + ' = ' + str(opt_params[i]))
+            
+            
+    if calc_std_errs:
+        # Calculate standard errors using Jacobian of moment difference function for some or all parameters
+        which_indices = np.array([9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,27,28,29,30,31,32,33,34])
+        which_bool = np.zeros(35,dtype=bool)
+        which_bool[which_indices] = True
+        standard_errors, cov_matrix, moment_derivatives = calcStdErrs(Params.test_param_vec,Params.perturb_vec,which_bool)
+        print('Standard errors:')
+        print('----------------')
+        for n in range(which_indices.size):
+            i = which_indices[n]
+            print(Params.param_names[i] + ' = ' + str(standard_errors[n]))
+        for n in range(which_indices.size):
+            for nn in range(n):
+                corr = cov_matrix[n,nn]/(standard_errors[n]*standard_errors[nn])
+                if np.abs(corr > 0.7):
+                    print(Params.param_names[which_indices[n]] + ' and ' + Params.param_names[which_indices[nn]] + ' have a correlation of ' + str(corr))
+        stderrs_adj = np.zeros(35) + np.nan
+        stderrs_adj[which_bool] = standard_errors
+        makeParamTable('EstimatedParameters', Params.test_param_vec, stderrs=stderrs_adj)
+        
