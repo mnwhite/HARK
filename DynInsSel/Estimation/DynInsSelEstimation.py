@@ -1042,10 +1042,10 @@ if __name__ == '__main__':
     import matplotlib.pyplot as plt
     mystr = lambda number : "{:.4f}".format(number)
     
-    test_obj_func     = False
+    test_obj_func     = True
     test_one_type     = False
     perturb_one_param = False
-    estimate_model    = True
+    estimate_model    = False
     calc_std_errs     = False
     
     if test_obj_func:
@@ -1219,7 +1219,7 @@ if __name__ == '__main__':
         TestPremiums = True # Whether to start with the test premium level
         
         if TestPremiums:
-            ESIpremiums = np.array([0.3400, 0.0, 0.0, 0.0, 0.0])
+            ESIpremiums = np.array([0.3200, 0.0, 0.0, 0.0, 0.0])
         else:
             ESIpremiums = Params.PremiumsLast
         IMIpremiums_init = Params.IMIpremiums
@@ -1228,7 +1228,7 @@ if __name__ == '__main__':
         ESIpremiums_init_short = np.concatenate((np.array([0.]),ESIpremiums[0:ContractCounts[InsChoice]]))
         ESIpremiums_init = np.tile(np.reshape(ESIpremiums_init_short,(1,ESIpremiums_init_short.size)),(Params.working_T,1))
         
-        MyMarket = makeMarketFromParams(Params.test_param_vec,PostACAbaselineSpec,IMIpremiums_init,ESIpremiums_init,InsChoice)
+        MyMarket = makeMarketFromParams(Params.test_param_vec,PreACAbaselineSpec,IMIpremiums_init,ESIpremiums_init,InsChoice)
         MyMarket.ESIpremiums = ESIpremiums_init_short
         multiThreadCommandsFake(MyMarket.agents,['update()','makeShockHistory()'])
         MyMarket.getIncomeQuintiles()
@@ -1237,9 +1237,9 @@ if __name__ == '__main__':
         print('Making the agents took ' + mystr(t_end-t_start) + ' seconds.')
         
         t_start = clock()
-        MyType = MyMarket.agents[2]
+        MyType = MyMarket.agents[0]
         MyType.del_soln = False
-        MyType.do_sim = False
+        MyType.do_sim = True
         MyType.verbosity = 10
         MyType.solve()
         t_end = clock()

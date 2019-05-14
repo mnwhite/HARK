@@ -781,7 +781,7 @@ def solveInsuranceSelection(solution_next,IncomeDstn,TaxFunc,SubsidyFunc,MedShkA
     
     # Make alternate versions of pLvlGrid and pGridDense
     aXtraMax = np.max(aXtraGrid)
-    aLvlMax_min_acceptable = 10.
+    aLvlMax_min_acceptable = 20.
     pLvlAlt = aLvlMax_min_acceptable/aXtraMax
     aLvlMax_by_pLvl = aXtraMax*pLvlGrid
     pLvlGrid_alt = copy(pLvlGrid)
@@ -885,14 +885,14 @@ def solveInsuranceSelection(solution_next,IncomeDstn,TaxFunc,SubsidyFunc,MedShkA
         mLvlNext = Rfree[h_alt]*aLvlNow_tiled + yLvlNext - TaxFunc(yLvlNext)
         
         # Calculate future-health-conditional end of period value and marginal value
-        tempv = vFuncNext(mLvlNext,pLvlNext)
-        tempvP = vPfuncNext(mLvlNext,pLvlNext)
-        EndOfPrdvPcond[:,:,h]  = Rfree[h_alt]*np.sum(tempvP*ShkPrbs_tiled,axis=0)
-        EndOfPrdvCond[:,:,h]   = np.sum(tempv*ShkPrbs_tiled,axis=0)
+        vNext = vFuncNext(mLvlNext,pLvlNext)
+        vPnext = vPfuncNext(mLvlNext,pLvlNext)
+        EndOfPrdvPcond[:,:,h]  = Rfree[h_alt]*np.sum(vPnext*ShkPrbs_tiled,axis=0)
+        EndOfPrdvCond[:,:,h]   = np.sum(vNext*ShkPrbs_tiled,axis=0)
         
-#        temp = np.isnan(tempv)
-#        if np.any(temp):
-#            print('vNext',h,np.sum(temp))
+        temp = np.isnan(vNext)
+        if np.any(temp):
+            print('vNext',h,np.argwhere(temp))
         
     # Calculate end of period value and marginal value conditional on each current health state
     EndOfPrdv = np.zeros((pLvlCount,aLvlCount+1,StateCountNow))
@@ -909,9 +909,9 @@ def solveInsuranceSelection(solution_next,IncomeDstn,TaxFunc,SubsidyFunc,MedShkA
         EndOfPrdv[:,:,h]  = DiscFacEff*np.sum(EndOfPrdvCond*MrkvArray_temp,axis=2) + DiePrb*BequestMotive(aLvlNow)
         EndOfPrdvP[:,:,h] = DiscFacEff*np.sum(EndOfPrdvPcond*MrkvArray_temp,axis=2) + DiePrb*BequestMotiveP(aLvlNow)
         
-        temp = np.isnan(EndOfPrdv[:,:,h])
-        if np.any(temp):
-            print('EndOfPrdv',h,np.sum(temp))
+#        temp = np.isnan(EndOfPrdv[:,:,h])
+#        if np.any(temp):
+#            print('EndOfPrdv',h,np.argwhere(temp))
             
     # Calculate human wealth conditional on each current health state 
     hLvlGrid = np.sum(MrkvArray_all*np.tile(np.reshape(hLvlCond,(pLvlCount,1,StateCountNext)),(1,StateCountNow,1)),axis=2)
