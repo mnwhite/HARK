@@ -1,0 +1,47 @@
+\begin{table} 
+\caption{Parameters Estimated by SMM} 
+ \label{table:SMMestimates} 
+\centering 
+\small 
+\begin{tabular}{cccl} 
+\hline \hline 
+Parameter & Estimate & Std Err & Description 
+\\ \hline 
+$\beta$ & 0.890 & (---) & Intertemporal discount factor
+\\$\rho$ & 2.900 & (---) & Coefficient of relative risk aversion for consumption
+\\$\nu/\rho$ & 8.000 & (---) & Ratio of CRRA for medical care to CRRA for consumption
+\\$\log(\sigma^2_\epsilon)$ & -7.500 & (---) & Log stdev of taste shocks over insurance contracts
+\\$\underline{c}$ & 0.150 & (---) & Consumption floor (10,000 USD)
+\\$\log(s)$ & -1.480 & (---) & Log of employer contribution to ESI (10,000 USD)
+\\$UNUSED$ & -3.000 & (---) & UNUSED
+\\$\omega_0$ & 10.000 & (---) & Constant term in bequest motive
+\\$\omega_1$ & 3.000 & (---) & Scale of bequest motive
+\\$\gamma^{E}_0$ & -3.507 & (---) & Excellent health constant for log mean med shock
+\\$\gamma^{E}_1$ & 4.15e-3 & (---) & Excellent health linear coefficient on age for log mean med shock
+\\$\gamma_{2}$ & 5.54e-4 & (---) & Quadratic coefficient on age for log mean medical need shock
+\\$\gamma_{3}$ & 1.19e-5 & (---) & Cubic coefficient on age for log mean medical need shock
+\\$\gamma_{4}$ & -2.16e-7 & (---) & Quartic coefficient on age for log mean medical need shock
+\\$\gamma^{V}_0$ & 0.233 & (---) & Very good health constant for log mean medical need shock
+\\$\gamma^{V}_1$ & 2.04e-3 & (---) & Very good health linear age coefficient for log mean med shock
+\\$\gamma^{G}_0$ & 0.463 & (---) & Good health constant for log mean medical need shock
+\\$\gamma^{G}_1$ & 2.98e-3 & (---) & Good health linear age coefficient for log mean med shock
+\\$\gamma^{F}_0$ & 0.936 & (---) & Fair health constant for log mean medical need shock
+\\$\gamma^{F}_1$ & 1.66e-3 & (---) & Fair health linear age coefficient for log mean med shock
+\\$\gamma^{P}_0$ & 2.355 & (---) & Poor health constant for log mean medical need shock
+\\$\gamma^{P}_1$ & -1.19e-2 & (---) & Poor health linear age coefficient for log mean med shock
+\\$\delta^{E}_0$ & 0.317 & (---) & Excellent health constant for log stdev med shock
+\\$\delta^{E}_1$ & 6.04e-3 & (---) & Excellent health linear coefficient on age for log stdev med shock
+\\$\delta_{2}$ & -1.12e-4 & (---) & Quadratic coefficient on age for log stdev medical need shock
+\\$\delta_{3}$ & 0.000 & (---) & Cubic coefficient on age for log stdev medical need shock
+\\$\delta_{4}$ & 0.000 & (---) & Quartic coefficient on age for log stdev medical need shock
+\\$\delta^{V}_0$ & 7.98e-2 & (---) & Very good health constant for log stdev medical need shock
+\\$\delta^{V}_1$ & -1.24e-3 & (---) & Very good health linear age coefficient for log stdev med shock
+\\$\delta^{G}_0$ & 0.120 & (---) & Good health constant for log stdev medical need shock
+\\$\delta^{G}_1$ & -9.82e-4 & (---) & Good health linear age coefficient for log stdev med shock
+\\$\delta^{F}_0$ & 0.235 & (---) & Fair health constant for log stdev medical need shock
+\\$\delta^{F}_1$ & -2.58e-3 & (---) & Fair health linear age coefficient for log stdev med shock
+\\$\delta^{P}_0$ & 0.320 & (---) & Poor health constant for log stdev medical need shock
+\\$\delta^{P}_1$ & -4.15e-3 & (---) & Poor health linear age coefficient for log stdev med shock
+\\ \hline \hline 
+\end{tabular} 
+\end{table} 

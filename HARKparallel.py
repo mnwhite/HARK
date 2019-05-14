@@ -216,7 +216,7 @@ def parallelNelderMead(objFunc,guess,perturb=None,P=1,ftol=0.000001,xtol=0.00000
         simplex = simplex[order,:]
         fmin = fvals[0]
         f_dist = np.abs(fmin - fvals[-1])
-        x_dist = np.max(np.sqrt(np.sum(simplex**2.0 - np.tile(simplex[0,:],(N,1))**2.0,axis=1)))
+        x_dist = np.max(np.sqrt(np.sum((simplex - np.tile(simplex[0,:],(N,1)))**2.0,axis=1)))
         if verbose > 0:
             print('Evaluated the initial simplex: fmin=' + str(fmin) + ', f_dist=' + str(f_dist) + ', x_dist=' + str(x_dist))
     else: # Resume an existing search that was cut short

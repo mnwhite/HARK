@@ -11,7 +11,7 @@ from time import clock
 from copy import copy, deepcopy
 from InsuranceSelectionModel import MedInsuranceContract, InsSelConsumerType
 import SaveParameters
-from SaveParameters import writeParametersToFile
+from SaveParameters import writeParametersToFile, makeParamTable
 import LoadDataMoments as Data
 from LoadDataMoments import data_moments, moment_weights
 from ActuarialRules import PreACAbaselineSpec, PostACAbaselineSpec, InsuranceMarket
@@ -975,11 +975,65 @@ def objectiveFunction(Parameters, return_market=False):
     moment_sum = MyMarket.aggregateMomentConditions()
     writeParametersToFile(Parameters,'LatestParameters.txt')    
     
-    #print(moment_sum)
     if return_market:
         return moment_sum, MyMarket
     else:
         return moment_sum
+    
+    
+def calcStdErrs(params,perturb,which):
+    '''
+    Calculate standard errors of the estimated parameters for the (Re)Distribution
+    of Welfare project.  Approximates the Hessian of the objective function as
+    the inner product of the Jacobian of the moment difference function (with the
+    weighting matrix).
+    
+    Parameters
+    ----------
+    params : dict
+        The dictionary to be used to construct each of the types.
+    perturb : float
+        Relative perturbation to each parameter to calculate numeric derivatives.
+    which : np.array
+        Length 35 boolean array indicating which parameters should get std errs.
+    
+        
+    Returns
+    -------
+    StdErrVec : np.array
+        Vector of length np.sum(which) with standard errors for the indicated structural parameters.
+    ParamCovarMatrix : np.arrau
+        Square array of covariances for the indicated structural parameters.
+    '''
+    # Initialize an array of numeric derivatives of moment differences
+    N = np.sum(which)
+    MomentDerivativeArray = np.zeros((N,Params.moment_count))
+    
+    # Calculate the vector of moment differences for the estimated parameters
+    moment_sum, MyMarket = objectiveFunction(Params.test_param_vec, return_market=True)
+    base_moment_diffs = MyMarket.sim_moments - MyMarket.data_moments
+    print('Found moment differences for base parameter vector')
+    
+    # Loop through the parameters, perturbing each one and calculating moment derivatives
+    n = 0
+    for i in range(35):
+        if not which[i]:
+            continue
+        params_now = copy(params)
+        this_eps = perturb[i]
+        this_param = params[i] + this_eps
+        params_now[i] = this_param
+        moment_sum, MyMarket = objectiveFunction(Params.test_param_vec, return_market=True)
+        this_moment_diffs = MyMarket.sim_moments - MyMarket.data_moments
+        MomentDerivativeArray[n,:] = (this_moment_diffs - base_moment_diffs)/this_eps
+        n += 1
+        print('Finished perturbing parameter ' + str(n) + ' of ' + str(N) + ', NaN count = ' + str(np.sum(np.isnan(MomentDerivativeArray[n-1,:]))))
+        
+    # Calculate standard errors by finding the variance-covariance matrix for the parameters
+    WeightingMatrix = np.diag(MyMarket.moment_weights)
+    ParamCovMatrix = np.linalg.inv(np.dot(MomentDerivativeArray,np.dot(WeightingMatrix,MomentDerivativeArray.transpose())))
+    StdErrVec = np.sqrt(np.diag(ParamCovMatrix))
+    return StdErrVec, ParamCovMatrix, MomentDerivativeArray
 
 
 ###############################################################################
@@ -988,10 +1042,11 @@ if __name__ == '__main__':
     import matplotlib.pyplot as plt
     mystr = lambda number : "{:.4f}".format(number)
     
-    test_obj_func = True
-    test_one_type = False
+    test_obj_func     = False
+    test_one_type     = False
     perturb_one_param = False
-    estimate_model = False
+    estimate_model    = True
+    calc_std_errs     = False
     
     if test_obj_func:
     # This block is for actually testing the objective function
@@ -1247,7 +1302,7 @@ if __name__ == '__main__':
         
     if estimate_model:
         # Estimate some or all structural parameters of the model
-        which_indices = which_indices = np.array([9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,27,28,29,30,31,32,33,34])
+        which_indices = np.array([9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,27,28,29,30,31,32,33,34])
         which_bool = np.zeros(35,dtype=bool)
         which_bool[which_indices] = True
         opt_params, opt_f = parallelNelderMead(
@@ -1264,3 +1319,25 @@ if __name__ == '__main__':
                            verbose=1)
         for i in which_indices.tolist():
             print(Params.param_names[i] + ' = ' + str(opt_params[i]))
+            
+            
+    if calc_std_errs:
+        # Calculate standard errors using Jacobian of moment difference function for some or all parameters
+        which_indices = np.array([9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,27,28,29,30,31,32,33,34])
+        which_bool = np.zeros(35,dtype=bool)
+        which_bool[which_indices] = True
+        standard_errors, cov_matrix, moment_derivatives = calcStdErrs(Params.test_param_vec,Params.perturb_vec,which_bool)
+        print('Standard errors:')
+        print('----------------')
+        for n in range(which_indices.size):
+            i = which_indices[n]
+            print(Params.param_names[i] + ' = ' + str(standard_errors[n]))
+        for n in range(which_indices.size):
+            for nn in range(n):
+                corr = cov_matrix[n,nn]/(standard_errors[n]*standard_errors[nn])
+                if np.abs(corr > 0.7):
+                    print(Params.param_names[which_indices[n]] + ' and ' + Params.param_names[which_indices[nn]] + ' have a correlation of ' + str(corr))
+        stderrs_adj = np.zeros(35) + np.nan
+        stderrs_adj[which_bool] = standard_errors
+        makeParamTable('EstimatedParameters', Params.test_param_vec, stderrs=stderrs_adj)
+        

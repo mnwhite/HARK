@@ -624,37 +624,37 @@ test_param_vec = np.array([
           2.9,                 #  1 CRRA              : Coefficient of relative risk aversion for consumption
           8.0,                 #  2 MedCurve          : Ratio of CRRA for medical care to CRRA for consumption
           -7.5,                #  3 log(ChoiceShkMag) : Log stdev of taste shocks over insurance contracts
-          0.15,                #  4 Cfloor            : Consumption floor ($10,000)
-          -1.48,               #  5 log(EmpContr)     : Log of employer contribution to ESI ($10,000)
+          0.15,                #  4 Cfloor            : Consumption floor (10,000 USD)
+          -1.48,               #  5 log(EmpContr)     : Log of employer contribution to ESI (10,000 USD)
           -3.0,                #  6 UNUSED            : UNUSED
           10.0,                #  7 BequestShift      : Constant term in bequest motive
           3.0,                 #  8 BequestScale      : Scale of bequest motive
-          -3.55,               #  9 MedShkMean_0      : Constant term for log mean medical need shock
-          0.0045,              # 10 MedShkMean_a1     : Linear coefficient on age for log mean medical need shock
-          0.00055,             # 11 MedShkMean_a2     : Quadratic coefficient on age for log mean medical need shock
-          1.23e-05,            # 12 MedShkMean_a3     : Cubic coefficient on age for log mean medical need shock
-          -2.2e-07,            # 13 MedShkMean_a4     : Quartic coefficient on age for log mean medical need shock
-          0.25,                # 14 MedShkMean_VG0    : Very good health shifter for log mean medical need shock
-          0.0025,              # 15 MedShkMean_VGa1   : Very good health linear age coefficient shifter for log mean med shock
-          0.53,                # 16 MedShkMean_GD0    : Good health shifter for log mean medical need shock
-          0.0025,              # 17 MedShkMean_GDa1   : Good health linear age coefficient shifter for log mean med shock
-          0.98,                # 18 MedShkMean_FR0    : Fair health shifter for log mean medical need shock
-          0.0014,              # 19 MedShkMean_FRa1   : Fair health linear age coefficient shifter for log mean med shock
-          2.18,                # 20 MedShkMean_PR0    : Poor health shifter for log mean medical need shock
-          -0.0106,             # 21 MedShkMean_PRa1   : Poor health linear age coefficient shifter for log mean med shock
-          0.322,               # 22 MedShkStd_0       : Constant term for log stdev medical need shock
-          0.00754290199519,    # 23 MedShkStd_a1      : Linear coefficient on age for log stdev medical need shock
-          -0.000151204257844,  # 24 MedShkStd_a2      : Quadratic coefficient on age for log stdev medical need shock
+          -3.50708256057,      #  9 MedShkMean_0      : Excellent health constant for log mean med shock
+          0.00414593003656,    # 10 MedShkMean_a1     : Excellent health linear coefficient on age for log mean med shock
+          0.000554076909016,   # 11 MedShkMean_a2     : Quadratic coefficient on age for log mean medical need shock
+          1.18844734648e-05,   # 12 MedShkMean_a3     : Cubic coefficient on age for log mean medical need shock
+          -2.16039438366e-07,  # 13 MedShkMean_a4     : Quartic coefficient on age for log mean medical need shock
+          0.232590281953,      # 14 MedShkMean_VG0    : Very good health constant for log mean medical need shock
+          0.00204304411945,    # 15 MedShkMean_VGa1   : Very good health linear age coefficient for log mean med shock
+          0.462947957725,      # 16 MedShkMean_GD0    : Good health constant for log mean medical need shock
+          0.00298055834518,    # 17 MedShkMean_GDa1   : Good health linear age coefficient for log mean med shock
+          0.936017865297,      # 18 MedShkMean_FR0    : Fair health constant for log mean medical need shock
+          0.00166014517641,    # 19 MedShkMean_FRa1   : Fair health linear age coefficient for log mean med shock
+          2.35439304302,       # 20 MedShkMean_PR0    : Poor health constant for log mean medical need shock
+          -0.0118689668917,    # 21 MedShkMean_PRa1   : Poor health linear age coefficient for log mean med shock
+          0.317288764803,      # 22 MedShkStd_0       : Excellent health constant for log stdev med shock
+          0.00604211021969,    # 23 MedShkStd_a1      : Excellent health linear coefficient on age for log stdev med shock
+          -0.000112027041954,  # 24 MedShkStd_a2      : Quadratic coefficient on age for log stdev medical need shock
           0.0,                 # 25 MedShkStd_a3      : Cubic coefficient on age for log stdev medical need shock
           0.0,                 # 26 MedShkStd_a4      : Quartic coefficient on age for log stdev medical need shock
-          0.0219367447723,     # 27 MedShkStd_VG0     : Very good health shifter for log stdev medical need shock
-          0.001,               # 28 MedShkStd_VGa1    : Very good health linear age coefficient shifter for log stdev med shock
-          0.084712929903,      # 29 MedShkStd_GD0     : Good health shifter for log stdev medical need shock
-          0.001,               # 30 MedShkStd_GDa1    : Good health linear age coefficient shifter for log stdev med shock
-          0.215432518572,      # 31 MedShkStd_FR0     : Fair health shifter for log stdev medical need shock
-          -0.00193957426672,   # 32 MedShkStd_FRa1    : Fair health linear age coefficient shifter for log stdev med shock
-          0.279314685997,      # 33 MedShkStd_PR0     : Poor health shifter for log stdev medical need shock
-          -0.00280955041349,   # 34 MedShkStd_PRa1    : Poor health linear age coefficient shifter for log stdev med shock
+          0.0798380793117,     # 27 MedShkStd_VG0     : Very good health constant for log stdev medical need shock
+          -0.00124343031301,   # 28 MedShkStd_VGa1    : Very good health linear age coefficient for log stdev med shock
+          0.119943680087,      # 29 MedShkStd_GD0     : Good health constant for log stdev medical need shock
+          -0.000983585801214,  # 30 MedShkStd_GDa1    : Good health linear age coefficient for log stdev med shock
+          0.235124656251,      # 31 MedShkStd_FR0     : Fair health constant for log stdev medical need shock
+          -0.00258490744296,   # 32 MedShkStd_FRa1    : Fair health linear age coefficient for log stdev med shock
+          0.319865407186,      # 33 MedShkStd_PR0     : Poor health constant for log stdev medical need shock
+          -0.00414913999792,   # 34 MedShkStd_PRa1    : Poor health linear age coefficient for log stdev med shock
 ])
 
 
