@@ -420,11 +420,11 @@ class ConsPerfForesightSolver(object):
         
         Parameters
         ----------
-        none
+        None
         
         Returns
         -------
-        none
+        None
         '''
         # Calculate human wealth this period (and lower bound of m)
         self.hNrmNow = (self.PermGroFac/self.Rfree)*(self.solution_next.hNrm + 1.0)
@@ -460,32 +460,13 @@ class ConsPerfForesightSolver(object):
             if mNrmNow.size == 2:
                 mNrmNow = np.append(mNrmNow,mCrit+1.)
                 cNrmNow = np.append(cNrmNow,mCrit-self.BoroCnstArt+self.MPCmin)
-#            M_new=[]
-#            C_new=[]
-#            M_new.append(self.BoroCnstArt)
-#            M_new.append(mCrit)
-#            C_new.append(0)
-#            C_new.append(mCrit-self.BoroCnstArt)
-#            for i in range(0,np.shape(mNrmNow)[0]-1):
-#                if (mNrmNow[i]>=mCrit):
-#                    M_new.append(mNrmNow[i])
-#                    C_new.append(cNrmNow[i])
-#            if (len(M_new)==2):
-#                M_new.append(mCrit+1)
-#                C_new.append(mCrit-self.BoroCnstArt+self.MPC)
-#            mNrmNow=M_new
-#            cNrmNow=C_new
+
 
         #step 7
         if mNrmNow.size > self.aXtraCount:
             mNrmNow = np.concatenate((mNrmNow[:-2],[mNrmNow[-3]+1.]))
             cNrmNow = np.concatenate((cNrmNow[:-2],[cNrmNow[-3]+self.MPCmin]))
         
-#        MPC=(cNrmNow[-1]-cNrmNow[-2])/(mNrmNow[-1]-mNrmNow[-2])
-#        while (len(mNrmNow)>self.aXtraCount):
-#            del mNrmNow[-1]
-#            del cNrmNow[-1]
-#            cNrmNow[-1]=MPC*(mNrmNow[-1]-mNrmNow[-2])+cNrmNow[-2]
         #step 8
         self.cFunc=LinearInterp(mNrmNow,cNrmNow,intercept_limit=self.hNrmNow*self.MPCmin,slope_limit=self.MPCmin)
         #step 9
